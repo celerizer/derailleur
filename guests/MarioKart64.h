@@ -1,18 +1,17 @@
-#ifndef MARIO_PARTY_4_H
-#define MARIO_PARTY_4_H
+#ifndef DR_GUEST_MARIO_KART_64_H
+#define DR_GUEST_MARIO_KART_64_H
 
 #include "../DrGuest.h"
 
-class MarioParty4 : public DrGuest
+class MarioKart64 : public DrGuest
 {
   Q_OBJECT
 
 public:
-  MarioParty4(QWindow *parent = nullptr);
+  MarioKart64(QWindow *parent = nullptr);
 
   dr_minigame_result_t minigameResult(unsigned index) override;
   const dr_mp_minigame_t* minigames() const override;
-
   void setMinigame(unsigned id) override;
 
   dr_error setPlayerCharacter(unsigned index, dr_character character) override;
@@ -22,8 +21,10 @@ public:
   dr_error setPlayerTeam(unsigned index, dr_team team) override;
 
 private:
-  unsigned m_minigameId = 0;
-  int m_minigameWriteFrames = 0;
+  dr_character    m_characters[4] = {};
+  dr_control_port m_ports[4]      = { DR_CONTROL_PORT_P1, DR_CONTROL_PORT_P2,
+                                      DR_CONTROL_PORT_P3, DR_CONTROL_PORT_P4 };
+  dr_control_type m_controlTypes[4] = {};
 };
 
 #endif

@@ -8,6 +8,7 @@
 #include <QToolBar>
 
 #include <QRetro.h>
+#include "DrGuestList.h"
 
 class MainWindow : public QMainWindow
 {
@@ -21,13 +22,14 @@ private slots:
   void switchCore();
 
 private:
-  QRetro *m_RetroA = nullptr;
-  QRetro *m_RetroB = nullptr;
+  void showHost();
+  void showGuests();
+
+  DrGuestList    *m_Guests = nullptr;
+  QRetro         *m_RetroB = nullptr;
   QStackedWidget *m_Stack = nullptr;
-  QPushButton *m_SwitchButton = nullptr;
-  QLabel *m_SceneLabel = nullptr;
-  uint8_t m_PendingMinigameId = 0;
-  int m_PendingMinigameFrames = 0;
+  QPushButton    *m_SwitchButton = nullptr;
+  QLabel         *m_SceneLabel = nullptr;
 };
 
 #endif

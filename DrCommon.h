@@ -65,9 +65,37 @@ typedef enum
 
 typedef struct
 {
+  dr_character    character;
+  dr_control_port control_port;
+  dr_control_type control_type;
+  dr_difficulty   difficulty;
+  dr_team         team;
+} dr_player_t;
+
+typedef struct
+{
   unsigned coins;
   unsigned bonus_coins;
 } dr_minigame_result_t;
+
+typedef enum
+{
+  DR_MINIGAME_INVALID,
+  DR_MINIGAME_4P,
+  DR_MINIGAME_1V3,
+  DR_MINIGAME_2V2,
+  DR_MINIGAME_BATTLE,
+  DR_MINIGAME_DUEL,
+  DR_MINIGAME_ITEM,
+} dr_minigame_type;
+
+typedef struct
+{
+  const char      *name;
+  dr_minigame_type type;
+  unsigned         minigame_id;
+  unsigned         scene_id;
+} dr_mp_minigame_t;
 
 typedef enum
 {

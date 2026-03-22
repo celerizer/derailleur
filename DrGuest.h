@@ -11,7 +11,19 @@ class DrGuest : public QRetro
 public:
   DrGuest(QWindow *parent = nullptr) : QRetro(parent) {}
 
-  virtual dr_minigame_result_t minigameResult(unsigned index) const = 0;
+  virtual dr_minigame_result_t minigameResult(unsigned index) = 0;
+  virtual const dr_mp_minigame_t* minigames() const = 0;
+  virtual void setMinigame(unsigned id) = 0;
+
+  virtual dr_error setPlayer(unsigned port, const dr_player_t &player)
+  {
+    setPlayerCharacter(port, player.character);
+    setPlayerControlPort(port, player.control_port);
+    setPlayerControlType(port, player.control_type);
+    setPlayerDifficulty(port, player.difficulty);
+    setPlayerTeam(port, player.team);
+    return DR_OK;
+  }
 
   virtual dr_error setPlayerCharacter(unsigned index, dr_character character) = 0;
   virtual dr_error setPlayerControlPort(unsigned index, dr_control_port control_port) = 0;
