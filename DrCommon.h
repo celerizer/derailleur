@@ -1,0 +1,81 @@
+#ifndef DR_COMMON_H
+#define DR_COMMON_H
+
+typedef enum
+{
+  DR_CHARACTER_INVALID = 0,
+
+  DR_CHARACTER_MARIO,
+  DR_CHARACTER_LUIGI,
+  DR_CHARACTER_PEACH,
+  DR_CHARACTER_YOSHI,
+  DR_CHARACTER_WARIO,
+  DR_CHARACTER_DONKEY_KONG,
+
+  DR_CHARACTER_DAISY,
+  DR_CHARACTER_WALUIGI,
+
+  DR_CHARACTER_SIZE
+} dr_character;
+
+typedef enum
+{
+  DR_CONTROL_PORT_INVALID = 0,
+
+  DR_CONTROL_PORT_P1,
+  DR_CONTROL_PORT_P2,
+  DR_CONTROL_PORT_P3,
+  DR_CONTROL_PORT_P4,
+
+  DR_CONTROL_PORT_SIZE
+} dr_control_port;
+
+typedef enum
+{
+  DR_CONTROL_TYPE_INVALID = 0,
+
+  DR_CONTROL_TYPE_HUMAN,
+  DR_CONTROL_TYPE_CPU,
+
+  DR_CONTROL_TYPE_SIZE
+} dr_control_type;
+
+typedef enum
+{
+  DR_DIFFICULTY_INVALID = 0,
+
+  DR_DIFFICULTY_VERY_EASY,
+  DR_DIFFICULTY_EASY,
+  DR_DIFFICULTY_NORMAL,
+  DR_DIFFICULTY_HARD,
+  DR_DIFFICULTY_VERY_HARD,
+
+  DR_DIFFICULTY_SIZE
+} dr_difficulty;
+
+typedef enum
+{
+  DR_TEAM_INVALID = 0,
+
+  DR_TEAM_BLUE,
+  DR_TEAM_RED,
+
+  DR_TEAM_SIZE
+} dr_team;
+
+typedef struct
+{
+  unsigned coins;
+  unsigned bonus_coins;
+} dr_minigame_result_t;
+
+typedef enum
+{
+  DR_OK = 0,
+
+  DR_ERR_INVALID_PARAMETER,
+
+  DR_ERROR_SIZE
+} dr_error;
+
+#endif
