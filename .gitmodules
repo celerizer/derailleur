@@ -1,0 +1,3 @@
+[submodule "QRetro"]
+	path = QRetro
+	url = https://github.com/classicslive/QRetro
