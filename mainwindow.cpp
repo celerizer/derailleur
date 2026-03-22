@@ -246,6 +246,7 @@ MainWindow::MainWindow(QWidget *parent)
             m_RetroB->memory().writeValue<uint8_t>(r4, N64_P4_MINIGAMERESULT_ADDR);
           }
           m_Stack->setCurrentIndex(1);
+          m_SwitchButton->setText("Switch to A");
         }
       }
     }
@@ -291,6 +292,8 @@ MainWindow::MainWindow(QWidget *parent)
                 m_RetroB->memory().readValue<uint8_t>(&diff, p.n64diff) &&
                 m_RetroB->memory().readValue<uint8_t>(&bot,  p.n64bot)  &&
                 m_RetroA->memory().readValue<uint8_t>(&gcnbot, p.gcnbot)) {
+              if (chr == 0x06) chr = 0x07;
+              else if (chr == 0x07) chr = 0x06;
               m_RetroA->memory().writeValue<uint8_t>(chr,  p.gcnchar);
               m_RetroA->memory().writeValue<uint8_t>(ctrl, p.gcnctrl);
               m_RetroA->memory().writeValue<uint8_t>(diff, p.gcndiff);
@@ -300,15 +303,19 @@ MainWindow::MainWindow(QWidget *parent)
 
           QList<unsigned> ids;
           for (const auto *mg = gcn_minigames; mg->name; mg++)
-            if (mg->type == DR_MINIGAME_4P)
+            if (mg->type == DR_MINIGAME_4P && mg->minigame_id != 0xFF)
               ids.append(mg->minigame_id);
           if (!ids.isEmpty())
           {
             m_PendingMinigameId = ids[QRandomGenerator::global()->bounded(ids.size())];
             m_PendingMinigameFrames = 60 * 5;
+            for (const auto *mg = gcn_minigames; mg->name; mg++)
+              if (mg->minigame_id == m_PendingMinigameId)
+                printf("GCN minigame: %s (0x%02X)\n", mg->name, m_PendingMinigameId);
           }
 
           m_Stack->setCurrentIndex(0);
+          m_SwitchButton->setText("Switch to B");
           writing = 30;
         }
       }
