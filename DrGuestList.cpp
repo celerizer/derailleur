@@ -2,7 +2,6 @@
 
 #include <QRandomGenerator>
 #include <QWidget>
-#include <cstdio>
 
 DrGuestList::DrGuestList(QWidget *parent) : QStackedWidget(parent)
 {
@@ -39,7 +38,7 @@ DrGuest* DrGuestList::startMinigame(dr_minigame_type type)
 
   for (const dr_mp_minigame_t *mg = picked.guest->minigames(); mg->name; mg++)
     if (mg->minigame_id == id)
-      printf("minigame: %s (0x%02X)\n", mg->name, id);
+      log(DR_LOG_INFO, qPrintable(QString("minigame: %1 (0x%2)").arg(mg->name).arg(id, 2, 16, QChar('0'))));
 
   picked.guest->setMinigame(id);
   setCurrentIndex(picked.index);

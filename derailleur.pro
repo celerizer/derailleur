@@ -15,6 +15,10 @@ SOURCES += \
     DrParty.cpp \
     guests/MarioKart64.cpp \
     guests/MarioParty4.cpp \
+    guests/MarioParty5.cpp \
+    guests/MarioParty6.cpp \
+    guests/MarioParty7.cpp \
+    guests/MarioPartyGcn.cpp \
     guests/SmashRemix.cpp \
     main.cpp \
     mainwindow.cpp
@@ -26,6 +30,10 @@ HEADERS += \
     DrLogger.h \
     guests/MarioKart64.h \
     guests/MarioParty4.h \
+    guests/MarioParty5.h \
+    guests/MarioParty6.h \
+    guests/MarioParty7.h \
+    guests/MarioPartyGcn.h \
     guests/SmashRemix.h \
     mainwindow.h
 

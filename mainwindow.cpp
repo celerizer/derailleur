@@ -12,7 +12,7 @@
 #include "guests/MarioParty4.h"
 #include "guests/SmashRemix.h"
 
-#define SHOW_LOGGER 0
+#define SHOW_LOGGER 1
 
 #define N64_CORE "/media/keith/devtools/libretro/cores/mupen64plus_next_libretro.so"
 #define N64_GAME "/media/keith/devtools/libretro/roms/Mario Party 3 (USA).z64"
@@ -121,6 +121,7 @@ MainWindow::MainWindow(QWidget *parent)
 
   for (DrGuest *guest : m_Guests->guests())
     connect(guest, &DrGuest::logMessage, m_Logger, &DrLogger::message, Qt::QueuedConnection);
+  connect(m_Guests, &DrGuestList::logMessage, m_Logger, &DrLogger::message, Qt::QueuedConnection);
 #endif
 
   auto recalc = [this]() {
@@ -166,7 +167,9 @@ MainWindow::MainWindow(QWidget *parent)
       }
       uint8_t val;
       if (m_RetroB->memory().readValue<uint8_t>(&val, N64_SCENE_ADDR) && val != last) {
-        printf("N64_SCENE_ADDR: 0x%02X\n", val);
+        QMetaObject::invokeMethod(m_Logger, "message", Qt::QueuedConnection,
+          Q_ARG(unsigned, DR_LOG_INFO),
+          Q_ARG(QString, QString("N64_SCENE_ADDR: 0x%1").arg(val, 2, 16, QChar('0'))));
         last = val;
         if (val == N64_SCENE_MINIEXPLAIN) {
           static const size_t N64_CHAR_ADDR[4] = { N64_P1_CHARACTER_ADDR, N64_P2_CHARACTER_ADDR, N64_P3_CHARACTER_ADDR, N64_P4_CHARACTER_ADDR };

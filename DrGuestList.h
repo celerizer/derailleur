@@ -20,8 +20,10 @@ public:
 
 signals:
   void minigameFinished();
+  void logMessage(unsigned level, const QString &message);
 
 private:
+  void log(unsigned level, const char *message) { emit logMessage(level, QString::fromUtf8(message)); }
   QList<DrGuest*> m_guests;
 };
 

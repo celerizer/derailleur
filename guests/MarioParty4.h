@@ -1,29 +1,14 @@
 #ifndef MARIO_PARTY_4_H
 #define MARIO_PARTY_4_H
 
-#include "../DrGuest.h"
+#include "MarioPartyGcn.h"
 
-class MarioParty4 : public DrGuest
+class MarioParty4 : public MarioPartyGcn
 {
   Q_OBJECT
 
 public:
   MarioParty4(QWindow *parent = nullptr);
-
-  dr_minigame_result_t minigameResult(unsigned index) override;
-  const dr_mp_minigame_t* minigames() const override;
-
-  void setMinigame(unsigned id) override;
-
-  dr_error doSetPlayerCharacter(unsigned index, dr_character character) override;
-  dr_error doSetPlayerControlPort(unsigned index, dr_control_port control_port) override;
-  dr_error doSetPlayerControlType(unsigned index, dr_control_type control_type) override;
-  dr_error doSetPlayerDifficulty(unsigned index, dr_difficulty difficulty) override;
-  dr_error doSetPlayerTeam(unsigned index, dr_team team) override;
-
-private:
-  unsigned m_minigameId = 0;
-  int m_minigameWriteFrames = 0;
 };
 
 #endif

@@ -6,11 +6,11 @@
 
 static const dr_mp_minigame_t k_minigames[] =
 {
-  {"Smash Free-for-all", DR_MINIGAME_4P, 0x00, 0xFF},
+  {"Smash: Free-for-all", DR_MINIGAME_4P, 0x00, 0xFF},
 
-  {"Smash Team Battle", DR_MINIGAME_2V2, 0x01, 0xFF},
+  {"Smash: Team Battle", DR_MINIGAME_2V2, 0x01, 0xFF},
 
-  {"Smash Giant Battle", DR_MINIGAME_1V3, 0x02, 0xFF},
+  {"Smash: Giant Battle", DR_MINIGAME_1V3, 0x02, 0xFF},
 
   {nullptr, DR_MINIGAME_INVALID, 0xFF, 0xFF},
 };

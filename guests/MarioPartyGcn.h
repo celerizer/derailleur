@@ -1,0 +1,52 @@
+#ifndef DR_GUEST_MARIO_PARTY_GCN_H
+#define DR_GUEST_MARIO_PARTY_GCN_H
+
+#include "../DrGuest.h"
+
+struct MpGcnConfig
+{
+  const char *core;
+  const char *game;
+  const char *state;
+
+  uint8_t scene_miniexplain;
+  uint8_t scene_miniresults;
+
+  size_t scene_addr;
+  size_t minigame_addr;
+
+  size_t character_addr[4];
+  size_t controller_addr[4];
+  size_t difficulty_addr[4];
+  size_t team_addr[4];
+  size_t bot_addr[4];
+  size_t result_addr[4];
+
+  const uint8_t *character_ids;
+  const dr_mp_minigame_t *minigames;
+};
+
+class MarioPartyGcn : public DrGuest
+{
+  Q_OBJECT
+
+public:
+  MarioPartyGcn(const MpGcnConfig &config, QWindow *parent = nullptr);
+
+  dr_minigame_result_t    minigameResult(unsigned index) override;
+  const dr_mp_minigame_t* minigames() const override;
+  void                    setMinigame(unsigned id) override;
+
+  dr_error doSetPlayerCharacter(unsigned index, dr_character character) override;
+  dr_error doSetPlayerControlPort(unsigned index, dr_control_port control_port) override;
+  dr_error doSetPlayerControlType(unsigned index, dr_control_type control_type) override;
+  dr_error doSetPlayerDifficulty(unsigned index, dr_difficulty difficulty) override;
+  dr_error doSetPlayerTeam(unsigned index, dr_team team) override;
+
+private:
+  MpGcnConfig m_config;
+  unsigned    m_minigameId          = 0;
+  int         m_minigameWriteFrames = 0;
+};
+
+#endif
