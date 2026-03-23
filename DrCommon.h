@@ -12,8 +12,8 @@ typedef enum
   DR_CHARACTER_WARIO,
   DR_CHARACTER_DONKEY_KONG,
 
-  DR_CHARACTER_DAISY,
   DR_CHARACTER_WALUIGI,
+  DR_CHARACTER_DAISY,
 
   DR_CHARACTER_SIZE
 } dr_character;
@@ -102,8 +102,41 @@ typedef enum
   DR_OK = 0,
 
   DR_ERR_INVALID_PARAMETER,
+  DR_ERR_MEMORY_ACCESS_CORE,
 
   DR_ERROR_SIZE
 } dr_error;
+
+typedef enum
+{
+  DR_LOG_INFO = 0,
+  DR_LOG_WARN,
+  DR_LOG_ERROR,
+} dr_log_level;
+
+static inline const char* dr_character_name(dr_character c)
+{
+  switch (c)
+  {
+  case DR_CHARACTER_MARIO:
+    return "Mario";
+  case DR_CHARACTER_LUIGI:
+    return "Luigi";
+  case DR_CHARACTER_PEACH:
+    return "Peach";
+  case DR_CHARACTER_YOSHI:
+    return "Yoshi";
+  case DR_CHARACTER_WARIO:
+    return "Wario";
+  case DR_CHARACTER_DONKEY_KONG:
+    return "Donkey Kong";
+  case DR_CHARACTER_DAISY:
+    return "Daisy";
+  case DR_CHARACTER_WALUIGI:
+    return "Waluigi";
+  default:
+    return "Unknown";
+  }
+}
 
 #endif

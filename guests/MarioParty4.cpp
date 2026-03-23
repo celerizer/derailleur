@@ -2,16 +2,22 @@
 
 #define MP4_CORE "/media/keith/devtools/libretro/cores/dolphin_libretro.so"
 #define MP4_GAME "/media/keith/devtools/libretro/roms/Mario Party 4 (USA) (Rev 1).rvz"
-#define MP4_STATE "/media/keith/devtools/libretro/state/mp4.state"
+#define MP4_STATE "/media/keith/devtools/libretro/state/mp4.state.zip"
 
-#define MP4_SCENE_ADDR        0x801d3ce3
-#define MP4_MINIGAME_ADDR     0x8018FD2d
+#define MP4_SCENE_ADDR 0x801d3ce3
+
+#define MP4_MINIGAME_ADDR 0x8018fd2d
+
+/* The scene ID for the mini-game explanation screen */
 #define MP4_SCENE_MINIEXPLAIN 0x03
+
+/* The scene ID for the mini-game results screen */
 #define MP4_SCENE_MINIRESULTS 0x54
 
 static const size_t MP4_CHARACTER_ADDR[4]  = { 0x8018fc11, 0x8018fc1b, 0x8018fc25, 0x8018fc2f };
 static const size_t MP4_CONTROLLER_ADDR[4] = { 0x8018fc13, 0x8018fc1d, 0x8018fc27, 0x8018fc31 };
 static const size_t MP4_DIFFICULTY_ADDR[4] = { 0x8018fc15, 0x8018fc1f, 0x8018fc29, 0x8018fc33 };
+static const size_t MP4_TEAM_ADDR[4]       = { 0x8018fc17, 0x8018fc21, 0x8018fc2b, 0x8018fc35 };
 static const size_t MP4_BOT_ADDR[4]        = { 0x8018fc19, 0x8018fc23, 0x8018fc2d, 0x8018fc37 };
 static const size_t MP4_RESULT_ADDR[4]     = { 0x8018fc61, 0x8018fc91, 0x8018fcc1, 0x8018fcf1 };
 
@@ -85,7 +91,8 @@ const dr_mp_minigame_t* MarioParty4::minigames() const
   return k_minigames;
 }
 
-static const uint8_t MP4_CHARACTER_ID[DR_CHARACTER_SIZE] = {
+static const uint8_t MP4_CHARACTER_ID[DR_CHARACTER_SIZE] =
+{
   [DR_CHARACTER_INVALID]     = 0xFF,
   [DR_CHARACTER_MARIO]       = 0x00,
   [DR_CHARACTER_LUIGI]       = 0x01,
@@ -93,17 +100,8 @@ static const uint8_t MP4_CHARACTER_ID[DR_CHARACTER_SIZE] = {
   [DR_CHARACTER_YOSHI]       = 0x03,
   [DR_CHARACTER_WARIO]       = 0x04,
   [DR_CHARACTER_DONKEY_KONG] = 0x05,
-  [DR_CHARACTER_DAISY]       = 0x07,
-  [DR_CHARACTER_WALUIGI]     = 0x06,
-};
-
-static const uint8_t MP4_DIFFICULTY_ID[DR_DIFFICULTY_SIZE] = {
-  [DR_DIFFICULTY_INVALID]   = 0xFF,
-  [DR_DIFFICULTY_VERY_EASY] = 0x00,
-  [DR_DIFFICULTY_EASY]      = 0x01,
-  [DR_DIFFICULTY_NORMAL]    = 0x02,
-  [DR_DIFFICULTY_HARD]      = 0x03,
-  [DR_DIFFICULTY_VERY_HARD] = 0x04,
+  [DR_CHARACTER_WALUIGI]     = 0x07,
+  [DR_CHARACTER_DAISY]       = 0x06,
 };
 
 MarioParty4::MarioParty4(QWindow *parent) : DrGuest(parent)
@@ -112,16 +110,14 @@ MarioParty4::MarioParty4(QWindow *parent) : DrGuest(parent)
   loadContent(MP4_GAME);
 
   connect(this, &QRetro::frameBegin, this, [this, last = uint8_t(0xFF)]() mutable {
-    if (frames() <= 120)
-      return;
-
     if (m_minigameWriteFrames > 0) {
-      memory().writeValue<uint8_t>(m_minigameId, MP4_MINIGAME_ADDR);
+      write8(m_minigameId, MP4_MINIGAME_ADDR);
       --m_minigameWriteFrames;
     }
 
     uint8_t val;
-    if (memory().readValue<uint8_t>(&val, MP4_SCENE_ADDR) && val != last) {
+    if (read8(&val, MP4_SCENE_ADDR) == DR_OK && val != last)
+    {
       printf("MP4_SCENE_ADDR: 0x%02X\n", val);
       last = val;
       if (val == MP4_SCENE_MINIRESULTS)
@@ -134,67 +130,56 @@ void MarioParty4::setMinigame(unsigned id)
 {
   unserializeFromFile(MP4_STATE);
   m_minigameId = id;
-  m_minigameWriteFrames = 60 * 5;
+  m_minigameWriteFrames = 60 * 20;
 }
 
 dr_minigame_result_t MarioParty4::minigameResult(unsigned index)
 {
-  dr_minigame_result_t result = {};
+  dr_minigame_result_t result = { 0, 0 };
 
-  if (index < 4)
-    memory().readValue<uint8_t>((uint8_t*)&result.coins, MP4_RESULT_ADDR[index]);
+  if (index < 4) {
+    uint8_t coins;
+    if (read8(&coins, MP4_RESULT_ADDR[index]) == DR_OK)
+      result.coins = coins;
+  }
 
   return result;
 }
 
-dr_error MarioParty4::setPlayerCharacter(unsigned index, dr_character character)
+dr_error MarioParty4::doSetPlayerCharacter(unsigned index, dr_character character)
 {
-  if (index >= 4 || character >= DR_CHARACTER_SIZE)
-    return DR_ERR_INVALID_PARAMETER;
-
-  memory().writeValue<uint8_t>(MP4_CHARACTER_ID[character], MP4_CHARACTER_ADDR[index]);
-
-  return DR_OK;
+  return write8(MP4_CHARACTER_ID[character], MP4_CHARACTER_ADDR[index]);
 }
 
-dr_error MarioParty4::setPlayerControlPort(unsigned index, dr_control_port control_port)
+dr_error MarioParty4::doSetPlayerControlPort(unsigned index, dr_control_port control_port)
 {
-  if (index >= 4)
-    return DR_ERR_INVALID_PARAMETER;
-  
-  memory().writeValue<uint8_t>(static_cast<uint8_t>(control_port), MP4_CONTROLLER_ADDR[index]);
-  
-  return DR_OK;
+  return write8(control_port - 1, MP4_CONTROLLER_ADDR[index]);
 }
 
-dr_error MarioParty4::setPlayerControlType(unsigned index, dr_control_type control_type)
+dr_error MarioParty4::doSetPlayerControlType(unsigned index, dr_control_type control_type)
 {
   uint8_t current;
+  if (read8(&current, MP4_BOT_ADDR[index]) != DR_OK)
+    return DR_ERR_MEMORY_ACCESS_CORE;
+  uint8_t isBot = (control_type == DR_CONTROL_TYPE_CPU) ? 1 : 0;
+  return write8((current & ~0x01) | isBot, MP4_BOT_ADDR[index]);
+}
 
-  if (index >= 4)
-    return DR_ERR_INVALID_PARAMETER;
-  else if (memory().readValue<uint8_t>(&current, MP4_BOT_ADDR[index]))
-  {
-    uint8_t isBot = (control_type == DR_CONTROL_TYPE_CPU) ? 1 : 0;
-    memory().writeValue<uint8_t>((current & ~0x01) | isBot, MP4_BOT_ADDR[index]);
+dr_error MarioParty4::doSetPlayerDifficulty(unsigned index, dr_difficulty difficulty)
+{
+  unsigned mp4_difficulty;
+  switch (difficulty) {
+  case DR_DIFFICULTY_VERY_EASY:
+  case DR_DIFFICULTY_EASY:      mp4_difficulty = 0x00; break;
+  case DR_DIFFICULTY_NORMAL:    mp4_difficulty = 0x01; break;
+  case DR_DIFFICULTY_HARD:      mp4_difficulty = 0x02; break;
+  case DR_DIFFICULTY_VERY_HARD: mp4_difficulty = 0x03; break;
+  default:                      mp4_difficulty = 0x00;
   }
-
-  return DR_OK;
+  return write8(mp4_difficulty, MP4_DIFFICULTY_ADDR[index]);
 }
 
-dr_error MarioParty4::setPlayerDifficulty(unsigned index, dr_difficulty difficulty)
+dr_error MarioParty4::doSetPlayerTeam(unsigned index, dr_team team)
 {
-  if (index >= 4 || difficulty >= DR_DIFFICULTY_SIZE)
-    return DR_ERR_INVALID_PARAMETER;
-
-  memory().writeValue<uint8_t>(MP4_DIFFICULTY_ID[difficulty], MP4_DIFFICULTY_ADDR[index]);
-
-  return DR_OK;
-}
-
-dr_error MarioParty4::setPlayerTeam(unsigned index, dr_team team)
-{
-  (void)index;
-  (void)team;
-  return DR_ERR_INVALID_PARAMETER;
+  return write8((team == DR_TEAM_RED) ? 1 : 0, MP4_TEAM_ADDR[index]);
 }

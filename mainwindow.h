@@ -2,13 +2,12 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
-#include <QLabel>
-#include <QPushButton>
 #include <QStackedWidget>
-#include <QToolBar>
+#include <QTimer>
 
 #include <QRetro.h>
 #include "DrGuestList.h"
+#include "DrLogger.h"
 
 class MainWindow : public QMainWindow
 {
@@ -18,9 +17,6 @@ public:
   MainWindow(QWidget *parent = nullptr);
   ~MainWindow();
 
-private slots:
-  void switchCore();
-
 private:
   void showHost();
   void showGuests();
@@ -28,8 +24,7 @@ private:
   DrGuestList    *m_Guests = nullptr;
   QRetro         *m_RetroB = nullptr;
   QStackedWidget *m_Stack = nullptr;
-  QPushButton    *m_SwitchButton = nullptr;
-  QLabel         *m_SceneLabel = nullptr;
+  DrLogger       *m_Logger = nullptr;
 };
 
 #endif

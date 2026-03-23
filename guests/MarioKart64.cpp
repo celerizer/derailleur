@@ -2,12 +2,16 @@
 
 #define N64_CORE "/media/keith/devtools/libretro/cores/mupen64plus_next_libretro.so"
 #define N64_GAME "/media/keith/devtools/libretro/roms/Mario Kart 64 (USA).z64"
-#define N64_STATE "/media/keith/devtools/libretro/state/mk64.state"
+#define N64_STATE "/media/keith/devtools/libretro/state/mk64.state.zip"
 
-static const size_t MK64_CHARACTER_ADDR[4]  = { 0x8018EDE4, 0x8018EDE5, 0x8018EDE6, 0x8018EDE7 };
+static const size_t MK64_MENU_CHAR_ADDR[4] = { 0x8018EDE7, 0x8018EDE6, 0x8018EDE5, 0x8018EDE4 };
+static const size_t MK64_REAL_CHAR_ADDR[4] = { 0x800e86ab, 0x800e86aa, 0x800e86a9, 0x800e86a8 };
 
 static const size_t MK64_COURSE_ADDR = 0x8018EE08;
 static const size_t MK64_CUP_ADDR = 0x8018EE0A;
+static const size_t MK64_TRACK_ADDR = 0x800dc5a2;
+
+static const size_t MK64_LAPS_ADDR[4] = { 0x80164390, 0x80164394, 0x80164398, 0x8016439C };
 
 static const size_t MK64_NUMBER_PLAYERS_ADDR = 0x8018EDF0;
 
@@ -32,24 +36,71 @@ static const dr_mp_minigame_t k_minigames[] =
   {nullptr,                             DR_MINIGAME_INVALID, 0xFF, 0xFF},
 };
 
-static const uint8_t MK64_CHARACTER_ID[DR_CHARACTER_SIZE] = {
-  [DR_CHARACTER_INVALID]     = 0x00,
+static const uint8_t MK64_TRACK_ID[] = {
+  0x08, // 0x00 Luigi Raceway
+  0x09, // 0x01 Moo Moo Farm
+  0x06, // 0x02 Koopa Troopa Beach
+  0x0B, // 0x03 Kalimari Desert
+  0x0A, // 0x04 Toad's Turnpike
+  0x05, // 0x05 Frappe Snowland
+  0x01, // 0x06 Choco Mountain
+  0x00, // 0x07 Mario Raceway
+  0x0E, // 0x08 Wario Stadium
+  0x0C, // 0x09 Sherbet Land
+  0x07, // 0x0A Royal Raceway
+  0x02, // 0x0B Bowser's Castle
+  0x12, // 0x0C D.K.'s Jungle Parkway
+  0x04, // 0x0D Yoshi Valley
+  0x03, // 0x0E Banshee Boardwalk
+  0x0D, // 0x0F Rainbow Road
+};
 
-  [DR_CHARACTER_MARIO]       = 0x01,
-  [DR_CHARACTER_LUIGI]       = 0x02,
-  [DR_CHARACTER_PEACH]       = 0x03,
-  [DR_CHARACTER_YOSHI]       = 0x05,
-  [DR_CHARACTER_WARIO]       = 0x07,
-  [DR_CHARACTER_DONKEY_KONG] = 0x06,
+typedef struct
+{
+  dr_character character;
+  unsigned menu_value;
+  unsigned real_value;
+} mk64_character_t;
 
-  [DR_CHARACTER_DAISY]       = 0x04, // Toad
-  [DR_CHARACTER_WALUIGI]     = 0x08, // Bowser
+static const mk64_character_t MK64_CHARACTER_ID[] =
+{
+  { DR_CHARACTER_MARIO, 0x01, 0x00 },
+  { DR_CHARACTER_LUIGI, 0x02, 0x01 },
+  { DR_CHARACTER_PEACH, 0x03, 0x06 },
+  { DR_CHARACTER_YOSHI, 0x05, 0x02 },
+  { DR_CHARACTER_WARIO, 0x07, 0x05 },
+  { DR_CHARACTER_DONKEY_KONG, 0x06, 0x04 },
+
+  { DR_CHARACTER_DAISY, 0x04, 0x03 }, // Toad
+  { DR_CHARACTER_WALUIGI, 0x08, 0x07 }, // Bowser
 };
 
 MarioKart64::MarioKart64(QWindow *parent) : DrGuest(parent)
 {
   loadCore(N64_CORE);
   loadContent(N64_GAME);
+
+  connect(this, &QRetro::frameBegin, this, [this]() {
+    if (m_lapsFreezeFrames > 0) {
+      --m_lapsFreezeFrames;
+      for (unsigned i = 0; i < 4; i++)
+        memory().writeValue<uint32_t>(1, MK64_LAPS_ADDR[i]);
+    }
+
+    if (m_winnerIndex == -1) {
+      for (unsigned i = 0; i < 4; i++) {
+        uint32_t laps;
+        if (memory().readValue<uint32_t>(&laps, MK64_LAPS_ADDR[i]) && laps >= 3) {
+          m_winnerIndex = m_slotToIndex[i];
+          m_finishCountdown = 240;
+          break;
+        }
+      }
+    } else if (m_finishCountdown > 0) {
+      if (--m_finishCountdown == 0)
+        emit minigameFinished();
+    }
+  }, Qt::DirectConnection);
 }
 
 const dr_mp_minigame_t* MarioKart64::minigames() const
@@ -62,58 +113,66 @@ void MarioKart64::setMinigame(unsigned id)
   unserializeFromFile(N64_STATE);
   memory().writeValue<uint8_t>(id % 4, MK64_COURSE_ADDR);
   memory().writeValue<uint8_t>(id / 4, MK64_CUP_ADDR);
+
+  if (id < sizeof(MK64_TRACK_ID) / sizeof(*MK64_TRACK_ID))
+    memory().writeValue<uint8_t>(MK64_TRACK_ID[id], MK64_TRACK_ADDR);
+
+  m_lapsFreezeFrames = 300;
+  m_finishCountdown  = -1;
+  m_winnerIndex      = -1;
+  for (unsigned i = 0; i < 4; i++)
+    m_slotToIndex[i] = -1;
 }
 
 dr_minigame_result_t MarioKart64::minigameResult(unsigned index)
 {
-  (void)index;
-  return {};
+  dr_minigame_result_t result = { 0, 0 };
+
+  if ((int)index == m_winnerIndex)
+    result.coins = 10;
+
+  return result;
 }
 
-dr_error MarioKart64::setPlayerCharacter(unsigned index, dr_character character)
+dr_error MarioKart64::doSetPlayerCharacter(unsigned index, dr_character character)
 {
-  if (index >= 4 || character >= DR_CHARACTER_SIZE)
-    return DR_ERR_INVALID_PARAMETER;
-
   m_characters[index] = character;
 
-  unsigned slot = m_ports[index] - DR_CONTROL_PORT_P1;
-  memory().writeValue<uint8_t>(MK64_CHARACTER_ID[character], MK64_CHARACTER_ADDR[slot]);
+  for (const auto &entry : MK64_CHARACTER_ID) {
+    if (entry.character == character) {
+      unsigned slot = m_ports[index] - DR_CONTROL_PORT_P1;
+      memory().writeValue<uint8_t>(entry.menu_value, MK64_MENU_CHAR_ADDR[slot]);
+      memory().writeValue<uint8_t>(entry.real_value, MK64_REAL_CHAR_ADDR[slot]);
+      break;
+    }
+  }
 
   return DR_OK;
 }
 
-dr_error MarioKart64::setPlayerControlPort(unsigned index, dr_control_port control_port)
+dr_error MarioKart64::doSetPlayerControlPort(unsigned index, dr_control_port control_port)
 {
-  if (index >= 4 || control_port == DR_CONTROL_PORT_INVALID || control_port >= DR_CONTROL_PORT_SIZE)
-    return DR_ERR_INVALID_PARAMETER;
-
   m_ports[index] = control_port;
-
-  unsigned slot = control_port - DR_CONTROL_PORT_P1;
-  memory().writeValue<uint8_t>(MK64_CHARACTER_ID[m_characters[index]], MK64_CHARACTER_ADDR[slot]);
-
+  m_slotToIndex[control_port - DR_CONTROL_PORT_P1] = (int)index;
+  doSetPlayerCharacter(index, m_characters[index]);
   return DR_OK;
 }
 
-dr_error MarioKart64::setPlayerControlType(unsigned index, dr_control_type control_type)
+dr_error MarioKart64::doSetPlayerControlType(unsigned index, dr_control_type control_type)
 {
-  if (index >= 4)
-    return DR_ERR_INVALID_PARAMETER;
-
   m_controlTypes[index] = control_type;
 
   unsigned humanCount = 0;
   for (unsigned i = 0; i < 4; i++)
     if (m_controlTypes[i] == DR_CONTROL_TYPE_HUMAN)
       humanCount++;
-  memory().writeValue<uint8_t>(static_cast<uint8_t>(humanCount), MK64_NUMBER_PLAYERS_ADDR);
+  //memory().writeValue<uint8_t>(static_cast<uint8_t>(humanCount), MK64_NUMBER_PLAYERS_ADDR);
 
   return DR_OK;
 }
 
 /* No difficulty settings */
-dr_error MarioKart64::setPlayerDifficulty(unsigned index, dr_difficulty difficulty)
+dr_error MarioKart64::doSetPlayerDifficulty(unsigned index, dr_difficulty difficulty)
 {
   (void)index;
   (void)difficulty;
@@ -121,7 +180,7 @@ dr_error MarioKart64::setPlayerDifficulty(unsigned index, dr_difficulty difficul
 }
 
 /* All minigames are 4P, so no teams */
-dr_error MarioKart64::setPlayerTeam(unsigned index, dr_team team)
+dr_error MarioKart64::doSetPlayerTeam(unsigned index, dr_team team)
 {
   (void)index;
   (void)team;

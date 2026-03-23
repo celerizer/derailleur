@@ -11,9 +11,11 @@ include(QRetro/QRetro.pri)
 SOURCES += \
     DrGuest.cpp \
     DrGuestList.cpp \
+    DrLogger.cpp \
     DrParty.cpp \
     guests/MarioKart64.cpp \
     guests/MarioParty4.cpp \
+    guests/SmashRemix.cpp \
     main.cpp \
     mainwindow.cpp
 
@@ -21,8 +23,10 @@ HEADERS += \
     DrCommon.h \
     DrGuest.h \
     DrGuestList.h \
+    DrLogger.h \
     guests/MarioKart64.h \
     guests/MarioParty4.h \
+    guests/SmashRemix.h \
     mainwindow.h
 
 # Default rules for deployment.

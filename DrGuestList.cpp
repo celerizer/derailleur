@@ -17,24 +17,31 @@ void DrGuestList::add(DrGuest *guest)
 
 DrGuest* DrGuestList::startMinigame(dr_minigame_type type)
 {
-  struct Candidate { DrGuest *guest; int index; unsigned id; };
-  QList<Candidate> candidates;
+  // Collect eligible guests (those with at least one matching minigame)
+  struct EligibleGuest { DrGuest *guest; int index; QList<unsigned> ids; };
+  QList<EligibleGuest> eligible;
 
-  for (int i = 0; i < m_guests.size(); i++)
+  for (int i = 0; i < m_guests.size(); i++) {
+    QList<unsigned> ids;
     for (const dr_mp_minigame_t *mg = m_guests[i]->minigames(); mg->name; mg++)
       if (mg->type == type && mg->minigame_id != 0xFF)
-        candidates.append({m_guests[i], i, mg->minigame_id});
+        ids.append(mg->minigame_id);
+    if (!ids.isEmpty())
+      eligible.append({m_guests[i], i, ids});
+  }
 
-  if (candidates.isEmpty())
+  if (eligible.isEmpty())
     return nullptr;
 
-  const auto &chosen = candidates[QRandomGenerator::global()->bounded(candidates.size())];
+  // Pick a guest with equal probability, then a random minigame from that guest
+  const auto &picked = eligible[QRandomGenerator::global()->bounded(eligible.size())];
+  unsigned id = picked.ids[QRandomGenerator::global()->bounded(picked.ids.size())];
 
-  for (const dr_mp_minigame_t *mg = chosen.guest->minigames(); mg->name; mg++)
-    if (mg->minigame_id == chosen.id)
-      printf("minigame: %s (0x%02X)\n", mg->name, chosen.id);
+  for (const dr_mp_minigame_t *mg = picked.guest->minigames(); mg->name; mg++)
+    if (mg->minigame_id == id)
+      printf("minigame: %s (0x%02X)\n", mg->name, id);
 
-  chosen.guest->setMinigame(chosen.id);
-  setCurrentIndex(chosen.index);
-  return chosen.guest;
+  picked.guest->setMinigame(id);
+  setCurrentIndex(picked.index);
+  return picked.guest;
 }
