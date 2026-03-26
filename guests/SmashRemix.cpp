@@ -89,14 +89,14 @@ SmashRemix::SmashRemix(QWindow *parent) : DrGuest(parent)
       m_prevStocks[i] = stocks[i];
     }
 
-    if (defeated == 3 && winner != -1 && m_winnerIndex == -1) {
+    if (defeated == 3 && winner != -1 && m_winnerIndex == -1 && m_minigameActive) {
       m_winnerIndex = m_slotToIndex[winner];
       m_finishCountdown = 120;
       log(DR_LOG_INFO, qPrintable(QString("%1 wins!").arg(dr_character_name(m_slotCharacters[winner]))));
     }
 
     if (m_finishCountdown > 0 && --m_finishCountdown == 0)
-      emit minigameFinished();
+      finishMinigame();
   }, Qt::DirectConnection);
 }
 
@@ -107,7 +107,7 @@ const dr_mp_minigame_t* SmashRemix::minigames() const
 
 void SmashRemix::setMinigame(unsigned id)
 {
-  (void)id;
+  startMinigame();
   m_winnerIndex     = -1;
   m_finishCountdown = 0;
   for (unsigned i = 0; i < 4; i++)

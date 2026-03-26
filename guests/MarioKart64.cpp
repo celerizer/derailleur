@@ -87,7 +87,7 @@ MarioKart64::MarioKart64(QWindow *parent) : DrGuest(parent)
         memory().writeValue<uint32_t>(1, MK64_LAPS_ADDR[i]);
     }
 
-    if (m_winnerIndex == -1) {
+    if (m_winnerIndex == -1 && m_minigameActive) {
       for (unsigned i = 0; i < 4; i++) {
         uint32_t laps;
         if (memory().readValue<uint32_t>(&laps, MK64_LAPS_ADDR[i]) && laps >= 3) {
@@ -98,7 +98,7 @@ MarioKart64::MarioKart64(QWindow *parent) : DrGuest(parent)
       }
     } else if (m_finishCountdown > 0) {
       if (--m_finishCountdown == 0)
-        emit minigameFinished();
+        finishMinigame();
     }
   }, Qt::DirectConnection);
 }
@@ -110,6 +110,7 @@ const dr_mp_minigame_t* MarioKart64::minigames() const
 
 void MarioKart64::setMinigame(unsigned id)
 {
+  startMinigame();
   unserializeFromFile(N64_STATE);
   memory().writeValue<uint8_t>(id % 4, MK64_COURSE_ADDR);
   memory().writeValue<uint8_t>(id / 4, MK64_CUP_ADDR);

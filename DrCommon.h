@@ -15,6 +15,15 @@ typedef enum
   DR_CHARACTER_WALUIGI,
   DR_CHARACTER_DAISY,
 
+  DR_CHARACTER_TOAD,
+  DR_CHARACTER_BOO,
+  DR_CHARACTER_KOOPA_KID,
+
+  DR_CHARACTER_TOADETTE,
+
+  DR_CHARACTER_BIRDO,
+  DR_CHARACTER_DRY_BONES,
+
   DR_CHARACTER_SIZE
 } dr_character;
 
@@ -134,6 +143,18 @@ static inline const char* dr_character_name(dr_character c)
     return "Daisy";
   case DR_CHARACTER_WALUIGI:
     return "Waluigi";
+  case DR_CHARACTER_TOAD:
+    return "Toad";
+  case DR_CHARACTER_BOO:
+    return "Boo";
+  case DR_CHARACTER_KOOPA_KID:
+    return "Koopa Kid";
+  case DR_CHARACTER_TOADETTE:
+    return "Toadette";
+  case DR_CHARACTER_BIRDO:
+    return "Birdo";
+  case DR_CHARACTER_DRY_BONES:
+    return "Dry Bones";
   default:
     return "Unknown";
   }

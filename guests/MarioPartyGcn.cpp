@@ -6,18 +6,18 @@ MarioPartyGcn::MarioPartyGcn(const MpGcnConfig &config, QWindow *parent)
   loadCore(m_config.core);
   loadContent(m_config.game);
 
-  connect(this, &QRetro::frameBegin, this, [this, last = uint8_t(0xFF)]() mutable {
+  connect(this, &QRetro::frameBegin, this, [this, last = uint16_t(0xFFFF)]() mutable {
     if (m_minigameWriteFrames > 0) {
-      write8(m_minigameId, m_config.minigame_addr);
+      write16(m_minigameId, m_config.minigame_addr, true);
       --m_minigameWriteFrames;
     }
 
-    uint8_t val;
-    if (read8(&val, m_config.scene_addr) == DR_OK && val != last) {
-      log(DR_LOG_INFO, qPrintable(QString("MP_SCENE_ADDR: 0x%1").arg(val, 2, 16, QChar('0'))));
+    uint16_t val;
+    if (read16(&val, m_config.scene_addr, true) == DR_OK && val != last) {
+      log(DR_LOG_INFO, qPrintable(QString("MP_SCENE_ADDR: 0x%1").arg(val, 4, 16, QChar('0'))));
       last = val;
-      if (val == m_config.scene_miniresults)
-        emit minigameFinished();
+      if (val == m_config.scene_miniresults && m_minigameActive)
+        finishMinigame();
     }
   }, Qt::DirectConnection);
 }
@@ -29,6 +29,7 @@ const dr_mp_minigame_t* MarioPartyGcn::minigames() const
 
 void MarioPartyGcn::setMinigame(unsigned id)
 {
+  startMinigame();
   unserializeFromFile(m_config.state);
   m_minigameId          = id;
   m_minigameWriteFrames = 60 * 20;
@@ -38,8 +39,8 @@ dr_minigame_result_t MarioPartyGcn::minigameResult(unsigned index)
 {
   dr_minigame_result_t result = { 0, 0 };
   if (index < 4) {
-    uint8_t coins;
-    if (read8(&coins, m_config.result_addr[index]) == DR_OK)
+    uint16_t coins;
+    if (read16(&coins, m_config.result_addr[index], true) == DR_OK)
       result.coins = coins;
   }
   return result;
@@ -47,21 +48,21 @@ dr_minigame_result_t MarioPartyGcn::minigameResult(unsigned index)
 
 dr_error MarioPartyGcn::doSetPlayerCharacter(unsigned index, dr_character character)
 {
-  return write8(m_config.character_ids[character], m_config.character_addr[index]);
+  return write16(m_config.character_ids[character], m_config.character_addr[index], true);
 }
 
 dr_error MarioPartyGcn::doSetPlayerControlPort(unsigned index, dr_control_port control_port)
 {
-  return write8(static_cast<uint8_t>(control_port - 1), m_config.controller_addr[index]);
+  return write16(static_cast<uint16_t>(control_port - 1), m_config.controller_addr[index], true);
 }
 
 dr_error MarioPartyGcn::doSetPlayerControlType(unsigned index, dr_control_type control_type)
 {
-  uint8_t current;
-  if (read8(&current, m_config.bot_addr[index]) != DR_OK)
+  uint16_t current;
+  if (read16(&current, m_config.bot_addr[index], true) != DR_OK)
     return DR_ERR_MEMORY_ACCESS_CORE;
-  uint8_t isBot = (control_type == DR_CONTROL_TYPE_CPU) ? 1 : 0;
-  return write8((current & ~0x01) | isBot, m_config.bot_addr[index]);
+  uint16_t isBot = (control_type == DR_CONTROL_TYPE_CPU) ? 1 : 0;
+  return write16((current & ~0x01) | isBot, m_config.bot_addr[index], true);
 }
 
 dr_error MarioPartyGcn::doSetPlayerDifficulty(unsigned index, dr_difficulty difficulty)
@@ -75,10 +76,10 @@ dr_error MarioPartyGcn::doSetPlayerDifficulty(unsigned index, dr_difficulty diff
   case DR_DIFFICULTY_VERY_HARD: mp_difficulty = 0x03; break;
   default:                      mp_difficulty = 0x00;
   }
-  return write8(mp_difficulty, m_config.difficulty_addr[index]);
+  return write16(mp_difficulty, m_config.difficulty_addr[index], true);
 }
 
 dr_error MarioPartyGcn::doSetPlayerTeam(unsigned index, dr_team team)
 {
-  return write8((team == DR_TEAM_RED) ? 1 : 0, m_config.team_addr[index]);
+  return write16((team == DR_TEAM_RED) ? 1 : 0, m_config.team_addr[index], true);
 }

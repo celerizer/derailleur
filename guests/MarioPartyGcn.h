@@ -20,6 +20,7 @@ struct MpGcnConfig
   size_t difficulty_addr[4];
   size_t team_addr[4];
   size_t bot_addr[4];
+
   size_t result_addr[4];
 
   const uint8_t *character_ids;

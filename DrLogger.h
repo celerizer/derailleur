@@ -2,6 +2,7 @@
 #define DR_LOGGER_H
 
 #include "DrCommon.h"
+#include <QFile>
 #include <QWidget>
 #include <QString>
 
@@ -19,6 +20,7 @@ public slots:
 
 private:
   QPlainTextEdit *m_text = nullptr;
+  QFile           m_file;
 };
 
 #endif

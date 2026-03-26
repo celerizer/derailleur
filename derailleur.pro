@@ -10,6 +10,7 @@ include(QRetro/QRetro.pri)
 
 SOURCES += \
     DrGuest.cpp \
+    DrOverlay.cpp \
     DrGuestList.cpp \
     DrLogger.cpp \
     DrParty.cpp \
@@ -25,6 +26,7 @@ SOURCES += \
 
 HEADERS += \
     DrCommon.h \
+    DrOverlay.h \
     DrGuest.h \
     DrGuestList.h \
     DrLogger.h \

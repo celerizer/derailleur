@@ -84,18 +84,19 @@ static const MpGcnConfig k_config =
   .game  = "/media/keith/devtools/libretro/roms/Mario Party 4 (USA) (Rev 1).rvz",
   .state = "/media/keith/devtools/libretro/state/mp4.state.zip",
 
-  .scene_miniexplain = 0x03,
-  .scene_miniresults = 0x54,
+  .scene_miniexplain = 0x0003,
+  .scene_miniresults = 0x0054,
 
-  .scene_addr    = 0x801d3ce3,
-  .minigame_addr = 0x8018fd2d,
+  .scene_addr    = 0x801d3ce2,
+  .minigame_addr = 0x8018fd2c,
 
-  .character_addr  = { 0x8018fc11, 0x8018fc1b, 0x8018fc25, 0x8018fc2f },
-  .controller_addr = { 0x8018fc13, 0x8018fc1d, 0x8018fc27, 0x8018fc31 },
-  .difficulty_addr = { 0x8018fc15, 0x8018fc1f, 0x8018fc29, 0x8018fc33 },
-  .team_addr       = { 0x8018fc17, 0x8018fc21, 0x8018fc2b, 0x8018fc35 },
-  .bot_addr        = { 0x8018fc19, 0x8018fc23, 0x8018fc2d, 0x8018fc37 },
-  .result_addr     = { 0x8018fc61, 0x8018fc91, 0x8018fcc1, 0x8018fcf1 },
+  .character_addr  = { 0x8018fc10, 0x8018fc1a, 0x8018fc24, 0x8018fc2e },
+  .controller_addr = { 0x8018fc12, 0x8018fc1c, 0x8018fc26, 0x8018fc30 },
+  .difficulty_addr = { 0x8018fc14, 0x8018fc1e, 0x8018fc28, 0x8018fc32 },
+  .team_addr       = { 0x8018fc16, 0x8018fc20, 0x8018fc2a, 0x8018fc34 },
+  .bot_addr        = { 0x8018fc18, 0x8018fc22, 0x8018fc2c, 0x8018fc36 },
+
+  .result_addr     = { 0x8018fc60, 0x8018fc90, 0x8018fcc0, 0x8018fcf0 },
 
   .character_ids = k_characterIds,
   .minigames     = k_minigames,

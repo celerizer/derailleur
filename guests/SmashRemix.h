@@ -9,6 +9,7 @@ class SmashRemix : public DrGuest
 
 public:
   SmashRemix(QWindow *parent = nullptr);
+  const char* name() const override { return "Smash Remix"; }
 
   dr_minigame_result_t minigameResult(unsigned index) override;
   const dr_mp_minigame_t* minigames() const override;

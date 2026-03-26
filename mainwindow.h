@@ -8,6 +8,7 @@
 #include <QRetro.h>
 #include "DrGuestList.h"
 #include "DrLogger.h"
+#include "DrOverlay.h"
 
 class MainWindow : public QMainWindow
 {
@@ -24,7 +25,13 @@ private:
   DrGuestList    *m_Guests = nullptr;
   QRetro         *m_RetroB = nullptr;
   QStackedWidget *m_Stack = nullptr;
-  DrLogger       *m_Logger = nullptr;
+  DrLogger       *m_Logger  = nullptr;
+  DrOverlay      *m_Overlay = nullptr;
+
+protected:
+  void showEvent(QShowEvent *) override   { if (m_Overlay) { m_Overlay->trackGeometry(geometry()); m_Overlay->show(); } }
+  void moveEvent(QMoveEvent *) override   { if (m_Overlay) m_Overlay->trackGeometry(geometry()); }
+  void resizeEvent(QResizeEvent *) override { if (m_Overlay) m_Overlay->trackGeometry(geometry()); }
 };
 
 #endif

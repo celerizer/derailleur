@@ -2,6 +2,8 @@
 
 #include <QRetro.h>
 #include <QRetroDirectories.h>
+#include <QGuiApplication>
+#include <QScreen>
 #include <cstdio>
 #include <QString>
 #include <QStackedWidget>
@@ -10,6 +12,7 @@
 
 #include "guests/MarioKart64.h"
 #include "guests/MarioParty4.h"
+#include "guests/MarioParty5.h"
 #include "guests/SmashRemix.h"
 
 #define SHOW_LOGGER 1
@@ -77,6 +80,7 @@ MainWindow::MainWindow(QWidget *parent)
 {
   m_Guests = new DrGuestList(this);
   m_Guests->add(new MarioParty4());
+  m_Guests->add(new MarioParty5());
   //m_Guests->add(new MarioKart64());
   //m_Guests->add(new SmashRemix());
 
@@ -95,15 +99,21 @@ MainWindow::MainWindow(QWidget *parent)
   m_Stack->addWidget(containerB);
 
   setCentralWidget(m_Stack);
+  m_Overlay = new DrOverlay(this);
 
   // Cycle through each guest for 2 seconds, then switch to the host
   m_Stack->setCurrentIndex(0);
+  for (DrGuest *g : m_Guests->guests())
+    if (g != m_Guests->currentGuest()) g->pause();
+
   QTimer *warmupTimer = new QTimer(this);
   warmupTimer->setInterval(2000);
   connect(warmupTimer, &QTimer::timeout, this, [this, warmupTimer]() {
     int next = m_Guests->currentIndex() + 1;
     if (next < m_Guests->count()) {
+      m_Guests->currentGuest()->pause();
       m_Guests->setCurrentIndex(next);
+      m_Guests->currentGuest()->unpause();
     } else {
       warmupTimer->stop();
       warmupTimer->deleteLater();
@@ -123,6 +133,14 @@ MainWindow::MainWindow(QWidget *parent)
     connect(guest, &DrGuest::logMessage, m_Logger, &DrLogger::message, Qt::QueuedConnection);
   connect(m_Guests, &DrGuestList::logMessage, m_Logger, &DrLogger::message, Qt::QueuedConnection);
 #endif
+
+  connect(m_Guests, &QStackedWidget::currentChanged, this, [this](int index) {
+    const auto &guests = m_Guests->guests();
+    if (index >= 0 && index < guests.size()) {
+      if (QWidget *container = m_Guests->widget(index))
+        guests[index]->resize(container->width(), container->height());
+    }
+  });
 
   auto recalc = [this]() {
     resize(width() + 1, height());
@@ -146,13 +164,32 @@ MainWindow::MainWindow(QWidget *parent)
   });
 
   connect(m_Guests, &DrGuestList::minigameFinished, this, [this]() {
+    static const size_t N64_CHAR_ADDR[4] = {
+      N64_P1_CHARACTER_ADDR, N64_P2_CHARACTER_ADDR,
+      N64_P3_CHARACTER_ADDR, N64_P4_CHARACTER_ADDR
+    };
+    static const size_t N64_RESULT_ADDR[4] = {
+      N64_P1_MINIGAMERESULT_ADDR, N64_P2_MINIGAMERESULT_ADDR,
+      N64_P3_MINIGAMERESULT_ADDR, N64_P4_MINIGAMERESULT_ADDR
+    };
+
     DrGuest *guest = m_Guests->currentGuest();
     for (unsigned i = 0; i < 4; i++) {
       auto result = guest->minigameResult(i);
+
+      uint8_t chr = 0;
+      m_RetroB->memory().readValue<uint8_t>(&chr, N64_CHAR_ADDR[i]);
+      dr_character character = (chr < sizeof(N64_CHAR_TO_DR) / sizeof(*N64_CHAR_TO_DR))
+        ? N64_CHAR_TO_DR[chr] : DR_CHARACTER_INVALID;
+
+#if SHOW_LOGGER
+      if (m_Logger)
+        m_Logger->message(DR_LOG_INFO,
+          QString("%1 gets %2 coins").arg(dr_character_name(character)).arg(result.coins));
+#endif
+
       m_RetroB->memory().writeValue<uint8_t>(
-        static_cast<uint8_t>(result.coins),
-        (size_t[]){ N64_P1_MINIGAMERESULT_ADDR, N64_P2_MINIGAMERESULT_ADDR,
-                    N64_P3_MINIGAMERESULT_ADDR, N64_P4_MINIGAMERESULT_ADDR }[i]);
+        static_cast<uint8_t>(result.coins), N64_RESULT_ADDR[i]);
     }
     showHost();
   }, Qt::QueuedConnection);
@@ -238,28 +275,36 @@ MainWindow::MainWindow(QWidget *parent)
               log(DR_LOG_INFO, QString("starting minigame: teams = [%1, %2, %3, %4]")
                 .arg(teamBytes[0]).arg(teamBytes[1]).arg(teamBytes[2]).arg(teamBytes[3]));
 
-              DrGuest *guest = m_Guests->startMinigame(mgType);
-              if (guest) {
-                for (unsigned i = 0; i < 4; i++) {
-                  uint8_t chr, ctrl, diff, bot;
-                  if (m_RetroB->memory().readValue<uint8_t>(&chr,  N64_CHAR_ADDR[i]) &&
-                      m_RetroB->memory().readValue<uint8_t>(&ctrl, N64_CTRL_ADDR[i]) &&
-                      m_RetroB->memory().readValue<uint8_t>(&diff, N64_DIFF_ADDR[i]) &&
-                      m_RetroB->memory().readValue<uint8_t>(&bot,  N64_BOT_ADDR[i])) {
-                    dr_player_t player = {};
-                    if (chr  < sizeof(N64_CHAR_TO_DR) / sizeof(*N64_CHAR_TO_DR))
-                      player.character   = N64_CHAR_TO_DR[chr];
-                    if (diff < sizeof(N64_DIFF_TO_DR) / sizeof(*N64_DIFF_TO_DR))
-                      player.difficulty  = N64_DIFF_TO_DR[diff];
-                    player.control_type = (bot & 0x01) ? DR_CONTROL_TYPE_CPU : DR_CONTROL_TYPE_HUMAN;
-                    player.control_port = static_cast<dr_control_port>(DR_CONTROL_PORT_P1 + ctrl);
-                    player.team         = (teamBytes[i] == 0x01) ? DR_TEAM_RED : DR_TEAM_BLUE;
-                    guest->setPlayer(i, player);
-                  }
+              // Read N64 memory on the timing thread, then hand off to GUI thread
+              dr_player_t players[4] = {};
+              bool playerValid[4] = {};
+              for (unsigned i = 0; i < 4; i++) {
+                uint8_t chr, ctrl, diff, bot;
+                if (m_RetroB->memory().readValue<uint8_t>(&chr,  N64_CHAR_ADDR[i]) &&
+                    m_RetroB->memory().readValue<uint8_t>(&ctrl, N64_CTRL_ADDR[i]) &&
+                    m_RetroB->memory().readValue<uint8_t>(&diff, N64_DIFF_ADDR[i]) &&
+                    m_RetroB->memory().readValue<uint8_t>(&bot,  N64_BOT_ADDR[i])) {
+                  dr_player_t &p = players[i];
+                  if (chr  < sizeof(N64_CHAR_TO_DR) / sizeof(*N64_CHAR_TO_DR))
+                    p.character   = N64_CHAR_TO_DR[chr];
+                  if (diff < sizeof(N64_DIFF_TO_DR) / sizeof(*N64_DIFF_TO_DR))
+                    p.difficulty  = N64_DIFF_TO_DR[diff];
+                  p.control_type = (bot & 0x01) ? DR_CONTROL_TYPE_CPU : DR_CONTROL_TYPE_HUMAN;
+                  p.control_port = static_cast<dr_control_port>(DR_CONTROL_PORT_P1 + ctrl);
+                  p.team         = (teamBytes[i] == 0x01) ? DR_TEAM_RED : DR_TEAM_BLUE;
+                  playerValid[i] = true;
                 }
               }
 
-              QMetaObject::invokeMethod(this, &MainWindow::showGuests, Qt::QueuedConnection);
+              // All Qt widget and guest-core operations must run on the GUI thread
+              QMetaObject::invokeMethod(this, [this, mgType, players, playerValid]() {
+                DrGuest *guest = m_Guests->startMinigame(mgType);
+                if (guest) {
+                  for (unsigned i = 0; i < 4; i++)
+                    if (playerValid[i]) guest->setPlayer(i, players[i]);
+                }
+                showGuests();
+              }, Qt::QueuedConnection);
               writing = 30;
             }
           }
@@ -273,18 +318,28 @@ MainWindow::MainWindow(QWidget *parent)
 
 void MainWindow::showHost()
 {
-  for (DrGuest *guest : m_Guests->guests())
-    guest->pause();
-  m_RetroB->unpause();
-  m_Stack->setCurrentIndex(1);
+  QScreen *screen = windowHandle() ? windowHandle()->screen() : QGuiApplication::primaryScreen();
+  m_Overlay->flash(screen->grabWindow(m_Guests->currentGuest()->winId()));
+
+  QTimer::singleShot(32, this, [this]() {
+    for (DrGuest *guest : m_Guests->guests())
+      guest->pause();
+    m_RetroB->unpause();
+    m_Stack->setCurrentIndex(1);
+  });
 }
 
 void MainWindow::showGuests()
 {
-  m_RetroB->pause();
-  for (DrGuest *guest : m_Guests->guests())
-    guest == m_Guests->currentGuest() ? guest->unpause() : guest->pause();
-  m_Stack->setCurrentIndex(0);
+  QScreen *screen = windowHandle() ? windowHandle()->screen() : QGuiApplication::primaryScreen();
+  m_Overlay->flash(screen->grabWindow(m_RetroB->winId()));
+
+  QTimer::singleShot(32, this, [this]() {
+    m_RetroB->pause();
+    m_Stack->setCurrentIndex(0);  // map the window before the timing thread sees it
+    for (DrGuest *guest : m_Guests->guests())
+      guest == m_Guests->currentGuest() ? guest->unpause() : guest->pause();
+  });
 }
 
 MainWindow::~MainWindow()

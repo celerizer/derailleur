@@ -9,6 +9,7 @@ class MarioParty5 : public MarioPartyGcn
 
 public:
   MarioParty5(QWindow *parent = nullptr);
+  const char* name() const override { return "Mario Party 5"; }
 };
 
 #endif
