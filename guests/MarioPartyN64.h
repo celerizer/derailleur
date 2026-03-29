@@ -1,9 +1,9 @@
-#ifndef DR_GUEST_MARIO_PARTY_GCN_H
-#define DR_GUEST_MARIO_PARTY_GCN_H
+#ifndef DR_GUEST_MARIO_PARTY_N64_H
+#define DR_GUEST_MARIO_PARTY_N64_H
 
 #include "../DrGuest.h"
 
-struct MpGcnConfig
+struct MpN64Config
 {
   const char *core;
   const char *game;
@@ -23,16 +23,16 @@ struct MpGcnConfig
 
   size_t result_addr[4];
 
-  const uint16_t *character_ids;
+  const uint8_t *character_ids;
   const dr_mp_minigame_t *minigames;
 };
 
-class MarioPartyGcn : public DrGuest
+class MarioPartyN64 : public DrGuest
 {
   Q_OBJECT
 
 public:
-  MarioPartyGcn(const MpGcnConfig &config, QWindow *parent = nullptr);
+  MarioPartyN64(const MpN64Config &config, QWindow *parent = nullptr);
 
   dr_minigame_result_t    minigameResult(unsigned index) override;
   const dr_mp_minigame_t* minigames() const override;
@@ -45,9 +45,9 @@ public:
   dr_error doSetPlayerTeam(unsigned index, dr_team_color color, dr_team_type type, unsigned team_id) override;
 
 private:
-  MpGcnConfig  m_config;
-  int          m_minigameWriteFrames = 0;
-  int32_t      m_lastScene           = -1;
+  MpN64Config m_config;
+  int         m_minigameWriteFrames = 0;
+  int16_t     m_lastScene           = -1;
 };
 
 #endif

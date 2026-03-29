@@ -51,6 +51,16 @@ typedef enum
 
 typedef enum
 {
+  DR_CORE_INVALID = 0,
+
+  DR_CORE_MUPEN64PLUSNEXT,
+  DR_CORE_DOLPHIN,
+
+  DR_CORE_SIZE
+} dr_core;
+
+typedef enum
+{
   DR_DIFFICULTY_INVALID = 0,
 
   DR_DIFFICULTY_VERY_EASY,
@@ -62,48 +72,117 @@ typedef enum
   DR_DIFFICULTY_SIZE
 } dr_difficulty;
 
+typedef union
+{
+  /* The bits as a raw integer */
+  unsigned raw;
+
+  struct
+  {
+    unsigned needs_efb_to_texture : 1;
+    unsigned needs_safe_texture_cache : 1;
+    unsigned needs_native_resolution : 1;
+  } dolphin;
+
+  struct
+  {
+    unsigned unused;
+  } mupen64plus;
+} dr_emulation_quirk_t;
+
+#define DR_NO_QUIRKS { .raw=0 }
+#define DR_QUIRK_EFB_TO_TEXTURE { .dolphin={ 1, 0, 0 } }
+#define DR_QUIRK_SAFE_TEXTURE_CACHE { .dolphin={ 0, 1, 0 } }
+#define DR_QUIRK_NATIVE_RESOLUTION { .dolphin={ 0, 0, 1 } }
+
 typedef enum
 {
-  DR_TEAM_INVALID = 0,
+  DR_TEAM_COLOR_INVALID = 0,
 
-  DR_TEAM_BLUE,
-  DR_TEAM_RED,
+  DR_TEAM_COLOR_BLUE,
+  DR_TEAM_COLOR_RED,
 
-  DR_TEAM_SIZE
-} dr_team;
+  DR_TEAM_COLOR_SIZE
+} dr_team_color;
+
+typedef enum
+{
+  DR_TEAM_TYPE_INVALID = 0,
+
+  DR_TEAM_TYPE_4P,
+  DR_TEAM_TYPE_2V2,
+  DR_TEAM_TYPE_1V3_SOLO,
+  DR_TEAM_TYPE_1V3_GROUP,
+
+  /* Entirely solo -- used for 1P mini-games, item games, etc. */
+  DR_TEAM_TYPE_SOLO,
+
+  DR_TEAM_TYPE_SIZE
+} dr_team_type;
 
 typedef struct
 {
-  dr_character    character;
+  dr_character character;
   dr_control_port control_port;
   dr_control_type control_type;
-  dr_difficulty   difficulty;
-  dr_team         team;
+  dr_difficulty difficulty;
+  dr_team_color team_color;
+  dr_team_type team_type;
+  unsigned team_id;
 } dr_player_t;
 
 typedef struct
 {
-  unsigned coins;
-  unsigned bonus_coins;
+  signed coins;
+  signed bonus_coins;
 } dr_minigame_result_t;
 
 typedef enum
 {
-  DR_MINIGAME_INVALID,
+  DR_MINIGAME_INVALID = 0,
+
   DR_MINIGAME_4P,
   DR_MINIGAME_1V3,
   DR_MINIGAME_2V2,
+
+  /**
+   * Mini-game where a single player receives coins
+   * Used in: 1
+   */
+  DR_MINIGAME_1P,
+
+  /**
+   * Slightly longer 4P mini-game which ends in a different results scene
+   * Used in: 2 3 
+   */
   DR_MINIGAME_BATTLE,
-  DR_MINIGAME_DUEL,
+
+  /**
+   * Mini-game where a single player receives an item
+   * Used in: 2 3
+   */
   DR_MINIGAME_ITEM,
+
+  DR_MINIGAME_DUEL,
+
+  DR_MINIGAME_GAME_GUY,
+
+  /**
+   * A special mini-game that doesn't fit any of the categories and will
+   * probably stay unsupported
+   */
+  DR_MINIGAME_SPECIAL,
+
+  DR_MINIGAME_SIZE
 } dr_minigame_type;
 
 typedef struct
 {
-  const char      *name;
-  dr_minigame_type type;
-  unsigned         minigame_id;
-  unsigned         scene_id;
+  const char           *name;
+  dr_minigame_type      type;
+  unsigned              minigame_id;
+  unsigned              scene_id;
+  dr_emulation_quirk_t  quirks;
 } dr_mp_minigame_t;
 
 typedef enum
@@ -121,6 +200,8 @@ typedef enum
   DR_LOG_INFO = 0,
   DR_LOG_WARN,
   DR_LOG_ERROR,
+
+  DR_LOG_SIZE
 } dr_log_level;
 
 static inline const char* dr_character_name(dr_character c)
@@ -157,6 +238,19 @@ static inline const char* dr_character_name(dr_character c)
     return "Dry Bones";
   default:
     return "Unknown";
+  }
+}
+
+static inline const char* dr_core_path(dr_core core)
+{
+  switch (core)
+  {
+  case DR_CORE_MUPEN64PLUSNEXT:
+    return "/media/keith/devtools/libretro/cores/mupen64plus_next_libretro.so";
+  case DR_CORE_DOLPHIN:
+    return "/media/keith/devtools/libretro/cores/dolphin_libretro.so";
+  default:
+    return nullptr;
   }
 }
 

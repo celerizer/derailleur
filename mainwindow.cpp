@@ -1,5 +1,8 @@
 #include "mainwindow.h"
 
+#include <array>
+#include <QDir>
+#include <QRandomGenerator>
 #include <QRetro.h>
 #include <QRetroDirectories.h>
 #include <QGuiApplication>
@@ -7,15 +10,19 @@
 #include <cstdio>
 #include <QString>
 #include <QStackedWidget>
-#include <QDockWidget>
 #include <QWidget>
 
+#include "DrDebug.h"
 #include "guests/MarioKart64.h"
 #include "guests/MarioParty4.h"
 #include "guests/MarioParty5.h"
+#include "guests/MarioParty6.h"
+#include "guests/MarioParty7.h"
 #include "guests/SmashRemix.h"
 
 #define SHOW_LOGGER 1
+#define SHOW_OVERLAY 1
+#define SHOW_DEBUG 0
 
 #define N64_CORE "/media/keith/devtools/libretro/cores/mupen64plus_next_libretro.so"
 #define N64_GAME "/media/keith/devtools/libretro/roms/Mario Party 3 (USA).z64"
@@ -81,6 +88,8 @@ MainWindow::MainWindow(QWidget *parent)
   m_Guests = new DrGuestList(this);
   m_Guests->add(new MarioParty4());
   m_Guests->add(new MarioParty5());
+  m_Guests->add(new MarioParty6());
+  m_Guests->add(new MarioParty7());
   //m_Guests->add(new MarioKart64());
   //m_Guests->add(new SmashRemix());
 
@@ -99,7 +108,20 @@ MainWindow::MainWindow(QWidget *parent)
   m_Stack->addWidget(containerB);
 
   setCentralWidget(m_Stack);
+#if SHOW_OVERLAY
   m_Overlay = new DrOverlay(this);
+  {
+    QPixmap loading(":/assets/loading.png");
+    m_Overlay->hold(loading);
+    QStringList sprites = QDir(":/assets/char").entryList({"*.png"}, QDir::Files);
+    if (!sprites.isEmpty()) {
+      QPixmap sprite(":/assets/char/" + sprites[QRandomGenerator::global()->bounded(sprites.size())]);
+      if (!sprite.isNull())
+        m_Overlay->setSprite(sprite.scaled(sprite.width() * 4, sprite.height() * 4,
+                                           Qt::IgnoreAspectRatio, Qt::FastTransformation));
+    }
+  }
+#endif
 
   // Cycle through each guest for 2 seconds, then switch to the host
   m_Stack->setCurrentIndex(0);
@@ -123,15 +145,33 @@ MainWindow::MainWindow(QWidget *parent)
   warmupTimer->start();
 
 #if SHOW_LOGGER
-  m_Logger = new DrLogger(this);
-  QDockWidget *logDock = new QDockWidget("Log", this);
-  logDock->setWidget(m_Logger);
-  addDockWidget(Qt::BottomDockWidgetArea, logDock);
-  logDock->setFloating(true);
+  m_Logger = new DrLogger(nullptr);
+  m_Logger->setWindowTitle("Log");
+  m_Logger->resize(600, 300);
+  m_Logger->show();
 
   for (DrGuest *guest : m_Guests->guests())
     connect(guest, &DrGuest::logMessage, m_Logger, &DrLogger::message, Qt::QueuedConnection);
   connect(m_Guests, &DrGuestList::logMessage, m_Logger, &DrLogger::message, Qt::QueuedConnection);
+  m_Guests->logSummary();
+#endif
+
+#if SHOW_DEBUG
+  m_Debug = new DrDebug(nullptr);
+  m_Debug->setWindowTitle("Debug");
+  m_Debug->resize(300, 200);
+  m_Debug->populate(m_Guests->guests());
+  m_Debug->show();
+
+  connect(m_Debug, &DrDebug::minigameRequested, this, [this](DrGuest *guest, const dr_mp_minigame_t *minigame) {
+    dr_player_t players[4] = {};
+    bool playerValid[4] = { true, true, true, true };
+    players[0] = { DR_CHARACTER_MARIO,       DR_CONTROL_PORT_P1, DR_CONTROL_TYPE_HUMAN, DR_DIFFICULTY_NORMAL, DR_TEAM_COLOR_BLUE, DR_TEAM_TYPE_4P, 0 };
+    players[1] = { DR_CHARACTER_LUIGI,       DR_CONTROL_PORT_P2, DR_CONTROL_TYPE_CPU,   DR_DIFFICULTY_NORMAL, DR_TEAM_COLOR_BLUE, DR_TEAM_TYPE_4P, 1 };
+    players[2] = { DR_CHARACTER_PEACH,       DR_CONTROL_PORT_P3, DR_CONTROL_TYPE_CPU,   DR_DIFFICULTY_NORMAL, DR_TEAM_COLOR_BLUE, DR_TEAM_TYPE_4P, 2 };
+    players[3] = { DR_CHARACTER_DONKEY_KONG, DR_CONTROL_PORT_P4, DR_CONTROL_TYPE_CPU,   DR_DIFFICULTY_NORMAL, DR_TEAM_COLOR_BLUE, DR_TEAM_TYPE_4P, 3 };
+    launchMinigame(guest, minigame, players, playerValid);
+  });
 #endif
 
   connect(m_Guests, &QStackedWidget::currentChanged, this, [this](int index) {
@@ -140,27 +180,6 @@ MainWindow::MainWindow(QWidget *parent)
       if (QWidget *container = m_Guests->widget(index))
         guests[index]->resize(container->width(), container->height());
     }
-  });
-
-  auto recalc = [this]() {
-    resize(width() + 1, height());
-    resize(width() - 1, height());
-  };
-
-  for (DrGuest *guest : m_Guests->guests()) {
-    QMetaObject::Connection *conn = new QMetaObject::Connection;
-    *conn = connect(guest, &QRetro::frameBegin, this, [recalc, conn]() {
-      recalc();
-      disconnect(*conn);
-      delete conn;
-    });
-  }
-
-  QMetaObject::Connection *connB = new QMetaObject::Connection;
-  *connB = connect(m_RetroB, &QRetro::frameBegin, this, [recalc, connB]() {
-    recalc();
-    disconnect(*connB);
-    delete connB;
   });
 
   connect(m_Guests, &DrGuestList::minigameFinished, this, [this]() {
@@ -235,13 +254,13 @@ MainWindow::MainWindow(QWidget *parent)
 #endif
           };
 
-          // Check panel colors — skip if any is 0
-          int zeroPanelPlayer = -1;
+          // Check panel colors — each must be 1 (red) or 2 (blue)
+          int badPanelPlayer = -1;
           for (unsigned i = 0; i < 4; i++)
-            if (panelColors[i] == 0) { zeroPanelPlayer = (int)i; break; }
+            if (panelColors[i] != 1 && panelColors[i] != 2) { badPanelPlayer = (int)i; break; }
 
-          if (zeroPanelPlayer != -1) {
-            log(DR_LOG_WARN, QString("skipping minigame: panel color for P%1 is 0").arg(zeroPanelPlayer + 1));
+          if (badPanelPlayer != -1) {
+            log(DR_LOG_WARN, QString("skipping minigame: panel color for P%1 is 0x%2").arg(badPanelPlayer + 1).arg(panelColors[badPanelPlayer], 2, 16, QChar('0')));
           } else {
             // Count occurrences of each distinct team value
             unsigned teamCount[4] = {};
@@ -291,19 +310,39 @@ MainWindow::MainWindow(QWidget *parent)
                     p.difficulty  = N64_DIFF_TO_DR[diff];
                   p.control_type = (bot & 0x01) ? DR_CONTROL_TYPE_CPU : DR_CONTROL_TYPE_HUMAN;
                   p.control_port = static_cast<dr_control_port>(DR_CONTROL_PORT_P1 + ctrl);
-                  p.team         = (teamBytes[i] == 0x01) ? DR_TEAM_RED : DR_TEAM_BLUE;
+                  p.team_color   = static_cast<dr_team_color>(panelColors[i]);
+                  p.team_id      = teamBytes[i];
                   playerValid[i] = true;
                 }
               }
 
+              // Determine team_type for each player
+              if (mgType == DR_MINIGAME_1V3) {
+                // Count which color appears once — that's the solo
+                unsigned colorCount[DR_TEAM_COLOR_SIZE] = {};
+                for (unsigned i = 0; i < 4; i++)
+                  if (playerValid[i]) colorCount[players[i].team_color]++;
+                dr_team_color soloColor = DR_TEAM_COLOR_INVALID;
+                for (unsigned c = DR_TEAM_COLOR_INVALID + 1; c < DR_TEAM_COLOR_SIZE; c++)
+                  if (colorCount[c] == 1) { soloColor = static_cast<dr_team_color>(c); break; }
+                for (unsigned i = 0; i < 4; i++)
+                  if (playerValid[i])
+                    players[i].team_type = (players[i].team_color == soloColor)
+                      ? DR_TEAM_TYPE_1V3_SOLO : DR_TEAM_TYPE_1V3_GROUP;
+              } else if (mgType == DR_MINIGAME_2V2) {
+                for (unsigned i = 0; i < 4; i++)
+                  if (playerValid[i]) players[i].team_type = DR_TEAM_TYPE_2V2;
+              } else if (mgType == DR_MINIGAME_4P) {
+                for (unsigned i = 0; i < 4; i++)
+                  if (playerValid[i]) players[i].team_type = DR_TEAM_TYPE_4P;
+              } else {
+                for (unsigned i = 0; i < 4; i++)
+                  if (playerValid[i]) players[i].team_type = DR_TEAM_TYPE_SOLO;
+              }
+
               // All Qt widget and guest-core operations must run on the GUI thread
               QMetaObject::invokeMethod(this, [this, mgType, players, playerValid]() {
-                DrGuest *guest = m_Guests->startMinigame(mgType);
-                if (guest) {
-                  for (unsigned i = 0; i < 4; i++)
-                    if (playerValid[i]) guest->setPlayer(i, players[i]);
-                }
-                showGuests();
+                launchMinigame(mgType, players, playerValid);
               }, Qt::QueuedConnection);
               writing = 30;
             }
@@ -313,13 +352,53 @@ MainWindow::MainWindow(QWidget *parent)
     }
   }, Qt::DirectConnection);
 
-  resize(640, 480);
+  resize(704, 528);
+}
+
+void MainWindow::launchMinigame(DrGuest *guest, const dr_mp_minigame_t *minigame, const dr_player_t players[4], const bool playerValid[4])
+{
+  if (!m_Guests->activateGuest(guest))
+    return;
+
+  showGuests();
+  guest->audio()->setVolume(0);
+  QTimer::singleShot(100, this, [this, guest, minigame, players = std::array<dr_player_t, 4>{players[0], players[1], players[2], players[3]}, playerValid = std::array<bool, 4>{playerValid[0], playerValid[1], playerValid[2], playerValid[3]}]() {
+    guest->setMinigame(minigame);
+    guest->audio()->setVolume(100);
+    for (unsigned i = 0; i < 4; i++)
+      if (playerValid[i]) guest->setPlayer(i, players[i]);
+#if SHOW_OVERLAY
+    m_Overlay->fadeOut();
+#endif
+  });
+}
+
+void MainWindow::launchMinigame(dr_minigame_type type, const dr_player_t players[4], const bool playerValid[4])
+{
+  const dr_mp_minigame_t *minigame = nullptr;
+  DrGuest *guest = m_Guests->pickMinigame(type, minigame);
+  if (!guest)
+    return;
+
+  showGuests();
+  guest->audio()->setVolume(0);
+  QTimer::singleShot(100, this, [this, guest, minigame, players = std::array<dr_player_t, 4>{players[0], players[1], players[2], players[3]}, playerValid = std::array<bool, 4>{playerValid[0], playerValid[1], playerValid[2], playerValid[3]}]() {
+    guest->setMinigame(minigame);
+    guest->audio()->setVolume(100);
+    for (unsigned i = 0; i < 4; i++)
+      if (playerValid[i]) guest->setPlayer(i, players[i]);
+#if SHOW_OVERLAY
+    m_Overlay->fadeOut();
+#endif
+  });
 }
 
 void MainWindow::showHost()
 {
+#if SHOW_OVERLAY
   QScreen *screen = windowHandle() ? windowHandle()->screen() : QGuiApplication::primaryScreen();
   m_Overlay->flash(screen->grabWindow(m_Guests->currentGuest()->winId()));
+#endif
 
   QTimer::singleShot(32, this, [this]() {
     for (DrGuest *guest : m_Guests->guests())
@@ -331,12 +410,14 @@ void MainWindow::showHost()
 
 void MainWindow::showGuests()
 {
+#if SHOW_OVERLAY
   QScreen *screen = windowHandle() ? windowHandle()->screen() : QGuiApplication::primaryScreen();
-  m_Overlay->flash(screen->grabWindow(m_RetroB->winId()));
+  m_Overlay->hold(screen->grabWindow(m_RetroB->winId()));
+#endif
 
   QTimer::singleShot(32, this, [this]() {
     m_RetroB->pause();
-    m_Stack->setCurrentIndex(0);  // map the window before the timing thread sees it
+    m_Stack->setCurrentIndex(0);
     for (DrGuest *guest : m_Guests->guests())
       guest == m_Guests->currentGuest() ? guest->unpause() : guest->pause();
   });

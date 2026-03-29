@@ -17,23 +17,23 @@ static const size_t MK64_NUMBER_PLAYERS_ADDR = 0x8018EDF0;
 
 static const dr_mp_minigame_t k_minigames[] =
 {
-  {"Single Race: Luigi Raceway",        DR_MINIGAME_4P, 0x00, 0xFF},
-  {"Single Race: Moo Moo Farm",         DR_MINIGAME_4P, 0x01, 0xFF},
-  {"Single Race: Koopa Troopa Beach",   DR_MINIGAME_4P, 0x02, 0xFF},
-  {"Single Race: Kalimari Desert",      DR_MINIGAME_4P, 0x03, 0xFF},
-  {"Single Race: Toad's Turnpike",      DR_MINIGAME_4P, 0x04, 0xFF},
-  {"Single Race: Frappe Snowland",      DR_MINIGAME_4P, 0x05, 0xFF},
-  {"Single Race: Choco Mountain",       DR_MINIGAME_4P, 0x06, 0xFF},
-  {"Single Race: Mario Raceway",        DR_MINIGAME_4P, 0x07, 0xFF},
-  {"Single Race: Wario Stadium",        DR_MINIGAME_4P, 0x08, 0xFF},
-  {"Single Race: Sherbet Land",         DR_MINIGAME_4P, 0x09, 0xFF},
-  {"Single Race: Royal Raceway",        DR_MINIGAME_4P, 0x0A, 0xFF},
-  {"Single Race: Bowser's Castle",      DR_MINIGAME_4P, 0x0B, 0xFF},
-  {"Single Race: D.K.'s Jungle Parkway",DR_MINIGAME_4P, 0x0C, 0xFF},
-  {"Single Race: Yoshi Valley",         DR_MINIGAME_4P, 0x0D, 0xFF},
-  {"Single Race: Banshee Boardwalk",    DR_MINIGAME_4P, 0x0E, 0xFF},
-  {"Single Race: Rainbow Road",         DR_MINIGAME_4P, 0x0F, 0xFF},
-  {nullptr,                             DR_MINIGAME_INVALID, 0xFF, 0xFF},
+  {"Single Race: Luigi Raceway",        DR_MINIGAME_4P, 0x00, 0xFF, DR_NO_QUIRKS},
+  {"Single Race: Moo Moo Farm",         DR_MINIGAME_4P, 0x01, 0xFF, DR_NO_QUIRKS},
+  {"Single Race: Koopa Troopa Beach",   DR_MINIGAME_4P, 0x02, 0xFF, DR_NO_QUIRKS},
+  {"Single Race: Kalimari Desert",      DR_MINIGAME_4P, 0x03, 0xFF, DR_NO_QUIRKS},
+  {"Single Race: Toad's Turnpike",      DR_MINIGAME_4P, 0x04, 0xFF, DR_NO_QUIRKS},
+  {"Single Race: Frappe Snowland",      DR_MINIGAME_4P, 0x05, 0xFF, DR_NO_QUIRKS},
+  {"Single Race: Choco Mountain",       DR_MINIGAME_4P, 0x06, 0xFF, DR_NO_QUIRKS},
+  {"Single Race: Mario Raceway",        DR_MINIGAME_4P, 0x07, 0xFF, DR_NO_QUIRKS},
+  {"Single Race: Wario Stadium",        DR_MINIGAME_4P, 0x08, 0xFF, DR_NO_QUIRKS},
+  {"Single Race: Sherbet Land",         DR_MINIGAME_4P, 0x09, 0xFF, DR_NO_QUIRKS},
+  {"Single Race: Royal Raceway",        DR_MINIGAME_4P, 0x0A, 0xFF, DR_NO_QUIRKS},
+  {"Single Race: Bowser's Castle",      DR_MINIGAME_4P, 0x0B, 0xFF, DR_NO_QUIRKS},
+  {"Single Race: D.K.'s Jungle Parkway",DR_MINIGAME_4P, 0x0C, 0xFF, DR_NO_QUIRKS},
+  {"Single Race: Yoshi Valley",         DR_MINIGAME_4P, 0x0D, 0xFF, DR_NO_QUIRKS},
+  {"Single Race: Banshee Boardwalk",    DR_MINIGAME_4P, 0x0E, 0xFF, DR_NO_QUIRKS},
+  {"Single Race: Rainbow Road",         DR_MINIGAME_4P, 0x0F, 0xFF, DR_NO_QUIRKS},
+  {nullptr,                             DR_MINIGAME_INVALID, 0xFF, 0xFF, DR_NO_QUIRKS},
 };
 
 static const uint8_t MK64_TRACK_ID[] = {
@@ -108,8 +108,9 @@ const dr_mp_minigame_t* MarioKart64::minigames() const
   return k_minigames;
 }
 
-void MarioKart64::setMinigame(unsigned id)
+void MarioKart64::doSetMinigame(const dr_mp_minigame_t *minigame)
 {
+  unsigned id = minigame->minigame_id;
   startMinigame();
   unserializeFromFile(N64_STATE);
   memory().writeValue<uint8_t>(id % 4, MK64_COURSE_ADDR);
@@ -181,9 +182,8 @@ dr_error MarioKart64::doSetPlayerDifficulty(unsigned index, dr_difficulty diffic
 }
 
 /* All minigames are 4P, so no teams */
-dr_error MarioKart64::doSetPlayerTeam(unsigned index, dr_team team)
+dr_error MarioKart64::doSetPlayerTeam(unsigned index, dr_team_color color, dr_team_type type, unsigned team_id)
 {
-  (void)index;
-  (void)team;
+  (void)index; (void)color; (void)type; (void)team_id;
   return DR_OK;
 }

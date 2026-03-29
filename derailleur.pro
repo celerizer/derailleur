@@ -4,11 +4,17 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 CONFIG += c++17
 
-CONFIG += QRETRO_CONFIG_NO_MIDI
+CONFIG += \
+    QRETRO_CONFIG_NO_CAMERA \
+    QRETRO_CONFIG_NO_LOCATION \
+    QRETRO_CONFIG_NO_MIDI \
+    QRETRO_CONFIG_NO_SENSORS \
+    QRETRO_CONFIG_NO_SYSTEMINFO
 
 include(QRetro/QRetro.pri)
 
 SOURCES += \
+    DrDebug.cpp \
     DrGuest.cpp \
     DrOverlay.cpp \
     DrGuestList.cpp \
@@ -16,6 +22,7 @@ SOURCES += \
     DrParty.cpp \
     guests/MarioKart64.cpp \
     guests/MarioParty4.cpp \
+    guests/MarioPartyN64.cpp \
     guests/MarioParty5.cpp \
     guests/MarioParty6.cpp \
     guests/MarioParty7.cpp \
@@ -26,18 +33,22 @@ SOURCES += \
 
 HEADERS += \
     DrCommon.h \
+    DrDebug.h \
     DrOverlay.h \
     DrGuest.h \
     DrGuestList.h \
     DrLogger.h \
     guests/MarioKart64.h \
     guests/MarioParty4.h \
+    guests/MarioPartyN64.h \
     guests/MarioParty5.h \
     guests/MarioParty6.h \
     guests/MarioParty7.h \
     guests/MarioPartyGcn.h \
     guests/SmashRemix.h \
     mainwindow.h
+
+RESOURCES += assets.qrc
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
