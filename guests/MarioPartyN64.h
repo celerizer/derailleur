@@ -32,7 +32,7 @@ class MarioPartyN64 : public DrGuest
   Q_OBJECT
 
 public:
-  MarioPartyN64(const MpN64Config &config, QWindow *parent = nullptr);
+  MarioPartyN64(const MpN64Config &config, QObject *parent = nullptr);
 
   dr_minigame_result_t    minigameResult(unsigned index) override;
   const dr_mp_minigame_t* minigames() const override;

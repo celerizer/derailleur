@@ -1,12 +1,13 @@
 #include "MarioPartyGcn.h"
 
-MarioPartyGcn::MarioPartyGcn(const MpGcnConfig &config, QWindow *parent)
-  : DrGuest(parent), m_config(config)
+MarioPartyGcn::MarioPartyGcn(const MpGcnConfig &config, QRetro *sharedCore, QObject *parent)
+  : DrGuest(sharedCore, parent), m_config(config)
 {
-  loadCore(m_config.core);
-  loadContent(m_config.game);
+  // Core ownership belongs to CoreDolphin; no loadCore/loadContent here
 
-  connect(this, &QRetro::frameBegin, this, [this]() {
+  connect(m_core, &QRetro::frameBegin, this, [this]() {
+    if (!m_minigameActive)
+      return;
     if (m_minigameWriteFrames > 0) {
       writeu16(m_minigame->minigame_id, m_config.minigame_addr, true);
       m_minigameWriteFrames--;
@@ -16,7 +17,7 @@ MarioPartyGcn::MarioPartyGcn(const MpGcnConfig &config, QWindow *parent)
     if (reads32(&val, m_config.scene_addr, true) == DR_OK && val != m_lastScene) {
       log(DR_LOG_INFO, qPrintable(QString("MP_SCENE_ADDR: 0x%1").arg(val, 4, 16, QChar('0'))));
       m_lastScene = val;
-      if (val == m_config.scene_miniresults && m_minigameActive)
+      if (val == m_config.scene_miniresults)
         finishMinigame();
     }
   }, Qt::DirectConnection);
@@ -30,7 +31,6 @@ const dr_mp_minigame_t* MarioPartyGcn::minigames() const
 void MarioPartyGcn::doSetMinigame(const dr_mp_minigame_t *minigame)
 {
   (void)minigame;
-  unserializeFromFile(m_config.state);
   m_lastScene           = -1;
   m_minigameWriteFrames = 120;
   startMinigame();

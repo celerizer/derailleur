@@ -8,7 +8,7 @@ class MarioParty6 : public MarioPartyGcn
   Q_OBJECT
 
 public:
-  MarioParty6(QWindow *parent = nullptr);
+  MarioParty6(QRetro *sharedCore, QObject *parent = nullptr);
   const char* name() const override { return "Mario Party 6"; }
 };
 

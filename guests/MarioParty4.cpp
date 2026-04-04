@@ -102,6 +102,6 @@ static const MpGcnConfig k_config =
   .minigames     = k_minigames,
 };
 
-MarioParty4::MarioParty4(QWindow *parent) : MarioPartyGcn(k_config, parent)
+MarioParty4::MarioParty4(QRetro *sharedCore, QObject *parent) : MarioPartyGcn(k_config, sharedCore, parent)
 {
 }

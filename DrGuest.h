@@ -2,16 +2,25 @@
 #define DR_GUEST_H
 
 #include "DrCommon.h"
+#include <QObject>
 #include <QRetro.h>
 #include <QString>
 #include <QtEndian>
 
-class DrGuest : public QRetro
+class DrGuest : public QObject
 {
   Q_OBJECT
 
 public:
-  DrGuest(QWindow *parent = nullptr) : QRetro(parent) {}
+  // N64-style: subclass creates its own QRetro in its constructor and assigns m_core
+  DrGuest(QObject *parent = nullptr) : QObject(parent) {}
+  // GCN-style: receives a shared QRetro it does not own
+  explicit DrGuest(QRetro *sharedCore, QObject *parent = nullptr)
+    : QObject(parent), m_core(sharedCore), m_ownCore(false) {}
+
+  ~DrGuest() { if (m_ownCore) delete m_core; }
+
+  QRetro *core() const { return m_core; }
 
   virtual dr_minigame_result_t minigameResult(unsigned index) = 0;
   virtual const dr_mp_minigame_t* minigames() const = 0;
@@ -24,6 +33,10 @@ public:
   dr_error setPlayerControlType(unsigned index, dr_control_type control_type);
   dr_error setPlayerDifficulty(unsigned index, dr_difficulty difficulty);
   dr_error setPlayerTeam(unsigned index, dr_team_color color, dr_team_type type, unsigned team_id);
+
+  void pause()    { if (m_core) m_core->pause(); }
+  void unpause()  { if (m_core) m_core->unpause(); }
+  void startCore(){ if (m_core) m_core->startCore(); }
 
 protected:
   dr_error readu8(uint8_t *out, size_t addr, bool big_endian = false);
@@ -43,8 +56,10 @@ protected:
   void startMinigame();
   void finishMinigame();
 
-  bool                    m_minigameActive = false;
-  const dr_mp_minigame_t *m_minigame       = nullptr;
+  QRetro                  *m_core          = nullptr;
+  bool                     m_ownCore       = false;
+  bool                     m_minigameActive = false;
+  const dr_mp_minigame_t  *m_minigame       = nullptr;
 
   virtual void doSetMinigame(const dr_mp_minigame_t *minigame) = 0;
   virtual dr_error doSetPlayerCharacter(unsigned index, dr_character character) = 0;

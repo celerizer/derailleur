@@ -20,6 +20,7 @@ SOURCES += \
     DrGuestList.cpp \
     DrLogger.cpp \
     DrParty.cpp \
+    guests/CoreDolphin.cpp \
     guests/MarioKart64.cpp \
     guests/MarioParty4.cpp \
     guests/MarioPartyN64.cpp \
@@ -38,6 +39,7 @@ HEADERS += \
     DrGuest.h \
     DrGuestList.h \
     DrLogger.h \
+    guests/CoreDolphin.h \
     guests/MarioKart64.h \
     guests/MarioParty4.h \
     guests/MarioPartyN64.h \

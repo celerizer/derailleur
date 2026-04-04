@@ -11,7 +11,7 @@ dr_error DrGuest::setPlayer(unsigned index, const dr_player_t &player)
     setPlayerControlType(index, player.control_type);
     setPlayerDifficulty(index, player.difficulty);
     setPlayerTeam(index, player.team_color, player.team_type, player.team_id);
-    
+
     return DR_OK;
   }
 }
@@ -58,7 +58,8 @@ dr_error DrGuest::setPlayerTeam(unsigned index, dr_team_color color, dr_team_typ
 dr_error DrGuest::readu8(uint8_t *out, size_t addr, bool big_endian)
 {
   (void)big_endian;
-  return memory().readValue<uint8_t>(out, addr) ? DR_OK : DR_ERR_MEMORY_ACCESS_CORE;
+  if (!m_core) return DR_ERR_MEMORY_ACCESS_CORE;
+  return m_core->memory().readValue<uint8_t>(out, addr) ? DR_OK : DR_ERR_MEMORY_ACCESS_CORE;
 }
 
 dr_error DrGuest::reads8(int8_t *out, size_t addr, bool big_endian)
@@ -68,11 +69,11 @@ dr_error DrGuest::reads8(int8_t *out, size_t addr, bool big_endian)
 
 dr_error DrGuest::readu16(uint16_t *out, size_t addr, bool big_endian)
 {
-  if (!memory().readValue<uint16_t>(out, addr))
+  if (!m_core) return DR_ERR_MEMORY_ACCESS_CORE;
+  if (!m_core->memory().readValue<uint16_t>(out, addr))
     return DR_ERR_MEMORY_ACCESS_CORE;
   if (big_endian)
     *out = qbswap(*out);
-
   return DR_OK;
 }
 
@@ -83,11 +84,11 @@ dr_error DrGuest::reads16(int16_t *out, size_t addr, bool big_endian)
 
 dr_error DrGuest::readu32(uint32_t *out, size_t addr, bool big_endian)
 {
-  if (!memory().readValue<uint32_t>(out, addr))
+  if (!m_core) return DR_ERR_MEMORY_ACCESS_CORE;
+  if (!m_core->memory().readValue<uint32_t>(out, addr))
     return DR_ERR_MEMORY_ACCESS_CORE;
   if (big_endian)
     *out = qbswap(*out);
-
   return DR_OK;
 }
 
@@ -99,7 +100,8 @@ dr_error DrGuest::reads32(int32_t *out, size_t addr, bool big_endian)
 dr_error DrGuest::writeu8(uint8_t val, size_t addr, bool big_endian)
 {
   (void)big_endian;
-  return memory().writeValue<uint8_t>(val, addr) ? DR_OK : DR_ERR_MEMORY_ACCESS_CORE;
+  if (!m_core) return DR_ERR_MEMORY_ACCESS_CORE;
+  return m_core->memory().writeValue<uint8_t>(val, addr) ? DR_OK : DR_ERR_MEMORY_ACCESS_CORE;
 }
 
 dr_error DrGuest::writes8(int8_t val, size_t addr, bool big_endian)
@@ -109,9 +111,10 @@ dr_error DrGuest::writes8(int8_t val, size_t addr, bool big_endian)
 
 dr_error DrGuest::writeu16(uint16_t val, size_t addr, bool big_endian)
 {
+  if (!m_core) return DR_ERR_MEMORY_ACCESS_CORE;
   if (big_endian)
     val = qbswap(val);
-  return memory().writeValue<uint16_t>(val, addr) ? DR_OK : DR_ERR_MEMORY_ACCESS_CORE;
+  return m_core->memory().writeValue<uint16_t>(val, addr) ? DR_OK : DR_ERR_MEMORY_ACCESS_CORE;
 }
 
 dr_error DrGuest::writes16(int16_t val, size_t addr, bool big_endian)
@@ -121,9 +124,10 @@ dr_error DrGuest::writes16(int16_t val, size_t addr, bool big_endian)
 
 dr_error DrGuest::writeu32(uint32_t val, size_t addr, bool big_endian)
 {
+  if (!m_core) return DR_ERR_MEMORY_ACCESS_CORE;
   if (big_endian)
     val = qbswap(val);
-  return memory().writeValue<uint32_t>(val, addr) ? DR_OK : DR_ERR_MEMORY_ACCESS_CORE;
+  return m_core->memory().writeValue<uint32_t>(val, addr) ? DR_OK : DR_ERR_MEMORY_ACCESS_CORE;
 }
 
 dr_error DrGuest::writes32(int32_t val, size_t addr, bool big_endian)
@@ -138,11 +142,12 @@ void DrGuest::log(unsigned level, const char *message)
 
 void DrGuest::setMinigame(const dr_mp_minigame_t *minigame)
 {
+  if (!m_core) return;
   m_minigame = minigame;
 
   /** @todo move this somewhere else */
-  options()->setOptionValue("dolphin_fastmem", "disabled");
-  options()->setOptionValue("dolphin_main_cpu_thread", "disabled");
+  m_core->options()->setOptionValue("dolphin_fastmem", "disabled");
+  m_core->options()->setOptionValue("dolphin_main_cpu_thread", "disabled");
 
   /* Apply emulation quirks for the minigame */
   if (minigame)
@@ -157,7 +162,7 @@ void DrGuest::setMinigame(const dr_mp_minigame_t *minigame)
     }
     else
       option_value = "128";
-    options()->setOptionValue("dolphin_texture_cache_accuracy", option_value);
+    m_core->options()->setOptionValue("dolphin_texture_cache_accuracy", option_value);
 
     /// Graphics > Hacks > Skip EFB Copy to RAM
     if (minigame->quirks.dolphin.needs_efb_to_texture)
@@ -167,7 +172,7 @@ void DrGuest::setMinigame(const dr_mp_minigame_t *minigame)
     }
     else
       option_value = "enabled";
-    options()->setOptionValue("dolphin_efb_to_texture", option_value);
+    m_core->options()->setOptionValue("dolphin_efb_to_texture", option_value);
 
     /// Graphics > Settings > Internal Resolution
     /// @todo Return to user's preferred setting when minigame is finished
@@ -178,7 +183,7 @@ void DrGuest::setMinigame(const dr_mp_minigame_t *minigame)
     }
     else
       option_value = "1";
-    options()->setOptionValue("dolphin_efb_scale", option_value);
+    m_core->options()->setOptionValue("dolphin_efb_scale", option_value);
   }
 
   doSetMinigame(minigame);

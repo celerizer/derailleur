@@ -10,7 +10,7 @@ DrGuestList::DrGuestList(QWidget *parent) : QStackedWidget(parent)
 void DrGuestList::add(DrGuest *guest)
 {
   m_guests.append(guest);
-  addWidget(QWidget::createWindowContainer(guest, this));
+  addWidget(QWidget::createWindowContainer(guest->core(), this));
   connect(guest, &DrGuest::minigameFinished, this, [this, guest]() {
     if (guest == m_activeGuest)
       emit minigameFinished();

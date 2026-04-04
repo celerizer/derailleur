@@ -1,12 +1,14 @@
 #include "MarioPartyN64.h"
 
-MarioPartyN64::MarioPartyN64(const MpN64Config &config, QWindow *parent)
+MarioPartyN64::MarioPartyN64(const MpN64Config &config, QObject *parent)
   : DrGuest(parent), m_config(config)
 {
-  loadCore(m_config.core);
-  loadContent(m_config.game);
+  m_core = new QRetro();
+  m_ownCore = true;
+  m_core->loadCore(m_config.core);
+  m_core->loadContent(m_config.game);
 
-  connect(this, &QRetro::frameBegin, this, [this]() {
+  connect(m_core, &QRetro::frameBegin, this, [this]() {
     if (m_minigameWriteFrames > 0) {
       writeu8(static_cast<uint8_t>(m_minigame->minigame_id), m_config.minigame_addr);
       m_minigameWriteFrames--;
@@ -30,7 +32,7 @@ const dr_mp_minigame_t* MarioPartyN64::minigames() const
 void MarioPartyN64::doSetMinigame(const dr_mp_minigame_t *minigame)
 {
   (void)minigame;
-  unserializeFromFile(m_config.state);
+  m_core->unserializeFromFile(m_config.state);
   m_lastScene           = -1;
   m_minigameWriteFrames = 120;
   startMinigame();

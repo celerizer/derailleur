@@ -75,22 +75,24 @@ static const mk64_character_t MK64_CHARACTER_ID[] =
   { DR_CHARACTER_WALUIGI, 0x08, 0x07 }, // Bowser
 };
 
-MarioKart64::MarioKart64(QWindow *parent) : DrGuest(parent)
+MarioKart64::MarioKart64(QObject *parent) : DrGuest(parent)
 {
-  loadCore(N64_CORE);
-  loadContent(N64_GAME);
+  m_core = new QRetro();
+  m_ownCore = true;
+  m_core->loadCore(N64_CORE);
+  m_core->loadContent(N64_GAME);
 
-  connect(this, &QRetro::frameBegin, this, [this]() {
+  connect(m_core, &QRetro::frameBegin, this, [this]() {
     if (m_lapsFreezeFrames > 0) {
       --m_lapsFreezeFrames;
       for (unsigned i = 0; i < 4; i++)
-        memory().writeValue<uint32_t>(1, MK64_LAPS_ADDR[i]);
+        m_core->memory().writeValue<uint32_t>(1, MK64_LAPS_ADDR[i]);
     }
 
     if (m_winnerIndex == -1 && m_minigameActive) {
       for (unsigned i = 0; i < 4; i++) {
         uint32_t laps;
-        if (memory().readValue<uint32_t>(&laps, MK64_LAPS_ADDR[i]) && laps >= 3) {
+        if (m_core->memory().readValue<uint32_t>(&laps, MK64_LAPS_ADDR[i]) && laps >= 3) {
           m_winnerIndex = m_slotToIndex[i];
           m_finishCountdown = 240;
           break;
@@ -112,12 +114,12 @@ void MarioKart64::doSetMinigame(const dr_mp_minigame_t *minigame)
 {
   unsigned id = minigame->minigame_id;
   startMinigame();
-  unserializeFromFile(N64_STATE);
-  memory().writeValue<uint8_t>(id % 4, MK64_COURSE_ADDR);
-  memory().writeValue<uint8_t>(id / 4, MK64_CUP_ADDR);
+  m_core->unserializeFromFile(N64_STATE);
+  m_core->memory().writeValue<uint8_t>(id % 4, MK64_COURSE_ADDR);
+  m_core->memory().writeValue<uint8_t>(id / 4, MK64_CUP_ADDR);
 
   if (id < sizeof(MK64_TRACK_ID) / sizeof(*MK64_TRACK_ID))
-    memory().writeValue<uint8_t>(MK64_TRACK_ID[id], MK64_TRACK_ADDR);
+    m_core->memory().writeValue<uint8_t>(MK64_TRACK_ID[id], MK64_TRACK_ADDR);
 
   m_lapsFreezeFrames = 300;
   m_finishCountdown  = -1;
@@ -143,8 +145,8 @@ dr_error MarioKart64::doSetPlayerCharacter(unsigned index, dr_character characte
   for (const auto &entry : MK64_CHARACTER_ID) {
     if (entry.character == character) {
       unsigned slot = m_ports[index] - DR_CONTROL_PORT_P1;
-      memory().writeValue<uint8_t>(entry.menu_value, MK64_MENU_CHAR_ADDR[slot]);
-      memory().writeValue<uint8_t>(entry.real_value, MK64_REAL_CHAR_ADDR[slot]);
+      m_core->memory().writeValue<uint8_t>(entry.menu_value, MK64_MENU_CHAR_ADDR[slot]);
+      m_core->memory().writeValue<uint8_t>(entry.real_value, MK64_REAL_CHAR_ADDR[slot]);
       break;
     }
   }

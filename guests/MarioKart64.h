@@ -8,7 +8,7 @@ class MarioKart64 : public DrGuest
   Q_OBJECT
 
 public:
-  MarioKart64(QWindow *parent = nullptr);
+  MarioKart64(QObject *parent = nullptr);
   const char* name() const override { return "Mario Kart 64"; }
 
   dr_minigame_result_t minigameResult(unsigned index) override;

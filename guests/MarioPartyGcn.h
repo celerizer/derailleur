@@ -32,7 +32,7 @@ class MarioPartyGcn : public DrGuest
   Q_OBJECT
 
 public:
-  MarioPartyGcn(const MpGcnConfig &config, QWindow *parent = nullptr);
+  MarioPartyGcn(const MpGcnConfig &config, QRetro *sharedCore, QObject *parent = nullptr);
 
   dr_minigame_result_t    minigameResult(unsigned index) override;
   const dr_mp_minigame_t* minigames() const override;
@@ -43,6 +43,8 @@ public:
   dr_error doSetPlayerControlType(unsigned index, dr_control_type control_type) override;
   dr_error doSetPlayerDifficulty(unsigned index, dr_difficulty difficulty) override;
   dr_error doSetPlayerTeam(unsigned index, dr_team_color color, dr_team_type type, unsigned team_id) override;
+
+  const MpGcnConfig &config() const { return m_config; }
 
 private:
   MpGcnConfig  m_config;

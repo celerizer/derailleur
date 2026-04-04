@@ -141,12 +141,14 @@ void SmashRemix::run(void)
     finishMinigame();
 }
 
-SmashRemix::SmashRemix(QWindow *parent) : DrGuest(parent)
+SmashRemix::SmashRemix(QObject *parent) : DrGuest(parent)
 {
-  loadCore(N64_CORE);
-  loadContent(N64_GAME);
+  m_core = new QRetro();
+  m_ownCore = true;
+  m_core->loadCore(N64_CORE);
+  m_core->loadContent(N64_GAME);
 
-  connect(this, &QRetro::frameBegin, this, [this]() mutable {
+  connect(m_core, &QRetro::frameBegin, this, [this]() mutable {
     if (m_minigame && m_minigameActive)
       run();
   }, Qt::DirectConnection);
@@ -163,14 +165,14 @@ void SmashRemix::doSetMinigame(const dr_mp_minigame_t *minigame)
   m_finishCountdown = 0;
   for (unsigned i = 0; i < 4; i++)
     m_prevStocks[i] = 0xFF;
-  unserializeFromFile(N64_STATE);
+  m_core->unserializeFromFile(N64_STATE);
 
   /* Use a random stage from the original stage list */
-  memory().writeValue<uint8_t>(rand() % 9, SR_STAGE_ADDR);
+  m_core->memory().writeValue<uint8_t>(rand() % 9, SR_STAGE_ADDR);
 
   /* Enable team battle for the 2v2 and 1v3 minigames */
   bool teamBattle = (minigame->type == DR_MINIGAME_2V2 || minigame->type == DR_MINIGAME_1V3);
-  memory().writeValue<uint8_t>(teamBattle ? 1 : 0, SR_GAME_TYPE_ADDR);
+  m_core->memory().writeValue<uint8_t>(teamBattle ? 1 : 0, SR_GAME_TYPE_ADDR);
 
   log(DR_LOG_INFO, qPrintable(QString("Smash Remix starting!")));
   startMinigame();
@@ -198,7 +200,7 @@ void SmashRemix::applyPlayers()
     m_slotCharacters[slot] = p.character;
 
     bool isBot = (p.control_type == DR_CONTROL_TYPE_CPU);
-    memory().writeValue<uint8_t>(isBot ? 1 : 0, SR_IS_BOT_ADDR[slot]);
+    m_core->memory().writeValue<uint8_t>(isBot ? 1 : 0, SR_IS_BOT_ADDR[slot]);
 
     for (const auto &entry : SR_CHARACTER_ID)
     {
@@ -235,7 +237,7 @@ void SmashRemix::applyPlayers()
       difficulty = 5;
       break;
     }
-    memory().writeValue<uint8_t>(static_cast<uint8_t>(difficulty), SR_DIFFICULTY_ADDR[slot]);
+    m_core->memory().writeValue<uint8_t>(static_cast<uint8_t>(difficulty), SR_DIFFICULTY_ADDR[slot]);
 
     uint8_t color, team;
     if (m_minigame->type == DR_MINIGAME_1V3 || m_minigame->type == DR_MINIGAME_2V2)
@@ -266,17 +268,17 @@ void SmashRemix::applyPlayers()
         color = slot;
       team = i;
     }
-    memory().writeValue<uint8_t>(color, SR_PORT_COLOR_ADDR[slot]);
-    memory().writeValue<uint8_t>(team, SR_TEAM_ADDR_1[slot]);
-    memory().writeValue<uint8_t>(team, SR_TEAM_ADDR_2[slot]);
+    m_core->memory().writeValue<uint8_t>(color, SR_PORT_COLOR_ADDR[slot]);
+    m_core->memory().writeValue<uint8_t>(team, SR_TEAM_ADDR_1[slot]);
+    m_core->memory().writeValue<uint8_t>(team, SR_TEAM_ADDR_2[slot]);
 
     uint8_t size;
     if (p.team_type == DR_TEAM_TYPE_1V3_SOLO)
       size = 1; // Giant
     else
       size = 0; // Normal
-    memory().writeValue<uint8_t>(size, SR_SIZE_ADDR_1[slot]);
-    memory().writeValue<uint8_t>(size, SR_SIZE_ADDR_2[slot]);
+    m_core->memory().writeValue<uint8_t>(size, SR_SIZE_ADDR_1[slot]);
+    m_core->memory().writeValue<uint8_t>(size, SR_SIZE_ADDR_2[slot]);
   }
 }
 

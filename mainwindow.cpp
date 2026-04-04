@@ -14,6 +14,7 @@
 
 #include "DrDebug.h"
 #include "guests/MarioKart64.h"
+#include "guests/CoreDolphin.h"
 #include "guests/MarioParty4.h"
 #include "guests/MarioParty5.h"
 #include "guests/MarioParty6.h"
@@ -22,7 +23,7 @@
 
 #define SHOW_LOGGER 1
 #define SHOW_OVERLAY 1
-#define SHOW_DEBUG 0
+#define SHOW_DEBUG 1
 
 #define N64_CORE "/media/keith/devtools/libretro/cores/mupen64plus_next_libretro.so"
 #define N64_GAME "/media/keith/devtools/libretro/roms/Mario Party 3 (USA).z64"
@@ -86,10 +87,13 @@ MainWindow::MainWindow(QWidget *parent)
   : QMainWindow(parent)
 {
   m_Guests = new DrGuestList(this);
-  m_Guests->add(new MarioParty4());
-  m_Guests->add(new MarioParty5());
-  m_Guests->add(new MarioParty6());
-  m_Guests->add(new MarioParty7());
+  auto *dolphin = new CoreDolphin(this);
+  dolphin->addGame(new MarioParty4(dolphin->core(), dolphin));
+  dolphin->addGame(new MarioParty5(dolphin->core(), dolphin));
+  dolphin->addGame(new MarioParty6(dolphin->core(), dolphin));
+  dolphin->addGame(new MarioParty7(dolphin->core(), dolphin));
+  dolphin->finalizeGames();
+  m_Guests->add(dolphin);
   //m_Guests->add(new MarioKart64());
   //m_Guests->add(new SmashRemix());
 
@@ -178,7 +182,7 @@ MainWindow::MainWindow(QWidget *parent)
     const auto &guests = m_Guests->guests();
     if (index >= 0 && index < guests.size()) {
       if (QWidget *container = m_Guests->widget(index))
-        guests[index]->resize(container->width(), container->height());
+        guests[index]->core()->resize(container->width(), container->height());
     }
   });
 
@@ -361,10 +365,10 @@ void MainWindow::launchMinigame(DrGuest *guest, const dr_mp_minigame_t *minigame
     return;
 
   showGuests();
-  guest->audio()->setVolume(0);
+  guest->core()->audio()->setVolume(0);
   QTimer::singleShot(100, this, [this, guest, minigame, players = std::array<dr_player_t, 4>{players[0], players[1], players[2], players[3]}, playerValid = std::array<bool, 4>{playerValid[0], playerValid[1], playerValid[2], playerValid[3]}]() {
     guest->setMinigame(minigame);
-    guest->audio()->setVolume(100);
+    guest->core()->audio()->setVolume(100);
     for (unsigned i = 0; i < 4; i++)
       if (playerValid[i]) guest->setPlayer(i, players[i]);
 #if SHOW_OVERLAY
@@ -381,10 +385,10 @@ void MainWindow::launchMinigame(dr_minigame_type type, const dr_player_t players
     return;
 
   showGuests();
-  guest->audio()->setVolume(0);
+  guest->core()->audio()->setVolume(0);
   QTimer::singleShot(100, this, [this, guest, minigame, players = std::array<dr_player_t, 4>{players[0], players[1], players[2], players[3]}, playerValid = std::array<bool, 4>{playerValid[0], playerValid[1], playerValid[2], playerValid[3]}]() {
     guest->setMinigame(minigame);
-    guest->audio()->setVolume(100);
+    guest->core()->audio()->setVolume(100);
     for (unsigned i = 0; i < 4; i++)
       if (playerValid[i]) guest->setPlayer(i, players[i]);
 #if SHOW_OVERLAY
@@ -397,7 +401,7 @@ void MainWindow::showHost()
 {
 #if SHOW_OVERLAY
   QScreen *screen = windowHandle() ? windowHandle()->screen() : QGuiApplication::primaryScreen();
-  m_Overlay->flash(screen->grabWindow(m_Guests->currentGuest()->winId()));
+  m_Overlay->flash(screen->grabWindow(m_Guests->currentGuest()->core()->winId()));
 #endif
 
   QTimer::singleShot(32, this, [this]() {
