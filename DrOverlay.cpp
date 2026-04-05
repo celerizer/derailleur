@@ -2,6 +2,7 @@
 
 #include <cmath>
 #include <QPainter>
+#include <QRandomGenerator>
 #include <QTimer>
 
 DrOverlay::DrOverlay(QWidget *parent) : QWidget(parent)
@@ -54,6 +55,7 @@ void DrOverlay::hold(const QPixmap &pixmap)
     m_anim->deleteLater();
     m_anim = nullptr;
   }
+  pickRandomSprite();
   if (m_bounceTimer)
     m_bounceTimer->start();
   setWindowOpacity(1.0);
@@ -79,6 +81,17 @@ void DrOverlay::fadeOut(int durationMs)
   });
   m_anim->start(QAbstractAnimation::DeleteWhenStopped);
   m_anim = nullptr;
+}
+
+#define DR_OVERLAY_SPRITE_COUNT 2
+
+void DrOverlay::pickRandomSprite()
+{
+  int index = QRandomGenerator::global()->bounded(DR_OVERLAY_SPRITE_COUNT);
+  QPixmap sprite(QString(":/assets/char/%1.png").arg(index));
+  if (!sprite.isNull())
+    setSprite(sprite.scaled(sprite.width() * 4, sprite.height() * 4,
+                            Qt::IgnoreAspectRatio, Qt::FastTransformation));
 }
 
 void DrOverlay::setSprite(const QPixmap &sprite)

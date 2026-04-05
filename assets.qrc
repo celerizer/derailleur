@@ -2,5 +2,6 @@
     <qresource prefix="/">
         <file>assets/loading.png</file>
         <file>assets/char/0.png</file>
+        <file>assets/char/1.png</file>
     </qresource>
 </RCC>

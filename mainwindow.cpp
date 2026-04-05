@@ -1,7 +1,6 @@
 #include "mainwindow.h"
 
 #include <array>
-#include <QDir>
 #include <QRandomGenerator>
 #include <QRetro.h>
 #include <QRetroDirectories.h>
@@ -117,13 +116,6 @@ MainWindow::MainWindow(QWidget *parent)
   {
     QPixmap loading(":/assets/loading.png");
     m_Overlay->hold(loading);
-    QStringList sprites = QDir(":/assets/char").entryList({"*.png"}, QDir::Files);
-    if (!sprites.isEmpty()) {
-      QPixmap sprite(":/assets/char/" + sprites[QRandomGenerator::global()->bounded(sprites.size())]);
-      if (!sprite.isNull())
-        m_Overlay->setSprite(sprite.scaled(sprite.width() * 4, sprite.height() * 4,
-                                           Qt::IgnoreAspectRatio, Qt::FastTransformation));
-    }
   }
 #endif
 
@@ -258,10 +250,10 @@ MainWindow::MainWindow(QWidget *parent)
 #endif
           };
 
-          // Check panel colors — each must be 1 (red) or 2 (blue)
+          // Check panel colors — 0 is uninitialized/invalid
           int badPanelPlayer = -1;
           for (unsigned i = 0; i < 4; i++)
-            if (panelColors[i] != 1 && panelColors[i] != 2) { badPanelPlayer = (int)i; break; }
+            if (panelColors[i] == 0) { badPanelPlayer = (int)i; break; }
 
           if (badPanelPlayer != -1) {
             log(DR_LOG_WARN, QString("skipping minigame: panel color for P%1 is 0x%2").arg(badPanelPlayer + 1).arg(panelColors[badPanelPlayer], 2, 16, QChar('0')));

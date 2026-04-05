@@ -25,6 +25,8 @@ protected:
   void paintEvent(QPaintEvent *) override;
 
 private:
+  void pickRandomSprite();
+
   QImage             m_image;
   QVariantAnimation *m_anim = nullptr;
   QPixmap            m_sprite;
