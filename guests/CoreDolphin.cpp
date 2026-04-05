@@ -3,6 +3,7 @@
 #include <QFile>
 #include <QTextStream>
 #include <QDir>
+#include <QApplication>
 
 CoreDolphin::CoreDolphin(QObject *parent)
   : DrGuest(parent)
@@ -91,14 +92,20 @@ void CoreDolphin::doSetMinigame(const dr_mp_minigame_t *minigame)
   {
     m_core->swapDisc(discIndex);
     m_discIndex = discIndex;
-    m_core->waitFrames(60);
+    for (int i = 0; i < 60; i++)
+    {
+      m_core->waitFrames(1);
+      QApplication::processEvents();
+    }
   }
 
   // Load the per-game savestate
   m_core->unserializeFromFile(owner->config().state);
+  QApplication::processEvents();
 
   // Delegate game-specific setup (writes minigame_id etc.)
   owner->setMinigame(minigame);
+  QApplication::processEvents();
 }
 
 dr_error CoreDolphin::doSetPlayerCharacter(unsigned index, dr_character character)

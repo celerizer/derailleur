@@ -20,11 +20,8 @@ void DrOverlay::setImage(const QImage &image)
 
 void DrOverlay::flash(const QPixmap &pixmap, int durationMs)
 {
-  if (m_bounceTimer) {
+  if (m_bounceTimer)
     m_bounceTimer->stop();
-    m_bounceTimer->deleteLater();
-    m_bounceTimer = nullptr;
-  }
 
   m_image = pixmap.toImage();
   setWindowOpacity(1.0);
@@ -44,6 +41,9 @@ void DrOverlay::flash(const QPixmap &pixmap, int durationMs)
   });
   m_anim->start(QAbstractAnimation::DeleteWhenStopped);
   m_anim = nullptr; // DeleteWhenStopped handles lifetime
+
+  if (m_bounceTimer)
+    m_bounceTimer->start();
 }
 
 void DrOverlay::hold(const QPixmap &pixmap)
@@ -54,17 +54,16 @@ void DrOverlay::hold(const QPixmap &pixmap)
     m_anim->deleteLater();
     m_anim = nullptr;
   }
+  if (m_bounceTimer)
+    m_bounceTimer->start();
   setWindowOpacity(1.0);
   repaint();
 }
 
 void DrOverlay::fadeOut(int durationMs)
 {
-  if (m_bounceTimer) {
+  if (m_bounceTimer)
     m_bounceTimer->stop();
-    m_bounceTimer->deleteLater();
-    m_bounceTimer = nullptr;
-  }
 
   if (m_anim) {
     m_anim->stop();
@@ -91,7 +90,7 @@ void DrOverlay::setSprite(const QPixmap &sprite)
     m_bounceTimer->deleteLater();
   }
   m_bounceTimer = new QTimer(this);
-  m_bounceTimer->setInterval(2000);
+  m_bounceTimer->setInterval(500);
   connect(m_bounceTimer, &QTimer::timeout, this, [this]() {
     QVariantAnimation *anim = new QVariantAnimation(this);
     anim->setStartValue(0.0);
