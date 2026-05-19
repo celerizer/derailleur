@@ -1,8 +1,5 @@
 #include "SmashRemix.h"
 
-#define N64_CORE "/media/keith/devtools/libretro/cores/mupen64plus_next_libretro.so"
-#define N64_GAME "/media/keith/devtools/libretro/roms/smashremix.z64"
-#define N64_STATE "/media/keith/devtools/libretro/state/smashremix.state.zip"
 
 static const dr_mp_minigame_t k_minigames[] =
 {
@@ -145,8 +142,8 @@ SmashRemix::SmashRemix(QObject *parent) : DrGuest(parent)
 {
   m_core = new QRetro();
   m_ownCore = true;
-  m_core->loadCore(N64_CORE);
-  m_core->loadContent(N64_GAME);
+  m_core->loadCore(dr_core_path(DR_CORE_MUPEN64PLUSNEXT).toUtf8().constData());
+  m_core->loadContent((dr_roms_directory() + "/smashremix.z64").toUtf8().constData());
 
   connect(m_core, &QRetro::frameBegin, this, [this]() mutable {
     if (m_minigame && m_minigameActive)
@@ -165,7 +162,7 @@ void SmashRemix::doSetMinigame(const dr_mp_minigame_t *minigame)
   m_finishCountdown = 0;
   for (unsigned i = 0; i < 4; i++)
     m_prevStocks[i] = 0xFF;
-  m_core->unserializeFromFile(N64_STATE);
+  m_core->unserializeFromFile(dr_state_directory() + "/smashremix.state.zip");
 
   /* Use a random stage from the original stage list */
   m_core->memory().writeValue<uint8_t>(rand() % 9, SR_STAGE_ADDR);

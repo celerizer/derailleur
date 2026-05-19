@@ -9,10 +9,7 @@ MarioPartyN64::MarioPartyN64(const MpN64Config &config, QObject *parent)
   m_core->loadContent(m_config.game);
 
   connect(m_core, &QRetro::frameBegin, this, [this]() {
-    if (m_minigameWriteFrames > 0) {
-      writeu8(static_cast<uint8_t>(m_minigame->minigame_id), m_config.minigame_addr);
-      m_minigameWriteFrames--;
-    }
+    tickFrameWrites();
 
     uint8_t val;
     if (readu8(&val, m_config.scene_addr) == DR_OK && val != m_lastScene) {
@@ -31,10 +28,10 @@ const dr_mp_minigame_t* MarioPartyN64::minigames() const
 
 void MarioPartyN64::doSetMinigame(const dr_mp_minigame_t *minigame)
 {
-  (void)minigame;
   m_core->unserializeFromFile(m_config.state);
-  m_lastScene           = -1;
-  m_minigameWriteFrames = 120;
+  m_lastScene  = -1;
+  uint8_t id = static_cast<uint8_t>(minigame->minigame_id);
+  writeForFrames(m_config.minigame_addr, &id, sizeof(id), false, 120);
   startMinigame();
 }
 

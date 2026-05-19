@@ -104,11 +104,12 @@ static const dr_mp_minigame_t k_minigames[] =
   {nullptr,               DR_MINIGAME_INVALID, 0xFF, 0xFF, DR_NO_QUIRKS},
 };
 
-static const MpGcnConfig k_config =
+static MpGcnConfig buildConfig()
 {
-  .core  = "/media/keith/devtools/libretro/cores/dolphin_libretro.so",
-  .game  = "/media/keith/devtools/libretro/roms/Mario Party 5 (USA).rvz",
-  .state = "/media/keith/devtools/libretro/state/mp5.state.zip",
+  return {
+  .core  = (dr_cores_directory() + "/dolphin_libretro.so").toStdString(),
+  .game  = (dr_roms_directory() + "/Mario Party 5 (USA).rvz").toStdString(),
+  .state = (dr_state_directory() + "/mp5.state.zip").toStdString(),
 
   .scene_miniexplain = 0x07,
   .scene_miniresults = 0x6b,
@@ -134,8 +135,9 @@ static const MpGcnConfig k_config =
 
   .character_ids = k_characterIds,
   .minigames     = k_minigames,
-};
+  };
+}
 
-MarioParty5::MarioParty5(QRetro *sharedCore, QObject *parent) : MarioPartyGcn(k_config, sharedCore, parent)
+MarioParty5::MarioParty5(QRetro *sharedCore, QObject *parent) : MarioPartyGcn(buildConfig(), sharedCore, parent)
 {
 }

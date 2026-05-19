@@ -4,16 +4,10 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 CONFIG += c++17
 
-CONFIG += \
-    QRETRO_CONFIG_NO_CAMERA \
-    QRETRO_CONFIG_NO_LOCATION \
-    QRETRO_CONFIG_NO_MIDI \
-    QRETRO_CONFIG_NO_SENSORS \
-    QRETRO_CONFIG_NO_SYSTEMINFO
-
 include(QRetro/QRetro.pri)
 
 SOURCES += \
+    DrCommon.cpp \
     DrDebug.cpp \
     DrGuest.cpp \
     DrOverlay.cpp \

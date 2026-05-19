@@ -78,11 +78,12 @@ static const dr_mp_minigame_t k_minigames[] =
   {nullptr,                    DR_MINIGAME_INVALID, 0xFF, 0xFF, DR_NO_QUIRKS},
 };
 
-static const MpGcnConfig k_config =
+static MpGcnConfig buildConfig()
 {
-  .core  = "/media/keith/devtools/libretro/cores/dolphin_libretro.so",
-  .game  = "/media/keith/devtools/libretro/roms/Mario Party 4 (USA) (Rev 1).rvz",
-  .state = "/media/keith/devtools/libretro/state/mp4.state.zip",
+  return {
+  .core  = (dr_cores_directory() + "/dolphin_libretro.so").toStdString(),
+  .game  = (dr_roms_directory() + "/Mario Party 4 (USA) (Rev 1).rvz").toStdString(),
+  .state = (dr_state_directory() + "/mp4.state.zip").toStdString(),
 
   .scene_miniexplain = 0x03,
   .scene_miniresults = 0x54,
@@ -100,8 +101,9 @@ static const MpGcnConfig k_config =
 
   .character_ids = k_characterIds,
   .minigames     = k_minigames,
-};
+  };
+}
 
-MarioParty4::MarioParty4(QRetro *sharedCore, QObject *parent) : MarioPartyGcn(k_config, sharedCore, parent)
+MarioParty4::MarioParty4(QRetro *sharedCore, QObject *parent) : MarioPartyGcn(buildConfig(), sharedCore, parent)
 {
 }

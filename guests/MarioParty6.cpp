@@ -56,7 +56,7 @@ static const dr_mp_minigame_t k_minigames[] =
   {"Garden Grab",          DR_MINIGAME_2V2,     0x22, 0x28, DR_NO_QUIRKS},
   {"Pixel Perfect",        DR_MINIGAME_2V2,     0x23, 0x29, DR_NO_QUIRKS},
   {"Slot Trot",            DR_MINIGAME_2V2,     0x24, 0x2A, DR_NO_QUIRKS},
-  {"Gondola Glide",        DR_MINIGAME_2V2,     0x25, 0x2B, DR_NO_QUIRKS},
+  {"Gondola Glide",        DR_MINIGAME_2V2,     0x25, 0x2B, DR_NO_QUIRKS}, // sets av info to be widescreen at the end??
   {"Light Breeze",         DR_MINIGAME_2V2,     0x26, 0x2C, DR_NO_QUIRKS},
   {"Body Builder",         DR_MINIGAME_2V2,     0x27, 0x2D, DR_NO_QUIRKS},
   {"Mole-it!",             DR_MINIGAME_2V2,     0x28, 0x2E, DR_NO_QUIRKS},
@@ -110,11 +110,12 @@ static const dr_mp_minigame_t k_minigames[] =
   {nullptr,                DR_MINIGAME_INVALID, 0xFF, 0xFF, DR_NO_QUIRKS},
 };
 
-static const MpGcnConfig k_config =
+static MpGcnConfig buildConfig()
 {
-  .core  = "/media/keith/devtools/libretro/cores/dolphin_libretro.so",
-  .game  = "/media/keith/devtools/libretro/roms/Mario Party 6 (USA).rvz",
-  .state = "/media/keith/devtools/libretro/state/mp6.state.zip",
+  return {
+  .core  = (dr_cores_directory() + "/dolphin_libretro.so").toStdString(),
+  .game  = (dr_roms_directory() + "/Mario Party 6 (USA).rvz").toStdString(),
+  .state = (dr_state_directory() + "/mp6.state.zip").toStdString(),
 
   .scene_miniexplain = 0x04,
   .scene_miniresults = 0x71,
@@ -142,8 +143,9 @@ static const MpGcnConfig k_config =
 
   .character_ids = k_characterIds,
   .minigames     = k_minigames,
-};
+  };
+}
 
-MarioParty6::MarioParty6(QRetro *sharedCore, QObject *parent) : MarioPartyGcn(k_config, sharedCore, parent)
+MarioParty6::MarioParty6(QRetro *sharedCore, QObject *parent) : MarioPartyGcn(buildConfig(), sharedCore, parent)
 {
 }

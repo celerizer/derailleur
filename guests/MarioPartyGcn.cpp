@@ -3,15 +3,10 @@
 MarioPartyGcn::MarioPartyGcn(const MpGcnConfig &config, QRetro *sharedCore, QObject *parent)
   : DrGuest(sharedCore, parent), m_config(config)
 {
-  // Core ownership belongs to CoreDolphin; no loadCore/loadContent here
-
   connect(m_core, &QRetro::frameBegin, this, [this]() {
+    tickFrameWrites();
     if (!m_minigameActive)
       return;
-    if (m_minigameWriteFrames > 0) {
-      writeu16(m_minigame->minigame_id, m_config.minigame_addr, true);
-      m_minigameWriteFrames--;
-    }
 
     int32_t val;
     if (reads32(&val, m_config.scene_addr, true) == DR_OK && val != m_lastScene) {
@@ -30,9 +25,9 @@ const dr_mp_minigame_t* MarioPartyGcn::minigames() const
 
 void MarioPartyGcn::doSetMinigame(const dr_mp_minigame_t *minigame)
 {
-  (void)minigame;
-  m_lastScene           = -1;
-  m_minigameWriteFrames = 120;
+  m_lastScene  = -1;
+  uint16_t id = minigame->minigame_id;
+  writeForFrames(m_config.minigame_addr, &id, sizeof(id), true, 120);
   startMinigame();
 }
 

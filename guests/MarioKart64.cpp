@@ -1,8 +1,5 @@
 #include "MarioKart64.h"
 
-#define N64_CORE "/media/keith/devtools/libretro/cores/mupen64plus_next_libretro.so"
-#define N64_GAME "/media/keith/devtools/libretro/roms/Mario Kart 64 (USA).z64"
-#define N64_STATE "/media/keith/devtools/libretro/state/mk64.state.zip"
 
 static const size_t MK64_MENU_CHAR_ADDR[4] = { 0x8018EDE7, 0x8018EDE6, 0x8018EDE5, 0x8018EDE4 };
 static const size_t MK64_REAL_CHAR_ADDR[4] = { 0x800e86ab, 0x800e86aa, 0x800e86a9, 0x800e86a8 };
@@ -79,8 +76,8 @@ MarioKart64::MarioKart64(QObject *parent) : DrGuest(parent)
 {
   m_core = new QRetro();
   m_ownCore = true;
-  m_core->loadCore(N64_CORE);
-  m_core->loadContent(N64_GAME);
+  m_core->loadCore(dr_core_path(DR_CORE_MUPEN64PLUSNEXT).toUtf8().constData());
+  m_core->loadContent((dr_roms_directory() + "/Mario Kart 64 (USA).z64").toUtf8().constData());
 
   connect(m_core, &QRetro::frameBegin, this, [this]() {
     if (m_lapsFreezeFrames > 0) {
@@ -114,7 +111,7 @@ void MarioKart64::doSetMinigame(const dr_mp_minigame_t *minigame)
 {
   unsigned id = minigame->minigame_id;
   startMinigame();
-  m_core->unserializeFromFile(N64_STATE);
+  m_core->unserializeFromFile(dr_state_directory() + "/mk64.state.zip");
   m_core->memory().writeValue<uint8_t>(id % 4, MK64_COURSE_ADDR);
   m_core->memory().writeValue<uint8_t>(id / 4, MK64_CUP_ADDR);
 

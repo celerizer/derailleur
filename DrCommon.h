@@ -1,6 +1,8 @@
 #ifndef DR_COMMON_H
 #define DR_COMMON_H
 
+#include <QString>
+
 typedef enum
 {
   DR_CHARACTER_INVALID = 0,
@@ -241,17 +243,12 @@ static inline const char* dr_character_name(dr_character c)
   }
 }
 
-static inline const char* dr_core_path(dr_core core)
-{
-  switch (core)
-  {
-  case DR_CORE_MUPEN64PLUSNEXT:
-    return "/media/keith/devtools/libretro/cores/mupen64plus_next_libretro.so";
-  case DR_CORE_DOLPHIN:
-    return "/media/keith/devtools/libretro/cores/dolphin_libretro.so";
-  default:
-    return nullptr;
-  }
-}
+QString dr_roms_directory(void);
+void    dr_set_roms_directory(const QString &path);
+QString dr_cores_directory(void);
+void    dr_set_cores_directory(const QString &path);
+QString dr_state_directory(void);
+void    dr_set_state_directory(const QString &path);
+QString dr_core_path(dr_core core);
 
 #endif

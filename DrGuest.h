@@ -14,6 +14,7 @@ class DrGuest : public QObject
 public:
   // N64-style: subclass creates its own QRetro in its constructor and assigns m_core
   DrGuest(QObject *parent = nullptr) : QObject(parent) {}
+
   // GCN-style: receives a shared QRetro it does not own
   explicit DrGuest(QRetro *sharedCore, QObject *parent = nullptr)
     : QObject(parent), m_core(sharedCore), m_ownCore(false) {}
@@ -34,9 +35,23 @@ public:
   dr_error setPlayerDifficulty(unsigned index, dr_difficulty difficulty);
   dr_error setPlayerTeam(unsigned index, dr_team_color color, dr_team_type type, unsigned team_id);
 
-  void pause()    { if (m_core) m_core->pause(); }
-  void unpause()  { if (m_core) m_core->unpause(); }
-  void startCore(){ if (m_core) m_core->startCore(); }
+  void pause(void)
+  {
+    if (m_core)
+      m_core->pause();
+  }
+  
+  void unpause(void)
+  {
+    if (m_core)
+      m_core->unpause();
+  }
+  
+  void startCore(void)
+  {
+    if (m_core)
+      m_core->startCore();
+  }
 
 protected:
   dr_error readu8(uint8_t *out, size_t addr, bool big_endian = false);
@@ -55,11 +70,17 @@ protected:
   void log(unsigned level, const char *message);
   void startMinigame();
   void finishMinigame();
+  void writeForFrames(size_t addr, const void *value, unsigned bytes, bool big_endian, int frames);
+  void tickFrameWrites(void);
 
   QRetro                  *m_core          = nullptr;
   bool                     m_ownCore       = false;
   bool                     m_minigameActive = false;
   const dr_mp_minigame_t  *m_minigame       = nullptr;
+
+private:
+  struct FrameWrite { size_t addr; QByteArray data; bool big_endian; int frames; };
+  QList<FrameWrite> m_frameWrites;
 
   virtual void doSetMinigame(const dr_mp_minigame_t *minigame) = 0;
   virtual dr_error doSetPlayerCharacter(unsigned index, dr_character character) = 0;

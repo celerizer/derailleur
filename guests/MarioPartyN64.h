@@ -2,12 +2,13 @@
 #define DR_GUEST_MARIO_PARTY_N64_H
 
 #include "../DrGuest.h"
+#include <string>
 
 struct MpN64Config
 {
-  const char *core;
-  const char *game;
-  const char *state;
+  std::string core;
+  std::string game;
+  std::string state;
 
   int scene_miniexplain;
   int scene_miniresults;
@@ -46,7 +47,6 @@ public:
 
 private:
   MpN64Config m_config;
-  int         m_minigameWriteFrames = 0;
   int16_t     m_lastScene           = -1;
 };
 

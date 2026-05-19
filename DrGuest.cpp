@@ -135,6 +135,26 @@ dr_error DrGuest::writes32(int32_t val, size_t addr, bool big_endian)
   return writeu32(static_cast<uint32_t>(val), addr, big_endian);
 }
 
+void DrGuest::writeForFrames(size_t addr, const void *value, unsigned bytes, bool big_endian, int frames)
+{
+  m_frameWrites.append({addr, QByteArray(static_cast<const char *>(value), bytes), big_endian, frames});
+}
+
+void DrGuest::tickFrameWrites(void)
+{
+  for (auto it = m_frameWrites.begin(); it != m_frameWrites.end(); ) {
+    switch (it->data.size()) {
+    case 1: writeu8(*reinterpret_cast<const uint8_t *>(it->data.constData()), it->addr, it->big_endian); break;
+    case 2: writeu16(*reinterpret_cast<const uint16_t *>(it->data.constData()), it->addr, it->big_endian); break;
+    case 4: writeu32(*reinterpret_cast<const uint32_t *>(it->data.constData()), it->addr, it->big_endian); break;
+    }
+    if (--it->frames <= 0)
+      it = m_frameWrites.erase(it);
+    else
+      ++it;
+  }
+}
+
 void DrGuest::log(unsigned level, const char *message)
 {
   emit logMessage(level, QString::fromUtf8(message));
@@ -145,16 +165,13 @@ void DrGuest::setMinigame(const dr_mp_minigame_t *minigame)
   if (!m_core) return;
   m_minigame = minigame;
 
-  /** @todo move this somewhere else */
-  m_core->options()->setOptionValue("dolphin_fastmem", "disabled");
-  m_core->options()->setOptionValue("dolphin_main_cpu_thread", "disabled");
-
   /* Apply emulation quirks for the minigame */
   if (minigame)
   {
     const char *option_value = nullptr;
 
     /// Graphics > Settings > Texture Cache Accuracy
+    /// 128=Normal, 512=Fast, 0=Safe
     if (minigame->quirks.dolphin.needs_safe_texture_cache)
     {
       log(DR_LOG_INFO, "Mini-game requires safe texture cache, enabling...");
@@ -165,6 +182,7 @@ void DrGuest::setMinigame(const dr_mp_minigame_t *minigame)
     m_core->options()->setOptionValue("dolphin_texture_cache_accuracy", option_value);
 
     /// Graphics > Hacks > Skip EFB Copy to RAM
+    /// All the negative negation makes this look like a typo, but it's not
     if (minigame->quirks.dolphin.needs_efb_to_texture)
     {
       log(DR_LOG_INFO, "Mini-game requires EFB copy to RAM, enabling...");

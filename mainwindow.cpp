@@ -24,8 +24,6 @@
 #define SHOW_OVERLAY 1
 #define SHOW_DEBUG 1
 
-#define N64_CORE "/media/keith/devtools/libretro/cores/mupen64plus_next_libretro.so"
-#define N64_GAME "/media/keith/devtools/libretro/roms/Mario Party 3 (USA).z64"
 #define N64_SCENE_ADDR 0x800ce200
 #define N64_SCENE_MINIEXPLAIN 0x70
 #define N64_SCENE_MINIRESULTS 0x71
@@ -97,8 +95,8 @@ MainWindow::MainWindow(QWidget *parent)
   //m_Guests->add(new SmashRemix());
 
   m_RetroB = new QRetro();
-  m_RetroB->loadCore(N64_CORE);
-  m_RetroB->loadContent(N64_GAME);
+  m_RetroB->loadCore(dr_core_path(DR_CORE_MUPEN64PLUSNEXT).toUtf8().constData());
+  m_RetroB->loadContent((dr_roms_directory() + "/Mario Party 3 (USA).z64").toUtf8().constData());
 
   for (DrGuest *guest : m_Guests->guests())
     guest->startCore();
@@ -162,10 +160,10 @@ MainWindow::MainWindow(QWidget *parent)
   connect(m_Debug, &DrDebug::minigameRequested, this, [this](DrGuest *guest, const dr_mp_minigame_t *minigame) {
     dr_player_t players[4] = {};
     bool playerValid[4] = { true, true, true, true };
-    players[0] = { DR_CHARACTER_MARIO,       DR_CONTROL_PORT_P1, DR_CONTROL_TYPE_HUMAN, DR_DIFFICULTY_NORMAL, DR_TEAM_COLOR_BLUE, DR_TEAM_TYPE_4P, 0 };
-    players[1] = { DR_CHARACTER_LUIGI,       DR_CONTROL_PORT_P2, DR_CONTROL_TYPE_CPU,   DR_DIFFICULTY_NORMAL, DR_TEAM_COLOR_BLUE, DR_TEAM_TYPE_4P, 1 };
-    players[2] = { DR_CHARACTER_PEACH,       DR_CONTROL_PORT_P3, DR_CONTROL_TYPE_CPU,   DR_DIFFICULTY_NORMAL, DR_TEAM_COLOR_BLUE, DR_TEAM_TYPE_4P, 2 };
-    players[3] = { DR_CHARACTER_DONKEY_KONG, DR_CONTROL_PORT_P4, DR_CONTROL_TYPE_CPU,   DR_DIFFICULTY_NORMAL, DR_TEAM_COLOR_BLUE, DR_TEAM_TYPE_4P, 3 };
+    players[0] = { DR_CHARACTER_DAISY, DR_CONTROL_PORT_P1, DR_CONTROL_TYPE_HUMAN, DR_DIFFICULTY_HARD,      DR_TEAM_COLOR_BLUE, DR_TEAM_TYPE_4P, 0 };
+    players[1] = { DR_CHARACTER_WARIO, DR_CONTROL_PORT_P2, DR_CONTROL_TYPE_CPU,   DR_DIFFICULTY_VERY_HARD, DR_TEAM_COLOR_BLUE, DR_TEAM_TYPE_4P, 1 };
+    players[2] = { DR_CHARACTER_YOSHI, DR_CONTROL_PORT_P3, DR_CONTROL_TYPE_CPU,   DR_DIFFICULTY_EASY,      DR_TEAM_COLOR_BLUE, DR_TEAM_TYPE_4P, 2 };
+    players[3] = { DR_CHARACTER_LUIGI, DR_CONTROL_PORT_P4, DR_CONTROL_TYPE_CPU,   DR_DIFFICULTY_NORMAL,    DR_TEAM_COLOR_BLUE, DR_TEAM_TYPE_4P, 3 };
     launchMinigame(guest, minigame, players, playerValid);
   });
 #endif
@@ -192,6 +190,9 @@ MainWindow::MainWindow(QWidget *parent)
     for (unsigned i = 0; i < 4; i++) {
       auto result = guest->minigameResult(i);
 
+      /// @todo actually fix this
+      result.bonus_coins = 0;
+
       uint8_t chr = 0;
       m_RetroB->memory().readValue<uint8_t>(&chr, N64_CHAR_ADDR[i]);
       dr_character character = (chr < sizeof(N64_CHAR_TO_DR) / sizeof(*N64_CHAR_TO_DR))
@@ -206,23 +207,25 @@ MainWindow::MainWindow(QWidget *parent)
       m_RetroB->memory().writeValue<uint8_t>(
         static_cast<uint8_t>(result.coins), N64_RESULT_ADDR[i]);
     }
+    m_n64Writing = 30;
+    m_n64Last    = 0xFF;
     showHost();
   }, Qt::QueuedConnection);
 
-  connect(m_RetroB, &QRetro::frameBegin, this, [this, last = uint8_t(0xFF), writing = 0]() mutable {
+  connect(m_RetroB, &QRetro::frameBegin, this, [this]() {
     if (m_RetroB->frames() > 120) {
-      if (writing > 0) {
+      if (m_n64Writing > 0) {
         m_RetroB->memory().writeValue<uint8_t>(N64_SCENE_MINIRESULTS, N64_SCENE_ADDR);
-        if (--writing == 0)
-          last = N64_SCENE_MINIRESULTS;
+        if (--m_n64Writing == 0)
+          m_n64Last = N64_SCENE_MINIRESULTS;
         return;
       }
       uint8_t val;
-      if (m_RetroB->memory().readValue<uint8_t>(&val, N64_SCENE_ADDR) && val != last) {
+      if (m_RetroB->memory().readValue<uint8_t>(&val, N64_SCENE_ADDR) && val != m_n64Last) {
         QMetaObject::invokeMethod(m_Logger, "message", Qt::QueuedConnection,
           Q_ARG(unsigned, DR_LOG_INFO),
           Q_ARG(QString, QString("N64_SCENE_ADDR: 0x%1").arg(val, 2, 16, QChar('0'))));
-        last = val;
+        m_n64Last = val;
         if (val == N64_SCENE_MINIEXPLAIN) {
           static const size_t N64_CHAR_ADDR[4] = { N64_P1_CHARACTER_ADDR, N64_P2_CHARACTER_ADDR, N64_P3_CHARACTER_ADDR, N64_P4_CHARACTER_ADDR };
           static const size_t N64_CTRL_ADDR[4] = { N64_P1_CONTROLLER_ADDR, N64_P2_CONTROLLER_ADDR, N64_P3_CONTROLLER_ADDR, N64_P4_CONTROLLER_ADDR };
@@ -340,7 +343,7 @@ MainWindow::MainWindow(QWidget *parent)
               QMetaObject::invokeMethod(this, [this, mgType, players, playerValid]() {
                 launchMinigame(mgType, players, playerValid);
               }, Qt::QueuedConnection);
-              writing = 30;
+              m_n64Writing = 30;
             }
           }
         }
@@ -356,13 +359,26 @@ void MainWindow::launchMinigame(DrGuest *guest, const dr_mp_minigame_t *minigame
   if (!m_Guests->activateGuest(guest))
     return;
 
-  showGuests();
-  guest->core()->audio()->setVolume(0);
-  QTimer::singleShot(100, this, [this, guest, minigame, players = std::array<dr_player_t, 4>{players[0], players[1], players[2], players[3]}, playerValid = std::array<bool, 4>{playerValid[0], playerValid[1], playerValid[2], playerValid[3]}]() {
+#if SHOW_OVERLAY
+  {
+    QScreen *screen = windowHandle() ? windowHandle()->screen() : QGuiApplication::primaryScreen();
+    m_Overlay->hold(screen->grabWindow(m_RetroB->winId()));
+  }
+#endif
+
+  QTimer::singleShot(32, this, [this, guest, minigame, players = std::array<dr_player_t, 4>{players[0], players[1], players[2], players[3]}, playerValid = std::array<bool, 4>{playerValid[0], playerValid[1], playerValid[2], playerValid[3]}]() {
+    m_RetroB->pause();
+    m_Stack->setCurrentIndex(0);
+    for (DrGuest *g : m_Guests->guests())
+      g->pause();
+
+    guest->core()->audio()->setVolume(0);
     guest->setMinigame(minigame);
-    guest->core()->audio()->setVolume(100);
     for (unsigned i = 0; i < 4; i++)
       if (playerValid[i]) guest->setPlayer(i, players[i]);
+    guest->core()->audio()->setVolume(100);
+    guest->unpause();
+
 #if SHOW_OVERLAY
     m_Overlay->fadeOut();
 #endif
@@ -376,13 +392,26 @@ void MainWindow::launchMinigame(dr_minigame_type type, const dr_player_t players
   if (!guest)
     return;
 
-  showGuests();
-  guest->core()->audio()->setVolume(0);
-  QTimer::singleShot(100, this, [this, guest, minigame, players = std::array<dr_player_t, 4>{players[0], players[1], players[2], players[3]}, playerValid = std::array<bool, 4>{playerValid[0], playerValid[1], playerValid[2], playerValid[3]}]() {
+#if SHOW_OVERLAY
+  {
+    QScreen *screen = windowHandle() ? windowHandle()->screen() : QGuiApplication::primaryScreen();
+    m_Overlay->hold(screen->grabWindow(m_RetroB->winId()));
+  }
+#endif
+
+  QTimer::singleShot(32, this, [this, guest, minigame, players = std::array<dr_player_t, 4>{players[0], players[1], players[2], players[3]}, playerValid = std::array<bool, 4>{playerValid[0], playerValid[1], playerValid[2], playerValid[3]}]() {
+    m_RetroB->pause();
+    m_Stack->setCurrentIndex(0);
+    for (DrGuest *g : m_Guests->guests())
+      g->pause();
+
+    guest->core()->audio()->setVolume(0);
     guest->setMinigame(minigame);
-    guest->core()->audio()->setVolume(100);
     for (unsigned i = 0; i < 4; i++)
       if (playerValid[i]) guest->setPlayer(i, players[i]);
+    guest->core()->audio()->setVolume(100);
+    guest->unpause();
+
 #if SHOW_OVERLAY
     m_Overlay->fadeOut();
 #endif

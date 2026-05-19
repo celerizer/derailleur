@@ -21,7 +21,20 @@ CoreDolphin::~CoreDolphin()
 void CoreDolphin::addGame(MarioPartyGcn *game)
 {
   if (m_games.isEmpty())
-    m_core->loadCore(game->config().core);
+  {
+    m_core->loadCore(game->config().core.c_str());
+
+    // Apply Dolphin settings we will need
+    // See: https://github.com/classicslive/QRetro/blob/master/docs/Cores.md#Dolphin
+
+    // Core > Dual Core Mode
+    // Needs to be disabled for serialization to work.
+    m_core->options()->setOptionValue("dolphin_main_cpu_thread", "disabled");
+    
+    // Core > Fastmem
+    // Needs to be disabled for multi-instancing to work.
+    m_core->options()->setOptionValue("dolphin_fastmem", "disabled");
+  }
 
   m_games.append(game);
 
@@ -41,7 +54,7 @@ void CoreDolphin::finalizeGames()
   {
     QTextStream out(&m3u);
     for (MarioPartyGcn *game : m_games)
-      out << game->config().game << "\n";
+      out << game->config().game.c_str() << "\n";
   }
 
   m_core->loadContent(m_m3uPath.toStdString().c_str());
@@ -90,22 +103,38 @@ void CoreDolphin::doSetMinigame(const dr_mp_minigame_t *minigame)
   int discIndex = m_games.indexOf(owner);
   if (discIndex != m_discIndex)
   {
-    m_core->swapDisc(discIndex);
+    m_core->show();
+    m_core->diskControl()->setEjectState(true);
+    m_core->diskControl()->setImageIndex(discIndex);
+    m_core->diskControl()->setEjectState(false);
     m_discIndex = discIndex;
+
+    // Spin for 60 frames while the disc takes (MPGC needed about this much)
+    m_core->unpause();
     for (int i = 0; i < 60; i++)
     {
       m_core->waitFrames(1);
       QApplication::processEvents();
     }
+    m_core->pause();
   }
 
   // Load the per-game savestate
-  m_core->unserializeFromFile(owner->config().state);
+  m_core->unserializeFromFile(QString::fromStdString(owner->config().state));
   QApplication::processEvents();
 
   // Delegate game-specific setup (writes minigame_id etc.)
   owner->setMinigame(minigame);
   QApplication::processEvents();
+
+  // Spin again (this was the time needed for MP6 to draw a new frame)
+  m_core->unpause();
+  for (int i = 0; i < 48; i++)
+  {
+    m_core->waitFrames(1);
+    QApplication::processEvents();
+  }
+  m_core->pause();
 }
 
 dr_error CoreDolphin::doSetPlayerCharacter(unsigned index, dr_character character)

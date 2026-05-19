@@ -2,12 +2,13 @@
 #define DR_GUEST_MARIO_PARTY_GCN_H
 
 #include "../DrGuest.h"
+#include <string>
 
 struct MpGcnConfig
 {
-  const char *core;
-  const char *game;
-  const char *state;
+  std::string core;
+  std::string game;
+  std::string state;
 
   int scene_miniexplain;
   int scene_miniresults;
@@ -48,7 +49,6 @@ public:
 
 private:
   MpGcnConfig  m_config;
-  int          m_minigameWriteFrames = 0;
   int32_t      m_lastScene           = -1;
 };
 
