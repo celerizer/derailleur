@@ -1,8 +1,8 @@
 #include "DrCommon.h"
 
-static QString s_romsDir  = "/media/keith/devtools/libretro/roms";
-static QString s_coresDir = "/media/keith/devtools/libretro/cores";
-static QString s_stateDir = "/media/keith/devtools/libretro/state";
+static QString s_romsDir  = "roms";
+static QString s_coresDir = "cores";
+static QString s_stateDir = "state";
 
 QString dr_roms_directory(void)              { return s_romsDir;  }
 void    dr_set_roms_directory(const QString &path)  { s_romsDir  = path; }
