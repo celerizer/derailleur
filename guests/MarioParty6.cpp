@@ -135,8 +135,8 @@ static MpGcnConfig buildConfig()
   // coin star
   // coin star again?
   // idk
-  //.bonus_result_addr     = { 0x80265776, 0x00000000, 0x00000000, 0x00000000 },
-  .result_addr     = { 0x80265778, 0x80265880, 0x80265988, 0x80265a90 },
+  .bonus_result_addr = { 0x80265776, 0x8026587e, 0x80265986, 0x80265a8e },
+  .result_addr       = { 0x80265778, 0x80265880, 0x80265988, 0x80265a90 },
 
   //.stars_addr     = { 0x80265780, 0x00000000, 0x00000000, 0x00000000 },
   //.max_stars?_addr     = { 0x80265782, 0x00000000, 0x00000000, 0x00000000 },

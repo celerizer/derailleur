@@ -20,6 +20,7 @@ public:
 
   const char               *name()                  const override { return "Dolphin"; }
   const dr_mp_minigame_t   *minigames()              const override { return m_flatList; }
+  QList<DrMinigameGroup>    minigameGroups()         const override;
   dr_minigame_result_t      minigameResult(unsigned index) override;
 
 protected:

@@ -22,6 +22,10 @@ struct MpGcnConfig
   size_t team_addr[4];
   size_t bot_addr[4];
 
+  /// The secondary coin amount gained from a mini-game
+  size_t bonus_result_addr[4];
+
+  /// The primary coin amount gained from a mini-game, usually 0 or 10
   size_t result_addr[4];
 
   const uint16_t *character_ids;

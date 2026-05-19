@@ -2,10 +2,17 @@
 #define DR_GUEST_H
 
 #include "DrCommon.h"
+#include <QList>
 #include <QObject>
 #include <QRetro.h>
 #include <QString>
 #include <QtEndian>
+
+struct DrMinigameGroup
+{
+  const char                   *name;
+  QList<const dr_mp_minigame_t*> minigames;
+};
 
 class DrGuest : public QObject
 {
@@ -23,9 +30,10 @@ public:
 
   QRetro *core() const { return m_core; }
 
-  virtual dr_minigame_result_t minigameResult(unsigned index) = 0;
+  virtual dr_minigame_result_t    minigameResult(unsigned index) = 0;
   virtual const dr_mp_minigame_t* minigames() const = 0;
-  virtual const char* name(void) const = 0;
+  virtual const char*             name(void) const = 0;
+  virtual QList<DrMinigameGroup>  minigameGroups() const;
   void setMinigame(const dr_mp_minigame_t *minigame);
 
   dr_error setPlayer(unsigned index, const dr_player_t &player);

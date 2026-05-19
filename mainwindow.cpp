@@ -190,9 +190,6 @@ MainWindow::MainWindow(QWidget *parent)
     for (unsigned i = 0; i < 4; i++) {
       auto result = guest->minigameResult(i);
 
-      /// @todo actually fix this
-      result.bonus_coins = 0;
-
       uint8_t chr = 0;
       m_RetroB->memory().readValue<uint8_t>(&chr, N64_CHAR_ADDR[i]);
       dr_character character = (chr < sizeof(N64_CHAR_TO_DR) / sizeof(*N64_CHAR_TO_DR))
@@ -201,7 +198,10 @@ MainWindow::MainWindow(QWidget *parent)
 #if SHOW_LOGGER
       if (m_Logger)
         m_Logger->message(DR_LOG_INFO,
-          QString("%1 gets %2 coins").arg(dr_character_name(character)).arg(result.coins));
+          QString("%1 gets %2 coins").arg(dr_character_name(character)).arg(
+            (result.coins && result.bonus_coins)
+              ? QString("%1+%2").arg(result.coins).arg(result.bonus_coins)
+              : QString::number(result.coins ? result.coins : result.bonus_coins)));
 #endif
 
       m_RetroB->memory().writeValue<uint8_t>(
@@ -290,9 +290,6 @@ MainWindow::MainWindow(QWidget *parent)
               log(DR_LOG_WARN, QString("skipping minigame: teams = [%1, %2, %3, %4]")
                 .arg(teamBytes[0]).arg(teamBytes[1]).arg(teamBytes[2]).arg(teamBytes[3]));
             } else {
-              log(DR_LOG_INFO, QString("starting minigame: teams = [%1, %2, %3, %4]")
-                .arg(teamBytes[0]).arg(teamBytes[1]).arg(teamBytes[2]).arg(teamBytes[3]));
-
               // Read N64 memory on the timing thread, then hand off to GUI thread
               dr_player_t players[4] = {};
               bool playerValid[4] = {};
@@ -310,7 +307,8 @@ MainWindow::MainWindow(QWidget *parent)
                   p.control_type = (bot & 0x01) ? DR_CONTROL_TYPE_CPU : DR_CONTROL_TYPE_HUMAN;
                   p.control_port = static_cast<dr_control_port>(DR_CONTROL_PORT_P1 + ctrl);
                   p.team_color   = static_cast<dr_team_color>(panelColors[i]);
-                  p.team_id      = teamBytes[i];
+                  for (unsigned j = 0; j < numTeams; j++)
+                    if (teamVals[j] == teamBytes[i]) { p.team_id = j; break; }
                   playerValid[i] = true;
                 }
               }
@@ -339,6 +337,33 @@ MainWindow::MainWindow(QWidget *parent)
                   if (playerValid[i]) players[i].team_type = DR_TEAM_TYPE_SOLO;
               }
 
+              // Build log: group players by team_color in first-seen order
+              {
+                dr_team_color colorOrder[4] = {};
+                int numColors = 0;
+                for (unsigned i = 0; i < 4; i++) {
+                  if (!playerValid[i]) continue;
+                  dr_team_color c = players[i].team_color;
+                  bool found = false;
+                  for (int j = 0; j < numColors; j++)
+                    if (colorOrder[j] == c) { found = true; break; }
+                  if (!found) colorOrder[numColors++] = c;
+                }
+                bool showColors = (numColors > 1);
+                QStringList groups;
+                for (int ci = 0; ci < numColors; ci++) {
+                  QStringList names;
+                  for (unsigned i = 0; i < 4; i++)
+                    if (playerValid[i] && players[i].team_color == colorOrder[ci])
+                      names.append(dr_character_name(players[i].character));
+                  groups.append(showColors
+                    ? QString("%1: %2").arg(dr_team_color_name(colorOrder[ci])).arg(names.join(", "))
+                    : names.join(", "));
+                }
+                log(DR_LOG_INFO, QString("starting %1: %2")
+                  .arg(dr_minigame_type_name(mgType)).arg(groups.join(" | ")));
+              }
+
               // All Qt widget and guest-core operations must run on the GUI thread
               QMetaObject::invokeMethod(this, [this, mgType, players, playerValid]() {
                 launchMinigame(mgType, players, playerValid);
@@ -346,6 +371,29 @@ MainWindow::MainWindow(QWidget *parent)
               m_n64Writing = 30;
             }
           }
+        } else if (val == 0x74) { // @todo remove temporary diagnostic
+          static const size_t N64_RESULT_ADDR[4] = {
+            N64_P1_MINIGAMERESULT_ADDR, N64_P2_MINIGAMERESULT_ADDR,
+            N64_P3_MINIGAMERESULT_ADDR, N64_P4_MINIGAMERESULT_ADDR
+          };
+          static const size_t N64_CHAR_ADDR[4] = {
+            N64_P1_CHARACTER_ADDR, N64_P2_CHARACTER_ADDR,
+            N64_P3_CHARACTER_ADDR, N64_P4_CHARACTER_ADDR
+          };
+          QString msg = "0x74 results:";
+          for (unsigned i = 0; i < 4; i++) {
+            uint8_t coins = 0, chr = 0;
+            m_RetroB->memory().readValue<uint8_t>(&coins, N64_RESULT_ADDR[i]);
+            m_RetroB->memory().readValue<uint8_t>(&chr, N64_CHAR_ADDR[i]);
+            dr_character character = (chr < sizeof(N64_CHAR_TO_DR) / sizeof(*N64_CHAR_TO_DR))
+              ? N64_CHAR_TO_DR[chr] : DR_CHARACTER_INVALID;
+            msg += QString(" %1:%2").arg(dr_character_name(character)).arg(coins);
+          }
+#if SHOW_LOGGER
+          if (m_Logger)
+            QMetaObject::invokeMethod(m_Logger, "message", Qt::QueuedConnection,
+              Q_ARG(unsigned, DR_LOG_INFO), Q_ARG(QString, msg));
+#endif
         }
       }
     }

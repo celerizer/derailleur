@@ -19,31 +19,32 @@ void DrGuestList::add(DrGuest *guest)
 
 DrGuest* DrGuestList::pickMinigame(dr_minigame_type type, const dr_mp_minigame_t *&outMinigame)
 {
-  // Collect eligible guests and their matching minigame pointers
-  struct EligibleGuest { DrGuest *guest; int index; QList<const dr_mp_minigame_t*> minigames; };
-  QList<EligibleGuest> eligible;
+  struct EligibleGroup { DrGuest *guest; int guestIndex; const char *name; QList<const dr_mp_minigame_t*> minigames; };
+  QList<EligibleGroup> eligible;
 
   for (int i = 0; i < m_guests.size(); i++) {
-    QList<const dr_mp_minigame_t*> minigames;
-    for (const dr_mp_minigame_t *mg = m_guests[i]->minigames(); mg->name; mg++)
-      if (mg->type == type && mg->minigame_id != 0xFF)
-        minigames.append(mg);
-    if (!minigames.isEmpty())
-      eligible.append({m_guests[i], i, minigames});
+    for (const DrMinigameGroup &group : m_guests[i]->minigameGroups()) {
+      QList<const dr_mp_minigame_t*> minigames;
+      for (const dr_mp_minigame_t *mg : group.minigames)
+        if (mg->type == type && mg->minigame_id != 0xFF)
+          minigames.append(mg);
+      if (!minigames.isEmpty())
+        eligible.append({m_guests[i], i, group.name, minigames});
+    }
   }
 
   if (eligible.isEmpty())
     return nullptr;
 
-  // Pick a guest with equal probability, then a random minigame from that guest
+  // Pick a group with equal probability, then a random minigame from that group
   const auto &picked = eligible[QRandomGenerator::global()->bounded(eligible.size())];
   outMinigame = picked.minigames[QRandomGenerator::global()->bounded(picked.minigames.size())];
 
-  log(DR_LOG_INFO, qPrintable(QString("guest: %1").arg(picked.guest->name())));
+  log(DR_LOG_INFO, qPrintable(QString("guest: %1").arg(picked.name)));
   log(DR_LOG_INFO, qPrintable(QString("minigame: %1 (0x%2)").arg(outMinigame->name).arg(outMinigame->minigame_id, 2, 16, QChar('0'))));
 
   m_activeGuest = picked.guest;
-  setCurrentIndex(picked.index);
+  setCurrentIndex(picked.guestIndex);
   return picked.guest;
 }
 
@@ -58,16 +59,18 @@ void DrGuestList::logSummary()
   unsigned total = 0;
 
   for (DrGuest *guest : m_guests) {
-    gameNames.append(QString::fromUtf8(guest->name()));
-    for (const dr_mp_minigame_t *mg = guest->minigames(); mg->name; mg++) {
-      if (mg->type < DR_MINIGAME_SIZE)
-        typeCounts[mg->type]++;
-      total++;
+    for (const DrMinigameGroup &group : guest->minigameGroups()) {
+      gameNames.append(QString::fromUtf8(group.name));
+      for (const dr_mp_minigame_t *mg : group.minigames) {
+        if (mg->type < DR_MINIGAME_SIZE)
+          typeCounts[mg->type]++;
+        total++;
+      }
     }
   }
 
   log(DR_LOG_INFO, qPrintable(QString("%1 game(s) loaded: %2")
-    .arg(m_guests.size()).arg(gameNames.join(", "))));
+    .arg(gameNames.size()).arg(gameNames.join(", "))));
 
   QStringList typeParts;
   for (unsigned t = 1; t < DR_MINIGAME_SIZE; t++)

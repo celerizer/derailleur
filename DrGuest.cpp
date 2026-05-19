@@ -1,5 +1,14 @@
 #include "DrGuest.h"
 
+QList<DrMinigameGroup> DrGuest::minigameGroups() const
+{
+  DrMinigameGroup group;
+  group.name = name();
+  for (const dr_mp_minigame_t *mg = minigames(); mg->name; mg++)
+    group.minigames.append(mg);
+  return { group };
+}
+
 dr_error DrGuest::setPlayer(unsigned index, const dr_player_t &player)
 {
   if (index >= 4)

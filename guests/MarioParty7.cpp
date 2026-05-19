@@ -139,7 +139,8 @@ static MpGcnConfig buildConfig()
 
   // struct 2 (size 0x110)
   //.coins_addr      = { 0x80290cbe, 0x80290dce, 0x00000000, 0x00000000 },
-  .result_addr     = { 0x80290cca, 0x80290dda, 0x80290eea, 0x80290ffa },
+  .bonus_result_addr = { 0x80290cc8, 0x80290dd8, 0x80290ee8, 0x80290ff8 },
+  .result_addr       = { 0x80290cca, 0x80290dda, 0x80290eea, 0x80290ffa },
 
   .character_ids = k_characterIds,
   .minigames     = k_minigames,

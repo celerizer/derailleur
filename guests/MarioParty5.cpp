@@ -131,7 +131,8 @@ static MpGcnConfig buildConfig()
   .team_addr       = { 0x8022a04e, 0x8022a058, 0x8022a062, 0x8022a06c },
   .bot_addr        = { 0x8022a050, 0x8022a05a, 0x8022a064, 0x8022a06e },
 
-  .result_addr     = { 0x8022a09c, 0x8022a1a4, 0x8022a2ac, 0x8022a3b4 },
+  .bonus_result_addr = { 0x8022a09a, 0x8022a1a2, 0x8022a2aa, 0x8022a3b2 },
+  .result_addr       = { 0x8022a09c, 0x8022a1a4, 0x8022a2ac, 0x8022a3b4 },
 
   .character_ids = k_characterIds,
   .minigames     = k_minigames,

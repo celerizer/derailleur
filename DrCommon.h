@@ -155,7 +155,7 @@ typedef enum
 
   /**
    * Slightly longer 4P mini-game which ends in a different results scene
-   * Used in: 2 3 
+   * Used in: 2 3
    */
   DR_MINIGAME_BATTLE,
 
@@ -205,6 +205,44 @@ typedef enum
 
   DR_LOG_SIZE
 } dr_log_level;
+
+static inline const char* dr_team_color_name(dr_team_color c)
+{
+  switch (c)
+  {
+  case DR_TEAM_COLOR_BLUE:
+    return "Blue";
+  case DR_TEAM_COLOR_RED:
+    return "Red";
+  default:
+    return "Unknown";
+  }
+}
+
+static inline const char* dr_minigame_type_name(dr_minigame_type t)
+{
+  switch (t)
+  {
+  case DR_MINIGAME_4P:
+    return "4P";
+  case DR_MINIGAME_1V3:
+    return "1v3";
+  case DR_MINIGAME_2V2:
+    return "2v2";
+  case DR_MINIGAME_1P:
+    return "1P";
+  case DR_MINIGAME_BATTLE:
+    return "Battle";
+  case DR_MINIGAME_ITEM:
+    return "Item";
+  case DR_MINIGAME_DUEL:
+    return "Duel";
+  case DR_MINIGAME_GAME_GUY:
+    return "Game Guy";
+  default:
+    return "Unknown";
+  }
+}
 
 static inline const char* dr_character_name(dr_character c)
 {

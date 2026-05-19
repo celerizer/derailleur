@@ -38,6 +38,8 @@ dr_minigame_result_t MarioPartyGcn::minigameResult(unsigned index)
     uint16_t coins;
     if (readu16(&coins, m_config.result_addr[index], true) == DR_OK)
       result.coins = coins;
+    if (readu16(&coins, m_config.bonus_result_addr[index], true) == DR_OK)
+      result.bonus_coins = coins;
   }
   return result;
 }

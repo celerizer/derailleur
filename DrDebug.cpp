@@ -30,9 +30,11 @@ void DrDebug::populate(const QList<DrGuest*> &guests)
   m_entries.clear();
 
   for (DrGuest *guest : guests) {
-    for (const dr_mp_minigame_t *mg = guest->minigames(); mg->name; mg++) {
-      m_combo->addItem(QString("%1 \xe2\x80\x94 %2").arg(guest->name()).arg(mg->name));
-      m_entries.append({guest, mg});
+    for (const DrMinigameGroup &group : guest->minigameGroups()) {
+      for (const dr_mp_minigame_t *mg : group.minigames) {
+        m_combo->addItem(QString("%1 \xe2\x80\x94 %2").arg(group.name).arg(mg->name));
+        m_entries.append({guest, mg});
+      }
     }
   }
 }

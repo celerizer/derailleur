@@ -73,6 +73,20 @@ void CoreDolphin::rebuildFlatList()
   m_flatList[count] = { nullptr, DR_MINIGAME_INVALID, 0xFF, 0xFF, DR_NO_QUIRKS };
 }
 
+QList<DrMinigameGroup> CoreDolphin::minigameGroups() const
+{
+  QList<DrMinigameGroup> result;
+  int i = 0;
+  for (MarioPartyGcn *game : m_games) {
+    DrMinigameGroup group;
+    group.name = game->name();
+    while (i < m_entries.size() && m_entries[i].first == game)
+      group.minigames.append(&m_flatList[i++]);
+    result.append(group);
+  }
+  return result;
+}
+
 dr_minigame_result_t CoreDolphin::minigameResult(unsigned index)
 {
   if (m_delegate)
