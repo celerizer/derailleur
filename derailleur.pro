@@ -10,10 +10,13 @@ SOURCES += \
     DrCommon.cpp \
     DrDebug.cpp \
     DrGuest.cpp \
+    DrHost.cpp \
     DrOverlay.cpp \
     DrGuestList.cpp \
     DrLogger.cpp \
     DrParty.cpp \
+    DrRetro.cpp \
+    hosts/MarioParty3.cpp \
     guests/CoreDolphin.cpp \
     guests/MarioKart64.cpp \
     guests/MarioParty4.cpp \
@@ -29,10 +32,13 @@ SOURCES += \
 HEADERS += \
     DrCommon.h \
     DrDebug.h \
-    DrOverlay.h \
     DrGuest.h \
     DrGuestList.h \
+    DrHost.h \
     DrLogger.h \
+    DrOverlay.h \
+    DrRetro.h \
+    hosts/MarioParty3.h \
     guests/CoreDolphin.h \
     guests/MarioKart64.h \
     guests/MarioParty4.h \
