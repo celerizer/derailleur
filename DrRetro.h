@@ -19,6 +19,7 @@ public:
   ~DrRetro() { if (m_ownCore) delete m_core; }
 
   QRetro *core() const { return m_core; }
+  bool isValid() const { return m_valid; }
 
   void pause()     { if (m_core) m_core->pause(); }
   void unpause()   { if (m_core) m_core->unpause(); }
@@ -44,6 +45,7 @@ protected:
 
   QRetro *m_core    = nullptr;
   bool    m_ownCore = false;
+  bool    m_valid   = true;
 
 private:
   struct FrameWrite { size_t addr; QByteArray data; bool big_endian; int frames; };

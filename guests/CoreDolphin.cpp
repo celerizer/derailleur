@@ -22,7 +22,10 @@ void CoreDolphin::addGame(MarioPartyGcn *game)
 {
   if (m_games.isEmpty())
   {
-    m_core->loadCore(game->config().core.c_str());
+    if (!m_core->loadCore(game->config().core.c_str())) {
+      log(DR_LOG_ERROR, qPrintable(QString("failed to load core: %1").arg(game->config().core.c_str())));
+      m_valid = false;
+    }
 
     // Apply Dolphin settings we will need
     // See: https://github.com/classicslive/QRetro/blob/master/docs/Cores.md#Dolphin
@@ -57,7 +60,10 @@ void CoreDolphin::finalizeGames()
       out << game->config().game.c_str() << "\n";
   }
 
-  m_core->loadContent(m_m3uPath.toStdString().c_str());
+  if (!m_core->loadContent(m_m3uPath.toStdString().c_str())) {
+    log(DR_LOG_ERROR, qPrintable(QString("failed to load content: %1").arg(m_m3uPath)));
+    m_valid = false;
+  }
 }
 
 void CoreDolphin::rebuildFlatList()

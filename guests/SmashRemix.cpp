@@ -142,8 +142,16 @@ SmashRemix::SmashRemix(QObject *parent) : DrGuest(parent)
 {
   m_core = new QRetro();
   m_ownCore = true;
-  m_core->loadCore(dr_core_path(DR_CORE_MUPEN64PLUSNEXT).toUtf8().constData());
-  m_core->loadContent((dr_roms_directory() + "/smashremix.z64").toUtf8().constData());
+  QString corePath = dr_core_path(DR_CORE_MUPEN64PLUSNEXT);
+  QString gamePath = dr_roms_directory() + "/smashremix.z64";
+  if (!m_core->loadCore(corePath.toUtf8().constData())) {
+    log(DR_LOG_ERROR, qPrintable(QString("failed to load core: %1").arg(corePath)));
+    m_valid = false;
+  }
+  if (!m_core->loadContent(gamePath.toUtf8().constData())) {
+    log(DR_LOG_ERROR, qPrintable(QString("failed to load content: %1").arg(gamePath)));
+    m_valid = false;
+  }
 
   connect(m_core, &QRetro::frameBegin, this, [this]() mutable {
     if (m_minigame && m_minigameActive)

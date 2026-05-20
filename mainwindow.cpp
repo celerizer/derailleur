@@ -2,6 +2,7 @@
 
 #include <array>
 #include <QDir>
+#include <QFile>
 #include <QGuiApplication>
 #include <QRetro.h>
 #include <QScreen>
@@ -28,26 +29,68 @@
 MainWindow::MainWindow(QWidget *parent)
   : QMainWindow(parent)
 {
+#if SHOW_LOGGER
+  m_Logger = new DrLogger(nullptr);
+  m_Logger->setWindowTitle("Log");
+  m_Logger->resize(600, 300);
+  m_Logger->show();
+#endif
+
   {
     QDir cwd = QDir::current();
-    QSettings s(cwd.filePath("derailleur.ini"), QSettings::IniFormat);
-    dr_set_roms_directory(s.value("paths/roms",  cwd.filePath("roms")).toString());
-    dr_set_cores_directory(s.value("paths/cores", cwd.filePath("cores")).toString());
-    dr_set_state_directory(s.value("paths/state", cwd.filePath("state")).toString());
+    QString iniPath = cwd.filePath("derailleur.ini");
+    bool iniExisted = QFile::exists(iniPath);
+    QSettings s(iniPath, QSettings::IniFormat);
+    auto load = [&](const char *key, const QString &def) {
+      if (!s.contains(key)) s.setValue(key, def);
+      return s.value(key).toString();
+    };
+    dr_set_roms_directory(load("paths/roms",   cwd.filePath("roms")));
+    dr_set_cores_directory(load("paths/cores", cwd.filePath("cores")));
+    dr_set_state_directory(load("paths/state", cwd.filePath("state")));
+    s.sync();
+#if SHOW_LOGGER
+    if (!iniExisted)
+      m_Logger->message(DR_LOG_INFO, QString("created %1").arg(iniPath));
+    else
+      m_Logger->message(DR_LOG_INFO, QString("loaded %1").arg(iniPath));
+    m_Logger->message(DR_LOG_INFO, QString("paths/roms: %1").arg(dr_roms_directory()));
+    m_Logger->message(DR_LOG_INFO, QString("paths/cores: %1").arg(dr_cores_directory()));
+    m_Logger->message(DR_LOG_INFO, QString("paths/state: %1").arg(dr_state_directory()));
+#endif
   }
 
   m_Guests = new DrGuestList(this);
+#if SHOW_LOGGER
+  connect(m_Guests, &DrGuestList::logMessage, m_Logger, &DrLogger::message, Qt::QueuedConnection);
+#endif
+
   auto *dolphin = new CoreDolphin(this);
   dolphin->addGame(new MarioParty4(dolphin->core(), dolphin));
   dolphin->addGame(new MarioParty5(dolphin->core(), dolphin));
   dolphin->addGame(new MarioParty6(dolphin->core(), dolphin));
   dolphin->addGame(new MarioParty7(dolphin->core(), dolphin));
   dolphin->finalizeGames();
-  m_Guests->add(dolphin);
-  //m_Guests->add(new MarioKart64());
-  //m_Guests->add(new SmashRemix());
+  if (dolphin->isValid())
+    m_Guests->add(dolphin);
+
+  auto addGuest = [this](DrGuest *g) {
+    if (g->isValid()) m_Guests->add(g);
+    else delete g;
+  };
+  addGuest(new MarioKart64());
+  addGuest(new SmashRemix());
+
+#if SHOW_LOGGER
+  for (DrGuest *guest : m_Guests->guests())
+    connect(guest, &DrRetro::logMessage, m_Logger, &DrLogger::message, Qt::QueuedConnection);
+  m_Guests->logSummary();
+#endif
 
   m_Host = new MarioParty3(this);
+#if SHOW_LOGGER
+  connect(m_Host, &DrRetro::logMessage, m_Logger, &DrLogger::message, Qt::QueuedConnection);
+#endif
 
   for (DrGuest *guest : m_Guests->guests())
     guest->startCore();
@@ -88,19 +131,6 @@ MainWindow::MainWindow(QWidget *parent)
     }
   });
   warmupTimer->start();
-
-#if SHOW_LOGGER
-  m_Logger = new DrLogger(nullptr);
-  m_Logger->setWindowTitle("Log");
-  m_Logger->resize(600, 300);
-  m_Logger->show();
-
-  for (DrGuest *guest : m_Guests->guests())
-    connect(guest, &DrRetro::logMessage, m_Logger, &DrLogger::message, Qt::QueuedConnection);
-  connect(m_Guests, &DrGuestList::logMessage, m_Logger, &DrLogger::message, Qt::QueuedConnection);
-  connect(m_Host, &DrRetro::logMessage, m_Logger, &DrLogger::message, Qt::QueuedConnection);
-  m_Guests->logSummary();
-#endif
 
 #if SHOW_DEBUG
   m_Debug = new DrDebug(nullptr);

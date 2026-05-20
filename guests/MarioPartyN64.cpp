@@ -5,8 +5,14 @@ MarioPartyN64::MarioPartyN64(const MpN64Config &config, QObject *parent)
 {
   m_core = new QRetro();
   m_ownCore = true;
-  m_core->loadCore(m_config.core.c_str());
-  m_core->loadContent(m_config.game.c_str());
+  if (!m_core->loadCore(m_config.core.c_str())) {
+    log(DR_LOG_ERROR, qPrintable(QString("failed to load core: %1").arg(m_config.core.c_str())));
+    m_valid = false;
+  }
+  if (!m_core->loadContent(m_config.game.c_str())) {
+    log(DR_LOG_ERROR, qPrintable(QString("failed to load content: %1").arg(m_config.game.c_str())));
+    m_valid = false;
+  }
 
   connect(m_core, &QRetro::frameBegin, this, [this]() {
     tickFrameWrites();

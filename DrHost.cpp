@@ -10,8 +10,14 @@ DrHost::DrHost(const DrHostConfig &config, QObject *parent)
 {
   m_core     = new QRetro();
   m_ownCore  = true;
-  m_core->loadCore(config.core.c_str());
-  m_core->loadContent(config.game.c_str());
+  if (!m_core->loadCore(config.core.c_str())) {
+    log(DR_LOG_ERROR, qPrintable(QString("failed to load core: %1").arg(config.core.c_str())));
+    m_valid = false;
+  }
+  if (!m_core->loadContent(config.game.c_str())) {
+    log(DR_LOG_ERROR, qPrintable(QString("failed to load content: %1").arg(config.game.c_str())));
+    m_valid = false;
+  }
 
   connect(m_core, &QRetro::frameBegin, this, [this]() {
     if (m_core->frames() <= 120)
