@@ -14,7 +14,6 @@ SOURCES += \
     DrOverlay.cpp \
     DrGuestList.cpp \
     DrLogger.cpp \
-    DrParty.cpp \
     DrRetro.cpp \
     hosts/MarioParty3.cpp \
     guests/CoreDolphin.cpp \
