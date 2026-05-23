@@ -8,6 +8,7 @@ static const dr_mp_minigame_t k_minigames[] =
   {"Smash: Team Battle", DR_MINIGAME_2V2, 0x01, 0xFF, DR_NO_QUIRKS},
 
   {"Smash: Giant Battle", DR_MINIGAME_1V3, 0x02, 0xFF, DR_NO_QUIRKS},
+  {"Smash: Tiny Battle",  DR_MINIGAME_1V3, 0x03, 0xFF, DR_NO_QUIRKS},
 
   {nullptr, DR_MINIGAME_INVALID, 0xFF, 0xFF, DR_NO_QUIRKS},
 };
@@ -278,10 +279,11 @@ void SmashRemix::applyPlayers()
     m_core->memory().writeValue<uint8_t>(team, SR_TEAM_ADDR_2[slot]);
 
     uint8_t size;
+    bool tinyBattle = (m_minigame->minigame_id == 0x03);
     if (p.team_type == DR_TEAM_TYPE_1V3_SOLO)
-      size = 1; // Giant
+      size = tinyBattle ? 0 : 1; // Tiny: solo=normal, Giant: solo=giant
     else
-      size = 0; // Normal
+      size = tinyBattle ? 2 : 0; // Tiny: group=tiny,  Giant: group=normal
     m_core->memory().writeValue<uint8_t>(size, SR_SIZE_ADDR_1[slot]);
     m_core->memory().writeValue<uint8_t>(size, SR_SIZE_ADDR_2[slot]);
   }

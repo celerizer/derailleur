@@ -230,6 +230,10 @@ static inline const char* dr_team_color_name(dr_team_color c)
     return "Blue";
   case DR_TEAM_COLOR_RED:
     return "Red";
+  case DR_TEAM_COLOR_GREEN:
+    return "Green";
+  case DR_TEAM_COLOR_YELLOW:
+    return "Yellow";
   default:
     return "Unknown";
   }
