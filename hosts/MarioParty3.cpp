@@ -19,6 +19,14 @@ static const dr_difficulty k_diffToDr[] = {
   DR_DIFFICULTY_HARD,   // 0x02
 };
 
+static const dr_team_color k_panelColorToDr[] = {
+  DR_TEAM_COLOR_INVALID, // 0x00 = uninitialized
+  DR_TEAM_COLOR_BLUE,    // 0x01
+  DR_TEAM_COLOR_RED,     // 0x02
+  DR_TEAM_COLOR_GREEN,   // 0x03
+  DR_TEAM_COLOR_YELLOW,  // 0x04
+};
+
 static DrHostConfig makeConfig()
 {
   DrHostConfig c;
@@ -55,10 +63,12 @@ static DrHostConfig makeConfig()
   c.panel_color_addr[1] = 0x800d115f;
   c.panel_color_addr[2] = 0x800d1197;
   c.panel_color_addr[3] = 0x800d11cf;
-  c.char_to_dr      = k_charToDr;
-  c.char_to_dr_size = sizeof(k_charToDr) / sizeof(*k_charToDr);
-  c.diff_to_dr      = k_diffToDr;
-  c.diff_to_dr_size = sizeof(k_diffToDr) / sizeof(*k_diffToDr);
+  c.char_to_dr           = k_charToDr;
+  c.char_to_dr_size      = sizeof(k_charToDr) / sizeof(*k_charToDr);
+  c.diff_to_dr           = k_diffToDr;
+  c.diff_to_dr_size      = sizeof(k_diffToDr) / sizeof(*k_diffToDr);
+  c.panel_color_to_dr      = k_panelColorToDr;
+  c.panel_color_to_dr_size = sizeof(k_panelColorToDr) / sizeof(*k_panelColorToDr);
   return c;
 }
 

@@ -117,7 +117,6 @@ void CoreDolphin::doSetMinigame(const dr_mp_minigame_t *minigame)
     return;
 
   m_delegate = owner;
-  startMinigame();
 
   // Swap to the disc for this game (index matches order in the .m3u)
   int discIndex = m_games.indexOf(owner);
@@ -155,6 +154,7 @@ void CoreDolphin::doSetMinigame(const dr_mp_minigame_t *minigame)
     QApplication::processEvents();
   }
   m_core->pause();
+  startMinigame();
 }
 
 dr_error CoreDolphin::doSetPlayerCharacter(unsigned index, dr_character character)

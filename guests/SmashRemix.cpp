@@ -251,11 +251,11 @@ void SmashRemix::applyPlayers()
       switch (p.team_color)
       {
       case DR_TEAM_COLOR_RED:
-        color = 0x01;
+        color = 0x00;
         team = 0x00;
         break;
       case DR_TEAM_COLOR_BLUE:
-        color = 0x00;
+        color = 0x01;
         team = 0x01;
         break;
       default:

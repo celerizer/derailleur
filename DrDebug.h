@@ -18,6 +18,7 @@ public:
 
 signals:
   void minigameRequested(DrGuest *guest, const dr_mp_minigame_t *minigame);
+  void cancelRequested();
 
 private:
   QComboBox *m_combo = nullptr;

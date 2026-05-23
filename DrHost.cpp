@@ -47,10 +47,14 @@ DrHost::DrHost(const DrHostConfig &config, QObject *parent)
           panelColors[i] = 0xFF;
       }
 
-      // Check panel colors — 0 is uninitialized/invalid
+      // Check panel colors — INVALID means uninitialized or unknown value
       int badPanelPlayer = -1;
-      for (unsigned i = 0; i < 4; i++)
-        if (panelColors[i] == 0) { badPanelPlayer = (int)i; break; }
+      for (unsigned i = 0; i < 4; i++) {
+        dr_team_color mapped = (panelColors[i] < m_config.panel_color_to_dr_size)
+                               ? m_config.panel_color_to_dr[panelColors[i]]
+                               : DR_TEAM_COLOR_INVALID;
+        if (mapped == DR_TEAM_COLOR_INVALID) { badPanelPlayer = (int)i; break; }
+      }
 
       if (badPanelPlayer != -1) {
         emit logMessage(DR_LOG_WARN,
@@ -105,7 +109,9 @@ DrHost::DrHost(const DrHostConfig &config, QObject *parent)
           if (diff < m_config.diff_to_dr_size) p.difficulty = m_config.diff_to_dr[diff];
           p.control_type = (bot & 0x01) ? DR_CONTROL_TYPE_CPU : DR_CONTROL_TYPE_HUMAN;
           p.control_port = static_cast<dr_control_port>(DR_CONTROL_PORT_P1 + ctrl);
-          p.team_color   = static_cast<dr_team_color>(panelColors[i]);
+          p.team_color   = (panelColors[i] < m_config.panel_color_to_dr_size)
+                           ? m_config.panel_color_to_dr[panelColors[i]]
+                           : DR_TEAM_COLOR_INVALID;
           for (unsigned j = 0; j < numTeams; j++)
             if (teamVals[j] == teamBytes[i]) { p.team_id = j; break; }
           playerValid[i] = true;
@@ -114,15 +120,10 @@ DrHost::DrHost(const DrHostConfig &config, QObject *parent)
 
       // Determine team_type for each player
       if (mgType == DR_MINIGAME_1V3) {
-        unsigned colorCount[DR_TEAM_COLOR_SIZE] = {};
-        for (unsigned i = 0; i < 4; i++)
-          if (playerValid[i]) colorCount[players[i].team_color]++;
-        dr_team_color soloColor = DR_TEAM_COLOR_INVALID;
-        for (unsigned c = DR_TEAM_COLOR_INVALID + 1; c < DR_TEAM_COLOR_SIZE; c++)
-          if (colorCount[c] == 1) { soloColor = static_cast<dr_team_color>(c); break; }
+        unsigned soloTeamId = (teamCount[0] == 1) ? 0u : 1u;
         for (unsigned i = 0; i < 4; i++)
           if (playerValid[i])
-            players[i].team_type = (players[i].team_color == soloColor)
+            players[i].team_type = (players[i].team_id == soloTeamId)
               ? DR_TEAM_TYPE_1V3_SOLO : DR_TEAM_TYPE_1V3_GROUP;
       } else if (mgType == DR_MINIGAME_2V2) {
         for (unsigned i = 0; i < 4; i++)

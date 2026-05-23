@@ -28,6 +28,7 @@ public:
   virtual const char             *name(void) const = 0;
   virtual QList<DrMinigameGroup>  minigameGroups() const;
   void setMinigame(const dr_mp_minigame_t *minigame);
+  void cancelMinigame() { m_minigameActive = false; }
 
   dr_error setPlayer(unsigned index, const dr_player_t &player);
   dr_error setPlayerCharacter(unsigned index, dr_character character);

@@ -2,6 +2,7 @@
 
 #include <array>
 #include <QDir>
+#include <QRandomGenerator>
 #include <QFile>
 #include <QGuiApplication>
 #include <QRetro.h>
@@ -65,6 +66,7 @@ MainWindow::MainWindow(QWidget *parent)
   connect(m_Guests, &DrGuestList::logMessage, m_Logger, &DrLogger::message, Qt::QueuedConnection);
 #endif
 
+  /*
   auto *dolphin = new CoreDolphin(this);
   dolphin->addGame(new MarioParty4(dolphin->core(), dolphin));
   dolphin->addGame(new MarioParty5(dolphin->core(), dolphin));
@@ -74,11 +76,13 @@ MainWindow::MainWindow(QWidget *parent)
   if (dolphin->isValid())
     m_Guests->add(dolphin);
 
+  */
+
   auto addGuest = [this](DrGuest *g) {
     if (g->isValid()) m_Guests->add(g);
     else delete g;
   };
-  addGuest(new MarioKart64());
+  //addGuest(new MarioKart64());
   addGuest(new SmashRemix());
 
 #if SHOW_LOGGER
@@ -146,7 +150,47 @@ MainWindow::MainWindow(QWidget *parent)
     players[1] = { DR_CHARACTER_WARIO, DR_CONTROL_PORT_P2, DR_CONTROL_TYPE_CPU,   DR_DIFFICULTY_VERY_HARD, DR_TEAM_COLOR_BLUE, DR_TEAM_TYPE_4P, 1 };
     players[2] = { DR_CHARACTER_YOSHI, DR_CONTROL_PORT_P3, DR_CONTROL_TYPE_CPU,   DR_DIFFICULTY_EASY,      DR_TEAM_COLOR_BLUE, DR_TEAM_TYPE_4P, 2 };
     players[3] = { DR_CHARACTER_LUIGI, DR_CONTROL_PORT_P4, DR_CONTROL_TYPE_CPU,   DR_DIFFICULTY_NORMAL,    DR_TEAM_COLOR_BLUE, DR_TEAM_TYPE_4P, 3 };
+
+    // Fisher-Yates shuffle to randomize role assignments
+    unsigned order[4] = { 0, 1, 2, 3 };
+    auto *rng = QRandomGenerator::global();
+    for (int i = 3; i > 0; i--) { unsigned j = rng->bounded(i + 1); unsigned t = order[i]; order[i] = order[j]; order[j] = t; }
+
+    switch (minigame->type) {
+    case DR_MINIGAME_2V2:
+      // order[0..1] → Blue, order[2..3] → Red
+      for (unsigned i = 0; i < 4; i++) {
+        bool blue = (order[i] < 2);
+        players[i].team_color = blue ? DR_TEAM_COLOR_BLUE : DR_TEAM_COLOR_RED;
+        players[i].team_type  = DR_TEAM_TYPE_2V2;
+        players[i].team_id    = blue ? 0 : 1;
+      }
+      break;
+    case DR_MINIGAME_1V3:
+      // order[0] → solo, order[1..3] → group
+      for (unsigned i = 0; i < 4; i++) {
+        bool solo = (order[i] == 0);
+        players[i].team_color = solo ? DR_TEAM_COLOR_BLUE : DR_TEAM_COLOR_RED;
+        players[i].team_type  = solo ? DR_TEAM_TYPE_1V3_SOLO : DR_TEAM_TYPE_1V3_GROUP;
+        players[i].team_id    = solo ? 0 : 1;
+      }
+      break;
+    default:
+      for (unsigned i = 0; i < 4; i++) {
+        players[i].team_color = DR_TEAM_COLOR_BLUE;
+        players[i].team_type  = DR_TEAM_TYPE_4P;
+        players[i].team_id    = i;
+      }
+      break;
+    }
+
     launchMinigame(guest, minigame, players, playerValid);
+  });
+
+  connect(m_Debug, &DrDebug::cancelRequested, this, [this]() {
+    if (DrGuest *guest = m_Guests->currentGuest())
+      guest->cancelMinigame();
+    showHost();
   });
 #endif
 

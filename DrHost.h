@@ -25,6 +25,8 @@ struct DrHostConfig
   unsigned             char_to_dr_size;
   const dr_difficulty *diff_to_dr;
   unsigned             diff_to_dr_size;
+  const dr_team_color *panel_color_to_dr;
+  unsigned             panel_color_to_dr_size;
 };
 
 class DrHost : public DrRetro

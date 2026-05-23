@@ -103,6 +103,8 @@ typedef enum
 
   DR_TEAM_COLOR_BLUE,
   DR_TEAM_COLOR_RED,
+  DR_TEAM_COLOR_GREEN,
+  DR_TEAM_COLOR_YELLOW,
 
   DR_TEAM_COLOR_SIZE
 } dr_team_color;
@@ -143,9 +145,23 @@ typedef enum
 {
   DR_MINIGAME_INVALID = 0,
 
+  /**
+   * Mini-game where all 4 players are against each other
+   */
   DR_MINIGAME_4P,
+
+  /**
+   * Mini-game where all 4 players collect as many coins as possible
+   */
+  DR_MINIGAME_4P_LUCKY,
+
   DR_MINIGAME_1V3,
+
+  DR_MINIGAME_1V3_LUCKY,
+
   DR_MINIGAME_2V2,
+
+  DR_MINIGAME_2V2_LUCKY,
 
   /**
    * Mini-game where a single player receives coins

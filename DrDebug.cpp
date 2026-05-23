@@ -20,6 +20,12 @@ DrDebug::DrDebug(QWidget *parent) : QWidget(parent)
   });
   layout->addWidget(btn);
 
+  QPushButton *cancelBtn = new QPushButton("Cancel Minigame", this);
+  connect(cancelBtn, &QPushButton::clicked, this, [this]() {
+    emit cancelRequested();
+  });
+  layout->addWidget(cancelBtn);
+
   layout->addStretch();
   setLayout(layout);
 }

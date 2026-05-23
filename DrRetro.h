@@ -40,7 +40,7 @@ protected:
   dr_error writes32(int32_t val, size_t addr, bool big_endian = false);
 
   void log(unsigned level, const char *message);
-  void writeForFrames(size_t addr, const void *value, unsigned bytes, bool big_endian, int frames);
+  void writeForFrames(size_t addr, const void *value, unsigned bytes, unsigned frames, bool big_endian = false);
   void tickFrameWrites();
 
   QRetro *m_core    = nullptr;
@@ -48,7 +48,7 @@ protected:
   bool    m_valid   = true;
 
 private:
-  struct FrameWrite { size_t addr; QByteArray data; bool big_endian; int frames; };
+  struct FrameWrite { size_t addr; QByteArray data; bool big_endian; unsigned frames; };
   QList<FrameWrite> m_frameWrites;
 
 signals:

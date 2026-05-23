@@ -37,7 +37,7 @@ void MarioPartyN64::doSetMinigame(const dr_mp_minigame_t *minigame)
   m_core->unserializeFromFile(m_config.state.c_str());
   m_lastScene  = -1;
   uint8_t id = static_cast<uint8_t>(minigame->minigame_id);
-  writeForFrames(m_config.minigame_addr, &id, sizeof(id), false, 120);
+  writeForFrames(m_config.minigame_addr, &id, sizeof(id), 120);
   startMinigame();
 }
 

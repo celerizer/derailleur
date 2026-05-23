@@ -80,7 +80,7 @@ dr_error DrRetro::writes32(int32_t val, size_t addr, bool big_endian)
   return writeu32(static_cast<uint32_t>(val), addr, big_endian);
 }
 
-void DrRetro::writeForFrames(size_t addr, const void *value, unsigned bytes, bool big_endian, int frames)
+void DrRetro::writeForFrames(size_t addr, const void *value, unsigned bytes, unsigned frames, bool big_endian)
 {
   m_frameWrites.append({addr, QByteArray(static_cast<const char *>(value), bytes), big_endian, frames});
 }
@@ -93,7 +93,7 @@ void DrRetro::tickFrameWrites()
     case 2: writeu16(*reinterpret_cast<const uint16_t *>(it->data.constData()), it->addr, it->big_endian); break;
     case 4: writeu32(*reinterpret_cast<const uint32_t *>(it->data.constData()), it->addr, it->big_endian); break;
     }
-    if (--it->frames <= 0)
+    if (--it->frames == 0)
       it = m_frameWrites.erase(it);
     else
       ++it;

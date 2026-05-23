@@ -27,7 +27,7 @@ void MarioPartyGcn::doSetMinigame(const dr_mp_minigame_t *minigame)
 {
   m_lastScene  = -1;
   uint16_t id = minigame->minigame_id;
-  writeForFrames(m_config.minigame_addr, &id, sizeof(id), false, 120);
+  writeForFrames(m_config.minigame_addr, &id, sizeof(id), 120);
   startMinigame();
 }
 
