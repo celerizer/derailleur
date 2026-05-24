@@ -118,13 +118,17 @@ DrHost::DrHost(const DrHostConfig &config, QObject *parent)
         }
       }
 
-      // Determine team_type for each player
+      // Determine team_type for each player, then normalize team_id to a stable convention
       if (mgType == DR_MINIGAME_1V3) {
         unsigned soloTeamId = (teamCount[0] == 1) ? 0u : 1u;
         for (unsigned i = 0; i < 4; i++)
           if (playerValid[i])
             players[i].team_type = (players[i].team_id == soloTeamId)
               ? DR_TEAM_TYPE_1V3_SOLO : DR_TEAM_TYPE_1V3_GROUP;
+        // Normalize: solo=0, group=1 regardless of which N64 player is solo
+        for (unsigned i = 0; i < 4; i++)
+          if (playerValid[i])
+            players[i].team_id = (players[i].team_type == DR_TEAM_TYPE_1V3_SOLO) ? 0u : 1u;
       } else if (mgType == DR_MINIGAME_2V2) {
         for (unsigned i = 0; i < 4; i++)
           if (playerValid[i]) players[i].team_type = DR_TEAM_TYPE_2V2;
