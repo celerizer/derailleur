@@ -1,6 +1,7 @@
 #ifndef DR_DEBUG_H
 #define DR_DEBUG_H
 
+#include <array>
 #include <QWidget>
 #include <QList>
 #include <QPair>
@@ -17,7 +18,9 @@ public:
   void populate(const QList<DrGuest*> &guests);
 
 signals:
-  void minigameRequested(DrGuest *guest, const dr_mp_minigame_t *minigame);
+  void minigameRequested(DrGuest *guest, const dr_mp_minigame_t *minigame,
+                         std::array<dr_player_t, 4> players,
+                         std::array<bool, 4> playerValid);
   void cancelRequested();
 
 private:
