@@ -175,7 +175,7 @@ dr_error MarioKart64::doSetPlayerControlType(unsigned index, dr_control_type con
   for (unsigned i = 0; i < 4; i++)
     if (m_controlTypes[i] == DR_CONTROL_TYPE_HUMAN)
       humanCount++;
-  //memory().writeValue<uint8_t>(static_cast<uint8_t>(humanCount), MK64_NUMBER_PLAYERS_ADDR);
+  core()->memory().writeValue<uint8_t>(static_cast<uint8_t>(humanCount), MK64_NUMBER_PLAYERS_ADDR);
 
   return DR_OK;
 }

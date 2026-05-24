@@ -99,32 +99,27 @@ void SmashRemix::run(void)
     else
     {
       /* Team game (2v2 or 1v3): a side wins when the opposing side has no stocks */
-      unsigned blue_stocks = 0, red_stocks = 0;
+      unsigned teamStocks[2] = {};
 
       for (unsigned slot = 0; slot < 4; slot++)
       {
         int idx = m_slotToIndex[slot];
-        if (idx >= 0)
-        {
-          if (m_players[idx].team_color == DR_TEAM_COLOR_BLUE)
-            blue_stocks += (unsigned)(stocks[slot] + 1);
-          else
-            red_stocks += (unsigned)(stocks[slot] + 1);
-        }
+        if (idx >= 0 && m_players[idx].team_id < 2)
+          teamStocks[m_players[idx].team_id] += (unsigned)(stocks[slot] + 1);
       }
 
-      dr_team_color winning_color = DR_TEAM_COLOR_INVALID;
-      if (blue_stocks == 0 && red_stocks > 0)
-        winning_color = DR_TEAM_COLOR_RED;
-      else if (red_stocks == 0 && blue_stocks > 0)
-        winning_color = DR_TEAM_COLOR_BLUE;
+      int winningTeam = -1;
+      if (teamStocks[0] == 0 && teamStocks[1] > 0)
+        winningTeam = 1;
+      else if (teamStocks[1] == 0 && teamStocks[0] > 0)
+        winningTeam = 0;
 
-      if (winning_color != DR_TEAM_COLOR_INVALID)
+      if (winningTeam >= 0)
       {
         for (unsigned slot = 0; slot < 4; slot++)
         {
           int idx = m_slotToIndex[slot];
-          if (idx >= 0 && m_players[idx].team_color == winning_color)
+          if (idx >= 0 && (int)m_players[idx].team_id == winningTeam)
           {
             m_winners |= (1u << idx);
             log(DR_LOG_INFO, qPrintable(QString("%1 wins!").arg(dr_character_name(m_slotCharacters[slot]))));
@@ -215,8 +210,6 @@ void SmashRemix::applyPlayers()
         writeu8(entry.character_value, SR_CHARACTER_ADDR[slot]);
         writeu8(entry.color_value, SR_COLOR_ADDR[slot]);
         writeu8(isBot ? 4 : slot, SR_PORT_ADDR[slot]);
-        writeu8(p.team_id, SR_TEAM_ADDR_1[slot]);
-        writeu8(p.team_id, SR_TEAM_ADDR_2[slot]);
         break;
       }
     }
@@ -248,20 +241,19 @@ void SmashRemix::applyPlayers()
     uint8_t color, team;
     if (m_minigame->type == DR_MINIGAME_1V3 || m_minigame->type == DR_MINIGAME_2V2)
     {
-      /* Team mini-game; set teams and use color based on space landed on */
-      switch (p.team_color)
+      switch (p.team_id)
       {
-      case DR_TEAM_COLOR_RED:
+      case 0:
         color = 0x00;
-        team = 0x00;
+        team  = 0x00;
         break;
-      case DR_TEAM_COLOR_BLUE:
+      case 1:
         color = 0x01;
-        team = 0x01;
+        team  = 0x01;
         break;
       default:
         color = 0x04;
-        team = 0x00;
+        team  = 0x00;
         break;
       }
     }
