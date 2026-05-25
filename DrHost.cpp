@@ -23,21 +23,27 @@ DrHost::DrHost(const DrHostConfig &config, QObject *parent)
     if (m_core->frames() <= 120)
       return;
 
-    if (m_battleClearCountdown > 0 && --m_battleClearCountdown == 0)
-      m_core->memory().writeValue<uint16_t>(0, m_config.battle_addr);
+    if (m_clearCountdown > 0 && --m_clearCountdown == 0) {
+      for (unsigned i = 0; i < 4; i++) {
+        writeu16(0, m_config.result_addr[i]);
+        if (m_config.bonus_result_addr[i])
+          writeu16(0, m_config.bonus_result_addr[i]);
+      }
+      if (m_config.battle_addr && m_resultsScene == m_config.scene_miniresults_battle)
+        writeu16(0, m_config.battle_addr);
+    }
 
     if (m_writing > 0) {
-      m_core->memory().writeValue<uint8_t>(m_resultsScene, m_config.scene_addr);
+      writeu8(m_resultsScene, m_config.scene_addr);
       if (--m_writing == 0) {
         m_lastScene = m_resultsScene;
-        if (m_config.battle_addr && m_resultsScene == m_config.scene_miniresults_battle)
-          m_battleClearCountdown = 5 * 60;
+        m_clearCountdown = 5 * 60;
       }
       return;
     }
 
     uint8_t val;
-    if (!m_core->memory().readValue<uint8_t>(&val, m_config.scene_addr) || val == m_lastScene)
+    if (readu8(&val, m_config.scene_addr) != DR_OK || val == m_lastScene)
       return;
 
     emit logMessage(DR_LOG_INFO, QString("N64_SCENE_ADDR: 0x%1").arg(val, 2, 16, QChar('0')));
@@ -47,9 +53,9 @@ DrHost::DrHost(const DrHostConfig &config, QObject *parent)
       uint8_t teamBytes[4];
       uint8_t panelColors[4];
       for (unsigned i = 0; i < 4; i++) {
-        if (!m_core->memory().readValue<uint8_t>(&teamBytes[i], m_config.team_addr[i]))
+        if (readu8(&teamBytes[i], m_config.team_addr[i]) != DR_OK)
           teamBytes[i] = 0xFF;
-        if (!m_core->memory().readValue<uint8_t>(&panelColors[i], m_config.panel_color_addr[i]))
+        if (readu8(&panelColors[i], m_config.panel_color_addr[i]) != DR_OK)
           panelColors[i] = 0xFF;
       }
 
@@ -73,7 +79,7 @@ DrHost::DrHost(const DrHostConfig &config, QObject *parent)
       dr_minigame_type mgType = DR_MINIGAME_INVALID;
       if (m_config.battle_addr) {
         uint16_t battleCoins = 0;
-        m_core->memory().readValue<uint16_t>(&battleCoins, m_config.battle_addr);
+        readu16(&battleCoins, m_config.battle_addr);
         if (battleCoins > 0)
           mgType = DR_MINIGAME_BATTLE;
       }
@@ -82,8 +88,9 @@ DrHost::DrHost(const DrHostConfig &config, QObject *parent)
           mgType = DR_MINIGAME_4P;
         } else if (numTeams == 2) {
           unsigned a = teamCount[0], b = teamCount[1];
+          bool vals01 = (teamVals[0] | teamVals[1]) == 1; // exactly {0,1}
           if      (a == 2 && b == 2) mgType = DR_MINIGAME_2V2;
-          else if (a == 1 || b == 1) mgType = DR_MINIGAME_1V3;
+          else if ((a == 1 || b == 1) && vals01) mgType = DR_MINIGAME_1V3;
         } else if (numTeams == 3) {
           for (unsigned j = 0; j < 3; j++)
             if (teamCount[j] == 2) { mgType = DR_MINIGAME_DUEL; break; }
@@ -102,10 +109,10 @@ DrHost::DrHost(const DrHostConfig &config, QObject *parent)
       bool        playerValid[4] = {};
       for (unsigned i = 0; i < 4; i++) {
         uint8_t chr, ctrl, diff, bot;
-        if (m_core->memory().readValue<uint8_t>(&chr,  m_config.character_addr[i]) &&
-            m_core->memory().readValue<uint8_t>(&ctrl, m_config.controller_addr[i]) &&
-            m_core->memory().readValue<uint8_t>(&diff, m_config.difficulty_addr[i]) &&
-            m_core->memory().readValue<uint8_t>(&bot,  m_config.bot_addr[i])) {
+        if (readu8(&chr,  m_config.character_addr[i])  == DR_OK &&
+            readu8(&ctrl, m_config.controller_addr[i]) == DR_OK &&
+            readu8(&diff, m_config.difficulty_addr[i]) == DR_OK &&
+            readu8(&bot,  m_config.bot_addr[i])        == DR_OK) {
           dr_player_t &p = players[i];
           if (chr  < m_config.char_to_dr_size) p.character  = m_config.char_to_dr[chr];
           if (diff < m_config.diff_to_dr_size) p.difficulty = m_config.diff_to_dr[diff];
@@ -189,7 +196,7 @@ void DrHost::writeResults(DrGuest *guest)
     auto result = guest->minigameResult(i);
 
     uint8_t chr = 0;
-    m_core->memory().readValue<uint8_t>(&chr, m_config.character_addr[i]);
+    readu8(&chr, m_config.character_addr[i]);
     dr_character character = (chr < m_config.char_to_dr_size)
       ? m_config.char_to_dr[chr] : DR_CHARACTER_INVALID;
 
@@ -199,8 +206,9 @@ void DrHost::writeResults(DrGuest *guest)
           ? QString("%1+%2").arg(result.coins).arg(result.bonus_coins)
           : QString::number(result.coins ? result.coins : result.bonus_coins)));
 
-    m_core->memory().writeValue<uint8_t>(
-      static_cast<uint8_t>(result.coins), m_config.result_addr[i]);
+    writeu16(static_cast<uint16_t>(result.coins), m_config.result_addr[i]);
+    if (m_config.bonus_result_addr[i])
+      writeu16(static_cast<uint16_t>(result.bonus_coins), m_config.bonus_result_addr[i]);
   }
   m_writing   = 30;
   m_lastScene = 0xFF;

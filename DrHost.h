@@ -21,6 +21,7 @@ struct DrHostConfig
   size_t      team_addr[4];
   size_t      bot_addr[4];
   size_t      result_addr[4];
+  size_t      bonus_result_addr[4];
   size_t      panel_color_addr[4];
   const dr_character  *char_to_dr;
   unsigned             char_to_dr_size;
@@ -47,8 +48,8 @@ signals:
 
 private:
   DrHostConfig m_config;
-  int          m_writing             = 0;
-  int          m_battleClearCountdown = 0;
+  int          m_writing        = 0;
+  int          m_clearCountdown = 0;
   uint8_t      m_lastScene           = 0xFF;
   uint8_t      m_resultsScene        = 0;
 };
