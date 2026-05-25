@@ -47,6 +47,8 @@ signals:
                          std::array<bool, 4>        playerValid);
 
 private:
+  void writeBattleCoins();
+
   DrHostConfig m_config;
   int          m_writing        = 0;
   int          m_clearCountdown = 0;

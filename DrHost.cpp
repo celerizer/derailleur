@@ -173,6 +173,64 @@ DrHost::DrHost(const DrHostConfig &config, QObject *parent)
   }, Qt::DirectConnection);
 }
 
+void DrHost::writeBattleCoins()
+{
+  if (!m_config.battle_addr)
+    return;
+
+  uint16_t totalCoins = 0;
+  readu16(&totalCoins, m_config.battle_addr);
+
+  // Read each player's place (0 = 1st, 1 = 2nd, ...)
+  uint16_t places[4] = {0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF};
+  for (unsigned i = 0; i < 4; i++)
+    readu16(&places[i], m_config.result_addr[i]);
+
+  // Count players at each place; find 1st and 2nd place values
+  unsigned count[4] = {};
+  uint16_t firstPlace  = 0xFFFF;
+  uint16_t secondPlace = 0xFFFF;
+  for (unsigned i = 0; i < 4; i++) {
+    if (places[i] >= 4) continue;
+    count[places[i]]++;
+    if (places[i] < firstPlace) firstPlace = places[i];
+  }
+  if (firstPlace == 0xFFFF) return;
+  int numFirst = count[firstPlace];
+  if (numFirst == 1) {
+    for (uint16_t p = 0; p < 4; p++)
+      if (p != firstPlace && count[p] > 0) { secondPlace = p; break; }
+  }
+
+  // Compute truncated shares
+  uint16_t bonusCoins[4] = {};
+  uint16_t totalAssigned = 0;
+  for (unsigned i = 0; i < 4; i++) {
+    if (places[i] == firstPlace) {
+      bonusCoins[i] = (numFirst == 1)
+        ? (uint16_t)(totalCoins * 70 / 100)
+        : (uint16_t)(totalCoins / numFirst);
+    } else if (places[i] == secondPlace) {
+      bonusCoins[i] = (uint16_t)(totalCoins * 30 / (100 * count[secondPlace]));
+    }
+    totalAssigned += bonusCoins[i];
+  }
+
+  // One random qualifying player receives the remainder
+  if (uint16_t remainder = totalCoins - totalAssigned) {
+    unsigned qualifying[4], numQ = 0;
+    for (unsigned i = 0; i < 4; i++)
+      if (places[i] == firstPlace || places[i] == secondPlace)
+        qualifying[numQ++] = i;
+    if (numQ > 0)
+      bonusCoins[qualifying[rand() % numQ]] += remainder;
+  }
+
+  for (unsigned i = 0; i < 4; i++)
+    if (m_config.bonus_result_addr[i])
+      writeu16(bonusCoins[i], m_config.bonus_result_addr[i]);
+}
+
 void DrHost::writeResults(DrGuest *guest)
 {
   for (unsigned i = 0; i < 4; i++) {
@@ -193,6 +251,8 @@ void DrHost::writeResults(DrGuest *guest)
     if (m_config.bonus_result_addr[i])
       writeu16(static_cast<uint16_t>(result.bonus_coins), m_config.bonus_result_addr[i]);
   }
+  if (m_resultsScene == m_config.scene_miniresults_battle)
+    writeBattleCoins();
   m_writing   = 30;
   m_lastScene = 0xFF;
 }
