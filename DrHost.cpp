@@ -29,7 +29,7 @@ DrHost::DrHost(const DrHostConfig &config, QObject *parent)
         if (m_config.bonus_result_addr[i])
           writeu16(0, m_config.bonus_result_addr[i]);
       }
-      if (m_config.battle_addr && m_resultsScene == m_config.scene_miniresults_battle)
+      if (m_config.battle_addr)
         writeu16(0, m_config.battle_addr);
     }
 
@@ -37,7 +37,7 @@ DrHost::DrHost(const DrHostConfig &config, QObject *parent)
       writeu8(m_resultsScene, m_config.scene_addr);
       if (--m_writing == 0) {
         m_lastScene = m_resultsScene;
-        m_clearCountdown = 5 * 60;
+        m_clearCountdown = 10 * 60;
       }
       return;
     }
@@ -149,31 +149,14 @@ DrHost::DrHost(const DrHostConfig &config, QObject *parent)
           if (playerValid[i]) players[i].team_type = DR_TEAM_TYPE_SOLO;
       }
 
-      // Build log: group players by team_color in first-seen order
-      {
-        dr_team_color colorOrder[4] = {};
-        int numColors = 0;
-        for (unsigned i = 0; i < 4; i++) {
-          if (!playerValid[i]) continue;
-          dr_team_color c = players[i].team_color;
-          bool found = false;
-          for (int j = 0; j < numColors; j++)
-            if (colorOrder[j] == c) { found = true; break; }
-          if (!found) colorOrder[numColors++] = c;
-        }
-        bool showColors = (numColors > 1);
-        QStringList groups;
-        for (int ci = 0; ci < numColors; ci++) {
-          QStringList names;
-          for (unsigned i = 0; i < 4; i++)
-            if (playerValid[i] && players[i].team_color == colorOrder[ci])
-              names.append(dr_character_name(players[i].character));
-          groups.append(showColors
-            ? QString("%1: %2").arg(dr_team_color_name(colorOrder[ci])).arg(names.join(", "))
-            : names.join(", "));
-        }
+      emit logMessage(DR_LOG_INFO, QString("starting %1:").arg(dr_minigame_type_name(mgType)));
+      for (unsigned i = 0; i < 4; i++) {
+        if (!playerValid[i]) continue;
         emit logMessage(DR_LOG_INFO,
-          QString("starting %1: %2").arg(dr_minigame_type_name(mgType)).arg(groups.join(" | ")));
+          QString("  %1: id %2 color %3")
+            .arg(dr_character_name(players[i].character))
+            .arg(players[i].team_id)
+            .arg(dr_team_color_name(players[i].team_color)));
       }
 
       std::array<dr_player_t, 4> playersArr    = { players[0], players[1], players[2], players[3] };
