@@ -65,7 +65,7 @@ MainWindow::MainWindow(QWidget *parent)
   connect(m_Guests, &DrGuestList::logMessage, m_Logger, &DrLogger::message, Qt::QueuedConnection);
 #endif
 
-  /*auto *dolphin = new CoreDolphin(this);
+  auto *dolphin = new CoreDolphin(this);
   dolphin->addGame(new MarioParty4(dolphin->core(), dolphin));
   dolphin->addGame(new MarioParty5(dolphin->core(), dolphin));
   dolphin->addGame(new MarioParty6(dolphin->core(), dolphin));
@@ -73,14 +73,13 @@ MainWindow::MainWindow(QWidget *parent)
   dolphin->finalizeGames();
   if (dolphin->isValid())
     m_Guests->add(dolphin);
-    */
 
   auto addGuest = [this](DrGuest *g) {
     if (g->isValid()) m_Guests->add(g);
     else delete g;
   };
-  addGuest(new MarioKart64());
-  //addGuest(new SmashRemix());
+  //addGuest(new MarioKart64());
+  addGuest(new SmashRemix());
 
 #if SHOW_LOGGER
   for (DrGuest *guest : m_Guests->guests())

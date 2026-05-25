@@ -23,10 +23,16 @@ DrHost::DrHost(const DrHostConfig &config, QObject *parent)
     if (m_core->frames() <= 120)
       return;
 
+    if (m_battleClearCountdown > 0 && --m_battleClearCountdown == 0)
+      m_core->memory().writeValue<uint16_t>(0, m_config.battle_addr);
+
     if (m_writing > 0) {
-      m_core->memory().writeValue<uint8_t>(m_config.scene_miniresults, m_config.scene_addr);
-      if (--m_writing == 0)
-        m_lastScene = m_config.scene_miniresults;
+      m_core->memory().writeValue<uint8_t>(m_resultsScene, m_config.scene_addr);
+      if (--m_writing == 0) {
+        m_lastScene = m_resultsScene;
+        if (m_config.battle_addr && m_resultsScene == m_config.scene_miniresults_battle)
+          m_battleClearCountdown = 5 * 60;
+      }
       return;
     }
 
@@ -47,22 +53,6 @@ DrHost::DrHost(const DrHostConfig &config, QObject *parent)
           panelColors[i] = 0xFF;
       }
 
-      // Check panel colors — INVALID means uninitialized or unknown value
-      int badPanelPlayer = -1;
-      for (unsigned i = 0; i < 4; i++) {
-        dr_team_color mapped = (panelColors[i] < m_config.panel_color_to_dr_size)
-                               ? m_config.panel_color_to_dr[panelColors[i]]
-                               : DR_TEAM_COLOR_INVALID;
-        if (mapped == DR_TEAM_COLOR_INVALID) { badPanelPlayer = (int)i; break; }
-      }
-
-      if (badPanelPlayer != -1) {
-        emit logMessage(DR_LOG_WARN,
-          QString("skipping minigame: panel color for P%1 is 0x%2")
-            .arg(badPanelPlayer + 1).arg(panelColors[badPanelPlayer], 2, 16, QChar('0')));
-        return;
-      }
-
       // Count occurrences of each distinct team value
       unsigned teamCount[4] = {};
       uint8_t  teamVals[4]  = {};
@@ -74,18 +64,30 @@ DrHost::DrHost(const DrHostConfig &config, QObject *parent)
         if (j == numTeams) { teamVals[numTeams] = teamBytes[i]; teamCount[numTeams++] = 1; }
       }
 
-      // Determine minigame type:
-      //   4 distinct values → 4P free-for-all
-      //   2 distinct values, 2+2 → 2v2
-      //   2 distinct values, 1+3 or 3+1 → 1v3
-      //   anything else → ignore
+      // Determine minigame type.
+      // Battle is detected via battle_addr (non-zero coin amount); otherwise by team pattern:
+      //   01 02 03 04 = 4P
+      //   00 00 01 01 = 2V2
+      //   00 01 01 01 = 1V3
+      //   00 01 02 02 = Duel (two duelers + pair of spectators)
       dr_minigame_type mgType = DR_MINIGAME_INVALID;
-      if (numTeams == 4) {
-        mgType = DR_MINIGAME_4P;
-      } else if (numTeams == 2) {
-        unsigned a = teamCount[0], b = teamCount[1];
-        if      (a == 2 && b == 2) mgType = DR_MINIGAME_2V2;
-        else if (a == 1 || b == 1) mgType = DR_MINIGAME_1V3;
+      if (m_config.battle_addr) {
+        uint16_t battleCoins = 0;
+        m_core->memory().readValue<uint16_t>(&battleCoins, m_config.battle_addr);
+        if (battleCoins > 0)
+          mgType = DR_MINIGAME_BATTLE;
+      }
+      if (mgType == DR_MINIGAME_INVALID) {
+        if (numTeams == 4) {
+          mgType = DR_MINIGAME_4P;
+        } else if (numTeams == 2) {
+          unsigned a = teamCount[0], b = teamCount[1];
+          if      (a == 2 && b == 2) mgType = DR_MINIGAME_2V2;
+          else if (a == 1 || b == 1) mgType = DR_MINIGAME_1V3;
+        } else if (numTeams == 3) {
+          for (unsigned j = 0; j < 3; j++)
+            if (teamCount[j] == 2) { mgType = DR_MINIGAME_DUEL; break; }
+        }
       }
 
       if (mgType == DR_MINIGAME_INVALID) {
@@ -169,22 +171,14 @@ DrHost::DrHost(const DrHostConfig &config, QObject *parent)
 
       std::array<dr_player_t, 4> playersArr    = { players[0], players[1], players[2], players[3] };
       std::array<bool, 4>        playerValidArr = { playerValid[0], playerValid[1], playerValid[2], playerValid[3] };
+      m_resultsScene = (mgType == DR_MINIGAME_BATTLE && m_config.scene_miniresults_battle)
+                       ? m_config.scene_miniresults_battle
+                       : m_config.scene_miniresults;
       QMetaObject::invokeMethod(this, [this, mgType, playersArr, playerValidArr]() {
         emit minigameRequested(mgType, playersArr, playerValidArr);
       }, Qt::QueuedConnection);
       m_writing = 30;
 
-    } else if (val == 0x74) { // @todo remove temporary diagnostic
-      QString msg = "0x74 results:";
-      for (unsigned i = 0; i < 4; i++) {
-        uint8_t coins = 0, chr = 0;
-        m_core->memory().readValue<uint8_t>(&coins, m_config.result_addr[i]);
-        m_core->memory().readValue<uint8_t>(&chr, m_config.character_addr[i]);
-        dr_character character = (chr < m_config.char_to_dr_size)
-          ? m_config.char_to_dr[chr] : DR_CHARACTER_INVALID;
-        msg += QString(" %1:%2").arg(dr_character_name(character)).arg(coins);
-      }
-      emit logMessage(DR_LOG_INFO, msg);
     }
   }, Qt::DirectConnection);
 }

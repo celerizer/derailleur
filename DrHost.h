@@ -13,6 +13,7 @@ struct DrHostConfig
   std::string game;
   uint8_t     scene_miniexplain;
   uint8_t     scene_miniresults;
+  uint8_t     scene_miniresults_battle;
   size_t      scene_addr;
   size_t      character_addr[4];
   size_t      controller_addr[4];
@@ -25,6 +26,7 @@ struct DrHostConfig
   unsigned             char_to_dr_size;
   const dr_difficulty *diff_to_dr;
   unsigned             diff_to_dr_size;
+  size_t               battle_addr;
   const dr_team_color *panel_color_to_dr;
   unsigned             panel_color_to_dr_size;
 };
@@ -45,8 +47,10 @@ signals:
 
 private:
   DrHostConfig m_config;
-  int          m_writing   = 0;
-  uint8_t      m_lastScene = 0xFF;
+  int          m_writing             = 0;
+  int          m_battleClearCountdown = 0;
+  uint8_t      m_lastScene           = 0xFF;
+  uint8_t      m_resultsScene        = 0;
 };
 
 #endif

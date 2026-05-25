@@ -34,6 +34,7 @@ static DrHostConfig makeConfig()
   c.game = (dr_roms_directory() + "/Mario Party 3 (USA).z64").toStdString();
   c.scene_miniexplain = 0x70;
   c.scene_miniresults = 0x71;
+  c.scene_miniresults_battle = 0x74;
   c.scene_addr        = 0x800ce200;
   c.character_addr[0]  = 0x800d1108;
   c.character_addr[1]  = 0x800d1140;
@@ -67,6 +68,7 @@ static DrHostConfig makeConfig()
   c.char_to_dr_size      = sizeof(k_charToDr) / sizeof(*k_charToDr);
   c.diff_to_dr           = k_diffToDr;
   c.diff_to_dr_size      = sizeof(k_diffToDr) / sizeof(*k_diffToDr);
+  c.battle_addr            = 0x800cc69a;
   c.panel_color_to_dr      = k_panelColorToDr;
   c.panel_color_to_dr_size = sizeof(k_panelColorToDr) / sizeof(*k_panelColorToDr);
   return c;
