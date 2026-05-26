@@ -19,6 +19,15 @@ static const dr_difficulty k_diffToDr[] = {
   DR_DIFFICULTY_HARD,   // 0x02
 };
 
+static const dr_minigame_type k_minigameTypeToDr[] = {
+  DR_MINIGAME_4P,     // 0x00
+  DR_MINIGAME_1V3,    // 0x01
+  DR_MINIGAME_2V2,    // 0x02
+  DR_MINIGAME_ITEM,   // 0x03
+  DR_MINIGAME_BATTLE, // 0x04
+  DR_MINIGAME_DUEL,   // 0x05
+};
+
 static const dr_team_color k_panelColorToDr[] = {
   DR_TEAM_COLOR_INVALID, // 0x00 = uninitialized
   DR_TEAM_COLOR_BLUE,    // 0x01
@@ -32,9 +41,13 @@ static DrHostConfig makeConfig()
   DrHostConfig c;
   c.core = dr_core_path(DR_CORE_MUPEN64PLUSNEXT).toStdString();
   c.game = (dr_roms_directory() + "/Mario Party 3 (USA).z64").toStdString();
-  c.scene_miniexplain = 0x70;
-  c.scene_miniresults = 0x71;
+  c.scene_miniexplain        = 0x70;
+  c.scene_miniresults        = 0x71;
   c.scene_miniresults_battle = 0x74;
+  c.scene_board_ranges[0]    = {0x48, 0x4D}; // normal boards
+  c.scene_board_ranges[1]    = {0x5B, 0x60}; // duel boards
+  c.scene_board_range_count  = 2;
+  c.scene_duel_board_range   = {0x5B, 0x60};
   c.scene_addr        = 0x800ce200;
   c.character_addr[0]  = 0x800d1108;
   c.character_addr[1]  = 0x800d1140;
@@ -73,8 +86,11 @@ static DrHostConfig makeConfig()
   c.diff_to_dr           = k_diffToDr;
   c.diff_to_dr_size      = sizeof(k_diffToDr) / sizeof(*k_diffToDr);
   c.battle_addr            = 0x800cc69a;
-  c.panel_color_to_dr      = k_panelColorToDr;
-  c.panel_color_to_dr_size = sizeof(k_panelColorToDr) / sizeof(*k_panelColorToDr);
+  c.panel_color_to_dr        = k_panelColorToDr;
+  c.panel_color_to_dr_size   = sizeof(k_panelColorToDr) / sizeof(*k_panelColorToDr);
+  c.minigame_type_addr       = 0x80102C0E;
+  c.minigame_type_to_dr      = k_minigameTypeToDr;
+  c.minigame_type_to_dr_size = sizeof(k_minigameTypeToDr) / sizeof(*k_minigameTypeToDr);
   return c;
 }
 
