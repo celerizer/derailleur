@@ -20,6 +20,7 @@
 #include "guests/MarioParty6.h"
 #include "guests/MarioParty7.h"
 #include "guests/SmashRemix.h"
+#include "guests/MarioTennis.h"
 
 #define SHOW_LOGGER 1
 #define SHOW_OVERLAY 1
@@ -80,6 +81,7 @@ MainWindow::MainWindow(QWidget *parent)
   };
   //addGuest(new MarioKart64());
   addGuest(new SmashRemix());
+  addGuest(new MarioTennis());
 
 #if SHOW_LOGGER
   for (DrGuest *guest : m_Guests->guests())

@@ -30,6 +30,7 @@ SOURCES += \
     guests/MarioParty6.cpp \
     guests/MarioParty7.cpp \
     guests/MarioPartyGcn.cpp \
+    guests/MarioTennis.cpp \
     guests/SmashRemix.cpp \
     main.cpp \
     mainwindow.cpp
@@ -52,6 +53,7 @@ HEADERS += \
     guests/MarioParty6.h \
     guests/MarioParty7.h \
     guests/MarioPartyGcn.h \
+    guests/MarioTennis.h \
     guests/SmashRemix.h \
     mainwindow.h
 
