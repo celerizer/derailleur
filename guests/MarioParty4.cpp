@@ -1,6 +1,6 @@
 #include "MarioParty4.h"
 
-static const uint16_t k_characterIds[DR_CHARACTER_SIZE] =
+static const uint16_t MP4_CHARACTER_IDS[DR_CHARACTER_SIZE] =
 {
   [DR_CHARACTER_INVALID]     = 0xFF,
   [DR_CHARACTER_MARIO]       = 0x00,
@@ -13,7 +13,7 @@ static const uint16_t k_characterIds[DR_CHARACTER_SIZE] =
   [DR_CHARACTER_DAISY]       = 0x06,
 };
 
-static const dr_mp_minigame_t k_minigames[] =
+static const dr_mp_minigame_t MP4_MINIGAMES[] =
 {
   {"Manta Rings",              DR_MINIGAME_4P,      0x00, 0x09, DR_NO_QUIRKS },
   {"Slime Time",               DR_MINIGAME_4P,      0x01, 0x0A, DR_NO_QUIRKS },
@@ -101,8 +101,8 @@ static MpGcnConfig buildConfig()
   .bonus_result_addr = { 0x8018fc5e, 0x8018fc8e, 0x8018fcbe, 0x8018fcee },
   .result_addr       = { 0x8018fc60, 0x8018fc90, 0x8018fcc0, 0x8018fcf0 },
 
-  .character_ids = k_characterIds,
-  .minigames     = k_minigames,
+  .character_ids = MP4_CHARACTER_IDS,
+  .minigames     = MP4_MINIGAMES,
   };
 }
 

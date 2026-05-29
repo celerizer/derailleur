@@ -2,7 +2,7 @@
 
 #include <QRetroDirectories.h>
 
-static const dr_character k_charToDr[] = {
+static const dr_character MP3_CHAR_TO_DR[] = {
   DR_CHARACTER_MARIO,       // 0x00
   DR_CHARACTER_LUIGI,       // 0x01
   DR_CHARACTER_PEACH,       // 0x02
@@ -13,13 +13,13 @@ static const dr_character k_charToDr[] = {
   DR_CHARACTER_DAISY,       // 0x07
 };
 
-static const dr_difficulty k_diffToDr[] = {
+static const dr_difficulty MP3_DIFF_TO_DR[] = {
   DR_DIFFICULTY_EASY,   // 0x00
   DR_DIFFICULTY_NORMAL, // 0x01
   DR_DIFFICULTY_HARD,   // 0x02
 };
 
-static const dr_minigame_type k_minigameTypeToDr[] = {
+static const dr_minigame_type MP3_MINIGAME_TYPE_TO_DR[] = {
   DR_MINIGAME_4P,     // 0x00
   DR_MINIGAME_1V3,    // 0x01
   DR_MINIGAME_2V2,    // 0x02
@@ -28,7 +28,7 @@ static const dr_minigame_type k_minigameTypeToDr[] = {
   DR_MINIGAME_DUEL,   // 0x05
 };
 
-static const dr_team_color k_panelColorToDr[] = {
+static const dr_team_color MP3_PANEL_COLOR_TO_DR[] = {
   DR_TEAM_COLOR_INVALID, // 0x00 = uninitialized
   DR_TEAM_COLOR_BLUE,    // 0x01
   DR_TEAM_COLOR_RED,     // 0x02
@@ -81,16 +81,16 @@ static DrHostConfig makeConfig()
   c.panel_color_addr[1] = 0x800d115f;
   c.panel_color_addr[2] = 0x800d1197;
   c.panel_color_addr[3] = 0x800d11cf;
-  c.char_to_dr           = k_charToDr;
-  c.char_to_dr_size      = sizeof(k_charToDr) / sizeof(*k_charToDr);
-  c.diff_to_dr           = k_diffToDr;
-  c.diff_to_dr_size      = sizeof(k_diffToDr) / sizeof(*k_diffToDr);
+  c.char_to_dr           = MP3_CHAR_TO_DR;
+  c.char_to_dr_size      = sizeof(MP3_CHAR_TO_DR) / sizeof(*MP3_CHAR_TO_DR);
+  c.diff_to_dr           = MP3_DIFF_TO_DR;
+  c.diff_to_dr_size      = sizeof(MP3_DIFF_TO_DR) / sizeof(*MP3_DIFF_TO_DR);
   c.battle_addr            = 0x800cc69a;
-  c.panel_color_to_dr        = k_panelColorToDr;
-  c.panel_color_to_dr_size   = sizeof(k_panelColorToDr) / sizeof(*k_panelColorToDr);
+  c.panel_color_to_dr        = MP3_PANEL_COLOR_TO_DR;
+  c.panel_color_to_dr_size   = sizeof(MP3_PANEL_COLOR_TO_DR) / sizeof(*MP3_PANEL_COLOR_TO_DR);
   c.minigame_type_addr       = 0x80102C0E;
-  c.minigame_type_to_dr      = k_minigameTypeToDr;
-  c.minigame_type_to_dr_size = sizeof(k_minigameTypeToDr) / sizeof(*k_minigameTypeToDr);
+  c.minigame_type_to_dr      = MP3_MINIGAME_TYPE_TO_DR;
+  c.minigame_type_to_dr_size = sizeof(MP3_MINIGAME_TYPE_TO_DR) / sizeof(*MP3_MINIGAME_TYPE_TO_DR);
   return c;
 }
 

@@ -1,6 +1,6 @@
 #include "MarioParty5.h"
 
-static const uint16_t k_characterIds[DR_CHARACTER_SIZE] =
+static const uint16_t MP5_CHARACTER_IDS[DR_CHARACTER_SIZE] =
 {
   [DR_CHARACTER_INVALID]     = 0xFF,
 
@@ -14,7 +14,7 @@ static const uint16_t k_characterIds[DR_CHARACTER_SIZE] =
   [DR_CHARACTER_DAISY]       = 0x05,
 };
 
-static const dr_mp_minigame_t k_minigames[] =
+static const dr_mp_minigame_t MP5_MINIGAMES[] =
 {
   // 4-Player
   {"Coney Island",        DR_MINIGAME_4P, 0x00, 0x0F, DR_NO_QUIRKS},
@@ -142,8 +142,8 @@ static MpGcnConfig buildConfig()
   .bonus_result_addr = { 0x8022a09a, 0x8022a1a2, 0x8022a2aa, 0x8022a3b2 },
   .result_addr       = { 0x8022a09c, 0x8022a1a4, 0x8022a2ac, 0x8022a3b4 },
 
-  .character_ids = k_characterIds,
-  .minigames     = k_minigames,
+  .character_ids = MP5_CHARACTER_IDS,
+  .minigames     = MP5_MINIGAMES,
   };
 }
 

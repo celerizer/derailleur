@@ -33,7 +33,7 @@ static const size_t MT_GAMES_ADDR     = 0x80065247; // u8: number of games
 static const size_t MT_GAME_TYPE_ADDR = 0x80065248; // u32: 00=tournament 01=piranha 03=exhibition 04=tb5 05=ringshot 06=bowser 07=tb7
 static const size_t MT_DOUBLES_ADDR   = 0x8006524C; // u8: 1 = doubles, 0 = singles
 
-static const dr_character k_charToDr[] = {
+static const dr_character MT_CHAR_TO_DR[] = {
   DR_CHARACTER_YOSHI,       // 0x00
   DR_CHARACTER_PEACH,       // 0x01
   DR_CHARACTER_MARIO,       // 0x02
@@ -59,7 +59,7 @@ static const dr_character k_charToDr[] = {
 
 struct mt_character_t { uint32_t id; uint32_t color; };
 
-static const mt_character_t k_drToChar[DR_CHARACTER_SIZE] = {
+static const mt_character_t MT_DR_TO_CHAR[DR_CHARACTER_SIZE] = {
   [DR_CHARACTER_INVALID]     = { 0x14, 0x00 },
   [DR_CHARACTER_MARIO]       = { 0x02, 0x00 },
   [DR_CHARACTER_LUIGI]       = { 0x0A, 0x00 },
@@ -77,7 +77,7 @@ static const mt_character_t k_drToChar[DR_CHARACTER_SIZE] = {
   [DR_CHARACTER_DRY_BONES]   = { 0xFF, 0x00 },
 };
 
-static const dr_mp_minigame_t k_minigames[] = {
+static const dr_mp_minigame_t MT_MINIGAMES[] = {
   {"Tennis: Exhibition",   DR_MINIGAME_2V2,  0x03, 0xFF, DR_NO_QUIRKS},
   {"Tennis: Bowser Stage", DR_MINIGAME_2V2,  0x06, 0xFF, DR_NO_QUIRKS},
   {"Tennis: Tiebreaker",   DR_MINIGAME_DUEL, 0x07, 0xFF, DR_NO_QUIRKS},
@@ -134,7 +134,7 @@ void MarioTennis::run()
 
 const dr_mp_minigame_t* MarioTennis::minigames() const
 {
-  return k_minigames;
+  return MT_MINIGAMES;
 }
 
 void MarioTennis::doSetMinigame(const dr_mp_minigame_t *minigame)
@@ -172,11 +172,11 @@ dr_minigame_result_t MarioTennis::minigameResult(unsigned index)
 
 dr_error MarioTennis::doSetPlayerCharacter(unsigned index, dr_character character)
 {
-  if (character >= DR_CHARACTER_SIZE || k_drToChar[character].id == 0xFF)
+  if (character >= DR_CHARACTER_SIZE || MT_DR_TO_CHAR[character].id == 0xFF)
     return DR_ERR_INVALID_PARAMETER;
   m_players[index].character = character;
-  writeu32(k_drToChar[character].id,    MT_CHARACTER_ADDR[index]);
-  writeu32(k_drToChar[character].color, MT_COLOR_ADDR[index]);
+  writeu32(MT_DR_TO_CHAR[character].id,    MT_CHARACTER_ADDR[index]);
+  writeu32(MT_DR_TO_CHAR[character].color, MT_COLOR_ADDR[index]);
   return DR_OK;
 }
 

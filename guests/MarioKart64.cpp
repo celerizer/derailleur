@@ -12,7 +12,7 @@ static const size_t MK64_LAPS_ADDR[4] = { 0x80164390, 0x80164394, 0x80164398, 0x
 
 static const size_t MK64_NUMBER_PLAYERS_ADDR = 0x8018EDF0;
 
-static const dr_mp_minigame_t k_minigames[] =
+static const dr_mp_minigame_t MK64_MINIGAMES[] =
 {
   {"Single Race: Luigi Raceway",        DR_MINIGAME_4P, 0x00, 0xFF, DR_NO_QUIRKS},
   {"Single Race: Moo Moo Farm",         DR_MINIGAME_4P, 0x01, 0xFF, DR_NO_QUIRKS},
@@ -114,7 +114,7 @@ void MarioKart64::run()
 
 const dr_mp_minigame_t* MarioKart64::minigames() const
 {
-  return k_minigames;
+  return MK64_MINIGAMES;
 }
 
 void MarioKart64::doSetMinigame(const dr_mp_minigame_t *minigame)

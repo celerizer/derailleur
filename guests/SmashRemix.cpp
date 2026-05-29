@@ -1,7 +1,7 @@
 #include "SmashRemix.h"
 
 
-static const dr_mp_minigame_t k_minigames[] =
+static const dr_mp_minigame_t SR_MINIGAMES[] =
 {
   {"Smash: Free-for-all", DR_MINIGAME_4P, 0x00, 0xFF, DR_NO_QUIRKS},
 
@@ -156,7 +156,7 @@ SmashRemix::SmashRemix(QObject *parent) : DrGuest(parent)
 
 const dr_mp_minigame_t* SmashRemix::minigames() const
 {
-  return k_minigames;
+  return SR_MINIGAMES;
 }
 
 void SmashRemix::doSetMinigame(const dr_mp_minigame_t *minigame)

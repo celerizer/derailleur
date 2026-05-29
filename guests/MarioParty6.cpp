@@ -1,6 +1,6 @@
 #include "MarioParty6.h"
 
-static const uint16_t k_characterIds[DR_CHARACTER_SIZE] =
+static const uint16_t MP6_CHARACTER_IDS[DR_CHARACTER_SIZE] =
 {
   [DR_CHARACTER_INVALID]     = 0xFF,
 
@@ -14,7 +14,7 @@ static const uint16_t k_characterIds[DR_CHARACTER_SIZE] =
   [DR_CHARACTER_DAISY]       = 0x05,
 };
 
-static const dr_mp_minigame_t k_minigames[] =
+static const dr_mp_minigame_t MP6_MINIGAMES[] =
 {
   // 4-Player
   {"Smashdance",           DR_MINIGAME_4P,      0x00, 0x06, DR_NO_QUIRKS},
@@ -141,8 +141,8 @@ static MpGcnConfig buildConfig()
   //.stars_addr     = { 0x80265780, 0x00000000, 0x00000000, 0x00000000 },
   //.max_stars?_addr     = { 0x80265782, 0x00000000, 0x00000000, 0x00000000 },
 
-  .character_ids = k_characterIds,
-  .minigames     = k_minigames,
+  .character_ids = MP6_CHARACTER_IDS,
+  .minigames     = MP6_MINIGAMES,
   };
 }
 

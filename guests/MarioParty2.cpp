@@ -2,7 +2,7 @@
 
 #include <QRetroDirectories.h>
 
-static const uint8_t k_characterIds[DR_CHARACTER_SIZE] =
+static const uint8_t MP2_CHARACTER_IDS[DR_CHARACTER_SIZE] =
 {
   [DR_CHARACTER_INVALID]     = 0xFF,
   [DR_CHARACTER_MARIO]       = 0x00,
@@ -13,7 +13,7 @@ static const uint8_t k_characterIds[DR_CHARACTER_SIZE] =
   [DR_CHARACTER_DONKEY_KONG] = 0x05,
 };
 
-static const dr_mp_minigame_t k_minigames[] =
+static const dr_mp_minigame_t MP2_MINIGAMES[] =
 {
   { "Bowser Slots", DR_MINIGAME_ITEM, 0x01, 0x01, DR_NO_QUIRKS },
   { "Roll Out the Barrels", DR_MINIGAME_ITEM, 0x02, 0x02, DR_NO_QUIRKS },
@@ -91,8 +91,8 @@ static MpN64Config buildConfig()
 
     .result_addr = { 0x00000000, 0x00000000, 0x00000000, 0x00000000 }, // TODO
 
-    .character_ids = k_characterIds,
-    .minigames     = k_minigames,
+    .character_ids = MP2_CHARACTER_IDS,
+    .minigames     = MP2_MINIGAMES,
   };
 }
 

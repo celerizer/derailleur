@@ -1,6 +1,6 @@
 #include "MarioParty7.h"
 
-static const uint16_t k_characterIds[DR_CHARACTER_SIZE] =
+static const uint16_t MP7_CHARACTER_IDS[DR_CHARACTER_SIZE] =
 {
   [DR_CHARACTER_INVALID]     = 0xFF,
 
@@ -14,7 +14,7 @@ static const uint16_t k_characterIds[DR_CHARACTER_SIZE] =
   [DR_CHARACTER_DAISY]       = 0x05,
 };
 
-static const dr_mp_minigame_t k_minigames[] =
+static const dr_mp_minigame_t MP7_MINIGAMES[] =
 {
   /* 4-Player */
   {"Catchy Tunes",          DR_MINIGAME_4P,      0x00, 0x07, DR_NO_QUIRKS},
@@ -142,8 +142,8 @@ static MpGcnConfig buildConfig()
   .bonus_result_addr = { 0x80290cc8, 0x80290dd8, 0x80290ee8, 0x80290ff8 },
   .result_addr       = { 0x80290cca, 0x80290dda, 0x80290eea, 0x80290ffa },
 
-  .character_ids = k_characterIds,
-  .minigames     = k_minigames,
+  .character_ids = MP7_CHARACTER_IDS,
+  .minigames     = MP7_MINIGAMES,
   };
 }
 
