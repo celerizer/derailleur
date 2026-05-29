@@ -87,27 +87,29 @@ MarioKart64::MarioKart64(QObject *parent) : DrGuest(parent)
     m_valid = false;
   }
 
-  connect(m_core, &QRetro::frameBegin, this, [this]() {
-    if (m_lapsFreezeFrames > 0) {
-      --m_lapsFreezeFrames;
-      for (unsigned i = 0; i < 4; i++)
-        m_core->memory().writeValue<uint32_t>(1, MK64_LAPS_ADDR[i]);
-    }
+}
 
-    if (m_winnerIndex == -1 && m_minigameActive) {
-      for (unsigned i = 0; i < 4; i++) {
-        uint32_t laps;
-        if (m_core->memory().readValue<uint32_t>(&laps, MK64_LAPS_ADDR[i]) && laps >= 3) {
-          m_winnerIndex = m_slotToIndex[i];
-          m_finishCountdown = 240;
-          break;
-        }
+void MarioKart64::run()
+{
+  if (m_lapsFreezeFrames > 0) {
+    --m_lapsFreezeFrames;
+    for (unsigned i = 0; i < 4; i++)
+      m_core->memory().writeValue<uint32_t>(1, MK64_LAPS_ADDR[i]);
+  }
+
+  if (m_winnerIndex == -1 && m_minigameActive) {
+    for (unsigned i = 0; i < 4; i++) {
+      uint32_t laps;
+      if (m_core->memory().readValue<uint32_t>(&laps, MK64_LAPS_ADDR[i]) && laps >= 3) {
+        m_winnerIndex = m_slotToIndex[i];
+        m_finishCountdown = 240;
+        break;
       }
-    } else if (m_finishCountdown > 0) {
-      if (--m_finishCountdown == 0)
-        finishMinigame();
     }
-  }, Qt::DirectConnection);
+  } else if (m_finishCountdown > 0) {
+    if (--m_finishCountdown == 0)
+      finishMinigame();
+  }
 }
 
 const dr_mp_minigame_t* MarioKart64::minigames() const

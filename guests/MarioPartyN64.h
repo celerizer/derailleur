@@ -46,6 +46,7 @@ public:
   dr_error doSetPlayerTeam(unsigned index, dr_team_color color, dr_team_type type, unsigned team_id) override;
 
 private:
+  void run() override;
   MpN64Config m_config;
   int16_t     m_lastScene           = -1;
 };

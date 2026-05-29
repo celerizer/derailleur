@@ -52,6 +52,7 @@ public:
   const MpGcnConfig &config() const { return m_config; }
 
 private:
+  void run() override;
   MpGcnConfig  m_config;
   int32_t      m_lastScene           = -1;
 };

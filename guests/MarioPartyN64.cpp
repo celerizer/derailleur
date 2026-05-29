@@ -14,17 +14,19 @@ MarioPartyN64::MarioPartyN64(const MpN64Config &config, QObject *parent)
     m_valid = false;
   }
 
-  connect(m_core, &QRetro::frameBegin, this, [this]() {
-    tickFrameWrites();
+}
 
-    uint8_t val;
-    if (readu8(&val, m_config.scene_addr) == DR_OK && val != m_lastScene) {
-      log(DR_LOG_INFO, qPrintable(QString("MP_SCENE_ADDR: 0x%1").arg(val, 2, 16, QChar('0'))));
-      m_lastScene = val;
-      if (val == m_config.scene_miniresults && m_minigameActive)
-        finishMinigame();
-    }
-  }, Qt::DirectConnection);
+void MarioPartyN64::run()
+{
+  tickFrameWrites();
+
+  int16_t val;
+  if (reads16(&val, m_config.scene_addr) == DR_OK && val != m_lastScene) {
+    log(DR_LOG_INFO, qPrintable(QString("MP_SCENE_ADDR: 0x%1").arg((uint16_t)val, 4, 16, QChar('0'))));
+    m_lastScene = val;
+    if (val == m_config.scene_miniresults && m_minigameActive)
+      finishMinigame();
+  }
 }
 
 const dr_mp_minigame_t* MarioPartyN64::minigames() const
@@ -36,7 +38,7 @@ void MarioPartyN64::doSetMinigame(const dr_mp_minigame_t *minigame)
 {
   m_core->unserializeFromFile(m_config.state.c_str());
   m_lastScene  = -1;
-  uint8_t id = static_cast<uint8_t>(minigame->minigame_id);
+  int16_t id = static_cast<int16_t>(minigame->minigame_id);
   writeForFrames(m_config.minigame_addr, &id, sizeof(id), 120);
   startMinigame();
 }

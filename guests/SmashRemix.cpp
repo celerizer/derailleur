@@ -63,6 +63,9 @@ static const sr_character_t SR_CHARACTER_ID[] =
 
 void SmashRemix::run(void)
 {
+  if (!m_minigame || !m_minigameActive)
+    return;
+
   int8_t stocks[4];
   unsigned total_stocks = 0;
 
@@ -149,10 +152,6 @@ SmashRemix::SmashRemix(QObject *parent) : DrGuest(parent)
     m_valid = false;
   }
 
-  connect(m_core, &QRetro::frameBegin, this, [this]() mutable {
-    if (m_minigame && m_minigameActive)
-      run();
-  }, Qt::DirectConnection);
 }
 
 const dr_mp_minigame_t* SmashRemix::minigames() const

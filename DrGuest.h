@@ -23,6 +23,8 @@ public:
   explicit DrGuest(QRetro *sharedCore, QObject *parent = nullptr)
     : DrRetro(sharedCore, parent) {}
 
+  void startCore();
+
   virtual dr_minigame_result_t    minigameResult(unsigned index) = 0;
   virtual const dr_mp_minigame_t *minigames() const = 0;
   virtual const char             *name(void) const = 0;
@@ -45,6 +47,7 @@ protected:
   const dr_mp_minigame_t *m_minigame       = nullptr;
 
 private:
+  virtual void run() {}
   virtual void doSetMinigame(const dr_mp_minigame_t *minigame) = 0;
   virtual dr_error doSetPlayerCharacter(unsigned index, dr_character character) = 0;
   virtual dr_error doSetPlayerControlPort(unsigned index, dr_control_port control_port) = 0;

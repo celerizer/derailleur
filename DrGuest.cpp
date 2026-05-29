@@ -1,5 +1,13 @@
 #include "DrGuest.h"
 
+void DrGuest::startCore()
+{
+  if (m_core)
+    connect(m_core, &QRetro::frameBegin, this, [this]() { run(); },
+            Qt::DirectConnection);
+  DrRetro::startCore();
+}
+
 QList<DrMinigameGroup> DrGuest::minigameGroups() const
 {
   DrMinigameGroup group;

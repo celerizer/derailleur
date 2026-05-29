@@ -3,19 +3,21 @@
 MarioPartyGcn::MarioPartyGcn(const MpGcnConfig &config, QRetro *sharedCore, QObject *parent)
   : DrGuest(sharedCore, parent), m_config(config)
 {
-  connect(m_core, &QRetro::frameBegin, this, [this]() {
-    tickFrameWrites();
-    if (!m_minigameActive)
-      return;
+}
 
-    int32_t val;
-    if (reads32(&val, m_config.scene_addr) == DR_OK && val != m_lastScene) {
-      log(DR_LOG_INFO, qPrintable(QString("MP_SCENE_ADDR: 0x%1").arg(val, 4, 16, QChar('0'))));
-      m_lastScene = val;
-      if (val == m_config.scene_miniresults)
-        finishMinigame();
-    }
-  }, Qt::DirectConnection);
+void MarioPartyGcn::run()
+{
+  tickFrameWrites();
+  if (!m_minigameActive)
+    return;
+
+  int32_t val;
+  if (reads32(&val, m_config.scene_addr) == DR_OK && val != m_lastScene) {
+    log(DR_LOG_INFO, qPrintable(QString("MP_SCENE_ADDR: 0x%1").arg(val, 4, 16, QChar('0'))));
+    m_lastScene = val;
+    if (val == m_config.scene_miniresults)
+      finishMinigame();
+  }
 }
 
 const dr_mp_minigame_t* MarioPartyGcn::minigames() const

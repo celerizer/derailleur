@@ -99,14 +99,13 @@ MarioTennis::MarioTennis(QObject *parent) : DrGuest(parent)
     m_valid = false;
   }
 
-  connect(m_core, &QRetro::frameBegin, this, [this]() {
-    if (m_minigame && m_minigameActive)
-      run();
-  }, Qt::DirectConnection);
 }
 
 void MarioTennis::run()
 {
+  if (!m_minigame || !m_minigameActive)
+    return;
+
   if (m_finishCountdown > 0) {
     if (--m_finishCountdown == 0)
       finishMinigame();

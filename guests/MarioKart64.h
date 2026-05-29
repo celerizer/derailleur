@@ -22,6 +22,7 @@ public:
   dr_error doSetPlayerTeam(unsigned index, dr_team_color color, dr_team_type type, unsigned team_id) override;
 
 private:
+  void run() override;
   dr_character    m_characters[4] = {};
   dr_control_port m_ports[4]      = { DR_CONTROL_PORT_P1, DR_CONTROL_PORT_P2,
                                       DR_CONTROL_PORT_P3, DR_CONTROL_PORT_P4 };
