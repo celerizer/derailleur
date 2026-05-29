@@ -12,26 +12,26 @@ static const dr_character k_charToDr[] = {
 };
 
 static const dr_difficulty k_diffToDr[] = {
-  DR_DIFFICULTY_EASY,   // 0x00
-  DR_DIFFICULTY_NORMAL, // 0x01
-  DR_DIFFICULTY_HARD,   // 0x02
-  DR_DIFFICULTY_VERY_HARD
+  DR_DIFFICULTY_EASY,     // 0x00
+  DR_DIFFICULTY_NORMAL,   // 0x01
+  DR_DIFFICULTY_HARD,     // 0x02
+  DR_DIFFICULTY_VERY_HARD // 0x03
 };
 
 static const dr_minigame_type k_minigameTypeToDr[] = {
-  DR_MINIGAME_4P,     // 0x00
-  DR_MINIGAME_1V3,    // 0x01
-  DR_MINIGAME_2V2,    // 0x02
-  DR_MINIGAME_INVALID,
-  DR_MINIGAME_BATTLE, // 0x04
+  DR_MINIGAME_4P,      // 0x00
+  DR_MINIGAME_1V3,     // 0x01
+  DR_MINIGAME_2V2,     // 0x02
+  DR_MINIGAME_INVALID, // 0x03?
+  DR_MINIGAME_BATTLE,  // 0x04
 };
 
 static const dr_team_color k_panelColorToDr[] = {
-  DR_TEAM_COLOR_INVALID, // 0x00 - TODO: verify
-  DR_TEAM_COLOR_BLUE,    // 0x01 - TODO: verify
-  DR_TEAM_COLOR_RED,     // 0x02 - TODO: verify
-  DR_TEAM_COLOR_GREEN,   // 0x03 - TODO: verify
-  DR_TEAM_COLOR_YELLOW,  // 0x04 - TODO: verify
+  DR_TEAM_COLOR_INVALID, // 0x00
+  DR_TEAM_COLOR_BLUE,    // 0x01
+  DR_TEAM_COLOR_RED,     // 0x02
+  DR_TEAM_COLOR_YELLOW,  // 0x03
+  DR_TEAM_COLOR_GREEN,   // 0x04
 };
 
 static DrHostConfig makeConfig()

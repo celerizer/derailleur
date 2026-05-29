@@ -32,8 +32,8 @@ static const dr_team_color k_panelColorToDr[] = {
   DR_TEAM_COLOR_INVALID, // 0x00 = uninitialized
   DR_TEAM_COLOR_BLUE,    // 0x01
   DR_TEAM_COLOR_RED,     // 0x02
-  DR_TEAM_COLOR_GREEN,   // 0x03
-  DR_TEAM_COLOR_YELLOW,  // 0x04
+  DR_TEAM_COLOR_YELLOW,  // 0x03
+  DR_TEAM_COLOR_GREEN,   // 0x04
 };
 
 static DrHostConfig makeConfig()
