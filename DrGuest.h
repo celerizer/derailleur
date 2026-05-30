@@ -29,6 +29,7 @@ public:
   }
 
   void startCore();
+  void tick() { run(); }
 
   virtual dr_minigame_result_t minigameResult(unsigned index) = 0;
   virtual const dr_mp_minigame_t *minigames() const = 0;
@@ -51,7 +52,7 @@ protected:
   bool m_minigameActive = false;
   const dr_mp_minigame_t *m_minigame = nullptr;
 
-private:
+protected:
   virtual void run() {}
   virtual void doSetMinigame(const dr_mp_minigame_t *minigame) = 0;
   virtual dr_error doSetPlayerCharacter(unsigned index, dr_character character) = 0;

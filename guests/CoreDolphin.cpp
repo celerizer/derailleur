@@ -97,6 +97,12 @@ QList<DrMinigameGroup> CoreDolphin::minigameGroups() const
   return result;
 }
 
+void CoreDolphin::run()
+{
+  if (m_delegate)
+    m_delegate->tick();
+}
+
 dr_minigame_result_t CoreDolphin::minigameResult(unsigned index)
 {
   if (m_delegate)

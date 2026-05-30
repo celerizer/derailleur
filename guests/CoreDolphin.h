@@ -32,6 +32,8 @@ protected:
   dr_error doSetPlayerTeam(
     unsigned index, dr_team_color color, dr_team_type type, unsigned team_id) override;
 
+  void run() override;
+
 private:
   void rebuildFlatList();
 
