@@ -16,12 +16,12 @@ struct MpN64Config
   size_t scene_addr;
   size_t minigame_addr;
 
-  size_t character_addr[4];
   size_t controller_addr[4];
   size_t difficulty_addr[4];
   size_t team_addr[4];
   size_t bot_addr[4];
-
+  size_t character_addr[4];
+  size_t bonus_result_addr[4];
   size_t result_addr[4];
 
   const uint8_t *character_ids;
@@ -35,20 +35,22 @@ class MarioPartyN64 : public DrGuest
 public:
   MarioPartyN64(const MpN64Config &config, QObject *parent = nullptr);
 
-  dr_minigame_result_t    minigameResult(unsigned index) override;
-  const dr_mp_minigame_t* minigames() const override;
-  void                    doSetMinigame(const dr_mp_minigame_t *minigame) override;
+  dr_minigame_result_t minigameResult(unsigned index) override;
+  const dr_mp_minigame_t *minigames() const override;
+  void doSetMinigame(const dr_mp_minigame_t *minigame) override;
 
   dr_error doSetPlayerCharacter(unsigned index, dr_character character) override;
   dr_error doSetPlayerControlPort(unsigned index, dr_control_port control_port) override;
   dr_error doSetPlayerControlType(unsigned index, dr_control_type control_type) override;
   dr_error doSetPlayerDifficulty(unsigned index, dr_difficulty difficulty) override;
-  dr_error doSetPlayerTeam(unsigned index, dr_team_color color, dr_team_type type, unsigned team_id) override;
+  dr_error doSetPlayerTeam(
+    unsigned index, dr_team_color color, dr_team_type type, unsigned team_id) override;
 
 private:
   void run() override;
   MpN64Config m_config;
-  int16_t     m_lastScene           = -1;
+  int16_t m_lastScene = -1;
+  int m_minigameFrames = 0;
 };
 
 #endif

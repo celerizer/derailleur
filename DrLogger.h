@@ -20,7 +20,7 @@ public slots:
 
 private:
   QPlainTextEdit *m_text = nullptr;
-  QFile           m_file;
+  QFile m_file;
 };
 
 #endif

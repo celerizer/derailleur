@@ -1,7 +1,8 @@
 #include "MarioPartyGcn.h"
 
 MarioPartyGcn::MarioPartyGcn(const MpGcnConfig &config, QRetro *sharedCore, QObject *parent)
-  : DrGuest(sharedCore, parent), m_config(config)
+  : DrGuest(sharedCore, parent)
+  , m_config(config)
 {
 }
 
@@ -12,7 +13,8 @@ void MarioPartyGcn::run()
     return;
 
   int32_t val;
-  if (reads32(&val, m_config.scene_addr) == DR_OK && val != m_lastScene) {
+  if (reads32(&val, m_config.scene_addr) == DR_OK && val != m_lastScene)
+  {
     log(DR_LOG_INFO, qPrintable(QString("MP_SCENE_ADDR: 0x%1").arg(val, 4, 16, QChar('0'))));
     m_lastScene = val;
     if (val == m_config.scene_miniresults)
@@ -20,15 +22,15 @@ void MarioPartyGcn::run()
   }
 }
 
-const dr_mp_minigame_t* MarioPartyGcn::minigames() const
+const dr_mp_minigame_t *MarioPartyGcn::minigames() const
 {
   return m_config.minigames;
 }
 
 void MarioPartyGcn::doSetMinigame(const dr_mp_minigame_t *minigame)
 {
-  m_lastScene  = -1;
-  uint16_t id = minigame->minigame_id;
+  m_lastScene = -1;
+  int16_t id = static_cast<int16_t>(minigame->minigame_id);
   writeForFrames(m_config.minigame_addr, &id, sizeof(id), 120);
   startMinigame();
 }
@@ -36,7 +38,8 @@ void MarioPartyGcn::doSetMinigame(const dr_mp_minigame_t *minigame)
 dr_minigame_result_t MarioPartyGcn::minigameResult(unsigned index)
 {
   dr_minigame_result_t result = { 0, 0 };
-  if (index < 4) {
+  if (index < 4)
+  {
     uint16_t coins;
     if (readu16(&coins, m_config.result_addr[index]) == DR_OK)
       result.coins = coins;
@@ -98,8 +101,10 @@ dr_error MarioPartyGcn::doSetPlayerDifficulty(unsigned index, dr_difficulty diff
   return writeu16(mp_difficulty, m_config.difficulty_addr[index]);
 }
 
-dr_error MarioPartyGcn::doSetPlayerTeam(unsigned index, dr_team_color color, dr_team_type type, unsigned team_id)
+dr_error MarioPartyGcn::doSetPlayerTeam(
+  unsigned index, dr_team_color color, dr_team_type type, unsigned team_id)
 {
-  (void)color; (void)type;
+  (void)color;
+  (void)type;
   return writeu16(static_cast<uint16_t>(team_id), m_config.team_addr[index]);
 }

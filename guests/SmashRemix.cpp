@@ -1,16 +1,14 @@
 #include "SmashRemix.h"
 
+static const dr_mp_minigame_t SR_MINIGAMES[] = {
+  { "Smash: Free-for-all", DR_MINIGAME_4P, 0x00, 0xFF, DR_NO_QUIRKS },
 
-static const dr_mp_minigame_t SR_MINIGAMES[] =
-{
-  {"Smash: Free-for-all", DR_MINIGAME_4P, 0x00, 0xFF, DR_NO_QUIRKS},
+  { "Smash: Team Battle", DR_MINIGAME_2V2, 0x01, 0xFF, DR_NO_QUIRKS },
 
-  {"Smash: Team Battle", DR_MINIGAME_2V2, 0x01, 0xFF, DR_NO_QUIRKS},
+  { "Smash: Giant Battle", DR_MINIGAME_1V3, 0x02, 0xFF, DR_NO_QUIRKS },
+  { "Smash: Tiny Battle", DR_MINIGAME_1V3, 0x03, 0xFF, DR_NO_QUIRKS },
 
-  {"Smash: Giant Battle", DR_MINIGAME_1V3, 0x02, 0xFF, DR_NO_QUIRKS},
-  {"Smash: Tiny Battle",  DR_MINIGAME_1V3, 0x03, 0xFF, DR_NO_QUIRKS},
-
-  {nullptr, DR_MINIGAME_INVALID, 0xFF, 0xFF, DR_NO_QUIRKS},
+  { nullptr, DR_MINIGAME_INVALID, 0xFF, 0xFF, DR_NO_QUIRKS },
 };
 
 /* Whether the game is in team battle mode */
@@ -48,17 +46,13 @@ typedef struct
   unsigned color_value;
 } sr_character_t;
 
-static const sr_character_t SR_CHARACTER_ID[] =
-{
-  { DR_CHARACTER_MARIO,       0x00, 0x00 },
-  { DR_CHARACTER_LUIGI,       0x04, 0x00 },
-  { DR_CHARACTER_PEACH,       0x49, 0x00 },
-  { DR_CHARACTER_YOSHI,       0x06, 0x00 },
-  { DR_CHARACTER_WARIO,       0x21, 0x00 },
-  { DR_CHARACTER_DONKEY_KONG, 0x02, 0x00 },
+static const sr_character_t SR_CHARACTER_ID[] = {
+  { DR_CHARACTER_MARIO, 0x00, 0x00 }, { DR_CHARACTER_LUIGI, 0x04, 0x00 },
+  { DR_CHARACTER_PEACH, 0x49, 0x00 }, { DR_CHARACTER_YOSHI, 0x06, 0x00 },
+  { DR_CHARACTER_WARIO, 0x21, 0x00 }, { DR_CHARACTER_DONKEY_KONG, 0x02, 0x00 },
 
-  { DR_CHARACTER_WALUIGI,     0x04, 0x04 }, // Luigi (purple)
-  { DR_CHARACTER_DAISY,       0x49, 0x01 }, // Peach (yellow)
+  { DR_CHARACTER_WALUIGI, 0x04, 0x04 }, // Luigi (purple)
+  { DR_CHARACTER_DAISY, 0x49, 0x01 }, // Peach (yellow)
 };
 
 void SmashRemix::run(void)
@@ -92,7 +86,8 @@ void SmashRemix::run(void)
           if (stocks[slot] >= 0)
           {
             m_winners |= (1u << m_slotToIndex[slot]);
-            log(DR_LOG_INFO, qPrintable(QString("%1 wins!").arg(dr_character_name(m_slotCharacters[slot]))));
+            log(DR_LOG_INFO,
+              qPrintable(QString("%1 wins!").arg(dr_character_name(m_slotCharacters[slot]))));
             break;
           }
         }
@@ -125,7 +120,8 @@ void SmashRemix::run(void)
           if (idx >= 0 && (int)m_players[idx].team_id == winningTeam)
           {
             m_winners |= (1u << idx);
-            log(DR_LOG_INFO, qPrintable(QString("%1 wins!").arg(dr_character_name(m_slotCharacters[slot]))));
+            log(DR_LOG_INFO,
+              qPrintable(QString("%1 wins!").arg(dr_character_name(m_slotCharacters[slot]))));
           }
         }
         m_finishCountdown = 120;
@@ -137,31 +133,33 @@ void SmashRemix::run(void)
     finishMinigame();
 }
 
-SmashRemix::SmashRemix(QObject *parent) : DrGuest(parent)
+SmashRemix::SmashRemix(QObject *parent)
+  : DrGuest(parent)
 {
   m_core = new QRetro();
   m_ownCore = true;
   QString corePath = dr_core_path(DR_CORE_MUPEN64PLUSNEXT);
   QString gamePath = dr_roms_directory() + "/smashremix.z64";
-  if (!m_core->loadCore(corePath.toUtf8().constData())) {
+  if (!m_core->loadCore(corePath.toUtf8().constData()))
+  {
     log(DR_LOG_ERROR, qPrintable(QString("failed to load core: %1").arg(corePath)));
     m_valid = false;
   }
-  if (!m_core->loadContent(gamePath.toUtf8().constData())) {
+  if (!m_core->loadContent(gamePath.toUtf8().constData()))
+  {
     log(DR_LOG_ERROR, qPrintable(QString("failed to load content: %1").arg(gamePath)));
     m_valid = false;
   }
-
 }
 
-const dr_mp_minigame_t* SmashRemix::minigames() const
+const dr_mp_minigame_t *SmashRemix::minigames() const
 {
   return SR_MINIGAMES;
 }
 
 void SmashRemix::doSetMinigame(const dr_mp_minigame_t *minigame)
 {
-  m_winners         = 0;
+  m_winners = 0;
   m_finishCountdown = 0;
   for (unsigned i = 0; i < 4; i++)
     m_prevStocks[i] = 0xFF;
@@ -190,13 +188,14 @@ dr_minigame_result_t SmashRemix::minigameResult(unsigned index)
 
 void SmashRemix::applyPlayers()
 {
-  for (unsigned i = 0; i < 4; i++) {
+  for (unsigned i = 0; i < 4; i++)
+  {
     const dr_player_t &p = m_players[i];
     if (p.control_port == DR_CONTROL_PORT_INVALID || p.control_port >= DR_CONTROL_PORT_SIZE)
       continue;
 
     unsigned slot = p.control_port - DR_CONTROL_PORT_P1;
-    m_slotToIndex[slot]    = i;
+    m_slotToIndex[slot] = i;
     m_slotCharacters[slot] = p.character;
 
     bool isBot = (p.control_type == DR_CONTROL_TYPE_CPU);
@@ -235,7 +234,8 @@ void SmashRemix::applyPlayers()
       difficulty = 5;
       break;
     }
-    m_core->memory().writeValue<uint8_t>(static_cast<uint8_t>(difficulty), SR_DIFFICULTY_ADDR[slot]);
+    m_core->memory().writeValue<uint8_t>(
+      static_cast<uint8_t>(difficulty), SR_DIFFICULTY_ADDR[slot]);
 
     uint8_t color, team;
     if (m_minigame->type == DR_MINIGAME_1V3 || m_minigame->type == DR_MINIGAME_2V2)
@@ -244,15 +244,15 @@ void SmashRemix::applyPlayers()
       {
       case 0:
         color = 0x00;
-        team  = 0x00;
+        team = 0x00;
         break;
       case 1:
         color = 0x01;
-        team  = 0x01;
+        team = 0x01;
         break;
       default:
         color = 0x04;
-        team  = 0x00;
+        team = 0x00;
         break;
       }
     }
@@ -306,11 +306,12 @@ dr_error SmashRemix::doSetPlayerDifficulty(unsigned index, dr_difficulty difficu
   return DR_OK;
 }
 
-dr_error SmashRemix::doSetPlayerTeam(unsigned index, dr_team_color color, dr_team_type type, unsigned team_id)
+dr_error SmashRemix::doSetPlayerTeam(
+  unsigned index, dr_team_color color, dr_team_type type, unsigned team_id)
 {
   m_players[index].team_color = color;
-  m_players[index].team_type  = type;
-  m_players[index].team_id    = team_id;
+  m_players[index].team_type = type;
+  m_players[index].team_id = team_id;
   applyPlayers();
   return DR_OK;
 }

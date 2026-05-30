@@ -5,7 +5,8 @@
 #include <QRandomGenerator>
 #include <QTimer>
 
-DrOverlay::DrOverlay(QWidget *parent) : QWidget(parent)
+DrOverlay::DrOverlay(QWidget *parent)
+  : QWidget(parent)
 {
   setWindowFlags(Qt::Tool | Qt::FramelessWindowHint | Qt::WindowDoesNotAcceptFocus);
   setAttribute(Qt::WA_TranslucentBackground);
@@ -28,7 +29,8 @@ void DrOverlay::flash(const QPixmap &pixmap, int durationMs)
   setWindowOpacity(1.0);
   repaint();
 
-  if (m_anim) {
+  if (m_anim)
+  {
     m_anim->stop();
     m_anim->deleteLater();
   }
@@ -37,9 +39,8 @@ void DrOverlay::flash(const QPixmap &pixmap, int durationMs)
   m_anim->setStartValue(1.0);
   m_anim->setEndValue(0.0);
   m_anim->setDuration(durationMs);
-  connect(m_anim, &QVariantAnimation::valueChanged, this, [this](const QVariant &v) {
-    setWindowOpacity(v.toReal());
-  });
+  connect(m_anim, &QVariantAnimation::valueChanged, this,
+    [this](const QVariant &v) { setWindowOpacity(v.toReal()); });
   m_anim->start(QAbstractAnimation::DeleteWhenStopped);
   m_anim = nullptr; // DeleteWhenStopped handles lifetime
 
@@ -50,7 +51,8 @@ void DrOverlay::flash(const QPixmap &pixmap, int durationMs)
 void DrOverlay::hold(const QPixmap &pixmap)
 {
   m_image = pixmap.toImage();
-  if (m_anim) {
+  if (m_anim)
+  {
     m_anim->stop();
     m_anim->deleteLater();
     m_anim = nullptr;
@@ -67,7 +69,8 @@ void DrOverlay::fadeOut(int durationMs)
   if (m_bounceTimer)
     m_bounceTimer->stop();
 
-  if (m_anim) {
+  if (m_anim)
+  {
     m_anim->stop();
     m_anim->deleteLater();
   }
@@ -76,9 +79,8 @@ void DrOverlay::fadeOut(int durationMs)
   m_anim->setStartValue(1.0);
   m_anim->setEndValue(0.0);
   m_anim->setDuration(durationMs);
-  connect(m_anim, &QVariantAnimation::valueChanged, this, [this](const QVariant &v) {
-    setWindowOpacity(v.toReal());
-  });
+  connect(m_anim, &QVariantAnimation::valueChanged, this,
+    [this](const QVariant &v) { setWindowOpacity(v.toReal()); });
   m_anim->start(QAbstractAnimation::DeleteWhenStopped);
   m_anim = nullptr;
 }
@@ -90,15 +92,16 @@ void DrOverlay::pickRandomSprite()
   int index = QRandomGenerator::global()->bounded(DR_OVERLAY_SPRITE_COUNT);
   QPixmap sprite(QString(":/assets/char/%1.png").arg(index));
   if (!sprite.isNull())
-    setSprite(sprite.scaled(sprite.width() * 4, sprite.height() * 4,
-                            Qt::IgnoreAspectRatio, Qt::FastTransformation));
+    setSprite(sprite.scaled(
+      sprite.width() * 4, sprite.height() * 4, Qt::IgnoreAspectRatio, Qt::FastTransformation));
 }
 
 void DrOverlay::setSprite(const QPixmap &sprite)
 {
   m_sprite = sprite;
 
-  if (m_bounceTimer) {
+  if (m_bounceTimer)
+  {
     m_bounceTimer->stop();
     m_bounceTimer->deleteLater();
   }
@@ -130,10 +133,10 @@ void DrOverlay::paintEvent(QPaintEvent *)
     return;
   QPainter p(this);
   p.drawImage(rect(), m_image);
-  if (!m_sprite.isNull()) {
+  if (!m_sprite.isNull())
+  {
     p.setRenderHint(QPainter::SmoothPixmapTransform, false);
-    p.drawPixmap(width()  - m_sprite.width()  - 32,
-                 height() - m_sprite.height() - 32 + m_spriteY,
-                 m_sprite);
+    p.drawPixmap(
+      width() - m_sprite.width() - 32, height() - m_sprite.height() - 32 + m_spriteY, m_sprite);
   }
 }

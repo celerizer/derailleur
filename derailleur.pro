@@ -21,10 +21,11 @@ SOURCES += \
     DrGuestList.cpp \
     DrLogger.cpp \
     DrRetro.cpp \
-    hosts/MarioParty2.cpp \
-    hosts/MarioParty3.cpp \
+    hosts/MarioParty2Host.cpp \
+    hosts/MarioParty3Host.cpp \
     guests/CoreDolphin.cpp \
     guests/MarioKart64.cpp \
+    guests/MarioParty1.cpp \
     guests/MarioParty2.cpp \
     guests/MarioParty4.cpp \
     guests/MarioPartyN64.cpp \
@@ -46,10 +47,11 @@ HEADERS += \
     DrLogger.h \
     DrOverlay.h \
     DrRetro.h \
-    hosts/MarioParty2.h \
-    hosts/MarioParty3.h \
+    hosts/MarioParty2Host.h \
+    hosts/MarioParty3Host.h \
     guests/CoreDolphin.h \
     guests/MarioKart64.h \
+    guests/MarioParty1.h \
     guests/MarioParty2.h \
     guests/MarioParty4.h \
     guests/MarioPartyN64.h \

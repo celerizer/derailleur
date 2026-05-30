@@ -27,11 +27,11 @@ protected:
 private:
   void pickRandomSprite();
 
-  QImage             m_image;
+  QImage m_image;
   QVariantAnimation *m_anim = nullptr;
-  QPixmap            m_sprite;
-  int                m_spriteY = 0;
-  QTimer            *m_bounceTimer = nullptr;
+  QPixmap m_sprite;
+  int m_spriteY = 0;
+  QTimer *m_bounceTimer = nullptr;
 };
 
 #endif

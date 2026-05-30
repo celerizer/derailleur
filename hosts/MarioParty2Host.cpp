@@ -1,4 +1,4 @@
-#include "MarioParty2.h"
+#include "MarioParty2Host.h"
 
 #include <QRetroDirectories.h>
 
@@ -91,7 +91,7 @@ static DrHostConfig makeConfig()
   return c;
 }
 
-MarioParty2::MarioParty2(QObject *parent)
+MarioParty2Host::MarioParty2Host(QObject *parent)
   : DrHost(makeConfig(), parent)
 {
 }

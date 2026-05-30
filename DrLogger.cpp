@@ -4,7 +4,8 @@
 #include <QPlainTextEdit>
 #include <QVBoxLayout>
 
-DrLogger::DrLogger(QWidget *parent) : QWidget(parent)
+DrLogger::DrLogger(QWidget *parent)
+  : QWidget(parent)
 {
   m_text = new QPlainTextEdit(this);
   m_text->setReadOnly(true);
@@ -26,7 +27,8 @@ void DrLogger::message(unsigned level, const QString &message)
   QString line = QString("[%1] %2").arg(prefix).arg(message);
   m_text->appendPlainText(line);
 
-  if (m_file.isOpen()) {
+  if (m_file.isOpen())
+  {
     m_file.write((line + '\n').toUtf8());
     m_file.flush();
   }

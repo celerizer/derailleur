@@ -9,7 +9,7 @@ class MarioParty5 : public MarioPartyGcn
 
 public:
   MarioParty5(QRetro *sharedCore, QObject *parent = nullptr);
-  const char* name() const override { return "Mario Party 5"; }
+  const char *name() const override { return "Mario Party 5"; }
 };
 
 #endif

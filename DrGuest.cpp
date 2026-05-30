@@ -3,8 +3,7 @@
 void DrGuest::startCore()
 {
   if (m_core)
-    connect(m_core, &QRetro::frameBegin, this, [this]() { run(); },
-            Qt::DirectConnection);
+    connect(m_core, &QRetro::frameBegin, this, [this]() { run(); }, Qt::DirectConnection);
   DrRetro::startCore();
 }
 
@@ -65,7 +64,8 @@ dr_error DrGuest::setPlayerDifficulty(unsigned index, dr_difficulty difficulty)
     return doSetPlayerDifficulty(index, difficulty);
 }
 
-dr_error DrGuest::setPlayerTeam(unsigned index, dr_team_color color, dr_team_type type, unsigned team_id)
+dr_error DrGuest::setPlayerTeam(
+  unsigned index, dr_team_color color, dr_team_type type, unsigned team_id)
 {
   if (index >= 4 || color >= DR_TEAM_COLOR_SIZE || type >= DR_TEAM_TYPE_SIZE)
     return DR_ERR_INVALID_PARAMETER;
@@ -74,7 +74,8 @@ dr_error DrGuest::setPlayerTeam(unsigned index, dr_team_color color, dr_team_typ
 
 void DrGuest::setMinigame(const dr_mp_minigame_t *minigame)
 {
-  if (!m_core) return;
+  if (!m_core)
+    return;
   m_minigame = minigame;
 
   /* Apply emulation quirks for the minigame */

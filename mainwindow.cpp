@@ -12,8 +12,10 @@
 #include <QWidget>
 
 #include "DrDebug.h"
-#include "hosts/MarioParty3.h"
+#include "hosts/MarioParty3Host.h"
 #include "guests/MarioKart64.h"
+#include "guests/MarioParty1.h"
+#include "guests/MarioParty2.h"
 #include "guests/CoreDolphin.h"
 #include "guests/MarioParty4.h"
 #include "guests/MarioParty5.h"
@@ -25,7 +27,6 @@
 #define SHOW_LOGGER 1
 #define SHOW_OVERLAY 1
 #define SHOW_DEBUG 1
-
 
 MainWindow::MainWindow(QWidget *parent)
   : QMainWindow(parent)
@@ -43,10 +44,11 @@ MainWindow::MainWindow(QWidget *parent)
     bool iniExisted = QFile::exists(iniPath);
     QSettings s(iniPath, QSettings::IniFormat);
     auto load = [&](const char *key, const QString &def) {
-      if (!s.contains(key)) s.setValue(key, def);
+      if (!s.contains(key))
+        s.setValue(key, def);
       return s.value(key).toString();
     };
-    dr_set_roms_directory(load("paths/roms",   cwd.filePath("roms")));
+    dr_set_roms_directory(load("paths/roms", cwd.filePath("roms")));
     dr_set_cores_directory(load("paths/cores", cwd.filePath("cores")));
     dr_set_state_directory(load("paths/state", cwd.filePath("state")));
     s.sync();
@@ -76,10 +78,14 @@ MainWindow::MainWindow(QWidget *parent)
     m_Guests->add(dolphin);
 
   auto addGuest = [this](DrGuest *g) {
-    if (g->isValid()) m_Guests->add(g);
-    else delete g;
+    if (g->isValid())
+      m_Guests->add(g);
+    else
+      delete g;
   };
   //addGuest(new MarioKart64());
+  addGuest(new MarioParty1());
+  addGuest(new MarioParty2());
   addGuest(new SmashRemix());
   addGuest(new MarioTennis());
 
@@ -89,7 +95,7 @@ MainWindow::MainWindow(QWidget *parent)
   m_Guests->logSummary();
 #endif
 
-  m_Host = new MarioParty3(this);
+  m_Host = new MarioParty3Host(this);
 #if SHOW_LOGGER
   connect(m_Host, &DrRetro::logMessage, m_Logger, &DrLogger::message, Qt::QueuedConnection);
 #endif
@@ -116,17 +122,21 @@ MainWindow::MainWindow(QWidget *parent)
   // Cycle through each guest for 2 seconds, then switch to the host
   m_Stack->setCurrentIndex(0);
   for (DrGuest *g : m_Guests->guests())
-    if (g != m_Guests->currentGuest()) g->pause();
+    if (g != m_Guests->currentGuest())
+      g->pause();
 
   QTimer *warmupTimer = new QTimer(this);
   warmupTimer->setInterval(2000);
   connect(warmupTimer, &QTimer::timeout, this, [this, warmupTimer]() {
     int next = m_Guests->currentIndex() + 1;
-    if (next < m_Guests->count()) {
+    if (next < m_Guests->count())
+    {
       m_Guests->currentGuest()->pause();
       m_Guests->setCurrentIndex(next);
       m_Guests->currentGuest()->unpause();
-    } else {
+    }
+    else
+    {
       warmupTimer->stop();
       warmupTimer->deleteLater();
       showHost();
@@ -142,8 +152,8 @@ MainWindow::MainWindow(QWidget *parent)
   m_Debug->show();
 
   connect(m_Debug, &DrDebug::minigameRequested, this,
-    [this](DrGuest *guest, const dr_mp_minigame_t *minigame,
-           std::array<dr_player_t, 4> players, std::array<bool, 4> playerValid) {
+    [this](DrGuest *guest, const dr_mp_minigame_t *minigame, std::array<dr_player_t, 4> players,
+      std::array<bool, 4> playerValid) {
       launchMinigame(guest, minigame, players.data(), playerValid.data());
     });
 
@@ -156,26 +166,32 @@ MainWindow::MainWindow(QWidget *parent)
 
   connect(m_Guests, &QStackedWidget::currentChanged, this, [this](int index) {
     const auto &guests = m_Guests->guests();
-    if (index >= 0 && index < guests.size()) {
+    if (index >= 0 && index < guests.size())
+    {
       if (QWidget *container = m_Guests->widget(index))
         guests[index]->core()->resize(container->width(), container->height());
     }
   });
 
-  connect(m_Guests, &DrGuestList::minigameFinished, this, [this]() {
-    m_Host->writeResults(m_Guests->currentGuest());
-    showHost();
-  }, Qt::QueuedConnection);
+  connect(
+    m_Guests, &DrGuestList::minigameFinished, this,
+    [this]() {
+      m_Host->writeResults(m_Guests->currentGuest());
+      showHost();
+    },
+    Qt::QueuedConnection);
 
   connect(m_Host, &DrHost::minigameRequested, this,
-    [this](dr_minigame_type type, std::array<dr_player_t, 4> players, std::array<bool, 4> playerValid) {
+    [this](
+      dr_minigame_type type, std::array<dr_player_t, 4> players, std::array<bool, 4> playerValid) {
       launchMinigame(type, players.data(), playerValid.data());
     });
 
   resize(704, 528);
 }
 
-void MainWindow::launchMinigame(DrGuest *guest, const dr_mp_minigame_t *minigame, const dr_player_t players[4], const bool playerValid[4])
+void MainWindow::launchMinigame(DrGuest *guest, const dr_mp_minigame_t *minigame,
+  const dr_player_t players[4], const bool playerValid[4])
 {
   if (!m_Guests->activateGuest(guest))
     return;
@@ -187,26 +203,32 @@ void MainWindow::launchMinigame(DrGuest *guest, const dr_mp_minigame_t *minigame
   }
 #endif
 
-  QTimer::singleShot(32, this, [this, guest, minigame, players = std::array<dr_player_t, 4>{players[0], players[1], players[2], players[3]}, playerValid = std::array<bool, 4>{playerValid[0], playerValid[1], playerValid[2], playerValid[3]}]() {
-    m_Host->pause();
-    m_Stack->setCurrentIndex(0);
-    for (DrGuest *g : m_Guests->guests())
-      g->pause();
+  QTimer::singleShot(32, this,
+    [this, guest, minigame,
+      players = std::array<dr_player_t, 4>{ players[0], players[1], players[2], players[3] },
+      playerValid =
+        std::array<bool, 4>{ playerValid[0], playerValid[1], playerValid[2], playerValid[3] }]() {
+      m_Host->pause();
+      m_Stack->setCurrentIndex(0);
+      for (DrGuest *g : m_Guests->guests())
+        g->pause();
 
-    guest->core()->audio()->setVolume(0);
-    guest->setMinigame(minigame);
-    for (unsigned i = 0; i < 4; i++)
-      if (playerValid[i]) guest->setPlayer(i, players[i]);
-    guest->core()->audio()->setVolume(100);
-    guest->unpause();
+      guest->core()->audio()->setVolume(0);
+      guest->setMinigame(minigame);
+      for (unsigned i = 0; i < 4; i++)
+        if (playerValid[i])
+          guest->setPlayer(i, players[i]);
+      guest->core()->audio()->setVolume(100);
+      guest->unpause();
 
 #if SHOW_OVERLAY
-    m_Overlay->fadeOut();
+      m_Overlay->fadeOut();
 #endif
-  });
+    });
 }
 
-void MainWindow::launchMinigame(dr_minigame_type type, const dr_player_t players[4], const bool playerValid[4])
+void MainWindow::launchMinigame(
+  dr_minigame_type type, const dr_player_t players[4], const bool playerValid[4])
 {
   const dr_mp_minigame_t *minigame = nullptr;
   DrGuest *guest = m_Guests->pickMinigame(type, minigame);
@@ -220,23 +242,28 @@ void MainWindow::launchMinigame(dr_minigame_type type, const dr_player_t players
   }
 #endif
 
-  QTimer::singleShot(32, this, [this, guest, minigame, players = std::array<dr_player_t, 4>{players[0], players[1], players[2], players[3]}, playerValid = std::array<bool, 4>{playerValid[0], playerValid[1], playerValid[2], playerValid[3]}]() {
-    m_Host->pause();
-    m_Stack->setCurrentIndex(0);
-    for (DrGuest *g : m_Guests->guests())
-      g->pause();
+  QTimer::singleShot(32, this,
+    [this, guest, minigame,
+      players = std::array<dr_player_t, 4>{ players[0], players[1], players[2], players[3] },
+      playerValid =
+        std::array<bool, 4>{ playerValid[0], playerValid[1], playerValid[2], playerValid[3] }]() {
+      m_Host->pause();
+      m_Stack->setCurrentIndex(0);
+      for (DrGuest *g : m_Guests->guests())
+        g->pause();
 
-    guest->core()->audio()->setVolume(0);
-    guest->setMinigame(minigame);
-    for (unsigned i = 0; i < 4; i++)
-      if (playerValid[i]) guest->setPlayer(i, players[i]);
-    guest->core()->audio()->setVolume(100);
-    guest->unpause();
+      guest->core()->audio()->setVolume(0);
+      guest->setMinigame(minigame);
+      for (unsigned i = 0; i < 4; i++)
+        if (playerValid[i])
+          guest->setPlayer(i, players[i]);
+      guest->core()->audio()->setVolume(100);
+      guest->unpause();
 
 #if SHOW_OVERLAY
-    m_Overlay->fadeOut();
+      m_Overlay->fadeOut();
 #endif
-  });
+    });
 }
 
 void MainWindow::showHost()
@@ -269,6 +296,4 @@ void MainWindow::showGuests()
   });
 }
 
-MainWindow::~MainWindow()
-{
-}
+MainWindow::~MainWindow() {}

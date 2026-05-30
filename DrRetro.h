@@ -13,17 +13,40 @@ class DrRetro : public QObject
   Q_OBJECT
 
 public:
-  DrRetro(QObject *parent = nullptr) : QObject(parent) {}
+  DrRetro(QObject *parent = nullptr)
+    : QObject(parent)
+  {
+  }
   explicit DrRetro(QRetro *sharedCore, QObject *parent = nullptr)
-    : QObject(parent), m_core(sharedCore), m_ownCore(false) {}
-  ~DrRetro() { if (m_ownCore) delete m_core; }
+    : QObject(parent)
+    , m_core(sharedCore)
+    , m_ownCore(false)
+  {
+  }
+  ~DrRetro()
+  {
+    if (m_ownCore)
+      delete m_core;
+  }
 
   QRetro *core() const { return m_core; }
   bool isValid() const { return m_valid; }
 
-  void pause()     { if (m_core) m_core->pause(); }
-  void unpause()   { if (m_core) m_core->unpause(); }
-  void startCore() { if (m_core) m_core->startCore(); }
+  void pause()
+  {
+    if (m_core)
+      m_core->pause();
+  }
+  void unpause()
+  {
+    if (m_core)
+      m_core->unpause();
+  }
+  void startCore()
+  {
+    if (m_core)
+      m_core->startCore();
+  }
 
 protected:
   dr_error readu8(uint8_t *out, size_t addr, bool big_endian = false);
@@ -40,15 +63,22 @@ protected:
   dr_error writes32(int32_t val, size_t addr, bool big_endian = false);
 
   void log(unsigned level, const char *message);
-  void writeForFrames(size_t addr, const void *value, unsigned bytes, unsigned frames, bool big_endian = false);
+  void writeForFrames(
+    size_t addr, const void *value, unsigned bytes, unsigned frames, bool big_endian = false);
   void tickFrameWrites();
 
-  QRetro *m_core    = nullptr;
-  bool    m_ownCore = false;
-  bool    m_valid   = true;
+  QRetro *m_core = nullptr;
+  bool m_ownCore = false;
+  bool m_valid = true;
 
 private:
-  struct FrameWrite { size_t addr; QByteArray data; bool big_endian; unsigned frames; };
+  struct FrameWrite
+  {
+    size_t addr;
+    QByteArray data;
+    bool big_endian;
+    unsigned frames;
+  };
   QList<FrameWrite> m_frameWrites;
 
 signals:

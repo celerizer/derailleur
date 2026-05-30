@@ -92,10 +92,10 @@ typedef union
   } mupen64plus;
 } dr_emulation_quirk_t;
 
-#define DR_NO_QUIRKS { .raw=0 }
-#define DR_QUIRK_EFB_TO_TEXTURE { .dolphin={ 1, 0, 0 } }
-#define DR_QUIRK_SAFE_TEXTURE_CACHE { .dolphin={ 0, 1, 0 } }
-#define DR_QUIRK_NATIVE_RESOLUTION { .dolphin={ 0, 0, 1 } }
+#define DR_NO_QUIRKS { .raw = 0 }
+#define DR_QUIRK_EFB_TO_TEXTURE { .dolphin = { 1, 0, 0 } }
+#define DR_QUIRK_SAFE_TEXTURE_CACHE { .dolphin = { 0, 1, 0 } }
+#define DR_QUIRK_NATIVE_RESOLUTION { .dolphin = { 0, 0, 1 } }
 
 typedef enum
 {
@@ -196,11 +196,11 @@ typedef enum
 
 typedef struct
 {
-  const char           *name;
-  dr_minigame_type      type;
-  unsigned              minigame_id;
-  unsigned              scene_id;
-  dr_emulation_quirk_t  quirks;
+  const char *name;
+  dr_minigame_type type;
+  signed minigame_id;
+  signed scene_id;
+  dr_emulation_quirk_t quirks;
 } dr_mp_minigame_t;
 
 typedef enum
@@ -222,7 +222,7 @@ typedef enum
   DR_LOG_SIZE
 } dr_log_level;
 
-static inline const char* dr_team_color_name(dr_team_color c)
+static inline const char *dr_team_color_name(dr_team_color c)
 {
   switch (c)
   {
@@ -239,7 +239,7 @@ static inline const char* dr_team_color_name(dr_team_color c)
   }
 }
 
-static inline const char* dr_minigame_type_name(dr_minigame_type t)
+static inline const char *dr_minigame_type_name(dr_minigame_type t)
 {
   switch (t)
   {
@@ -264,7 +264,7 @@ static inline const char* dr_minigame_type_name(dr_minigame_type t)
   }
 }
 
-static inline const char* dr_character_name(dr_character c)
+static inline const char *dr_character_name(dr_character c)
 {
   switch (c)
   {
@@ -302,11 +302,11 @@ static inline const char* dr_character_name(dr_character c)
 }
 
 QString dr_roms_directory(void);
-void    dr_set_roms_directory(const QString &path);
+void dr_set_roms_directory(const QString &path);
 QString dr_cores_directory(void);
-void    dr_set_cores_directory(const QString &path);
+void dr_set_cores_directory(const QString &path);
 QString dr_state_directory(void);
-void    dr_set_state_directory(const QString &path);
+void dr_set_state_directory(const QString &path);
 QString dr_core_path(dr_core core);
 
 #endif

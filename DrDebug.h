@@ -15,17 +15,16 @@ class DrDebug : public QWidget
 
 public:
   DrDebug(QWidget *parent = nullptr);
-  void populate(const QList<DrGuest*> &guests);
+  void populate(const QList<DrGuest *> &guests);
 
 signals:
   void minigameRequested(DrGuest *guest, const dr_mp_minigame_t *minigame,
-                         std::array<dr_player_t, 4> players,
-                         std::array<bool, 4> playerValid);
+    std::array<dr_player_t, 4> players, std::array<bool, 4> playerValid);
   void cancelRequested();
 
 private:
   QComboBox *m_combo = nullptr;
-  QList<QPair<DrGuest*, const dr_mp_minigame_t*>> m_entries;
+  QList<QPair<DrGuest *, const dr_mp_minigame_t *>> m_entries;
 };
 
 #endif

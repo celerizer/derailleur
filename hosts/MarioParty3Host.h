@@ -3,12 +3,12 @@
 
 #include "../DrHost.h"
 
-class MarioParty3 : public DrHost
+class MarioParty3Host : public DrHost
 {
   Q_OBJECT
 
 public:
-  explicit MarioParty3(QObject *parent = nullptr);
+  explicit MarioParty3Host(QObject *parent = nullptr);
 };
 
 #endif

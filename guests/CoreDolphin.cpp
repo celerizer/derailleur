@@ -22,8 +22,10 @@ void CoreDolphin::addGame(MarioPartyGcn *game)
 {
   if (m_games.isEmpty())
   {
-    if (!m_core->loadCore(game->config().core.c_str())) {
-      log(DR_LOG_ERROR, qPrintable(QString("failed to load core: %1").arg(game->config().core.c_str())));
+    if (!m_core->loadCore(game->config().core.c_str()))
+    {
+      log(DR_LOG_ERROR,
+        qPrintable(QString("failed to load core: %1").arg(game->config().core.c_str())));
       m_valid = false;
     }
 
@@ -33,7 +35,7 @@ void CoreDolphin::addGame(MarioPartyGcn *game)
     // Core > Dual Core Mode
     // Needs to be disabled for serialization to work.
     m_core->options()->setOptionValue("dolphin_main_cpu_thread", "disabled");
-    
+
     // Core > Fastmem
     // Needs to be disabled for multi-instancing to work.
     m_core->options()->setOptionValue("dolphin_fastmem", "disabled");
@@ -60,7 +62,8 @@ void CoreDolphin::finalizeGames()
       out << game->config().game.c_str() << "\n";
   }
 
-  if (!m_core->loadContent(m_m3uPath.toStdString().c_str())) {
+  if (!m_core->loadContent(m_m3uPath.toStdString().c_str()))
+  {
     log(DR_LOG_ERROR, qPrintable(QString("failed to load content: %1").arg(m_m3uPath)));
     m_valid = false;
   }
@@ -83,7 +86,8 @@ QList<DrMinigameGroup> CoreDolphin::minigameGroups() const
 {
   QList<DrMinigameGroup> result;
   int i = 0;
-  for (MarioPartyGcn *game : m_games) {
+  for (MarioPartyGcn *game : m_games)
+  {
     DrMinigameGroup group;
     group.name = game->name();
     while (i < m_entries.size() && m_entries[i].first == game)
@@ -164,20 +168,25 @@ dr_error CoreDolphin::doSetPlayerCharacter(unsigned index, dr_character characte
 
 dr_error CoreDolphin::doSetPlayerControlPort(unsigned index, dr_control_port control_port)
 {
-  return m_delegate ? m_delegate->doSetPlayerControlPort(index, control_port) : DR_ERR_INVALID_PARAMETER;
+  return m_delegate ? m_delegate->doSetPlayerControlPort(index, control_port)
+                    : DR_ERR_INVALID_PARAMETER;
 }
 
 dr_error CoreDolphin::doSetPlayerControlType(unsigned index, dr_control_type control_type)
 {
-  return m_delegate ? m_delegate->doSetPlayerControlType(index, control_type) : DR_ERR_INVALID_PARAMETER;
+  return m_delegate ? m_delegate->doSetPlayerControlType(index, control_type)
+                    : DR_ERR_INVALID_PARAMETER;
 }
 
 dr_error CoreDolphin::doSetPlayerDifficulty(unsigned index, dr_difficulty difficulty)
 {
-  return m_delegate ? m_delegate->doSetPlayerDifficulty(index, difficulty) : DR_ERR_INVALID_PARAMETER;
+  return m_delegate ? m_delegate->doSetPlayerDifficulty(index, difficulty)
+                    : DR_ERR_INVALID_PARAMETER;
 }
 
-dr_error CoreDolphin::doSetPlayerTeam(unsigned index, dr_team_color color, dr_team_type type, unsigned team_id)
+dr_error CoreDolphin::doSetPlayerTeam(
+  unsigned index, dr_team_color color, dr_team_type type, unsigned team_id)
 {
-  return m_delegate ? m_delegate->doSetPlayerTeam(index, color, type, team_id) : DR_ERR_INVALID_PARAMETER;
+  return m_delegate ? m_delegate->doSetPlayerTeam(index, color, type, team_id)
+                    : DR_ERR_INVALID_PARAMETER;
 }
