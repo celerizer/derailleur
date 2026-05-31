@@ -10,9 +10,16 @@ DrDebug::DrDebug(QWidget *parent)
 {
   QVBoxLayout *layout = new QVBoxLayout(this);
 
+  m_guestCombo = new QComboBox(this);
+  m_guestCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
+  layout->addWidget(m_guestCombo);
+
   m_combo = new QComboBox(this);
   m_combo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
   layout->addWidget(m_combo);
+
+  connect(m_guestCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
+    [this](int idx) { refreshMinis(idx); });
 
   QPushButton *btn = new QPushButton("Request Minigame", this);
   connect(btn, &QPushButton::clicked, this, [this]() {
@@ -89,18 +96,26 @@ DrDebug::DrDebug(QWidget *parent)
 
 void DrDebug::populate(const QList<DrGuest *> &guests)
 {
+  m_guests = guests;
+  m_guestCombo->clear();
+  for (DrGuest *guest : guests)
+    m_guestCombo->addItem(guest->name());
+  refreshMinis(0);
+}
+
+void DrDebug::refreshMinis(int guestIdx)
+{
   m_combo->clear();
   m_entries.clear();
-
-  for (DrGuest *guest : guests)
+  if (guestIdx < 0 || guestIdx >= m_guests.size())
+    return;
+  DrGuest *guest = m_guests[guestIdx];
+  for (const DrMinigameGroup &group : guest->minigameGroups())
   {
-    for (const DrMinigameGroup &group : guest->minigameGroups())
+    for (const dr_mp_minigame_t *mg : group.minigames)
     {
-      for (const dr_mp_minigame_t *mg : group.minigames)
-      {
-        m_combo->addItem(QString("%1 \xe2\x80\x94 %2").arg(group.name).arg(mg->name));
-        m_entries.append({ guest, mg });
-      }
+      m_combo->addItem(QString("%1 \xe2\x80\x94 %2").arg(group.name).arg(mg->name));
+      m_entries.append({ guest, mg });
     }
   }
 }
