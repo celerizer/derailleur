@@ -1,6 +1,8 @@
 #include "MarioParty2Host.h"
 
 #include <QRetroDirectories.h>
+#include <algorithm>
+#include <cctype>
 #include <cstring>
 
 /**
@@ -114,10 +116,32 @@ MarioParty2Host::MarioParty2Host(QObject *parent)
           "8104AF9C 2602"
           "+8104AF9E 0025"
           "+8104B020 2400");
-        writeMinigameNames();
+        m_core->cheatSet(1, true,
+          "810657EE 0005"
+          "+D110724A CC90"
+          "+811071D6 4080"
+          "+D110724A CC90"
+          "+811071B6 4080"
+          "+D1106A6A 38B0"
+          "+81106A5A 0006"
+          "+D1110166 4020"
+          "+81110166 40A0"
+          "+D111019E 4040"
+          "+8111019E 40C0");
       }
     },
     Qt::DirectConnection);
+}
+
+bool MarioParty2Host::onMiniexplainDetected(dr_minigame_type type, int16_t minigameId,
+  const std::array<dr_player_t, 4> &players, const std::array<bool, 4> &playerValid)
+{
+  if (minigameId >= 0x25 && minigameId <= 0x29)
+  {
+    startMinigame((unsigned)(minigameId - 0x25));
+    return true;
+  }
+  return false;
 }
 
 static size_t n64ByteAddr(size_t addr)
@@ -125,15 +149,24 @@ static size_t n64ByteAddr(size_t addr)
   return (addr & ~size_t(3)) | (3 - (addr & 3));
 }
 
+void MarioParty2Host::injectMinigameTitles(const std::array<DrMinigameCandidate, 5> &candidates)
+{
+  for (unsigned i = 0; i < 5; i++)
+  {
+    const char *name =
+      (candidates[i].minigame && candidates[i].minigame->name) ? candidates[i].minigame->name : "";
+    std::string s(name, strnlen(name, 16));
+    s.erase(std::remove_if(s.begin(), s.end(), [](char c) { return !isalpha((unsigned char)c) && c != ' '; }), s.end());
+    m_candidateNames[i] = s;
+  }
+  writeMinigameNames();
+}
+
 void MarioParty2Host::writeMinigameNames()
 {
-  static const char *names[5] = {
-    "ackman83",
-    "little mac",
-    "ranga time",
-    "fuck keith",
-    "reredeadpants",
-  };
+  const char *names[5];
+  for (unsigned i = 0; i < 5; i++)
+    names[i] = m_candidateNames[i].c_str();
 
   size_t addr = 0xB1157363;
   for (unsigned i = 0; i < 5; i++)
@@ -151,20 +184,43 @@ void MarioParty2Host::writeMinigameNames()
                      .arg(i)
                      .arg(marker, 2, 16, QChar('0'))));
       bool found = false;
+      size_t seekAddr = addr;
       for (unsigned back = 1; back <= 8; back++)
       {
-        addr--;
-        if (readu8(&oldLen, n64ByteAddr(addr)) != DR_OK ||
-            readu8(&marker, n64ByteAddr(addr + 1)) != DR_OK)
+        seekAddr--;
+        if (readu8(&oldLen, n64ByteAddr(seekAddr)) != DR_OK ||
+            readu8(&marker, n64ByteAddr(seekAddr + 1)) != DR_OK)
           return;
         if (marker == 0x0B)
         {
           found = true;
+          addr = seekAddr;
           break;
         }
       }
       if (!found)
+      {
+        seekAddr = addr;
+        for (unsigned fwd = 1; fwd <= 8; fwd++)
+        {
+          seekAddr++;
+          if (readu8(&oldLen, n64ByteAddr(seekAddr)) != DR_OK ||
+              readu8(&marker, n64ByteAddr(seekAddr + 1)) != DR_OK)
+            return;
+          if (marker == 0x0B)
+          {
+            found = true;
+            addr = seekAddr;
+            break;
+          }
+        }
+      }
+      if (!found)
+      {
+        log(DR_LOG_ERROR,
+          qPrintable(QString("writeMinigameNames[%1]: could not find 0x0B marker, giving up").arg(i)));
         return;
+      }
     }
 
     uint8_t nameLen = (uint8_t)strnlen(names[i], oldLen > 0 ? oldLen - 1 : 0);

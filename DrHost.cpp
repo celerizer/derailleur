@@ -9,6 +9,9 @@ DrHost::DrHost(const DrHostConfig &config, QObject *parent)
   : DrRetro(parent)
   , m_config(config)
 {
+  qRegisterMetaType<DrMinigameCandidate>();
+  qRegisterMetaType<DrPlayerArray>();
+  qRegisterMetaType<DrPlayerValidArray>();
   m_core = new QRetro();
   m_ownCore = true;
   if (!m_core->loadCore(config.core.c_str()))
@@ -55,6 +58,14 @@ DrHost::DrHost(const DrHostConfig &config, QObject *parent)
         uint8_t raw = 0;
         if (readu8(&raw, m_config.minigame_type_addr) == DR_OK)
           m_lastMinigameType = raw;
+        if (prevMinigameType != m_lastMinigameType && m_lastMinigameType != 0xFF &&
+            m_lastMinigameType < m_config.minigame_type_to_dr_size)
+        {
+          dr_minigame_type mgType = m_config.minigame_type_to_dr[m_lastMinigameType];
+          if (mgType != DR_MINIGAME_INVALID && mgType != DR_MINIGAME_ITEM)
+            QMetaObject::invokeMethod(
+              this, [this, mgType]() { emit candidatesNeeded(mgType); }, Qt::QueuedConnection);
+        }
       }
 
       if (m_config.minigame_id_addr)
@@ -234,16 +245,34 @@ DrHost::DrHost(const DrHostConfig &config, QObject *parent)
             writeu16(0, m_config.bonus_result_addr[i]);
         }
 
-        QMetaObject::invokeMethod(
-          this,
-          [this, mgType, playersArr, playerValidArr]() {
-            emit minigameRequested(mgType, playersArr, playerValidArr);
-          },
-          Qt::QueuedConnection);
+        m_pendingPlayers = playersArr;
+        m_pendingPlayerValid = playerValidArr;
+        if (!onMiniexplainDetected(mgType, m_lastMinigameId, playersArr, playerValidArr))
+        {
+          QMetaObject::invokeMethod(
+            this,
+            [this, mgType, playersArr, playerValidArr]() {
+              emit candidatesRequested(mgType, playersArr, playerValidArr);
+            },
+            Qt::QueuedConnection);
+        }
         m_writing = 30;
       }
     },
     Qt::DirectConnection);
+}
+
+void DrHost::setCandidates(std::array<DrMinigameCandidate, 5> candidates)
+{
+  m_candidates = candidates;
+  injectMinigameTitles(candidates);
+}
+
+void DrHost::startMinigame(unsigned index)
+{
+  if (index >= 5 || !m_candidates[index].guest || !m_candidates[index].minigame)
+    return;
+  emit minigameRequested(m_candidates[index], m_pendingPlayers, m_pendingPlayerValid);
 }
 
 void DrHost::writeBattleCoins()
@@ -343,6 +372,9 @@ void DrHost::writeResults(DrGuest *guest)
   }
   if (m_resultsScene == m_config.scene_miniresults_battle)
     writeBattleCoins();
+  if (m_config.minigame_type_addr)
+    writeu8(0xFF, m_config.minigame_type_addr);
   m_writing = 30;
   m_lastScene = 0xFF;
+  m_lastMinigameType = 0xFF;
 }

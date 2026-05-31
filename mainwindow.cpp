@@ -90,7 +90,7 @@ MainWindow::MainWindow(QWidget *parent)
   };
   //addGuest(new MarioKart64());
   addGuest(new MarioParty1());
-  addGuest(new MarioParty2());
+  //addGuest(new MarioParty2());
   addGuest(new SmashRemix());
   addGuest(new MarioTennis());
 
@@ -198,10 +198,31 @@ void MainWindow::startWithHost(DrHost *host)
   });
 #endif
 
-  connect(m_Host, &DrHost::minigameRequested, this,
-    [this](
+  auto pickCandidates = [this](dr_minigame_type type) {
+    std::array<DrMinigameCandidate, 5> candidates = {};
+    for (auto &c : candidates)
+    {
+      const dr_mp_minigame_t *mg = nullptr;
+      c.guest = m_Guests->pickMinigame(type, mg);
+      c.minigame = mg;
+    }
+    m_Host->setCandidates(candidates);
+  };
+
+  connect(m_Host, &DrHost::candidatesNeeded, this,
+    [this, pickCandidates](dr_minigame_type type) { pickCandidates(type); });
+
+  connect(m_Host, &DrHost::candidatesRequested, this,
+    [this, pickCandidates](
       dr_minigame_type type, std::array<dr_player_t, 4> players, std::array<bool, 4> playerValid) {
-      launchMinigame(type, players.data(), playerValid.data());
+      pickCandidates(type);
+      m_Host->startMinigame(0);
+    });
+
+  connect(m_Host, &DrHost::minigameRequested, this,
+    [this](DrMinigameCandidate candidate, std::array<dr_player_t, 4> players,
+      std::array<bool, 4> playerValid) {
+      launchMinigame(candidate.guest, candidate.minigame, players.data(), playerValid.data());
     });
 
   m_Stack->setCurrentWidget(m_Guests);

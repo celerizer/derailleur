@@ -1,11 +1,21 @@
 #ifndef DR_HOST_H
 #define DR_HOST_H
 
+#include "DrGuest.h"
 #include "DrRetro.h"
 #include <array>
 #include <string>
 
-class DrGuest;
+struct DrMinigameCandidate
+{
+  DrGuest *guest;
+  const dr_mp_minigame_t *minigame;
+};
+Q_DECLARE_METATYPE(DrMinigameCandidate)
+using DrPlayerArray = std::array<dr_player_t, 4>;
+using DrPlayerValidArray = std::array<bool, 4>;
+Q_DECLARE_METATYPE(DrPlayerArray)
+Q_DECLARE_METATYPE(DrPlayerValidArray)
 
 struct dr_scene_range_t
 {
@@ -58,10 +68,29 @@ public:
   explicit DrHost(const DrHostConfig &config, QObject *parent = nullptr);
 
   void writeResults(DrGuest *guest);
+  void setCandidates(std::array<DrMinigameCandidate, 5> candidates);
+  void startMinigame(unsigned index);
+
+  virtual void injectMinigameTitles(const std::array<DrMinigameCandidate, 5> &candidates) {}
+
+  // Called when miniexplain is detected. Return true to suppress candidatesRequested.
+  virtual bool onMiniexplainDetected(dr_minigame_type type, int16_t minigameId,
+    const DrPlayerArray &players, const DrPlayerValidArray &playerValid)
+  {
+    if (m_config.minigame_type_addr)
+    {
+      startMinigame(0);
+      return true;
+    }
+    return false;
+  }
 
 signals:
+  void candidatesNeeded(dr_minigame_type type);
+  void candidatesRequested(
+    dr_minigame_type type, DrPlayerArray players, DrPlayerValidArray playerValid);
   void minigameRequested(
-    dr_minigame_type type, std::array<dr_player_t, 4> players, std::array<bool, 4> playerValid);
+    DrMinigameCandidate candidate, DrPlayerArray players, DrPlayerValidArray playerValid);
 
 private:
   void writeBattleCoins();
@@ -73,6 +102,10 @@ private:
   uint8_t m_lastBoardScene = 0;
   uint8_t m_resultsScene = 0;
   uint8_t m_lastMinigameType = 0xFF;
+
+  std::array<DrMinigameCandidate, 5> m_candidates = {};
+  std::array<dr_player_t, 4> m_pendingPlayers = {};
+  std::array<bool, 4> m_pendingPlayerValid = {};
 };
 
 #endif
