@@ -38,10 +38,11 @@ static const dr_team_color MP3_PANEL_COLOR_TO_DR[] = {
 
 static DrHostConfig makeConfig()
 {
-  DrHostConfig c;
+  DrHostConfig c = {};
   c.core = dr_core_path(DR_CORE_MUPEN64PLUSNEXT).toStdString();
   c.game = (dr_roms_directory() + "/Mario Party 3 (USA).z64").toStdString();
-  c.scene_miniexplain = 0x70;
+  c.scene_miniexplain[0] = 0x70;
+  c.scene_miniexplain_count = 1;
   c.scene_miniresults = 0x71;
   c.scene_miniresults_battle = 0x74;
   c.scene_board_ranges[0] = { 0x48, 0x4D }; // normal boards
@@ -91,6 +92,11 @@ static DrHostConfig makeConfig()
   c.minigame_type_addr = 0x80102C0E;
   c.minigame_type_to_dr = MP3_MINIGAME_TYPE_TO_DR;
   c.minigame_type_to_dr_size = sizeof(MP3_MINIGAME_TYPE_TO_DR) / sizeof(*MP3_MINIGAME_TYPE_TO_DR);
+  c.minigame_id_addr = 0x800cd06b;
+  c.minigame_id_is_8bit = true;
+  c.minigame_blacklist = { 0x43, 0x44, 0x45 }; // ignore game guy
+  c.minigame_blacklist_count = 3;
+  
   return c;
 }
 

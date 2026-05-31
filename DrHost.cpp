@@ -28,26 +28,11 @@ DrHost::DrHost(const DrHostConfig &config, QObject *parent)
       if (m_core->frames() <= 120)
         return;
 
-      if (m_clearCountdown > 0 && --m_clearCountdown == 0)
-      {
-        for (unsigned i = 0; i < 4; i++)
-        {
-          writeu16(0, m_config.result_addr[i]);
-          if (m_config.bonus_result_addr[i])
-            writeu16(0, m_config.bonus_result_addr[i]);
-        }
-        if (m_config.battle_addr)
-          writeu16(0, m_config.battle_addr);
-      }
-
       if (m_writing > 0)
       {
         writeu8(m_resultsScene, m_config.scene_addr);
         if (--m_writing == 0)
-        {
           m_lastScene = m_resultsScene;
-          m_clearCountdown = 10 * 60;
-        }
         return;
       }
 
@@ -57,6 +42,20 @@ DrHost::DrHost(const DrHostConfig &config, QObject *parent)
         uint8_t raw = 0;
         if (readu8(&raw, m_config.minigame_type_addr) == DR_OK)
           m_lastMinigameType = raw;
+      }
+
+      if (m_config.minigame_id_addr)
+      {
+        int16_t id = 0;
+        dr_error err = m_config.minigame_id_is_8bit
+          ? ([&]{ int8_t v = 0; dr_error e = reads8(&v, m_config.minigame_id_addr); id = v; return e; }())
+          : reads16(&id, m_config.minigame_id_addr);
+        if (err == DR_OK && id != m_lastMinigameId)
+        {
+          emit logMessage(DR_LOG_INFO,
+            QString("N64_MINIGAME_ID: 0x%1").arg((uint16_t)id, 2, 16, QChar('0')));
+          m_lastMinigameId = id;
+        }
       }
 
       uint8_t val;
@@ -75,8 +74,29 @@ DrHost::DrHost(const DrHostConfig &config, QObject *parent)
         }
       }
 
-      if (val == m_config.scene_miniexplain)
+      bool isMiniexplain = false;
+      for (unsigned i = 0; i < m_config.scene_miniexplain_count; i++)
+        if (val == m_config.scene_miniexplain[i]) { isMiniexplain = true; break; }
+      if (isMiniexplain)
       {
+        if (m_config.minigame_id_addr && m_config.minigame_blacklist_count)
+        {
+          int16_t mgId = 0;
+          if (m_config.minigame_id_is_8bit)
+          { int8_t v = 0; reads8(&v, m_config.minigame_id_addr); mgId = v; }
+          else
+            reads16(&mgId, m_config.minigame_id_addr);
+          for (unsigned i = 0; i < m_config.minigame_blacklist_count; i++)
+          {
+            if ((uint8_t)mgId == m_config.minigame_blacklist[i])
+            {
+              emit logMessage(DR_LOG_WARN,
+                QString("skipping blacklisted minigame 0x%1").arg(mgId, 2, 16, QChar('0')));
+              return;
+            }
+          }
+        }
+
         dr_minigame_type mgType = DR_MINIGAME_INVALID;
         if (m_config.minigame_type_addr && prevMinigameType < m_config.minigame_type_to_dr_size)
           mgType = m_config.minigame_type_to_dr[prevMinigameType];
@@ -175,6 +195,13 @@ DrHost::DrHost(const DrHostConfig &config, QObject *parent)
           m_resultsScene = m_lastBoardScene;
         else
           m_resultsScene = m_config.scene_miniresults;
+        for (unsigned i = 0; i < 4; i++)
+        {
+          writeu16(0, m_config.result_addr[i]);
+          if (m_config.bonus_result_addr[i])
+            writeu16(0, m_config.bonus_result_addr[i]);
+        }
+
         QMetaObject::invokeMethod(
           this,
           [this, mgType, playersArr, playerValidArr]() {
@@ -192,8 +219,8 @@ void DrHost::writeBattleCoins()
   if (!m_config.battle_addr)
     return;
 
-  uint16_t totalCoins = 0;
-  readu16(&totalCoins, m_config.battle_addr);
+  int16_t totalCoins = 0;
+  reads16(&totalCoins, m_config.battle_addr);
 
   // Read each player's place (0 = 1st, 1 = 2nd, ...)
   uint16_t places[4] = { 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF };
@@ -226,24 +253,24 @@ void DrHost::writeBattleCoins()
   }
 
   // Compute truncated shares
-  uint16_t bonusCoins[4] = {};
-  uint16_t totalAssigned = 0;
+  int16_t bonusCoins[4] = {};
+  int16_t totalAssigned = 0;
   for (unsigned i = 0; i < 4; i++)
   {
     if (places[i] == firstPlace)
     {
       bonusCoins[i] =
-        (numFirst == 1) ? (uint16_t)(totalCoins * 70 / 100) : (uint16_t)(totalCoins / numFirst);
+        (numFirst == 1) ? (int16_t)(totalCoins * 70 / 100) : (int16_t)(totalCoins / numFirst);
     }
     else if (places[i] == secondPlace)
     {
-      bonusCoins[i] = (uint16_t)(totalCoins * 30 / (100 * count[secondPlace]));
+      bonusCoins[i] = (int16_t)(totalCoins * 30 / (100 * count[secondPlace]));
     }
     totalAssigned += bonusCoins[i];
   }
 
   // One random qualifying player receives the remainder
-  if (uint16_t remainder = totalCoins - totalAssigned)
+  if (int16_t remainder = totalCoins - totalAssigned)
   {
     unsigned qualifying[4], numQ = 0;
     for (unsigned i = 0; i < 4; i++)
@@ -255,7 +282,7 @@ void DrHost::writeBattleCoins()
 
   for (unsigned i = 0; i < 4; i++)
     if (m_config.bonus_result_addr[i])
-      writeu16(bonusCoins[i], m_config.bonus_result_addr[i]);
+      writes16(bonusCoins[i], m_config.bonus_result_addr[i]);
 }
 
 void DrHost::writeResults(DrGuest *guest)

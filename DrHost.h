@@ -17,7 +17,8 @@ struct DrHostConfig
 {
   std::string core;
   std::string game;
-  uint8_t scene_miniexplain;
+  uint8_t scene_miniexplain[4];
+  unsigned scene_miniexplain_count;
   uint8_t scene_miniresults;
   uint8_t scene_miniresults_battle;
   size_t scene_addr;
@@ -42,6 +43,10 @@ struct DrHostConfig
   size_t minigame_type_addr;
   const dr_minigame_type *minigame_type_to_dr;
   unsigned minigame_type_to_dr_size;
+  size_t minigame_id_addr;
+  bool minigame_id_is_8bit;
+  uint8_t minigame_blacklist[16];
+  unsigned minigame_blacklist_count;
 };
 
 class DrHost : public DrRetro
@@ -62,8 +67,8 @@ private:
 
   DrHostConfig m_config;
   int m_writing = 0;
-  int m_clearCountdown = 0;
   uint8_t m_lastScene = 0xFF;
+  int16_t m_lastMinigameId = -1;
   uint8_t m_lastBoardScene = 0;
   uint8_t m_resultsScene = 0;
   uint8_t m_lastMinigameType = 0xFF;

@@ -21,6 +21,7 @@ static const dr_mp_minigame_t MP2_MINIGAMES[] = {
   { "Rakin' 'em In", DR_MINIGAME_BATTLE, 0x09, 0x0A, DR_NO_QUIRKS },
   // 0a unused
   { "Day at the Races", DR_MINIGAME_BATTLE, 0x0B, 0x0B, DR_NO_QUIRKS },
+  { "Face Lift", DR_MINIGAME_BATTLE, 0x0C, 0x0C, DR_NO_QUIRKS },
   { "Bowl Over", DR_MINIGAME_1V3, 0x0F, 0x0E, DR_NO_QUIRKS },
 
   { "Rainbow Run", DR_MINIGAME_1V3, 0x10, 0x0F, DR_NO_QUIRKS },
