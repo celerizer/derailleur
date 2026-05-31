@@ -21,6 +21,7 @@ SOURCES += \
     DrGuestList.cpp \
     DrLogger.cpp \
     DrRetro.cpp \
+    hosts/MarioParty1Host.cpp \
     hosts/MarioParty2Host.cpp \
     hosts/MarioParty3Host.cpp \
     guests/CoreDolphin.cpp \
@@ -47,6 +48,7 @@ HEADERS += \
     DrLogger.h \
     DrOverlay.h \
     DrRetro.h \
+    hosts/MarioParty1Host.h \
     hosts/MarioParty2Host.h \
     hosts/MarioParty3Host.h \
     guests/CoreDolphin.h \
