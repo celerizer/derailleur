@@ -4,14 +4,18 @@
 #include <QDir>
 #include <QFile>
 #include <QGuiApplication>
+#include <QLabel>
+#include <QPushButton>
 #include <QRetro.h>
 #include <QScreen>
 #include <QSettings>
 #include <QStackedWidget>
 #include <QString>
+#include <QVBoxLayout>
 #include <QWidget>
 
 #include "DrDebug.h"
+#include "hosts/MarioParty2Host.h"
 #include "hosts/MarioParty3Host.h"
 #include "guests/MarioKart64.h"
 #include "guests/MarioParty1.h"
@@ -95,7 +99,77 @@ MainWindow::MainWindow(QWidget *parent)
   m_Guests->logSummary();
 #endif
 
-  m_Host = new MarioParty3Host(this);
+  m_Stack = new QStackedWidget(this);
+
+  // Host chooser — shown once at boot, never again
+  QWidget *chooser = new QWidget(m_Stack);
+  QVBoxLayout *chooserLayout = new QVBoxLayout(chooser);
+  QLabel *chooserLabel = new QLabel("Choose Host", chooser);
+  chooserLabel->setAlignment(Qt::AlignCenter);
+  chooserLayout->addStretch();
+  chooserLayout->addWidget(chooserLabel);
+
+  auto addHostButton = [&](const QString &name, auto factory) {
+    QPushButton *btn = new QPushButton(name, chooser);
+    connect(btn, &QPushButton::clicked, this, [this, factory]() { startWithHost(factory()); });
+    chooserLayout->addWidget(btn);
+  };
+  addHostButton("Mario Party 2", [this]() -> DrHost * { return new MarioParty2Host(this); });
+  addHostButton("Mario Party 3", [this]() -> DrHost * { return new MarioParty3Host(this); });
+  chooserLayout->addStretch();
+
+  m_Stack->addWidget(chooser);   // index 0 — chooser
+  m_Stack->addWidget(m_Guests);  // index 1 — guests
+  // host container added in startWithHost (index 2)
+
+  setCentralWidget(m_Stack);
+
+#if SHOW_OVERLAY
+  m_Overlay = new DrOverlay(this);
+#endif
+
+  m_Stack->setCurrentIndex(0);
+
+#if SHOW_DEBUG
+  m_Debug = new DrDebug(nullptr);
+  m_Debug->setWindowTitle("Debug");
+  m_Debug->resize(300, 200);
+  m_Debug->populate(m_Guests->guests());
+  m_Debug->show();
+#endif
+
+  connect(m_Stack, &QStackedWidget::currentChanged, this, [this](int index) {
+    const auto &guests = m_Guests->guests();
+    if (m_Stack->widget(index) == m_Guests && m_Guests->currentIndex() >= 0 &&
+        m_Guests->currentIndex() < guests.size())
+    {
+      if (QWidget *container = m_Guests->widget(m_Guests->currentIndex()))
+        guests[m_Guests->currentIndex()]->core()->resize(container->width(), container->height());
+    }
+  });
+
+  connect(
+    m_Guests, &DrGuestList::minigameFinished, this,
+    [this]() {
+      m_Host->writeResults(m_Guests->currentGuest());
+      showHost();
+    },
+    Qt::QueuedConnection);
+
+  resize(704, 528);
+}
+
+void MainWindow::startWithHost(DrHost *host)
+{
+  m_Host = host;
+
+#if SHOW_OVERLAY
+  {
+    QPixmap loading(":/assets/loading.png");
+    m_Overlay->hold(loading);
+  }
+#endif
+
 #if SHOW_LOGGER
   connect(m_Host, &DrRetro::logMessage, m_Logger, &DrLogger::message, Qt::QueuedConnection);
 #endif
@@ -104,53 +178,11 @@ MainWindow::MainWindow(QWidget *parent)
     guest->startCore();
   m_Host->startCore();
 
-  m_Stack = new QStackedWidget(this);
-  m_Stack->addWidget(m_Guests);
-  QWidget *containerB = QWidget::createWindowContainer(m_Host->core(), m_Stack);
-  containerB->setFocusPolicy(Qt::StrongFocus);
-  m_Stack->addWidget(containerB);
-
-  setCentralWidget(m_Stack);
-#if SHOW_OVERLAY
-  m_Overlay = new DrOverlay(this);
-  {
-    QPixmap loading(":/assets/loading.png");
-    m_Overlay->hold(loading);
-  }
-#endif
-
-  // Cycle through each guest for 2 seconds, then switch to the host
-  m_Stack->setCurrentIndex(0);
-  for (DrGuest *g : m_Guests->guests())
-    if (g != m_Guests->currentGuest())
-      g->pause();
-
-  QTimer *warmupTimer = new QTimer(this);
-  warmupTimer->setInterval(2000);
-  connect(warmupTimer, &QTimer::timeout, this, [this, warmupTimer]() {
-    int next = m_Guests->currentIndex() + 1;
-    if (next < m_Guests->count())
-    {
-      m_Guests->currentGuest()->pause();
-      m_Guests->setCurrentIndex(next);
-      m_Guests->currentGuest()->unpause();
-    }
-    else
-    {
-      warmupTimer->stop();
-      warmupTimer->deleteLater();
-      showHost();
-    }
-  });
-  warmupTimer->start();
+  m_HostContainer = QWidget::createWindowContainer(m_Host->core(), m_Stack);
+  m_HostContainer->setFocusPolicy(Qt::StrongFocus);
+  m_Stack->addWidget(m_HostContainer);
 
 #if SHOW_DEBUG
-  m_Debug = new DrDebug(nullptr);
-  m_Debug->setWindowTitle("Debug");
-  m_Debug->resize(300, 200);
-  m_Debug->populate(m_Guests->guests());
-  m_Debug->show();
-
   connect(m_Debug, &DrDebug::minigameRequested, this,
     [this](DrGuest *guest, const dr_mp_minigame_t *minigame, std::array<dr_player_t, 4> players,
       std::array<bool, 4> playerValid) {
@@ -164,30 +196,52 @@ MainWindow::MainWindow(QWidget *parent)
   });
 #endif
 
-  connect(m_Guests, &QStackedWidget::currentChanged, this, [this](int index) {
-    const auto &guests = m_Guests->guests();
-    if (index >= 0 && index < guests.size())
-    {
-      if (QWidget *container = m_Guests->widget(index))
-        guests[index]->core()->resize(container->width(), container->height());
-    }
-  });
-
-  connect(
-    m_Guests, &DrGuestList::minigameFinished, this,
-    [this]() {
-      m_Host->writeResults(m_Guests->currentGuest());
-      showHost();
-    },
-    Qt::QueuedConnection);
-
   connect(m_Host, &DrHost::minigameRequested, this,
     [this](
       dr_minigame_type type, std::array<dr_player_t, 4> players, std::array<bool, 4> playerValid) {
       launchMinigame(type, players.data(), playerValid.data());
     });
 
-  resize(704, 528);
+  m_Stack->setCurrentWidget(m_Guests);
+  for (DrGuest *g : m_Guests->guests())
+    if (g != m_Guests->currentGuest())
+      g->pause();
+
+#if SHOW_LOGGER
+  m_Logger->message(DR_LOG_INFO,
+    QString("preloading %1...").arg(m_Guests->currentGuest()->name()));
+#endif
+
+  QTimer *warmupTimer = new QTimer(this);
+  warmupTimer->setInterval(2000);
+  connect(warmupTimer, &QTimer::timeout, this, [this, warmupTimer]() {
+    int next = m_Guests->currentIndex() + 1;
+    if (next < m_Guests->count())
+    {
+#if SHOW_LOGGER
+      m_Logger->message(DR_LOG_INFO,
+        QString("%1 ready").arg(m_Guests->currentGuest()->name()));
+#endif
+      m_Guests->currentGuest()->pause();
+      m_Guests->setCurrentIndex(next);
+      m_Guests->currentGuest()->unpause();
+#if SHOW_LOGGER
+      m_Logger->message(DR_LOG_INFO,
+        QString("preloading %1...").arg(m_Guests->currentGuest()->name()));
+#endif
+    }
+    else
+    {
+#if SHOW_LOGGER
+      m_Logger->message(DR_LOG_INFO,
+        QString("%1 ready").arg(m_Guests->currentGuest()->name()));
+#endif
+      warmupTimer->stop();
+      warmupTimer->deleteLater();
+      showHost();
+    }
+  });
+  warmupTimer->start();
 }
 
 void MainWindow::launchMinigame(DrGuest *guest, const dr_mp_minigame_t *minigame,
@@ -209,7 +263,7 @@ void MainWindow::launchMinigame(DrGuest *guest, const dr_mp_minigame_t *minigame
       playerValid =
         std::array<bool, 4>{ playerValid[0], playerValid[1], playerValid[2], playerValid[3] }]() {
       m_Host->pause();
-      m_Stack->setCurrentIndex(0);
+      m_Stack->setCurrentWidget(m_Guests);
       for (DrGuest *g : m_Guests->guests())
         g->pause();
 
@@ -248,7 +302,7 @@ void MainWindow::launchMinigame(
       playerValid =
         std::array<bool, 4>{ playerValid[0], playerValid[1], playerValid[2], playerValid[3] }]() {
       m_Host->pause();
-      m_Stack->setCurrentIndex(0);
+      m_Stack->setCurrentWidget(m_Guests);
       for (DrGuest *g : m_Guests->guests())
         g->pause();
 
@@ -277,7 +331,7 @@ void MainWindow::showHost()
     for (DrGuest *guest : m_Guests->guests())
       guest->pause();
     m_Host->unpause();
-    m_Stack->setCurrentIndex(1);
+    m_Stack->setCurrentWidget(m_HostContainer);
   });
 }
 
@@ -290,7 +344,7 @@ void MainWindow::showGuests()
 
   QTimer::singleShot(32, this, [this]() {
     m_Host->pause();
-    m_Stack->setCurrentIndex(0);
+    m_Stack->setCurrentWidget(m_Guests);
     for (DrGuest *guest : m_Guests->guests())
       guest == m_Guests->currentGuest() ? guest->unpause() : guest->pause();
   });

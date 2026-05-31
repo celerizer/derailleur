@@ -22,6 +22,7 @@ public:
   ~MainWindow();
 
 private:
+  void startWithHost(DrHost *host);
   void showHost();
   void showGuests();
   void launchMinigame(
@@ -31,6 +32,7 @@ private:
 
   DrGuestList *m_Guests = nullptr;
   DrHost *m_Host = nullptr;
+  QWidget *m_HostContainer = nullptr;
   QStackedWidget *m_Stack = nullptr;
   DrLogger *m_Logger = nullptr;
   DrOverlay *m_Overlay = nullptr;
@@ -40,10 +42,7 @@ protected:
   void showEvent(QShowEvent *) override
   {
     if (m_Overlay)
-    {
       m_Overlay->trackGeometry(geometry());
-      m_Overlay->show();
-    }
   }
   void moveEvent(QMoveEvent *) override
   {
