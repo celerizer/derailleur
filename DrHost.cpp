@@ -47,13 +47,17 @@ DrHost::DrHost(const DrHostConfig &config, QObject *parent)
       if (m_config.minigame_id_addr)
       {
         int16_t id = 0;
-        dr_error err = m_config.minigame_id_is_8bit
-          ? ([&]{ int8_t v = 0; dr_error e = reads8(&v, m_config.minigame_id_addr); id = v; return e; }())
-          : reads16(&id, m_config.minigame_id_addr);
+        dr_error err = m_config.minigame_id_is_8bit ? ([&] {
+          int8_t v = 0;
+          dr_error e = reads8(&v, m_config.minigame_id_addr);
+          id = v;
+          return e;
+        }())
+                                                    : reads16(&id, m_config.minigame_id_addr);
         if (err == DR_OK && id != m_lastMinigameId)
         {
-          emit logMessage(DR_LOG_INFO,
-            QString("N64_MINIGAME_ID: 0x%1").arg((uint16_t)id, 2, 16, QChar('0')));
+          emit logMessage(
+            DR_LOG_INFO, QString("N64_MINIGAME_ID: 0x%1").arg((uint16_t)id, 2, 16, QChar('0')));
           m_lastMinigameId = id;
         }
       }
@@ -76,14 +80,22 @@ DrHost::DrHost(const DrHostConfig &config, QObject *parent)
 
       bool isMiniexplain = false;
       for (unsigned i = 0; i < m_config.scene_miniexplain_count; i++)
-        if (val == m_config.scene_miniexplain[i]) { isMiniexplain = true; break; }
+        if (val == m_config.scene_miniexplain[i])
+        {
+          isMiniexplain = true;
+          break;
+        }
       if (isMiniexplain)
       {
         if (m_config.minigame_id_addr && m_config.minigame_blacklist_count)
         {
           int16_t mgId = 0;
           if (m_config.minigame_id_is_8bit)
-          { int8_t v = 0; reads8(&v, m_config.minigame_id_addr); mgId = v; }
+          {
+            int8_t v = 0;
+            reads8(&v, m_config.minigame_id_addr);
+            mgId = v;
+          }
           else
             reads16(&mgId, m_config.minigame_id_addr);
           for (unsigned i = 0; i < m_config.minigame_blacklist_count; i++)

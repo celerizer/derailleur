@@ -120,8 +120,8 @@ MainWindow::MainWindow(QWidget *parent)
   addHostButton("Mario Party 3", [this]() -> DrHost * { return new MarioParty3Host(this); });
   chooserLayout->addStretch();
 
-  m_Stack->addWidget(chooser);   // index 0 — chooser
-  m_Stack->addWidget(m_Guests);  // index 1 — guests
+  m_Stack->addWidget(chooser); // index 0 — chooser
+  m_Stack->addWidget(m_Guests); // index 1 — guests
   // host container added in startWithHost (index 2)
 
   setCentralWidget(m_Stack);
@@ -210,8 +210,7 @@ void MainWindow::startWithHost(DrHost *host)
       g->pause();
 
 #if SHOW_LOGGER
-  m_Logger->message(DR_LOG_INFO,
-    QString("preloading %1...").arg(m_Guests->currentGuest()->name()));
+  m_Logger->message(DR_LOG_INFO, QString("preloading %1...").arg(m_Guests->currentGuest()->name()));
 #endif
 
   QTimer *warmupTimer = new QTimer(this);
@@ -221,22 +220,20 @@ void MainWindow::startWithHost(DrHost *host)
     if (next < m_Guests->count())
     {
 #if SHOW_LOGGER
-      m_Logger->message(DR_LOG_INFO,
-        QString("%1 ready").arg(m_Guests->currentGuest()->name()));
+      m_Logger->message(DR_LOG_INFO, QString("%1 ready").arg(m_Guests->currentGuest()->name()));
 #endif
       m_Guests->currentGuest()->pause();
       m_Guests->setCurrentIndex(next);
       m_Guests->currentGuest()->unpause();
 #if SHOW_LOGGER
-      m_Logger->message(DR_LOG_INFO,
-        QString("preloading %1...").arg(m_Guests->currentGuest()->name()));
+      m_Logger->message(
+        DR_LOG_INFO, QString("preloading %1...").arg(m_Guests->currentGuest()->name()));
 #endif
     }
     else
     {
 #if SHOW_LOGGER
-      m_Logger->message(DR_LOG_INFO,
-        QString("%1 ready").arg(m_Guests->currentGuest()->name()));
+      m_Logger->message(DR_LOG_INFO, QString("%1 ready").arg(m_Guests->currentGuest()->name()));
 #endif
       warmupTimer->stop();
       warmupTimer->deleteLater();
