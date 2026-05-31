@@ -89,14 +89,14 @@ static const dr_mp_minigame_t MP7_MINIGAMES[] = {
   { "Camp Ukiki", DR_MINIGAME_DUEL, 0x3D, 0x43, DR_NO_QUIRKS },
 
   /* DK minigames (single-player) */
-  { "Jump, Man", DR_MINIGAME_1P, 0x47, 0x4D, DR_NO_QUIRKS },
-  { "Vine Country", DR_MINIGAME_1P, 0x48, 0x4E, DR_NO_QUIRKS },
-  { "A Bridge Too Short", DR_MINIGAME_1P, 0x49, 0x4F, DR_NO_QUIRKS },
+  { "Jump, Man", DR_MINIGAME_INVALID, 0x47, 0x4D, DR_NO_QUIRKS },
+  { "Vine Country", DR_MINIGAME_INVALID, 0x48, 0x4E, DR_NO_QUIRKS },
+  { "A Bridge Too Short", DR_MINIGAME_INVALID, 0x49, 0x4F, DR_NO_QUIRKS },
 
   /* Bowser minigames (single-player) */
-  { "Tunnel of Lava!", DR_MINIGAME_1P, 0x41, 0x47, DR_NO_QUIRKS },
-  { "Treasure Dome!", DR_MINIGAME_1P, 0x42, 0x48, DR_NO_QUIRKS },
-  { "Slot-O-Whirl!", DR_MINIGAME_1P, 0x43, 0x49, DR_NO_QUIRKS },
+  { "Tunnel of Lava!", DR_MINIGAME_INVALID, 0x41, 0x47, DR_NO_QUIRKS },
+  { "Treasure Dome!", DR_MINIGAME_INVALID, 0x42, 0x48, DR_NO_QUIRKS },
+  { "Slot-O-Whirl!", DR_MINIGAME_INVALID, 0x43, 0x49, DR_NO_QUIRKS },
 
   /* DK minigames (multiplayer) */
   { "Peel Out", DR_MINIGAME_INVALID, 0x44, 0x4A, DR_NO_QUIRKS },
