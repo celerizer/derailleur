@@ -8,10 +8,25 @@
 DrOverlay::DrOverlay(QWidget *parent)
   : QWidget(parent)
 {
-  setWindowFlags(Qt::Tool | Qt::FramelessWindowHint | Qt::WindowDoesNotAcceptFocus);
-  setAttribute(Qt::WA_TranslucentBackground);
-  setAttribute(Qt::WA_TransparentForMouseEvents);
   setMask(QRegion());
+}
+
+void DrOverlay::setActive(bool active)
+{
+  if (active)
+  {
+    setWindowFlags(Qt::Tool | Qt::FramelessWindowHint | Qt::WindowDoesNotAcceptFocus);
+    setAttribute(Qt::WA_TranslucentBackground, true);
+    setAttribute(Qt::WA_TransparentForMouseEvents, true);
+    show();
+  }
+  else
+  {
+    m_image = QImage();
+    setWindowFlags(Qt::Widget);
+    setAttribute(Qt::WA_TranslucentBackground, false);
+    setAttribute(Qt::WA_TransparentForMouseEvents, false);
+  }
 }
 
 void DrOverlay::setImage(const QImage &image)
@@ -26,6 +41,7 @@ void DrOverlay::flash(const QPixmap &pixmap, int durationMs)
     m_bounceTimer->stop();
 
   m_image = pixmap.toImage();
+  setActive(true);
   setWindowOpacity(1.0);
   repaint();
 
@@ -41,8 +57,9 @@ void DrOverlay::flash(const QPixmap &pixmap, int durationMs)
   m_anim->setDuration(durationMs);
   connect(m_anim, &QVariantAnimation::valueChanged, this,
     [this](const QVariant &v) { setWindowOpacity(v.toReal()); });
+  connect(m_anim, &QVariantAnimation::finished, this, [this]() { setActive(false); });
   m_anim->start(QAbstractAnimation::DeleteWhenStopped);
-  m_anim = nullptr; // DeleteWhenStopped handles lifetime
+  m_anim = nullptr;
 
   if (m_bounceTimer)
     m_bounceTimer->start();
@@ -60,6 +77,7 @@ void DrOverlay::hold(const QPixmap &pixmap)
   pickRandomSprite();
   if (m_bounceTimer)
     m_bounceTimer->start();
+  setActive(true);
   setWindowOpacity(1.0);
   repaint();
 }
@@ -81,6 +99,7 @@ void DrOverlay::fadeOut(int durationMs)
   m_anim->setDuration(durationMs);
   connect(m_anim, &QVariantAnimation::valueChanged, this,
     [this](const QVariant &v) { setWindowOpacity(v.toReal()); });
+  connect(m_anim, &QVariantAnimation::finished, this, [this]() { setActive(false); });
   m_anim->start(QAbstractAnimation::DeleteWhenStopped);
   m_anim = nullptr;
 }

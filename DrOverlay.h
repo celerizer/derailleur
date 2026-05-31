@@ -25,6 +25,7 @@ protected:
   void paintEvent(QPaintEvent *) override;
 
 private:
+  void setActive(bool active);
   void pickRandomSprite();
 
   QImage m_image;
