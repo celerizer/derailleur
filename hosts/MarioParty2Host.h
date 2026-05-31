@@ -9,6 +9,7 @@ class MarioParty2Host : public DrHost
 
 public:
   explicit MarioParty2Host(QObject *parent = nullptr);
+  void writeMinigameNames();
 };
 
 #endif

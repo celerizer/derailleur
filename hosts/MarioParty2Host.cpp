@@ -1,6 +1,18 @@
 #include "MarioParty2Host.h"
 
 #include <QRetroDirectories.h>
+#include <cstring>
+
+/**
+ * Starting at 0xB11570D9 is an unaligned struct of mini-game titles
+ * in this format:
+ * u8 : length of text 
+ * u8 : unknown, always 0b
+ * char array of specified size
+ * we want to replace up to five mini-game names with our titles instead.
+ * as a test, make a function that writes test names of maximum 0x0f characters
+ * into this struct. put it in marioparty2host only
+ */
 
 static const dr_character MP2_CHAR_TO_DR[] = {
   DR_CHARACTER_MARIO, // 0x00
@@ -32,6 +44,14 @@ static const dr_team_color MP2_PANEL_COLOR_TO_DR[] = {
   DR_TEAM_COLOR_RED, // 0x02
   DR_TEAM_COLOR_YELLOW, // 0x03
   DR_TEAM_COLOR_GREEN, // 0x04
+};
+
+static const size_t MP2_SLOT_ADDRS[5] = {
+  0x800df6c7,
+  0x800df6c3,
+  0x800df6c2,
+  0x800df6c1,
+  0x800df6c0,
 };
 
 static DrHostConfig makeConfig()
@@ -83,4 +103,75 @@ static DrHostConfig makeConfig()
 MarioParty2Host::MarioParty2Host(QObject *parent)
   : DrHost(makeConfig(), parent)
 {
+  connect(
+    m_core, &QRetro::frameEnd, this,
+    [this, called = false]() mutable {
+      if (!called)
+      {
+        called = true;
+        m_core->cheatReset();
+        m_core->cheatSet(0, true,
+          "8104AF9C 2602"
+          "+8104AF9E 0025"
+          "+8104B020 2400");
+        writeMinigameNames();
+      }
+    },
+    Qt::DirectConnection);
+}
+
+static size_t n64ByteAddr(size_t addr)
+{
+  return (addr & ~size_t(3)) | (3 - (addr & 3));
+}
+
+void MarioParty2Host::writeMinigameNames()
+{
+  static const char *names[5] = {
+    "ackman83",
+    "little mac",
+    "ranga time",
+    "fuck keith",
+    "reredeadpants",
+  };
+
+  size_t addr = 0xB1157363;
+  for (unsigned i = 0; i < 5; i++)
+  {
+    uint8_t oldLen = 0;
+    uint8_t marker = 0;
+    if (readu8(&oldLen, n64ByteAddr(addr)) != DR_OK)
+      return;
+    if (readu8(&marker, n64ByteAddr(addr + 1)) != DR_OK)
+      return;
+    if (marker != 0x0B)
+    {
+      log(DR_LOG_WARN,
+        qPrintable(QString("writeMinigameNames[%1]: expected 0x0B at +1, got 0x%2; backseek")
+                     .arg(i)
+                     .arg(marker, 2, 16, QChar('0'))));
+      bool found = false;
+      for (unsigned back = 1; back <= 8; back++)
+      {
+        addr--;
+        if (readu8(&oldLen, n64ByteAddr(addr)) != DR_OK ||
+            readu8(&marker, n64ByteAddr(addr + 1)) != DR_OK)
+          return;
+        if (marker == 0x0B)
+        {
+          found = true;
+          break;
+        }
+      }
+      if (!found)
+        return;
+    }
+
+    uint8_t nameLen = (uint8_t)strnlen(names[i], oldLen > 0 ? oldLen - 1 : 0);
+    for (uint8_t j = 0; j < nameLen; j++)
+      writeu8((uint8_t)names[i][j], n64ByteAddr(addr + 2 + j));
+    writeu8(0, n64ByteAddr(addr + 2 + nameLen));
+
+    addr += 2 + oldLen;
+  }
 }
