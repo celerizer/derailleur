@@ -22,6 +22,7 @@ signals:
     std::array<dr_player_t, 4> players, std::array<bool, 4> playerValid);
   void cancelRequested();
 
+private:
   void refreshMinis(int guestIdx);
 
   QComboBox *m_guestCombo = nullptr;
