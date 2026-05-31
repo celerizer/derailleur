@@ -170,7 +170,7 @@ void MarioTennis::doSetMinigame(const dr_mp_minigame_t *minigame)
   uint8_t court = (minigame->minigame_id == 0x06) ? 0x10 : (uint8_t)(rand() % 16);
   writeu8(court, MT_COURT_ADDR);
   writeu8(0x01, MT_SETS_ADDR);
-  writeu8(0x02, MT_GAMES_ADDR);
+  writeu8(0x01, MT_GAMES_ADDR);
   writeu32(minigame->minigame_id, MT_GAME_TYPE_ADDR);
   writeu8(doubles ? 0x01 : 0x00, MT_DOUBLES_ADDR);
 
