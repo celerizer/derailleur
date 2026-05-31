@@ -30,9 +30,22 @@ DrHost::DrHost(const DrHostConfig &config, QObject *parent)
 
       if (m_writing > 0)
       {
-        writeu8(m_resultsScene, m_config.scene_addr);
-        if (--m_writing == 0)
-          m_lastScene = m_resultsScene;
+        if (m_config.next_scene_addr)
+        {
+          writes16((int16_t)m_resultsScene, m_config.next_scene_addr);
+          if (--m_writing == 0)
+          {
+            int16_t cur = -1;
+            reads16(&cur, m_config.next_scene_addr);
+            m_lastScene = (uint8_t)cur;
+          }
+        }
+        else
+        {
+          writeu8(m_resultsScene, m_config.scene_addr);
+          if (--m_writing == 0)
+            m_lastScene = m_resultsScene;
+        }
         return;
       }
 
@@ -63,7 +76,14 @@ DrHost::DrHost(const DrHostConfig &config, QObject *parent)
       }
 
       uint8_t val;
-      if (readu8(&val, m_config.scene_addr) != DR_OK || val == m_lastScene)
+      if (m_config.next_scene_addr)
+      {
+        int16_t nextVal = -1;
+        if (reads16(&nextVal, m_config.next_scene_addr) != DR_OK || (uint8_t)nextVal == m_lastScene)
+          return;
+        val = (uint8_t)nextVal;
+      }
+      else if (readu8(&val, m_config.scene_addr) != DR_OK || val == m_lastScene)
         return;
 
       emit logMessage(DR_LOG_INFO, QString("N64_SCENE_ADDR: 0x%1").arg(val, 2, 16, QChar('0')));

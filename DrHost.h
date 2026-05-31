@@ -43,6 +43,7 @@ struct DrHostConfig
   size_t minigame_type_addr;
   const dr_minigame_type *minigame_type_to_dr;
   unsigned minigame_type_to_dr_size;
+  size_t next_scene_addr;
   size_t minigame_id_addr;
   bool minigame_id_is_8bit;
   uint8_t minigame_blacklist[16];

@@ -74,6 +74,7 @@ static DrHostConfig makeConfig()
     .minigame_type_addr = 0x80102C0E,
     .minigame_type_to_dr = MP3_MINIGAME_TYPE_TO_DR,
     .minigame_type_to_dr_size = sizeof(MP3_MINIGAME_TYPE_TO_DR) / sizeof(*MP3_MINIGAME_TYPE_TO_DR),
+    .next_scene_addr = 0,
     .minigame_id_addr = 0x800cd06b,
     .minigame_id_is_8bit = true,
     .minigame_blacklist = { 0x43, 0x44, 0x45 }, // ignore game guy

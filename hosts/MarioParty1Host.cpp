@@ -71,6 +71,7 @@ static DrHostConfig makeConfig()
     .minigame_type_to_dr = MP1_MINIGAME_TYPE_TO_DR,
     .minigame_type_to_dr_size = 4,
 
+    .next_scene_addr = 0x800F09F4,
     .minigame_id_addr = 0x800ED5DC,
     .minigame_id_is_8bit = false,
     .minigame_blacklist = {},
