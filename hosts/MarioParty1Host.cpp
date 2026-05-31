@@ -17,17 +17,32 @@ static const dr_difficulty MP1_DIFF_TO_DR[] = {
   DR_DIFFICULTY_HARD,   // 0x02 TODO verify
 };
 
+static const dr_team_color MP1_PANEL_COLOR_TO_DR[] = {
+  DR_TEAM_COLOR_INVALID, // 0x00
+  DR_TEAM_COLOR_BLUE,    // 0x01
+  DR_TEAM_COLOR_RED,     // 0x02
+  DR_TEAM_COLOR_YELLOW,  // 0x03
+  DR_TEAM_COLOR_GREEN,   // 0x04
+};
+
+static const dr_minigame_type MP1_MINIGAME_TYPE_TO_DR[] = {
+  DR_MINIGAME_4P,  // 0x00
+  DR_MINIGAME_1V3, // 0x01
+  DR_MINIGAME_2V2, // 0x02
+  DR_MINIGAME_1P   // 0x03 maybe
+};
+
 static DrHostConfig makeConfig()
 {
   return {
     .core = dr_core_path(DR_CORE_MUPEN64PLUSNEXT).toStdString(),
     .game = (dr_roms_directory() + "/Mario Party (USA).z64").toStdString(),
 
-    .scene_miniexplain       = { 0x6F }, // TODO: verify, may have multiple
+    .scene_miniexplain = { 0x6F }, // TODO: verify, may have multiple
     .scene_miniexplain_count = 1,
-    .scene_miniresults       = 0x7C,
-    .scene_miniresults_battle = 0,
-    .scene_addr              = 0x800C596E,
+    .scene_miniresults = 0x7C,
+    .scene_miniresults_battle = 0, // not available in mp1
+    .scene_addr = 0x800C596E,
 
     .scene_board_ranges      = {},
     .scene_board_range_count = 0,
@@ -39,8 +54,8 @@ static DrHostConfig makeConfig()
     .team_addr         = { 0x800f32b3, 0x800f32e3, 0x800f3313, 0x800f3343 },
     .bot_addr          = { 0x800f32b4, 0x800f32e4, 0x800f3314, 0x800f3344 },
     .result_addr       = { 0x800f32b8, 0x800f32e8, 0x800f3318, 0x800f3348 },
-    .bonus_result_addr = { 0, 0, 0, 0 },
-    .panel_color_addr  = { 0, 0, 0, 0 }, // TODO
+    .bonus_result_addr = { 0, 0, 0, 0 }, // not available in mp1
+    .panel_color_addr  = { 0x800f32c4, 0x800f32f4, 0x800f3324, 0x800f3354 },
 
     .char_to_dr      = MP1_CHAR_TO_DR,
     .char_to_dr_size = sizeof(MP1_CHAR_TO_DR) / sizeof(*MP1_CHAR_TO_DR),
@@ -49,15 +64,15 @@ static DrHostConfig makeConfig()
 
     .battle_addr = 0,
 
-    .panel_color_to_dr      = nullptr,
-    .panel_color_to_dr_size = 0,
+    .panel_color_to_dr      = MP1_PANEL_COLOR_TO_DR,
+    .panel_color_to_dr_size = sizeof(MP1_PANEL_COLOR_TO_DR) / sizeof(*MP1_PANEL_COLOR_TO_DR),
 
-    .minigame_type_addr       = 0, // TODO
-    .minigame_type_to_dr      = nullptr,
-    .minigame_type_to_dr_size = 0,
+    .minigame_type_addr = 0x800D645A,
+    .minigame_type_to_dr = MP1_MINIGAME_TYPE_TO_DR,
+    .minigame_type_to_dr_size = 4,
 
-    .minigame_id_addr         = 0x800ED5DC,
-    .minigame_blacklist       = {},
+    .minigame_id_addr = 0x800ED5DC,
+    .minigame_blacklist = {},
     .minigame_blacklist_count = 0,
   };
 }

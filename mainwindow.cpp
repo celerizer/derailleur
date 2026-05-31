@@ -15,6 +15,7 @@
 #include <QWidget>
 
 #include "DrDebug.h"
+#include "hosts/MarioParty1Host.h"
 #include "hosts/MarioParty2Host.h"
 #include "hosts/MarioParty3Host.h"
 #include "guests/MarioKart64.h"
@@ -114,6 +115,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(btn, &QPushButton::clicked, this, [this, factory]() { startWithHost(factory()); });
     chooserLayout->addWidget(btn);
   };
+  addHostButton("Mario Party 1", [this]() -> DrHost * { return new MarioParty1Host(this); });
   addHostButton("Mario Party 2", [this]() -> DrHost * { return new MarioParty2Host(this); });
   addHostButton("Mario Party 3", [this]() -> DrHost * { return new MarioParty3Host(this); });
   chooserLayout->addStretch();

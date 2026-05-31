@@ -303,7 +303,9 @@ void DrHost::writeResults(DrGuest *guest)
                             ? QString("%1+%2").arg(result.coins).arg(result.bonus_coins)
                             : QString::number(result.coins ? result.coins : result.bonus_coins)));
 
-    writes16(static_cast<int16_t>(result.coins), m_config.result_addr[i]);
+    int16_t coins = static_cast<int16_t>(
+      m_config.bonus_result_addr[i] ? result.coins : result.coins + result.bonus_coins);
+    writes16(coins, m_config.result_addr[i]);
     if (m_config.bonus_result_addr[i])
       writes16(static_cast<int16_t>(result.bonus_coins), m_config.bonus_result_addr[i]);
   }
