@@ -73,6 +73,7 @@ static DrHostConfig makeConfig()
     .minigame_type_to_dr      = MP2_MINIGAME_TYPE_TO_DR,
     .minigame_type_to_dr_size = sizeof(MP2_MINIGAME_TYPE_TO_DR) / sizeof(*MP2_MINIGAME_TYPE_TO_DR),
     .minigame_id_addr         = 0x800F93CA,
+    .minigame_id_is_8bit      = false,
     .minigame_blacklist       = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06 },
     .minigame_blacklist_count = 6,
   };
