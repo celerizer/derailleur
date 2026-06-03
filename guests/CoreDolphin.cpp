@@ -44,6 +44,7 @@ void CoreDolphin::addGame(MarioPartyGcn *game)
   m_games.append(game);
 
   connect(game, &DrGuest::minigameFinished, this, [this]() { finishMinigame(); });
+  connect(game, &DrRetro::logMessage, this, &DrRetro::logMessage);
 
   // Collect all (non-sentinel) minigames from this game
   for (const dr_mp_minigame_t *mg = game->config().minigames; mg && mg->name; mg++)

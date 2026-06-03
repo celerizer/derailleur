@@ -96,26 +96,27 @@ DrDebug::DrDebug(QWidget *parent)
 
 void DrDebug::populate(const QList<DrGuest *> &guests)
 {
-  m_guests = guests;
+  m_groups.clear();
   m_guestCombo->clear();
   for (DrGuest *guest : guests)
-    m_guestCombo->addItem(guest->name());
+    for (const DrMinigameGroup &group : guest->minigameGroups())
+    {
+      m_guestCombo->addItem(QString::fromUtf8(group.name));
+      m_groups.append({ guest, group });
+    }
   refreshMinis(0);
 }
 
-void DrDebug::refreshMinis(int guestIdx)
+void DrDebug::refreshMinis(int groupIdx)
 {
   m_combo->clear();
   m_entries.clear();
-  if (guestIdx < 0 || guestIdx >= m_guests.size())
+  if (groupIdx < 0 || groupIdx >= m_groups.size())
     return;
-  DrGuest *guest = m_guests[guestIdx];
-  for (const DrMinigameGroup &group : guest->minigameGroups())
+  const auto &[guest, group] = m_groups[groupIdx];
+  for (const dr_mp_minigame_t *mg : group.minigames)
   {
-    for (const dr_mp_minigame_t *mg : group.minigames)
-    {
-      m_combo->addItem(QString("%1 \xe2\x80\x94 %2").arg(group.name).arg(mg->name));
-      m_entries.append({ guest, mg });
-    }
+    m_combo->addItem(QString::fromUtf8(mg->name));
+    m_entries.append({ guest, mg });
   }
 }

@@ -9,16 +9,22 @@ MarioPartyGcn::MarioPartyGcn(const MpGcnConfig &config, QRetro *sharedCore, QObj
 void MarioPartyGcn::run()
 {
   tickFrameWrites();
-  if (!m_minigameActive)
-    return;
+
+  if (m_minigameActive)
+    m_minigameFrames++;
 
   int32_t val;
   if (reads32(&val, m_config.scene_addr) == DR_OK && val != m_lastScene)
   {
-    log(DR_LOG_INFO, qPrintable(QString("MP_SCENE_ADDR: 0x%1").arg(val, 4, 16, QChar('0'))));
+    log(DR_LOG_INFO, qPrintable(QString("%1 scene: 0x%2").arg(name()).arg(val, 4, 16, QChar('0'))));
     m_lastScene = val;
-    if (val == m_config.scene_miniresults)
+    if (m_minigameActive && m_minigameFrames >= 60 &&
+        val != m_config.scene_miniexplain && val != m_minigame->scene_id &&
+        val != -1)
+    {
+      log(DR_LOG_INFO, qPrintable(QString("finishing minigame on scene 0x%1").arg(val, 4, 16, QChar('0'))));
       finishMinigame();
+    }
   }
 }
 
@@ -30,6 +36,7 @@ const dr_mp_minigame_t *MarioPartyGcn::minigames() const
 void MarioPartyGcn::doSetMinigame(const dr_mp_minigame_t *minigame)
 {
   m_lastScene = -1;
+  m_minigameFrames = 0;
   int16_t id = static_cast<int16_t>(minigame->minigame_id);
   writeForFrames(m_config.minigame_addr, &id, sizeof(id), 120);
   startMinigame();

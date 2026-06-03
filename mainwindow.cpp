@@ -343,8 +343,10 @@ void MainWindow::launchMinigame(
 void MainWindow::showHost()
 {
 #if SHOW_OVERLAY
-  QScreen *screen = windowHandle() ? windowHandle()->screen() : QGuiApplication::primaryScreen();
-  m_Overlay->flash(screen->grabWindow(m_Guests->currentGuest()->core()->winId()));
+  {
+    QScreen *screen = windowHandle() ? windowHandle()->screen() : QGuiApplication::primaryScreen();
+    m_Overlay->hold(screen->grabWindow(m_Guests->currentGuest()->core()->winId()));
+  }
 #endif
 
   QTimer::singleShot(32, this, [this]() {
@@ -352,6 +354,9 @@ void MainWindow::showHost()
       guest->pause();
     m_Host->unpause();
     m_Stack->setCurrentWidget(m_HostContainer);
+#if SHOW_OVERLAY
+    m_Overlay->fadeOut();
+#endif
   });
 }
 

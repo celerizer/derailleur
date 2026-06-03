@@ -56,6 +56,7 @@ protected:
   void run() override;
   MpGcnConfig m_config;
   int32_t m_lastScene = -1;
+  int m_minigameFrames = 0;
 };
 
 #endif

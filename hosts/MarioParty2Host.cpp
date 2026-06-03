@@ -1,20 +1,7 @@
 #include "MarioParty2Host.h"
 
 #include <QRetroDirectories.h>
-#include <algorithm>
-#include <cctype>
-#include <cstring>
 
-/**
- * Starting at 0xB11570D9 is an unaligned struct of mini-game titles
- * in this format:
- * u8 : length of text 
- * u8 : unknown, always 0b
- * char array of specified size
- * we want to replace up to five mini-game names with our titles instead.
- * as a test, make a function that writes test names of maximum 0x0f characters
- * into this struct. put it in marioparty2host only
- */
 
 static const dr_character MP2_CHAR_TO_DR[] = {
   DR_CHARACTER_MARIO, // 0x00
@@ -55,6 +42,15 @@ static const size_t MP2_SLOT_ADDRS[5] = {
   0x800df6c1,
   0x800df6c0,
 };
+
+static const size_t MP2_MINIGAME_TITLE_ADDRS[6] = {
+  0xB1157363, 0xB1157389, 0xB11573AF, 0xB11573D1, 0xB11573F7, 0xB115741D,
+};
+
+static size_t n64ByteAddr(size_t addr)
+{
+  return (addr & ~size_t(3)) | (3 - (addr & 3));
+}
 
 static DrHostConfig makeConfig()
 {
@@ -99,6 +95,14 @@ static DrHostConfig makeConfig()
     .minigame_id_is_8bit = false,
     .minigame_blacklist = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06 },
     .minigame_blacklist_count = 6,
+
+    .title_addrs = MP2_MINIGAME_TITLE_ADDRS,
+    .title_id_base = 0x25,
+    .title_id_step = 2,
+    .title_len_offset = 2,
+    .title_addr_transform = n64ByteAddr,
+
+    .slot_addrs=MP2_SLOT_ADDRS
   };
 }
 
@@ -112,10 +116,17 @@ MarioParty2Host::MarioParty2Host(QObject *parent)
       {
         called = true;
         m_core->cheatReset();
+
+        // Force Mini-Game Roulette IDs
         m_core->cheatSet(0, true,
-          "8104AF9C 2602"
+          "8104AF98 0010"
+          "+8104AF9A 1040"
+          "+8104AF9C 2442"
           "+8104AF9E 0025"
+          "+8104AFA8 A022"
           "+8104B020 2400");
+
+        // Increased Board Speed
         m_core->cheatSet(1, true,
           "810657EE 0005"
           "+D110724A CC90"
@@ -133,101 +144,3 @@ MarioParty2Host::MarioParty2Host(QObject *parent)
     Qt::DirectConnection);
 }
 
-bool MarioParty2Host::onMiniexplainDetected(dr_minigame_type type, int16_t minigameId,
-  const std::array<dr_player_t, 4> &players, const std::array<bool, 4> &playerValid)
-{
-  if (minigameId >= 0x25 && minigameId <= 0x29)
-  {
-    startMinigame((unsigned)(minigameId - 0x25));
-    return true;
-  }
-  return false;
-}
-
-static size_t n64ByteAddr(size_t addr)
-{
-  return (addr & ~size_t(3)) | (3 - (addr & 3));
-}
-
-void MarioParty2Host::injectMinigameTitles(const std::array<DrMinigameCandidate, 5> &candidates)
-{
-  for (unsigned i = 0; i < 5; i++)
-  {
-    const char *name =
-      (candidates[i].minigame && candidates[i].minigame->name) ? candidates[i].minigame->name : "";
-    std::string s(name, strnlen(name, 16));
-    s.erase(std::remove_if(s.begin(), s.end(), [](char c) { return !isalpha((unsigned char)c) && c != ' '; }), s.end());
-    m_candidateNames[i] = s;
-  }
-  writeMinigameNames();
-}
-
-void MarioParty2Host::writeMinigameNames()
-{
-  const char *names[5];
-  for (unsigned i = 0; i < 5; i++)
-    names[i] = m_candidateNames[i].c_str();
-
-  size_t addr = 0xB1157363;
-  for (unsigned i = 0; i < 5; i++)
-  {
-    uint8_t oldLen = 0;
-    uint8_t marker = 0;
-    if (readu8(&oldLen, n64ByteAddr(addr)) != DR_OK)
-      return;
-    if (readu8(&marker, n64ByteAddr(addr + 1)) != DR_OK)
-      return;
-    if (marker != 0x0B)
-    {
-      log(DR_LOG_WARN,
-        qPrintable(QString("writeMinigameNames[%1]: expected 0x0B at +1, got 0x%2; backseek")
-                     .arg(i)
-                     .arg(marker, 2, 16, QChar('0'))));
-      bool found = false;
-      size_t seekAddr = addr;
-      for (unsigned back = 1; back <= 8; back++)
-      {
-        seekAddr--;
-        if (readu8(&oldLen, n64ByteAddr(seekAddr)) != DR_OK ||
-            readu8(&marker, n64ByteAddr(seekAddr + 1)) != DR_OK)
-          return;
-        if (marker == 0x0B)
-        {
-          found = true;
-          addr = seekAddr;
-          break;
-        }
-      }
-      if (!found)
-      {
-        seekAddr = addr;
-        for (unsigned fwd = 1; fwd <= 8; fwd++)
-        {
-          seekAddr++;
-          if (readu8(&oldLen, n64ByteAddr(seekAddr)) != DR_OK ||
-              readu8(&marker, n64ByteAddr(seekAddr + 1)) != DR_OK)
-            return;
-          if (marker == 0x0B)
-          {
-            found = true;
-            addr = seekAddr;
-            break;
-          }
-        }
-      }
-      if (!found)
-      {
-        log(DR_LOG_ERROR,
-          qPrintable(QString("writeMinigameNames[%1]: could not find 0x0B marker, giving up").arg(i)));
-        return;
-      }
-    }
-
-    uint8_t nameLen = (uint8_t)strnlen(names[i], oldLen > 0 ? oldLen - 1 : 0);
-    for (uint8_t j = 0; j < nameLen; j++)
-      writeu8((uint8_t)names[i][j], n64ByteAddr(addr + 2 + j));
-    writeu8(0, n64ByteAddr(addr + 2 + nameLen));
-
-    addr += 2 + oldLen;
-  }
-}

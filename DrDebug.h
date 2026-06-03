@@ -27,7 +27,7 @@ private:
 
   QComboBox *m_guestCombo = nullptr;
   QComboBox *m_combo = nullptr;
-  QList<DrGuest *> m_guests;
+  QList<QPair<DrGuest *, DrMinigameGroup>> m_groups;
   QList<QPair<DrGuest *, const dr_mp_minigame_t *>> m_entries;
 };
 

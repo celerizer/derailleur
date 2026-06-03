@@ -295,14 +295,12 @@ dr_error SmashRemix::doSetPlayerControlPort(unsigned index, dr_control_port cont
 dr_error SmashRemix::doSetPlayerControlType(unsigned index, dr_control_type control_type)
 {
   m_players[index].control_type = control_type;
-  applyPlayers();
   return DR_OK;
 }
 
 dr_error SmashRemix::doSetPlayerDifficulty(unsigned index, dr_difficulty difficulty)
 {
   m_players[index].difficulty = difficulty;
-  applyPlayers();
   return DR_OK;
 }
 
