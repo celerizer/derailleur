@@ -10,26 +10,208 @@
 
 void DrHost::run(void)
 {
+  static const uint8_t ff = 0xff;
+
+  tickFrameWrites();
+
+  static const char *stateNames[] = {
+    "INVALID", "BEFORE_BOARD", "BOARD", "BEFORE_ROULETTE", "ROULETTE", "AFTER_ROULETTE", "MINIGAME"
+  };
+  auto setState = [&](dr_host_state s) {
+    emit logMessage(DR_LOG_INFO,
+      QString("host state: %1 -> %2").arg(stateNames[m_State]).arg(stateNames[s]));
+    m_State = s;
+  };
+
+  int16_t scene_id = 0;
+  reads16(&scene_id, m_config.scene_addr);
+
   switch (m_State)
   {
   case DR_HOST_STATE_INVALID:
     if (m_core->frames() <= 120)
       return;
     else
-      m_State = DR_HOST_STATE_BOARD;
+      setState(DR_HOST_STATE_BEFORE_BOARD);
     break;
+  case DR_HOST_STATE_BEFORE_BOARD:
+  {
+    if (m_config.scene_trampoline_addr)
+      writeu32(0, m_config.scene_trampoline_addr);
+
+    writeForFrames(m_config.minigame_type_addr, &ff, 1, 180);
+
+    for (unsigned r = 0; r < m_config.scene_board_range_count; r++)
+    {
+      if ((uint8_t)scene_id >= m_config.scene_board_ranges[r].min &&
+          (uint8_t)scene_id <= m_config.scene_board_ranges[r].max)
+      {
+        m_lastBoardScene = (uint8_t)scene_id;
+        setState(DR_HOST_STATE_BOARD);
+        break;
+      }
+    }
+    break;
+  }
   case DR_HOST_STATE_BOARD:
   {
-    uint8_t new_minigame_type;
+    m_SceneId = scene_id;
+
+    /* Ignore any progression if we are not on the board */
+    if ((uint8_t)m_SceneId != m_lastBoardScene)
+      return;
+
+    /* Check if the mini-game type value been set */
+    uint8_t minigame_type = 0;
+    readu8(&minigame_type, m_config.minigame_type_addr);
+    if (minigame_type != 0xFF && minigame_type < m_config.minigame_type_to_dr_size)
+    {
+      dr_minigame_type mg_type = m_config.minigame_type_to_dr[minigame_type];
+      if (mg_type != DR_MINIGAME_INVALID && mg_type != DR_MINIGAME_ITEM)
+      {
+        m_MinigameType = minigame_type;
+        m_candidates = {};
+        emit candidatesNeeded(mg_type);
+        setState(DR_HOST_STATE_BEFORE_ROULETTE);
+        break;
+      }
+    }
+    writeu8(0xFF, m_config.minigame_type_addr);
+    if (m_config.scene_trampoline_addr)
+      writeu32(0, m_config.scene_trampoline_addr);
+    break;
+  }
+  case DR_HOST_STATE_BEFORE_ROULETTE:
+    if ((uint8_t)scene_id != m_lastBoardScene)
+    {
+      setState(DR_HOST_STATE_BEFORE_BOARD);
+      break;
+    }
+    if (!m_candidates[0].minigame)
+      break;
+    injectMinigameTitles(m_candidates);
+    if (m_config.minigame_id_is_8bit)
+    {
+      int8_t v = 0;
+      reads8(&v, m_config.minigame_id_addr);
+      m_lastMinigameId = v;
+    }
+    else
+      reads16(&m_lastMinigameId, m_config.minigame_id_addr);
+    setState(DR_HOST_STATE_ROULETTE);
+    break;
+
+  case DR_HOST_STATE_ROULETTE:
+  {
+    if ((uint8_t)scene_id != m_lastBoardScene)
+    {
+      setState(DR_HOST_STATE_BEFORE_BOARD);
+      break;
+    }
+
+    {
+      uint8_t minigame_type = 0;
+      readu8(&minigame_type, m_config.minigame_type_addr);
+      if (minigame_type != (uint8_t)m_MinigameType)
+      {
+        setState(DR_HOST_STATE_BOARD);
+        break;
+      }
+    }
+
+    int16_t id = 0;
+    if (m_config.minigame_id_is_8bit)
+    {
+      int8_t v = 0;
+      reads8(&v, m_config.minigame_id_addr);
+      id = v;
+    }
+    else
+      reads16(&id, m_config.minigame_id_addr);
+
+    if (id == m_lastMinigameId)
+      break;
+
+    m_lastMinigameId = id;
+
+    dr_minigame_type mg_type = (m_MinigameType < (int)m_config.minigame_type_to_dr_size)
+      ? m_config.minigame_type_to_dr[m_MinigameType]
+      : DR_MINIGAME_INVALID;
+    switch (mg_type)
+    {
+    case DR_MINIGAME_4P:
+    case DR_MINIGAME_1V3:
+    case DR_MINIGAME_2V2:
+      m_resultsScene = m_config.scene_miniresults;
+      m_resultsModifier = 0;
+      break;
+    case DR_MINIGAME_BATTLE:
+      m_resultsScene = m_config.scene_miniresults_battle;
+      m_resultsModifier = 2;
+      break;
+    case DR_MINIGAME_DUEL:
+    {
+      bool isDuelBoard = m_config.scene_duel_board_range.max &&
+        m_lastBoardScene >= m_config.scene_duel_board_range.min &&
+        m_lastBoardScene <= m_config.scene_duel_board_range.max;
+      if (isDuelBoard && m_config.scene_miniresults_duel)
+      {
+        m_resultsScene = m_config.scene_miniresults_duel;
+        m_resultsModifier = 0;
+      }
+      else
+      {
+        m_resultsScene = m_lastBoardScene;
+        m_resultsModifier = 2;
+      }
+      break;
+    }
+    case DR_MINIGAME_ITEM:
+      m_resultsScene = m_lastBoardScene;
+      m_resultsModifier = 2;
+      break;
+    default:
+      emit logMessage(DR_LOG_INFO,
+        QString("bad mini-game type: 0x%1").arg(m_MinigameType, 2, 16, QChar('0')));
+      break;
+    }
+
+    emit logMessage(DR_LOG_INFO,
+      QString("next_scene: 0x%1 modifier 0x%2")
+        .arg(m_resultsScene, 2, 16, QChar('0'))
+        .arg(m_resultsModifier, 2, 16, QChar('0')));
+    if (m_config.scene_trampoline_addr)
+      writeu32(((uint32_t)m_resultsScene << 16) | (uint16_t)m_resultsModifier, m_config.scene_trampoline_addr);
+    setState(DR_HOST_STATE_AFTER_ROULETTE);
+    break;
+  }
+
+  case DR_HOST_STATE_AFTER_ROULETTE:
+  {
+    if ((uint8_t)scene_id != m_resultsScene)
+      break;
+
+    dr_minigame_type mg_type = (m_MinigameType < (int)m_config.minigame_type_to_dr_size)
+      ? m_config.minigame_type_to_dr[m_MinigameType] : DR_MINIGAME_INVALID;
+    readPlayers(mg_type);
+    onMiniexplainDetected(mg_type, m_lastMinigameId, m_pendingPlayers, m_pendingPlayerValid);
+    startMinigame(m_pendingStartIndex);
+
+    emit logMessage(DR_LOG_INFO,
+      QString("board_scene: 0x%1 modifier 1").arg(m_lastBoardScene, 2, 16, QChar('0')));
+    if (m_config.scene_trampoline_addr)
+      writeu32(((uint32_t)m_lastBoardScene << 16) | 1, m_config.scene_trampoline_addr);
+    setState(DR_HOST_STATE_MINIGAME);
+    break;
+  }
+
+  case DR_HOST_STATE_MINIGAME:
+  {
+    if ((uint8_t)scene_id == m_lastBoardScene)
+      setState(DR_HOST_STATE_BOARD);
+    break;
   }
   }
-
-  unsigned _prev = m_lastNextScene;
-  reads16(&m_lastNextScene, m_config.next_scene_addr);
-
-  int16_t next_scene_prev = m_lastNextScene;
-  reads16(&m_lastNextScene, m_config.next_scene_addr);
-
 }
 
 DrHost::DrHost(const DrHostConfig &config, QObject *parent)
@@ -39,6 +221,7 @@ DrHost::DrHost(const DrHostConfig &config, QObject *parent)
   qRegisterMetaType<DrMinigameCandidate>();
   qRegisterMetaType<DrPlayerArray>();
   qRegisterMetaType<DrPlayerValidArray>();
+  qRegisterMetaType<dr_minigame_type>();
   m_core = new QRetro();
   m_ownCore = true;
   if (!m_core->loadCore(config.core.c_str()))
@@ -52,295 +235,7 @@ DrHost::DrHost(const DrHostConfig &config, QObject *parent)
     m_valid = false;
   }
 
-  connect(
-    m_core, &QRetro::frameEnd, this,
-    [this]() {
-      run();
-
-#if 0
-      if (m_core->frames() <= 120)
-        return;
-
-      if (m_writing > 0)
-      {
-        if (m_config.next_scene_addr)
-        {
-          writes16((int16_t)m_resultsScene, m_config.next_scene_addr);
-          if (m_config.next_scene_modifier_addr)
-            writes16(m_resultsModifier, m_config.next_scene_modifier_addr);
-          if (--m_writing == 0)
-            m_lastScene = m_resultsScene;
-          // fall through — still monitor scene_addr for phase 2 trigger
-        }
-        else
-        {
-          writeu8(m_resultsScene, m_config.scene_addr);
-          if (--m_writing == 0)
-            m_lastScene = m_resultsScene;
-          return;
-        }
-      }
-
-      uint8_t prevMinigameType = m_lastMinigameType;
-
-      auto runMiniexplain = [&]() {
-        if (m_config.minigame_id_addr && m_config.minigame_blacklist_count)
-        {
-          int16_t mgId = 0;
-          if (m_config.minigame_id_is_8bit)
-          {
-            int8_t v = 0;
-            reads8(&v, m_config.minigame_id_addr);
-            mgId = v;
-          }
-          else
-            reads16(&mgId, m_config.minigame_id_addr);
-          for (unsigned i = 0; i < m_config.minigame_blacklist_count; i++)
-          {
-            if ((uint8_t)mgId == m_config.minigame_blacklist[i])
-            {
-              emit logMessage(DR_LOG_WARN,
-                QString("skipping blacklisted minigame 0x%1").arg(mgId, 2, 16, QChar('0')));
-              return;
-            }
-          }
-        }
-
-        dr_minigame_type mgType = DR_MINIGAME_INVALID;
-        if (m_config.minigame_type_addr && prevMinigameType < m_config.minigame_type_to_dr_size)
-          mgType = m_config.minigame_type_to_dr[prevMinigameType];
-
-        if (m_config.scene_duel_board_range.max &&
-            m_lastBoardScene >= m_config.scene_duel_board_range.min &&
-            m_lastBoardScene <= m_config.scene_duel_board_range.max)
-          mgType = DR_MINIGAME_DUEL;
-
-        uint8_t panelColors[4];
-        for (unsigned i = 0; i < 4; i++)
-        {
-          if (readu8(&panelColors[i], m_config.panel_color_addr[i]) != DR_OK)
-            panelColors[i] = 0xFF;
-        }
-
-        dr_player_t players[4] = {};
-        bool playerValid[4] = {};
-        for (unsigned i = 0; i < 4; i++)
-        {
-          uint8_t chr, ctrl, diff, bot, team;
-          if (readu8(&chr, m_config.character_addr[i]) == DR_OK &&
-              readu8(&ctrl, m_config.controller_addr[i]) == DR_OK &&
-              readu8(&diff, m_config.difficulty_addr[i]) == DR_OK &&
-              readu8(&bot, m_config.bot_addr[i]) == DR_OK &&
-              readu8(&team, m_config.team_addr[i]) == DR_OK)
-          {
-            dr_player_t &p = players[i];
-            if (chr < m_config.char_to_dr_size)
-              p.character = m_config.char_to_dr[chr];
-            if (diff < m_config.diff_to_dr_size)
-              p.difficulty = m_config.diff_to_dr[diff];
-            p.control_type = (bot & 0x01) ? DR_CONTROL_TYPE_CPU : DR_CONTROL_TYPE_HUMAN;
-            p.control_port = static_cast<dr_control_port>(DR_CONTROL_PORT_P1 + ctrl);
-            p.team_color = (panelColors[i] < m_config.panel_color_to_dr_size)
-                             ? m_config.panel_color_to_dr[panelColors[i]]
-                             : DR_TEAM_COLOR_INVALID;
-            p.team_id = team;
-            playerValid[i] = true;
-          }
-        }
-
-        if (mgType == DR_MINIGAME_1V3)
-        {
-          for (unsigned i = 0; i < 4; i++)
-            if (playerValid[i])
-              players[i].team_type =
-                (players[i].team_id == 0) ? DR_TEAM_TYPE_1V3_SOLO : DR_TEAM_TYPE_1V3_GROUP;
-        }
-        else if (mgType == DR_MINIGAME_2V2)
-        {
-          for (unsigned i = 0; i < 4; i++)
-            if (playerValid[i])
-              players[i].team_type = DR_TEAM_TYPE_2V2;
-        }
-        else if (mgType == DR_MINIGAME_4P)
-        {
-          for (unsigned i = 0; i < 4; i++)
-            if (playerValid[i])
-              players[i].team_type = DR_TEAM_TYPE_4P;
-        }
-        else
-        {
-          for (unsigned i = 0; i < 4; i++)
-            if (playerValid[i])
-              players[i].team_type = DR_TEAM_TYPE_SOLO;
-        }
-
-        emit logMessage(DR_LOG_INFO, QString("starting %1:").arg(dr_minigame_type_name(mgType)));
-        for (unsigned i = 0; i < 4; i++)
-        {
-          if (!playerValid[i])
-            continue;
-          emit logMessage(DR_LOG_INFO, QString("  %1: id %2 color %3")
-                                         .arg(dr_character_name(players[i].character))
-                                         .arg(players[i].team_id)
-                                         .arg(dr_team_color_name(players[i].team_color)));
-        }
-
-        std::array<dr_player_t, 4> playersArr = { players[0], players[1], players[2], players[3] };
-        std::array<bool, 4> playerValidArr = { playerValid[0], playerValid[1], playerValid[2],
-          playerValid[3] };
-        m_resultsModifier = 0;
-        if (mgType == DR_MINIGAME_BATTLE && m_config.scene_miniresults_battle)
-          m_resultsScene = m_config.scene_miniresults_battle;
-        else if (mgType == DR_MINIGAME_DUEL)
-        {
-          bool isDuelBoard = m_config.scene_duel_board_range.max &&
-            m_lastBoardScene >= m_config.scene_duel_board_range.min &&
-            m_lastBoardScene <= m_config.scene_duel_board_range.max;
-          if (isDuelBoard)
-            m_resultsScene = 0x73;
-          else
-          {
-            m_resultsScene = m_lastBoardScene;
-            m_resultsModifier = 2;
-          }
-        }
-        else
-          m_resultsScene = m_config.scene_miniresults;
-        for (unsigned i = 0; i < 4; i++)
-        {
-          writeu16(0, m_config.result_addr[i]);
-          if (m_config.bonus_result_addr[i])
-            writeu16(0, m_config.bonus_result_addr[i]);
-        }
-
-        m_pendingPlayers = playersArr;
-        m_pendingPlayerValid = playerValidArr;
-        if (m_config.next_scene_addr)
-          m_pendingMgType = mgType;
-        if (!onMiniexplainDetected(mgType, m_lastMinigameId, playersArr, playerValidArr))
-        {
-          if (m_config.next_scene_addr)
-            m_pendingMgType = DR_MINIGAME_INVALID;
-          QMetaObject::invokeMethod(
-            this,
-            [this, mgType, playersArr, playerValidArr]() {
-              emit candidatesRequested(mgType, playersArr, playerValidArr);
-            },
-            Qt::QueuedConnection);
-        }
-        if (m_config.next_scene_addr)
-        {
-          emit logMessage(DR_LOG_INFO,
-            QString("N64_NEXT_SCENE: 0x%1 modifier %2")
-              .arg(m_resultsScene, 2, 16, QChar('0'))
-              .arg(m_resultsModifier));
-          writes16((int16_t)m_resultsScene, m_config.next_scene_addr);
-          if (m_config.next_scene_modifier_addr)
-            writes16(m_resultsModifier, m_config.next_scene_modifier_addr);
-        }
-        m_writing = 30;
-      };
-
-      if (!m_writing)
-      {
-        if (m_config.minigame_type_addr)
-        {
-          uint8_t raw = 0;
-          if (readu8(&raw, m_config.minigame_type_addr) == DR_OK)
-            m_lastMinigameType = raw;
-          if (prevMinigameType != m_lastMinigameType && m_lastMinigameType != 0xFF &&
-              m_lastMinigameType < m_config.minigame_type_to_dr_size)
-          {
-            dr_minigame_type mgType = m_config.minigame_type_to_dr[m_lastMinigameType];
-            emit logMessage(DR_LOG_INFO,
-              QString("N64_MINIGAME_TYPE: 0x%1 (%2)")
-                .arg(m_lastMinigameType, 2, 16, QChar('0'))
-                .arg(dr_minigame_type_name(mgType)));
-            if (mgType != DR_MINIGAME_INVALID && mgType != DR_MINIGAME_ITEM)
-              QMetaObject::invokeMethod(
-                this, [this, mgType]() { emit candidatesNeeded(mgType); }, Qt::QueuedConnection);
-          }
-        }
-
-        if (m_config.minigame_id_addr)
-        {
-          int16_t id = 0;
-          dr_error err = m_config.minigame_id_is_8bit ? ([&] {
-            int8_t v = 0;
-            dr_error e = reads8(&v, m_config.minigame_id_addr);
-            id = v;
-            return e;
-          }())
-                                                      : reads16(&id, m_config.minigame_id_addr);
-          if (err == DR_OK && id != m_lastMinigameId)
-          {
-            emit logMessage(
-              DR_LOG_INFO, QString("N64_MINIGAME_ID: 0x%1").arg((uint16_t)id, 2, 16, QChar('0')));
-            m_lastMinigameId = id;
-          }
-        }
-
-        if (m_config.next_scene_addr)
-        {
-          int16_t nextRaw = -1;
-          if (reads16(&nextRaw, m_config.next_scene_addr) == DR_OK)
-          {
-            uint8_t nextScene = (uint8_t)nextRaw;
-            if (nextScene != m_lastNextScene)
-            {
-              m_lastNextScene = nextScene;
-              for (unsigned i = 0; i < m_config.scene_miniexplain_count; i++)
-              {
-                if (nextScene != m_config.scene_miniexplain[i])
-                  continue;
-                runMiniexplain();
-                break;
-              }
-            }
-          }
-        }
-      }
-
-      uint8_t val;
-      if (readu8(&val, m_config.scene_addr) != DR_OK || val == m_lastScene)
-        return;
-
-      emit logMessage(DR_LOG_INFO, QString("N64_SCENE_ADDR: 0x%1").arg(val, 2, 16, QChar('0')));
-      m_lastScene = val;
-      if (m_config.minigame_type_addr)
-        writeu8(0xFF, m_config.minigame_type_addr);
-
-      for (unsigned r = 0; r < m_config.scene_board_range_count; r++)
-      {
-        if (val >= m_config.scene_board_ranges[r].min && val <= m_config.scene_board_ranges[r].max)
-        {
-          m_lastBoardScene = val;
-          break;
-        }
-      }
-
-      if (m_config.next_scene_addr)
-      {
-        if (m_pendingMgType != DR_MINIGAME_INVALID && val == m_resultsScene)
-        {
-          m_pendingMgType = DR_MINIGAME_INVALID;
-          startMinigame(m_pendingStartIndex);
-        }
-        return;
-      }
-
-      bool isMiniexplain = false;
-      for (unsigned i = 0; i < m_config.scene_miniexplain_count; i++)
-        if (val == m_config.scene_miniexplain[i])
-        {
-          isMiniexplain = true;
-          break;
-        }
-      if (isMiniexplain)
-        runMiniexplain();
-#endif
-    },
-    Qt::DirectConnection);
+  connect(m_core, &QRetro::frameEnd, this, [this]() { run(); }, Qt::DirectConnection);
 }
 
 void DrHost::injectMinigameTitles(const std::array<DrMinigameCandidate, 5> &candidates)
@@ -413,10 +308,6 @@ void DrHost::writeMinigameNames(const std::array<std::string, 5> &names)
     size_t addr = m_titleSlotAddrs[i];
     uint8_t nameLen = (uint8_t)std::min(names[i].size(), (size_t)32);
 
-    log(DR_LOG_INFO,
-      qPrintable(QString("writeMinigameNames[%1]: nameLen=%2 name='%3'")
-                   .arg(i).arg(nameLen).arg(names[i].c_str())));
-
     size_t contentBytes = m_config.title_addrs[i + 1] - addr - 2;
     w(nameLen + m_config.title_len_offset, addr);
     for (size_t j = 0; j < contentBytes; j++)
@@ -435,6 +326,50 @@ void DrHost::startMinigame(unsigned index)
   if (index >= 5 || !m_candidates[index].guest || !m_candidates[index].minigame)
     return;
   emit minigameRequested(m_candidates[index], m_pendingPlayers, m_pendingPlayerValid);
+}
+
+void DrHost::readPlayers(dr_minigame_type type)
+{
+  m_pendingPlayers = {};
+  m_pendingPlayerValid = {};
+
+  uint8_t panelColors[4];
+  for (unsigned i = 0; i < 4; i++)
+    if (readu8(&panelColors[i], m_config.panel_color_addr[i]) != DR_OK)
+      panelColors[i] = 0xFF;
+
+  for (unsigned i = 0; i < 4; i++)
+  {
+    uint8_t chr, ctrl, diff, bot, team;
+    if (readu8(&chr,  m_config.character_addr[i])   != DR_OK) continue;
+    if (readu8(&ctrl, m_config.controller_addr[i])  != DR_OK) continue;
+    if (readu8(&diff, m_config.difficulty_addr[i])  != DR_OK) continue;
+    if (readu8(&bot,  m_config.bot_addr[i])          != DR_OK) continue;
+    if (readu8(&team, m_config.team_addr[i])         != DR_OK) continue;
+
+    dr_player_t &p = m_pendingPlayers[i];
+    p.character   = (chr  < m_config.char_to_dr_size)          ? m_config.char_to_dr[chr]          : DR_CHARACTER_INVALID;
+    p.difficulty  = (diff < m_config.diff_to_dr_size)          ? m_config.diff_to_dr[diff]          : DR_DIFFICULTY_INVALID;
+    p.control_type = (bot & 0x01) ? DR_CONTROL_TYPE_CPU : DR_CONTROL_TYPE_HUMAN;
+    p.control_port = static_cast<dr_control_port>(DR_CONTROL_PORT_P1 + ctrl);
+    p.team_color  = (panelColors[i] < m_config.panel_color_to_dr_size)
+                      ? m_config.panel_color_to_dr[panelColors[i]] : DR_TEAM_COLOR_INVALID;
+    p.team_id = team;
+    m_pendingPlayerValid[i] = true;
+  }
+
+  for (unsigned i = 0; i < 4; i++)
+  {
+    if (!m_pendingPlayerValid[i]) continue;
+    if (type == DR_MINIGAME_1V3)
+      m_pendingPlayers[i].team_type = (m_pendingPlayers[i].team_id == 0) ? DR_TEAM_TYPE_1V3_SOLO : DR_TEAM_TYPE_1V3_GROUP;
+    else if (type == DR_MINIGAME_2V2)
+      m_pendingPlayers[i].team_type = DR_TEAM_TYPE_2V2;
+    else if (type == DR_MINIGAME_4P)
+      m_pendingPlayers[i].team_type = DR_TEAM_TYPE_4P;
+    else
+      m_pendingPlayers[i].team_type = DR_TEAM_TYPE_SOLO;
+  }
 }
 
 void DrHost::writeBattleCoins()
@@ -538,5 +473,4 @@ void DrHost::writeResults(DrGuest *guest)
     writeu8(0xFF, m_config.minigame_type_addr);
   m_writing = 30;
   m_lastScene = 0xFF;
-  m_lastMinigameType = 0xFF;
 }

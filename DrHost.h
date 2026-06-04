@@ -12,6 +12,7 @@ struct DrMinigameCandidate
   const dr_mp_minigame_t *minigame;
 };
 Q_DECLARE_METATYPE(DrMinigameCandidate)
+Q_DECLARE_METATYPE(dr_minigame_type)
 using DrPlayerArray = std::array<dr_player_t, 4>;
 using DrPlayerValidArray = std::array<bool, 4>;
 Q_DECLARE_METATYPE(DrPlayerArray)
@@ -26,6 +27,9 @@ struct dr_scene_range_t
 typedef enum
 {
   DR_HOST_STATE_INVALID = 0,
+
+  /// Waiting for the current scene to be a valid board scene.
+  DR_HOST_STATE_BEFORE_BOARD,
 
   /// The host game is currently on the board or results.
   /// The emulator will monitor the mini-game type to see when the roulette is about to start.
@@ -54,6 +58,7 @@ struct DrHostConfig
   unsigned scene_miniexplain_count;
   uint8_t scene_miniresults;
   uint8_t scene_miniresults_battle;
+  uint8_t scene_miniresults_duel;
   size_t scene_addr;
   dr_scene_range_t scene_board_ranges[4];
   unsigned scene_board_range_count;
@@ -89,6 +94,7 @@ struct DrHostConfig
   uint8_t title_len_offset;              // added to nameLen when writing the length byte
   size_t (*title_addr_transform)(size_t); // byte-swap fn (e.g. n64ByteAddr), nullptr = identity
   const size_t *slot_addrs;              // 5 word-flipped RAM addrs holding per-slot minigame IDs
+  size_t scene_trampoline_addr;          // packed word: upper half = scene, lower half = modifier; 0 = passthrough
 };
 
 class DrHost : public DrRetro
@@ -165,6 +171,7 @@ protected:
   bool m_titleSlotsValid = false;
 
 private:
+  void readPlayers(dr_minigame_type type);
   void writeBattleCoins();
 
   DrHostConfig m_config;
@@ -174,7 +181,8 @@ private:
   uint8_t m_lastBoardScene = 0;
   uint8_t m_resultsScene = 0;
   int16_t m_resultsModifier = 0;
-  uint8_t m_lastMinigameType = 0xFF;
+  signed m_MinigameType = -1;
+  signed m_SceneId = 0;
   uint8_t m_lastNextScene = 0xFF;
   dr_minigame_type m_pendingMgType = DR_MINIGAME_INVALID;
   uint8_t m_pendingStartIndex = 0;

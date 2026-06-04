@@ -53,7 +53,7 @@ static const dr_mp_minigame_t MP1_MINIGAMES[] = {
   { "Crane Game", DR_MINIGAME_1V3, 0x23, 0x23, DR_NO_QUIRKS },
   { "Bumper Ball Maze 2", DR_MINIGAME_INVALID, 0x24, 0x34, DR_NO_QUIRKS },
   { "Slot Car Derby", DR_MINIGAME_4P, 0x25, 0x25, DR_NO_QUIRKS },
-  { "Mario Bandstand", DR_MINIGAME_1V3, 0x26, 0x26, DR_NO_QUIRKS }, // categorized as 4p in MP1 but 1v3 works better
+  { "Mario Bandstand", DR_MINIGAME_4P, 0x26, 0x26, DR_NO_QUIRKS },
   { "Desert Dash", DR_MINIGAME_2V2, 0x27, 0x27, DR_NO_QUIRKS },
   { "Shy Guy Says", DR_MINIGAME_4P, 0x28, 0x28, DR_NO_QUIRKS },
   { "Limbo Dance", DR_MINIGAME_1P, 0x29, 0x29, DR_NO_QUIRKS },

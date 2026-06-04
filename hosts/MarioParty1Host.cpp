@@ -29,7 +29,7 @@ static const dr_minigame_type MP1_MINIGAME_TYPE_TO_DR[] = {
   DR_MINIGAME_4P, // 0x00
   DR_MINIGAME_1V3, // 0x01
   DR_MINIGAME_2V2, // 0x02
-  DR_MINIGAME_1P // 0x03 maybe
+  DR_MINIGAME_1P // 0x03
 };
 
 static DrHostConfig makeConfig()

@@ -75,6 +75,7 @@ static DrHostConfig makeConfig()
     .scene_miniexplain_count = 1,
     .scene_miniresults = 0x71,
     .scene_miniresults_battle = 0x74,
+    .scene_miniresults_duel = 0x73,
     .scene_addr = 0x800ce200,
 
     .scene_board_ranges = { { 0x48, 0x4D }, { 0x5B, 0x60 } },
@@ -116,6 +117,7 @@ static DrHostConfig makeConfig()
     .title_len_offset = 3,
     .title_addr_transform = n64ByteAddr,
     .slot_addrs = MP3_SLOT_ADDRS,
+    .scene_trampoline_addr = 0x800A7A54,
   };
 }
 
@@ -156,7 +158,41 @@ MarioParty3Host::MarioParty3Host(QObject *parent)
           "+810A7A4C 0800"
           "+810A7A4E 2C03"
           "+810A7A50 0000"
-          "+810A7A52 0000");
+          "+810A7A52 0000"
+          
+          // This code intercepts the "next scene" value change to load them
+          // instead from our owned memory if nonzero, otherwise use the
+          // unmodified function.
+
+          // Hook at 80048168 to 800A7A58
+          "+81048168 0802"
+          "+8104816A 9E96"
+          "+8104816C 2400"
+          // Trampoline at 0x800A7A58
+          "+810A7A58 3C08"  // LUI  T0, 0x800A
+          "+810A7A5A 800A"
+          "+810A7A5C 8D08"  // LW   T0, 0x7A54(T0)
+          "+810A7A5E 7A54"
+          "+810A7A60 1100"  // BEQ  T0, ZERO, 5
+          "+810A7A62 0005"
+          "+810A7A64 0000"  // NOP
+          "+810A7A66 0000"
+          "+810A7A68 0008"  // SRL  A0, T0, 16
+          "+810A7A6A 2402"
+          "+810A7A6C 3107"  // ANDI A3, T0, 0xFFFF
+          "+810A7A6E FFFF"
+          "+810A7A70 0801"  // J    0x80048170
+          "+810A7A72 205C"
+          "+810A7A74 0000"  // NOP
+          "+810A7A76 0000"
+          "+810A7A78 AC44"  // SW   A0, 0(V0)
+          "+810A7A7A 0000"
+          "+810A7A7C A447"  // SH   A3, 4(V0)
+          "+810A7A7E 0004"
+          "+810A7A80 0801"  // J    0x80048170
+          "+810A7A82 205C"
+          "+810A7A84 0000"  // NOP
+          "+810A7A86 0000");
 
         // Unlock all minigames
         m_core->cheatSet(2, true,
@@ -166,6 +202,11 @@ MarioParty3Host::MarioParty3Host(QObject *parent)
           "+8111B75E 0041"
           "+D110AE18 1040"
           "+8011B761 0047");
+
+        // load next scene as immediate
+        //m_core->cheatSet(3, true,
+        //  "81048168 3404"
+        //  "+8104816C 3407");
 
         // Force Mini-Game Roulette IDs
         m_core->cheatSet(1, true,

@@ -1,5 +1,7 @@
 #include "SmashRemix.h"
 
+#include <QApplication>
+
 static const dr_mp_minigame_t SR_MINIGAMES[] = {
   { "Smash: Free-for-all", DR_MINIGAME_4P, 0x00, 0xFF, DR_NO_QUIRKS },
 
@@ -173,6 +175,7 @@ void SmashRemix::doSetMinigame(const dr_mp_minigame_t *minigame)
   m_core->memory().writeValue<uint8_t>(teamBattle ? 1 : 0, SR_GAME_TYPE_ADDR);
 
   log(DR_LOG_INFO, qPrintable(QString("Smash Remix starting!")));
+
   startMinigame();
 }
 
