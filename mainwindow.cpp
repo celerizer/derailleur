@@ -21,6 +21,7 @@
 #include "guests/MarioKart64.h"
 #include "guests/MarioParty1.h"
 #include "guests/MarioParty2.h"
+#include "guests/MarioParty3.h"
 #include "guests/CoreDolphin.h"
 #include "guests/MarioParty4.h"
 #include "guests/MarioParty5.h"
@@ -91,6 +92,7 @@ MainWindow::MainWindow(QWidget *parent)
   //addGuest(new MarioKart64());
   addGuest(new MarioParty1());
   //addGuest(new MarioParty2());
+  //addGuest(new MarioParty3());
   addGuest(new SmashRemix());
   addGuest(new MarioTennis());
 
@@ -235,7 +237,7 @@ void MainWindow::startWithHost(DrHost *host)
 #endif
 
   QTimer *warmupTimer = new QTimer(this);
-  warmupTimer->setInterval(2000);
+  warmupTimer->setInterval(4000);
   connect(warmupTimer, &QTimer::timeout, this, [this, warmupTimer]() {
     int next = m_Guests->currentIndex() + 1;
     if (next < m_Guests->count())

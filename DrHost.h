@@ -186,6 +186,10 @@ private:
   uint8_t m_lastNextScene = 0xFF;
   dr_minigame_type m_pendingMgType = DR_MINIGAME_INVALID;
   uint8_t m_pendingStartIndex = 0;
+  bool m_itemPending = false;
+  bool m_itemSceneLeft = false;
+  uint8_t m_itemChosenId = 0;
+  bool m_afterRouletteSceneLeft = false;
 
   dr_host_state m_State = DR_HOST_STATE_INVALID;
 

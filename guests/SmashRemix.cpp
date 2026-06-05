@@ -3,12 +3,12 @@
 #include <QApplication>
 
 static const dr_mp_minigame_t SR_MINIGAMES[] = {
-  { "Smash: Free-for-all", DR_MINIGAME_4P, 0x00, 0xFF, DR_NO_QUIRKS },
+  { "Free-for-all", DR_MINIGAME_4P, 0x00, 0xFF, DR_NO_QUIRKS },
 
-  { "Smash: Team Battle", DR_MINIGAME_2V2, 0x01, 0xFF, DR_NO_QUIRKS },
+  { "Team Battle", DR_MINIGAME_2V2, 0x01, 0xFF, DR_NO_QUIRKS },
 
-  { "Smash: Giant Battle", DR_MINIGAME_1V3, 0x02, 0xFF, DR_NO_QUIRKS },
-  { "Smash: Tiny Battle", DR_MINIGAME_1V3, 0x03, 0xFF, DR_NO_QUIRKS },
+  { "Giant Battle", DR_MINIGAME_1V3, 0x02, 0xFF, DR_NO_QUIRKS },
+  { "Tiny Battle", DR_MINIGAME_1V3, 0x03, 0xFF, DR_NO_QUIRKS },
 
   { nullptr, DR_MINIGAME_INVALID, 0xFF, 0xFF, DR_NO_QUIRKS },
 };

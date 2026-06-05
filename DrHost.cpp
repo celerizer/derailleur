@@ -1,6 +1,7 @@
 #include "DrHost.h"
 #include "DrGuest.h"
 
+#include <QRandomGenerator>
 #include <QRetro.h>
 #include <QString>
 #include <QStringList>
@@ -57,6 +58,37 @@ void DrHost::run(void)
   {
     m_SceneId = scene_id;
 
+    if (m_itemPending)
+    {
+      int16_t itemId = 0;
+      if (m_config.minigame_id_is_8bit)
+      {
+        int8_t v = 0;
+        reads8(&v, m_config.minigame_id_addr);
+        itemId = v;
+      }
+      else
+        reads16(&itemId, m_config.minigame_id_addr);
+      emit logMessage(DR_LOG_INFO,
+        QString("item pending: scene=0x%1 id=0x%2")
+          .arg((uint8_t)scene_id, 2, 16, QChar('0'))
+          .arg((uint16_t)itemId, 2, 16, QChar('0')));
+
+      if (!m_itemSceneLeft)
+      {
+        writeu8(m_itemChosenId, m_config.minigame_id_addr);
+        if ((uint8_t)scene_id != m_lastBoardScene)
+          m_itemSceneLeft = true;
+      }
+      else if ((uint8_t)scene_id == m_lastBoardScene)
+      {
+        m_itemPending = false;
+        m_itemSceneLeft = false;
+        writeForFrames(m_config.minigame_type_addr, &ff, 1, 120);
+      }
+      break;
+    }
+
     /* Ignore any progression if we are not on the board */
     if ((uint8_t)m_SceneId != m_lastBoardScene)
       return;
@@ -67,7 +99,22 @@ void DrHost::run(void)
     if (minigame_type != 0xFF && minigame_type < m_config.minigame_type_to_dr_size)
     {
       dr_minigame_type mg_type = m_config.minigame_type_to_dr[minigame_type];
-      if (mg_type != DR_MINIGAME_INVALID && mg_type != DR_MINIGAME_ITEM)
+
+      if (mg_type == DR_MINIGAME_ITEM)
+      {
+        static const uint8_t itemIds[] = { 0x40, 0x3C, 0x3B };
+        for (unsigned k = 0; k < 3; k++)
+          writeu8(itemIds[k], m_config.slot_addrs[k]);
+        if (m_config.scene_trampoline_addr)
+          writeu32(0, m_config.scene_trampoline_addr);
+        m_lastMinigameId = -1;
+        writeu8(0xFF, m_config.minigame_id_addr);
+        m_itemChosenId = 0x3B + QRandomGenerator::global()->bounded(6);
+        m_itemPending = true;
+        m_itemSceneLeft = false;
+        break;
+      }
+      else if (mg_type != DR_MINIGAME_INVALID)
       {
         m_MinigameType = minigame_type;
         m_candidates = {};
@@ -114,6 +161,8 @@ void DrHost::run(void)
       readu8(&minigame_type, m_config.minigame_type_addr);
       if (minigame_type != (uint8_t)m_MinigameType)
       {
+        m_lastMinigameId = -1;
+        writeu8(0xFF, m_config.minigame_id_addr);
         setState(DR_HOST_STATE_BOARD);
         break;
       }
@@ -161,7 +210,7 @@ void DrHost::run(void)
       }
       else
       {
-        m_resultsScene = m_lastBoardScene;
+        m_resultsScene = 0x75;
         m_resultsModifier = 2;
       }
       break;
@@ -182,12 +231,20 @@ void DrHost::run(void)
         .arg(m_resultsModifier, 2, 16, QChar('0')));
     if (m_config.scene_trampoline_addr)
       writeu32(((uint32_t)m_resultsScene << 16) | (uint16_t)m_resultsModifier, m_config.scene_trampoline_addr);
+    m_afterRouletteSceneLeft = false;
     setState(DR_HOST_STATE_AFTER_ROULETTE);
     break;
   }
 
   case DR_HOST_STATE_AFTER_ROULETTE:
   {
+    if (!m_afterRouletteSceneLeft)
+    {
+      if ((uint8_t)scene_id != m_lastBoardScene)
+        m_afterRouletteSceneLeft = true;
+      else
+        break;
+    }
     if ((uint8_t)scene_id != m_resultsScene)
       break;
 
@@ -200,7 +257,20 @@ void DrHost::run(void)
     emit logMessage(DR_LOG_INFO,
       QString("board_scene: 0x%1 modifier 1").arg(m_lastBoardScene, 2, 16, QChar('0')));
     if (m_config.scene_trampoline_addr)
+    {
+      uint8_t totalTurns = 0, currentTurns = 0;
+      readu8(&totalTurns,   0x800CD059u);
+      readu8(&currentTurns, 0x800CD058u);
+      if (currentTurns > totalTurns)
+      {
+        writeu32(0, m_config.scene_trampoline_addr);
+        setState(DR_HOST_STATE_INVALID);
+        break;
+      }
       writeu32(((uint32_t)m_lastBoardScene << 16) | 1, m_config.scene_trampoline_addr);
+    }
+    m_lastMinigameId = -1;
+    writeu8(0xFF, m_config.minigame_id_addr);
     setState(DR_HOST_STATE_MINIGAME);
     break;
   }
@@ -208,7 +278,12 @@ void DrHost::run(void)
   case DR_HOST_STATE_MINIGAME:
   {
     if ((uint8_t)scene_id == m_lastBoardScene)
+    {
+      m_lastMinigameId = -1;
+      writeu8(0xFF, m_config.minigame_id_addr);
+      writeForFrames(m_config.minigame_type_addr, &ff, 1, 120);
       setState(DR_HOST_STATE_BOARD);
+    }
     break;
   }
   }

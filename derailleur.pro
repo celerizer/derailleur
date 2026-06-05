@@ -28,6 +28,7 @@ SOURCES += \
     guests/MarioKart64.cpp \
     guests/MarioParty1.cpp \
     guests/MarioParty2.cpp \
+    guests/MarioParty3.cpp \
     guests/MarioParty4.cpp \
     guests/MarioPartyN64.cpp \
     guests/MarioParty5.cpp \
@@ -55,6 +56,7 @@ HEADERS += \
     guests/MarioKart64.h \
     guests/MarioParty1.h \
     guests/MarioParty2.h \
+    guests/MarioParty3.h \
     guests/MarioParty4.h \
     guests/MarioPartyN64.h \
     guests/MarioParty5.h \

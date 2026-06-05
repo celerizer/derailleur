@@ -46,15 +46,15 @@ static const size_t MP3_SLOT_ADDRS[5] = {
   0x80102C0F, // slot 4 (raw 0x80102C0C)
 };
 
-// TABLE_BASE=0xB122D74A, HEADER=0x44, ENTRY=0x30
+// TABLE_BASE=0xB122D74A, HEADER=0x104, ENTRY=0x30
 // Slots use odd entries (1,3,5,7,9), each spanning into the next entry for capacity
 static const size_t MP3_MINIGAME_TITLE_ADDRS[6] = {
-  0xB122D7BF, // entry  1 len byte
-  0xB122D81F, // entry  3 len byte
-  0xB122D87F, // entry  5 len byte
-  0xB122D8DF, // entry  7 len byte
-  0xB122D93F, // entry  9 len byte
-  0xB122D99F, // entry 11 len byte (sentinel)
+  0xB122D87F, // entry  1 len byte
+  0xB122D8DF, // entry  3 len byte
+  0xB122D93F, // entry  5 len byte
+  0xB122D99F, // entry  7 len byte
+  0xB122D9FF, // entry  9 len byte
+  0xB122DA5F, // entry 11 len byte (sentinel)
 };
 
 static size_t n64ByteAddr(size_t addr)
@@ -219,11 +219,15 @@ MarioParty3Host::MarioParty3Host(QObject *parent)
           "+810DFF28 2400" // NOP minigame history check 2? 800CC4A8 keeps a list of the minis played this game
         );
 
-        // Write 16-entry title table to ROM at 0xB122D74A
-        static constexpr size_t   TABLE_BASE   = 0xB122D74A;
-        static constexpr uint32_t ENTRY_COUNT  = 16;
-        static constexpr uint32_t ENTRY_SIZE   = 48;
-        static constexpr uint32_t HEADER_SIZE  = 4 + ENTRY_COUNT * 4; // 0x44
+        // Write 0x40-entry title table to ROM at 0xB122D74A
+        // Entries 0-15: 48 bytes each (full layout)
+        // Entries 16-63: 6 bytes each (minimal valid: 00 len 0B 'A' 00 00)
+        static constexpr size_t   TABLE_BASE        = 0xB122D74A;
+        static constexpr uint32_t ENTRY_COUNT       = 0x40;
+        static constexpr uint32_t FULL_COUNT        = 16;
+        static constexpr uint32_t ENTRY_SIZE        = 48;
+        static constexpr uint32_t SMALL_ENTRY_SIZE  = 6;
+        static constexpr uint32_t HEADER_SIZE       = 4 + ENTRY_COUNT * 4; // 0x104
 
         auto xw = [this](uint8_t val, size_t addr) {
           writeu8(val, n64ByteAddr(addr));
@@ -236,10 +240,13 @@ MarioParty3Host::MarioParty3Host(QObject *parent)
         };
 
         xw32(ENTRY_COUNT, TABLE_BASE);
-        for (uint32_t i = 0; i < ENTRY_COUNT; i++)
+        for (uint32_t i = 0; i < FULL_COUNT; i++)
           xw32(HEADER_SIZE + i * ENTRY_SIZE, TABLE_BASE + 4 + i * 4);
+        for (uint32_t i = FULL_COUNT; i < ENTRY_COUNT; i++)
+          xw32(HEADER_SIZE + FULL_COUNT * ENTRY_SIZE + (i - FULL_COUNT) * SMALL_ENTRY_SIZE,
+               TABLE_BASE + 4 + i * 4);
 
-        for (uint32_t i = 0; i < ENTRY_COUNT; i++)
+        for (uint32_t i = 0; i < FULL_COUNT; i++)
         {
           size_t base = TABLE_BASE + HEADER_SIZE + i * ENTRY_SIZE;
           xw(0x00, base);     // alignment
@@ -247,6 +254,17 @@ MarioParty3Host::MarioParty3Host(QObject *parent)
           xw(0x0B, base + 2); // marker
           for (uint32_t j = 3; j < ENTRY_SIZE; j++)
             xw(0x00, base + j);
+        }
+
+        for (uint32_t i = 0; i < ENTRY_COUNT - FULL_COUNT; i++)
+        {
+          size_t base = TABLE_BASE + HEADER_SIZE + FULL_COUNT * ENTRY_SIZE + i * SMALL_ENTRY_SIZE;
+          xw(0x00, base);     // alignment
+          xw(0x04, base + 1); // len (offset 3 + strlen 1)
+          xw(0x0B, base + 2); // marker
+          xw('A',  base + 3);
+          xw(0x00, base + 4);
+          xw(0x00, base + 5);
         }
       }
     },
