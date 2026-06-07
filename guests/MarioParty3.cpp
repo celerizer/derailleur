@@ -16,6 +16,8 @@ static const uint8_t MP3_CHARACTER_IDS[DR_CHARACTER_SIZE] = {
 
 static const dr_mp_minigame_t MP3_MINIGAMES[] =
 {
+  { "Bowser Toss", DR_MINIGAME_DUEL, 0x34, 0x34, DR_NO_QUIRKS },
+  { "Baby Bowser Bonkers", DR_MINIGAME_DUEL, 0x35, 0x35, DR_NO_QUIRKS },
   { "Tick Tock Hop", DR_MINIGAME_DUEL, 0x39, 0x39, DR_NO_QUIRKS },
 
   { "Game Guy's Lucky 7", DR_MINIGAME_GAME_GUY, 0x44, 0x43, DR_NO_QUIRKS },

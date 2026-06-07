@@ -48,6 +48,15 @@ void DrHost::run(void)
           (uint8_t)scene_id <= m_config.scene_board_ranges[r].max)
       {
         m_lastBoardScene = (uint8_t)scene_id;
+        {
+          bool isDuelBoard = m_config.scene_duel_board_range.max &&
+            m_lastBoardScene >= m_config.scene_duel_board_range.min &&
+            m_lastBoardScene <= m_config.scene_duel_board_range.max;
+          if (m_config.cheat_regular_board)
+            m_core->cheatSet(1, !isDuelBoard, m_config.cheat_regular_board);
+          if (m_config.cheat_duel_board)
+            m_core->cheatSet(2, isDuelBoard, m_config.cheat_duel_board);
+        }
         setState(DR_HOST_STATE_BOARD);
         break;
       }
@@ -92,6 +101,26 @@ void DrHost::run(void)
     /* Ignore any progression if we are not on the board */
     if ((uint8_t)m_SceneId != m_lastBoardScene)
       return;
+
+    bool isDuelBoard = m_config.scene_duel_slot0_addr &&
+      m_config.scene_duel_board_range.max &&
+      m_lastBoardScene >= m_config.scene_duel_board_range.min &&
+      m_lastBoardScene <= m_config.scene_duel_board_range.max;
+
+    if (isDuelBoard)
+    {
+      uint8_t slot0 = 0;
+      readu8(&slot0, m_config.scene_duel_slot0_addr);
+      if (slot0 == 2)
+      {
+        for (unsigned i = 0; i < m_config.minigame_type_to_dr_size; i++)
+          if (m_config.minigame_type_to_dr[i] == DR_MINIGAME_DUEL) { m_MinigameType = i; break; }
+        m_candidates = {};
+        emit candidatesNeeded(DR_MINIGAME_DUEL);
+        setState(DR_HOST_STATE_BEFORE_ROULETTE);
+      }
+      break;
+    }
 
     /* Check if the mini-game type value been set */
     uint8_t minigame_type = 0;
@@ -156,6 +185,12 @@ void DrHost::run(void)
       break;
     }
 
+    bool isDuelBoard = m_config.scene_duel_slot0_addr &&
+      m_config.scene_duel_board_range.max &&
+      m_lastBoardScene >= m_config.scene_duel_board_range.min &&
+      m_lastBoardScene <= m_config.scene_duel_board_range.max;
+
+    if (!isDuelBoard)
     {
       uint8_t minigame_type = 0;
       readu8(&minigame_type, m_config.minigame_type_addr);
@@ -205,7 +240,7 @@ void DrHost::run(void)
         m_lastBoardScene <= m_config.scene_duel_board_range.max;
       if (isDuelBoard && m_config.scene_miniresults_duel)
       {
-        m_resultsScene = m_config.scene_miniresults_duel;
+        m_resultsScene = m_config.scene_miniresults;
         m_resultsModifier = 0;
       }
       else

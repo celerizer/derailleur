@@ -95,6 +95,9 @@ struct DrHostConfig
   size_t (*title_addr_transform)(size_t); // byte-swap fn (e.g. n64ByteAddr), nullptr = identity
   const size_t *slot_addrs;              // 5 word-flipped RAM addrs holding per-slot minigame IDs
   size_t scene_trampoline_addr;          // packed word: upper half = scene, lower half = modifier; 0 = passthrough
+  size_t scene_duel_slot0_addr;         // word-flipped RAM addr of duel board's first slot; 0 = use minigame_type_addr
+  const char *cheat_regular_board;      // cheat code string for regular board roulette (nullptr = unused)
+  const char *cheat_duel_board;         // cheat code string for duel board roulette (nullptr = unused)
 };
 
 class DrHost : public DrRetro

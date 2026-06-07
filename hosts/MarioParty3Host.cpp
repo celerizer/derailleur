@@ -38,6 +38,24 @@ static const dr_team_color MP3_PANEL_COLOR_TO_DR[] = {
   DR_TEAM_COLOR_GREEN, // 0x04
 };
 
+static const char MP3_CHEAT_REGULAR_BOARD[] =
+  "810DFE80 0010"
+  "+810DFE82 1040"
+  "+810DFE84 2442"
+  "+810DFE86 0002"
+  "+810DFE90 A022"
+  "+810DFEBC 2400"
+  "+810DFF28 2400";
+
+static const char MP3_CHEAT_DUEL_BOARD[] =
+  "810DFE70 0010"
+  "+810DFE72 1040"
+  "+810DFE74 2442"
+  "+810DFE76 0002"
+  "+810DFE80 A022"
+  "+810dfec4 2400"
+  "+810de2ac 2400";
+
 static const size_t MP3_SLOT_ADDRS[5] = {
   0x80102C0B, // slot 0 (raw 0x80102C08)
   0x80102C0A, // slot 1 (raw 0x80102C09)
@@ -118,6 +136,9 @@ static DrHostConfig makeConfig()
     .title_addr_transform = n64ByteAddr,
     .slot_addrs = MP3_SLOT_ADDRS,
     .scene_trampoline_addr = 0x800A7A54,
+    .scene_duel_slot0_addr = 0x80102BABu, // n64ByteAddr(0x80102BA8)
+    .cheat_regular_board = MP3_CHEAT_REGULAR_BOARD,
+    .cheat_duel_board = MP3_CHEAT_DUEL_BOARD,
   };
 }
 
@@ -195,7 +216,7 @@ MarioParty3Host::MarioParty3Host(QObject *parent)
           "+810A7A86 0000");
 
         // Unlock all minigames
-        m_core->cheatSet(2, true,
+        m_core->cheatSet(3, true,
           "81035C00 2404"
           "+81035C02 00FF"
           "+D110AE18 1040"
@@ -208,16 +229,8 @@ MarioParty3Host::MarioParty3Host(QObject *parent)
         //  "81048168 3404"
         //  "+8104816C 3407");
 
-        // Force Mini-Game Roulette IDs
-        m_core->cheatSet(1, true,
-          "810DFE80 0010"
-          "+810DFE82 1040"
-          "+810DFE84 2442"
-          "+810DFE86 0002"
-          "+810DFE90 A022"
-          "+810DFEBC 2400" // NOP minigame history check
-          "+810DFF28 2400" // NOP minigame history check 2? 800CC4A8 keeps a list of the minis played this game
-        );
+        m_core->cheatSet(1, false, MP3_CHEAT_REGULAR_BOARD);
+        m_core->cheatSet(2, false, MP3_CHEAT_DUEL_BOARD);
 
         // Write 0x40-entry title table to ROM at 0xB122D74A
         // Entries 0-15: 48 bytes each (full layout)
