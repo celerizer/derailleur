@@ -19,6 +19,11 @@ public:
   void finalizeGames();
 
   const char *name() const override { return "Dolphin"; }
+
+  QRetro *core() const override { return m_retro ? m_retro->core() : nullptr; }
+  void startCore() override;
+  void pause() override { if (m_retro) m_retro->pause(); }
+  void unpause() override { if (m_retro) m_retro->unpause(); }
   const dr_mp_minigame_t *minigames() const override { return m_flatList; }
   QList<DrMinigameGroup> minigameGroups() const override;
   dr_minigame_result_t minigameResult(unsigned index) override;
@@ -37,6 +42,7 @@ protected:
 private:
   void rebuildFlatList();
 
+  DrRetro *m_retro = nullptr;
   QList<MarioPartyGcn *> m_games;
   QList<QPair<MarioPartyGcn *, const dr_mp_minigame_t *>> m_entries;
   MarioPartyGcn *m_delegate = nullptr;

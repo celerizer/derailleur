@@ -1,9 +1,12 @@
 #ifndef DR_GUEST_H
 #define DR_GUEST_H
 
+#include "DrCommon.h"
 #include "DrRetro.h"
 #include <QList>
+#include <QObject>
 #include <QString>
+#include <QWidget>
 
 struct DrMinigameGroup
 {
@@ -11,25 +14,33 @@ struct DrMinigameGroup
   QList<const dr_mp_minigame_t *> minigames;
 };
 
-class DrGuest : public DrRetro
+class DrGuest : public QObject
 {
   Q_OBJECT
 
 public:
-  // N64-style: subclass creates its own QRetro in its constructor and assigns m_core
   DrGuest(QObject *parent = nullptr)
-    : DrRetro(parent)
+    : QObject(parent)
   {
   }
 
-  // GCN-style: receives a shared QRetro it does not own
-  explicit DrGuest(QRetro *sharedCore, QObject *parent = nullptr)
-    : DrRetro(sharedCore, parent)
-  {
-  }
+  virtual QRetro *core() const { return nullptr; }
+  virtual bool isValid() const { return m_valid; }
 
-  void startCore();
-  void tick() { run(); }
+  virtual void startCore() {}
+  virtual void pause() {}
+  virtual void unpause() {}
+  virtual QWidget *createWidget(QWidget *parent) { return QWidget::createWindowContainer(core(), parent); }
+
+  void tick()
+  {
+    if (m_finishCountdown > 0 && --m_finishCountdown == 0)
+    {
+      finishMinigame();
+      return;
+    }
+    run();
+  }
 
   virtual dr_minigame_result_t minigameResult(unsigned index) = 0;
   virtual const dr_mp_minigame_t *minigames() const = 0;
@@ -46,23 +57,26 @@ public:
   dr_error setPlayerTeam(unsigned index, dr_team_color color, dr_team_type type, unsigned team_id);
 
 protected:
+  void log(unsigned level, const char *message) { emit logMessage(level, QString::fromUtf8(message)); }
   void startMinigame();
   void finishMinigame();
+  void finishMinigameInFrames(int frames) { m_finishCountdown = frames; }
 
+  virtual void run() {}
+  virtual void doSetMinigame(const dr_mp_minigame_t *minigame) { (void)minigame; }
+  virtual dr_error doSetPlayerCharacter(unsigned index, dr_character character) { (void)index; (void)character; return DR_OK; }
+  virtual dr_error doSetPlayerControlPort(unsigned index, dr_control_port control_port) { (void)index; (void)control_port; return DR_OK; }
+  virtual dr_error doSetPlayerControlType(unsigned index, dr_control_type control_type) { (void)index; (void)control_type; return DR_OK; }
+  virtual dr_error doSetPlayerDifficulty(unsigned index, dr_difficulty difficulty) { (void)index; (void)difficulty; return DR_OK; }
+  virtual dr_error doSetPlayerTeam(unsigned index, dr_team_color color, dr_team_type type, unsigned team_id) { (void)index; (void)color; (void)type; (void)team_id; return DR_OK; }
+
+  bool m_valid = true;
   bool m_minigameActive = false;
+  int m_finishCountdown = 0;
   const dr_mp_minigame_t *m_minigame = nullptr;
 
-protected:
-  virtual void run() {}
-  virtual void doSetMinigame(const dr_mp_minigame_t *minigame) = 0;
-  virtual dr_error doSetPlayerCharacter(unsigned index, dr_character character) = 0;
-  virtual dr_error doSetPlayerControlPort(unsigned index, dr_control_port control_port) = 0;
-  virtual dr_error doSetPlayerControlType(unsigned index, dr_control_type control_type) = 0;
-  virtual dr_error doSetPlayerDifficulty(unsigned index, dr_difficulty difficulty) = 0;
-  virtual dr_error doSetPlayerTeam(
-    unsigned index, dr_team_color color, dr_team_type type, unsigned team_id) = 0;
-
 signals:
+  void logMessage(unsigned level, const QString &message);
   void minigameFinished();
 };
 

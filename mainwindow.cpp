@@ -27,6 +27,7 @@
 #include "guests/MarioParty5.h"
 #include "guests/MarioParty6.h"
 #include "guests/MarioParty7.h"
+#include "guests/MarioPartyAdvance.h"
 #include "guests/SmashRemix.h"
 #include "guests/MarioTennis.h"
 
@@ -95,10 +96,11 @@ MainWindow::MainWindow(QWidget *parent)
   //addGuest(new MarioParty3());
   addGuest(new SmashRemix());
   addGuest(new MarioTennis());
+  addGuest(new MarioPartyAdvance());
 
 #if SHOW_LOGGER
   for (DrGuest *guest : m_Guests->guests())
-    connect(guest, &DrRetro::logMessage, m_Logger, &DrLogger::message, Qt::QueuedConnection);
+    connect(guest, &DrGuest::logMessage, m_Logger, &DrLogger::message, Qt::QueuedConnection);
   m_Guests->logSummary();
 #endif
 

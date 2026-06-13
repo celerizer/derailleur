@@ -11,7 +11,7 @@ DrGuestList::DrGuestList(QWidget *parent)
 void DrGuestList::add(DrGuest *guest)
 {
   m_guests.append(guest);
-  addWidget(QWidget::createWindowContainer(guest->core(), this));
+  addWidget(guest->createWidget(this));
   connect(guest, &DrGuest::minigameFinished, this, [this, guest]() {
     if (guest == m_activeGuest)
       emit minigameFinished();

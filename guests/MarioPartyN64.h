@@ -35,6 +35,11 @@ class MarioPartyN64 : public DrGuest
 public:
   MarioPartyN64(const MpN64Config &config, QObject *parent = nullptr);
 
+  QRetro *core() const override { return m_retro ? m_retro->core() : nullptr; }
+  void startCore() override;
+  void pause() override { if (m_retro) m_retro->pause(); }
+  void unpause() override { if (m_retro) m_retro->unpause(); }
+
   dr_minigame_result_t minigameResult(unsigned index) override;
   const dr_mp_minigame_t *minigames() const override;
   void doSetMinigame(const dr_mp_minigame_t *minigame) override;
@@ -48,6 +53,7 @@ public:
 
 private:
   void run() override;
+  DrRetro *m_retro = nullptr;
   MpN64Config m_config;
   int16_t m_lastScene = -1;
   int m_minigameFrames = 0;

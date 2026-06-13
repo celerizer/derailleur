@@ -8,9 +8,16 @@
 CoreDolphin::CoreDolphin(QObject *parent)
   : DrGuest(parent)
 {
-  m_core = new QRetro();
-  m_ownCore = true;
+  m_retro = new DrRetro(this);
+  m_retro->setCore(new QRetro(), true);
   m_m3uPath = QDir::temp().filePath("derailleur_dolphin.m3u");
+}
+
+void CoreDolphin::startCore()
+{
+  if (auto *c = core())
+    connect(c, &QRetro::frameBegin, this, [this]() { run(); }, Qt::DirectConnection);
+  m_retro->startCore();
 }
 
 CoreDolphin::~CoreDolphin()
@@ -22,7 +29,7 @@ void CoreDolphin::addGame(MarioPartyGcn *game)
 {
   if (m_games.isEmpty())
   {
-    if (!m_core->loadCore(game->config().core.c_str()))
+    if (!core()->loadCore(game->config().core.c_str()))
     {
       log(DR_LOG_ERROR,
         qPrintable(QString("failed to load core: %1").arg(game->config().core.c_str())));
@@ -34,17 +41,17 @@ void CoreDolphin::addGame(MarioPartyGcn *game)
 
     // Core > Dual Core Mode
     // Needs to be disabled for serialization to work.
-    m_core->options()->setOptionValue("dolphin_main_cpu_thread", "disabled");
+    core()->options()->setOptionValue("dolphin_main_cpu_thread", "disabled");
 
     // Core > Fastmem
     // Needs to be disabled for multi-instancing to work.
-    m_core->options()->setOptionValue("dolphin_fastmem", "disabled");
+    core()->options()->setOptionValue("dolphin_fastmem", "disabled");
   }
 
   m_games.append(game);
 
   connect(game, &DrGuest::minigameFinished, this, [this]() { finishMinigame(); });
-  connect(game, &DrRetro::logMessage, this, &DrRetro::logMessage);
+  connect(game, &DrGuest::logMessage, this, &DrGuest::logMessage);
 
   // Collect all (non-sentinel) minigames from this game
   for (const dr_mp_minigame_t *mg = game->config().minigames; mg && mg->name; mg++)
@@ -63,7 +70,7 @@ void CoreDolphin::finalizeGames()
       out << game->config().game.c_str() << "\n";
   }
 
-  if (!m_core->loadContent(m_m3uPath.toStdString().c_str()))
+  if (!core()->loadContent(m_m3uPath.toStdString().c_str()))
   {
     log(DR_LOG_ERROR, qPrintable(QString("failed to load content: %1").arg(m_m3uPath)));
     m_valid = false;
@@ -133,24 +140,24 @@ void CoreDolphin::doSetMinigame(const dr_mp_minigame_t *minigame)
   int discIndex = m_games.indexOf(owner);
   if (discIndex != m_discIndex)
   {
-    m_core->show();
-    m_core->diskControl()->setEjectState(true);
-    m_core->diskControl()->setImageIndex(discIndex);
-    m_core->diskControl()->setEjectState(false);
+    core()->show();
+    core()->diskControl()->setEjectState(true);
+    core()->diskControl()->setImageIndex(discIndex);
+    core()->diskControl()->setEjectState(false);
     m_discIndex = discIndex;
 
     // Spin for 60 frames while the disc takes (MPGC needed about this much)
-    m_core->unpause();
+    core()->unpause();
     for (int i = 0; i < 60; i++)
     {
-      m_core->waitFrames(1);
+      core()->waitFrames(1);
       QApplication::processEvents();
     }
-    m_core->pause();
+    core()->pause();
   }
 
   // Load the per-game savestate
-  m_core->unserializeFromFile(QString::fromStdString(owner->config().state));
+  core()->unserializeFromFile(QString::fromStdString(owner->config().state));
   QApplication::processEvents();
 
   // Delegate game-specific setup (writes minigame_id etc.)
@@ -158,13 +165,13 @@ void CoreDolphin::doSetMinigame(const dr_mp_minigame_t *minigame)
   QApplication::processEvents();
 
   // Spin again (this was the time needed for MP6 to draw a new frame)
-  m_core->unpause();
+  core()->unpause();
   for (int i = 0; i < 48; i++)
   {
-    m_core->waitFrames(1);
+    core()->waitFrames(1);
     QApplication::processEvents();
   }
-  m_core->pause();
+  core()->pause();
   startMinigame();
 }
 

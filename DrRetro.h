@@ -32,6 +32,13 @@ public:
   QRetro *core() const { return m_core; }
   bool isValid() const { return m_valid; }
 
+  void setCore(QRetro *core, bool own = true)
+  {
+    if (m_ownCore) delete m_core;
+    m_core = core;
+    m_ownCore = own;
+  }
+
   void pause()
   {
     if (m_core)
@@ -48,7 +55,7 @@ public:
       m_core->startCore();
   }
 
-protected:
+public:
   dr_error readu8(uint8_t *out, size_t addr, bool big_endian = false);
   dr_error reads8(int8_t *out, size_t addr, bool big_endian = false);
   dr_error readu16(uint16_t *out, size_t addr, bool big_endian = false);

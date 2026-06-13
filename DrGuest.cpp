@@ -1,11 +1,5 @@
 #include "DrGuest.h"
 
-void DrGuest::startCore()
-{
-  if (m_core)
-    connect(m_core, &QRetro::frameBegin, this, [this]() { run(); }, Qt::DirectConnection);
-  DrRetro::startCore();
-}
 
 QList<DrMinigameGroup> DrGuest::minigameGroups() const
 {
@@ -74,7 +68,7 @@ dr_error DrGuest::setPlayerTeam(
 
 void DrGuest::setMinigame(const dr_mp_minigame_t *minigame)
 {
-  if (!m_core)
+  if (!core())
     return;
   m_minigame = minigame;
 
@@ -83,8 +77,6 @@ void DrGuest::setMinigame(const dr_mp_minigame_t *minigame)
   {
     const char *option_value = nullptr;
 
-    /// Graphics > Settings > Texture Cache Accuracy
-    /// 128=Normal, 512=Fast, 0=Safe
     if (minigame->quirks.dolphin.needs_safe_texture_cache)
     {
       log(DR_LOG_INFO, "Mini-game requires safe texture cache, enabling...");
@@ -92,10 +84,8 @@ void DrGuest::setMinigame(const dr_mp_minigame_t *minigame)
     }
     else
       option_value = "128";
-    m_core->options()->setOptionValue("dolphin_texture_cache_accuracy", option_value);
+    core()->options()->setOptionValue("dolphin_texture_cache_accuracy", option_value);
 
-    /// Graphics > Hacks > Skip EFB Copy to RAM
-    /// All the negative negation makes this look like a typo, but it's not
     if (minigame->quirks.dolphin.needs_efb_to_texture)
     {
       log(DR_LOG_INFO, "Mini-game requires EFB copy to RAM, enabling...");
@@ -103,10 +93,8 @@ void DrGuest::setMinigame(const dr_mp_minigame_t *minigame)
     }
     else
       option_value = "enabled";
-    m_core->options()->setOptionValue("dolphin_efb_to_texture", option_value);
+    core()->options()->setOptionValue("dolphin_efb_to_texture", option_value);
 
-    /// Graphics > Settings > Internal Resolution
-    /// @todo Return to user's preferred setting when minigame is finished
     if (minigame->quirks.dolphin.needs_native_resolution)
     {
       log(DR_LOG_INFO, "Mini-game requires native resolution, enabling...");
@@ -114,7 +102,7 @@ void DrGuest::setMinigame(const dr_mp_minigame_t *minigame)
     }
     else
       option_value = "1";
-    m_core->options()->setOptionValue("dolphin_efb_scale", option_value);
+    core()->options()->setOptionValue("dolphin_efb_scale", option_value);
   }
 
   doSetMinigame(minigame);
@@ -122,6 +110,7 @@ void DrGuest::setMinigame(const dr_mp_minigame_t *minigame)
 
 void DrGuest::startMinigame()
 {
+  m_finishCountdown = 0;
   m_minigameActive = true;
 }
 

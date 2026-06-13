@@ -3,12 +3,15 @@
 #include <QApplication>
 
 static const dr_mp_minigame_t SR_MINIGAMES[] = {
-  { "Free-for-all", DR_MINIGAME_4P, 0x00, 0xFF, DR_NO_QUIRKS },
+  { "Free-for-all", DR_MINIGAME_4P,     0x00, 0xFF, DR_NO_QUIRKS },
+  { "Battle",       DR_MINIGAME_BATTLE, 0x00, 0xFF, DR_NO_QUIRKS },
 
   { "Team Battle", DR_MINIGAME_2V2, 0x01, 0xFF, DR_NO_QUIRKS },
 
   { "Giant Battle", DR_MINIGAME_1V3, 0x02, 0xFF, DR_NO_QUIRKS },
-  { "Tiny Battle", DR_MINIGAME_1V3, 0x03, 0xFF, DR_NO_QUIRKS },
+  { "Tiny Battle",  DR_MINIGAME_1V3, 0x03, 0xFF, DR_NO_QUIRKS },
+
+  { "Duel", DR_MINIGAME_DUEL, 0x00, 0xFF, DR_NO_QUIRKS },
 
   { nullptr, DR_MINIGAME_INVALID, 0xFF, 0xFF, DR_NO_QUIRKS },
 };
@@ -63,34 +66,66 @@ void SmashRemix::run(void)
     return;
 
   int8_t stocks[4];
-  unsigned total_stocks = 0;
-
   for (unsigned i = 0; i < 4; i++)
   {
-    if (reads8(&stocks[i], SR_STOCKS_ADDR[i]) != DR_OK)
+    if (m_retro->reads8(&stocks[i], SR_STOCKS_ADDR[i]) != DR_OK)
       return;
-    total_stocks += (unsigned)(stocks[i] + 1);
   }
 
   if (!m_winners && !m_finishCountdown)
   {
-    if (total_stocks == 0)
+    if (m_minigame->type == DR_MINIGAME_DUEL)
     {
-      log(DR_LOG_INFO, "It's a draw!");
-      m_finishCountdown = 120;
+      for (unsigned slot = 0; slot < 4; slot++)
+      {
+        int idx = m_slotToIndex[slot];
+        if (idx < 0 || stocks[slot] >= 0)
+          continue;
+        for (unsigned wslot = 0; wslot < 4; wslot++)
+        {
+          int widx = m_slotToIndex[wslot];
+          if (widx >= 0 && wslot != slot && stocks[wslot] >= 0)
+          {
+            m_winners |= (1u << widx);
+            log(DR_LOG_INFO,
+              qPrintable(QString("%1 wins!").arg(dr_character_name(m_slotCharacters[wslot]))));
+          }
+        }
+        m_finishCountdown = 120;
+        break;
+      }
     }
-    else if (m_minigame->type == DR_MINIGAME_4P)
+    else if (m_minigame->type == DR_MINIGAME_BATTLE)
     {
-      if (total_stocks == 1)
+      for (unsigned slot = 0; slot < 4; slot++)
+      {
+        int idx = m_slotToIndex[slot];
+        if (idx < 0)
+          continue;
+        if (m_prevStocks[slot] == -2)
+        {
+          m_prevStocks[slot] = stocks[slot];
+          continue;
+        }
+        if (m_prevStocks[slot] >= 0 && stocks[slot] < 0 && m_placement[idx] == -1)
+        {
+          m_placement[idx] = 3 - (int)m_eliminationCount++;
+          log(DR_LOG_INFO,
+            qPrintable(QString("%1 eliminated (%2th)").arg(
+              dr_character_name(m_slotCharacters[slot])).arg(m_placement[idx] + 1)));
+        }
+        m_prevStocks[slot] = stocks[slot];
+      }
+      if (m_eliminationCount >= 3)
       {
         for (unsigned slot = 0; slot < 4; slot++)
         {
-          if (stocks[slot] >= 0)
+          int idx = m_slotToIndex[slot];
+          if (idx >= 0 && m_placement[idx] == -1)
           {
-            m_winners |= (1u << m_slotToIndex[slot]);
+            m_placement[idx] = 0;
             log(DR_LOG_INFO,
               qPrintable(QString("%1 wins!").arg(dr_character_name(m_slotCharacters[slot]))));
-            break;
           }
         }
         m_finishCountdown = 120;
@@ -98,35 +133,63 @@ void SmashRemix::run(void)
     }
     else
     {
-      /* Team game (2v2 or 1v3): a side wins when the opposing side has no stocks */
-      unsigned teamStocks[2] = {};
+      unsigned total_stocks = 0;
+      for (unsigned i = 0; i < 4; i++)
+        total_stocks += (unsigned)(stocks[i] + 1);
 
-      for (unsigned slot = 0; slot < 4; slot++)
+      if (total_stocks == 0)
       {
-        int idx = m_slotToIndex[slot];
-        if (idx >= 0 && m_players[idx].team_id < 2)
-          teamStocks[m_players[idx].team_id] += (unsigned)(stocks[slot] + 1);
+        log(DR_LOG_INFO, "It's a draw!");
+        m_finishCountdown = 120;
       }
-
-      int winningTeam = -1;
-      if (teamStocks[0] == 0 && teamStocks[1] > 0)
-        winningTeam = 1;
-      else if (teamStocks[1] == 0 && teamStocks[0] > 0)
-        winningTeam = 0;
-
-      if (winningTeam >= 0)
+      else if (m_minigame->type == DR_MINIGAME_4P)
       {
+        if (total_stocks == 1)
+        {
+          for (unsigned slot = 0; slot < 4; slot++)
+          {
+            if (stocks[slot] >= 0)
+            {
+              m_winners |= (1u << m_slotToIndex[slot]);
+              log(DR_LOG_INFO,
+                qPrintable(QString("%1 wins!").arg(dr_character_name(m_slotCharacters[slot]))));
+              break;
+            }
+          }
+          m_finishCountdown = 120;
+        }
+      }
+      else
+      {
+        /* Team game (2v2 or 1v3): a side wins when the opposing side has no stocks */
+        unsigned teamStocks[2] = {};
         for (unsigned slot = 0; slot < 4; slot++)
         {
           int idx = m_slotToIndex[slot];
-          if (idx >= 0 && (int)m_players[idx].team_id == winningTeam)
-          {
-            m_winners |= (1u << idx);
-            log(DR_LOG_INFO,
-              qPrintable(QString("%1 wins!").arg(dr_character_name(m_slotCharacters[slot]))));
-          }
+          if (idx >= 0 && m_players[idx].team_id < 2)
+            teamStocks[m_players[idx].team_id] += (unsigned)(stocks[slot] + 1);
         }
-        m_finishCountdown = 120;
+
+        int winningTeam = -1;
+        if (teamStocks[0] == 0 && teamStocks[1] > 0)
+          winningTeam = 1;
+        else if (teamStocks[1] == 0 && teamStocks[0] > 0)
+          winningTeam = 0;
+
+        if (winningTeam >= 0)
+        {
+          for (unsigned slot = 0; slot < 4; slot++)
+          {
+            int idx = m_slotToIndex[slot];
+            if (idx >= 0 && (int)m_players[idx].team_id == winningTeam)
+            {
+              m_winners |= (1u << idx);
+              log(DR_LOG_INFO,
+                qPrintable(QString("%1 wins!").arg(dr_character_name(m_slotCharacters[slot]))));
+            }
+          }
+          m_finishCountdown = 120;
+        }
       }
     }
   }
@@ -138,20 +201,28 @@ void SmashRemix::run(void)
 SmashRemix::SmashRemix(QObject *parent)
   : DrGuest(parent)
 {
-  m_core = new QRetro();
-  m_ownCore = true;
+  m_retro = new DrRetro(this);
   QString corePath = dr_core_path(DR_CORE_MUPEN64PLUSNEXT);
   QString gamePath = dr_roms_directory() + "/smashremix.z64";
-  if (!m_core->loadCore(corePath.toUtf8().constData()))
+  QRetro *core = new QRetro();
+  if (!core->loadCore(corePath.toUtf8().constData()))
   {
     log(DR_LOG_ERROR, qPrintable(QString("failed to load core: %1").arg(corePath)));
     m_valid = false;
   }
-  if (!m_core->loadContent(gamePath.toUtf8().constData()))
+  if (!core->loadContent(gamePath.toUtf8().constData()))
   {
     log(DR_LOG_ERROR, qPrintable(QString("failed to load content: %1").arg(gamePath)));
     m_valid = false;
   }
+  m_retro->setCore(core, true);
+}
+
+void SmashRemix::startCore()
+{
+  if (auto *c = core())
+    connect(c, &QRetro::frameBegin, this, [this]() { run(); }, Qt::DirectConnection);
+  m_retro->startCore();
 }
 
 const dr_mp_minigame_t *SmashRemix::minigames() const
@@ -163,16 +234,23 @@ void SmashRemix::doSetMinigame(const dr_mp_minigame_t *minigame)
 {
   m_winners = 0;
   m_finishCountdown = 0;
+  m_eliminationCount = 0;
   for (unsigned i = 0; i < 4; i++)
-    m_prevStocks[i] = 0xFF;
-  m_core->unserializeFromFile(dr_state_directory() + "/smashremix.state.zip");
+    m_players[i] = {};
+  for (unsigned i = 0; i < 4; i++)
+  {
+    m_slotToIndex[i] = -1;
+    m_prevStocks[i] = -2;
+    m_placement[i] = -1;
+  }
+  core()->unserializeFromFile(dr_state_directory() + "/smashremix.state.zip");
 
   /* Use a random stage from the original stage list */
-  m_core->memory().writeValue<uint8_t>(rand() % 9, SR_STAGE_ADDR);
+  core()->memory().writeValue<uint8_t>(rand() % 9, SR_STAGE_ADDR);
 
   /* Enable team battle for the 2v2 and 1v3 minigames */
   bool teamBattle = (minigame->type == DR_MINIGAME_2V2 || minigame->type == DR_MINIGAME_1V3);
-  m_core->memory().writeValue<uint8_t>(teamBattle ? 1 : 0, SR_GAME_TYPE_ADDR);
+  core()->memory().writeValue<uint8_t>(teamBattle ? 1 : 0, SR_GAME_TYPE_ADDR);
 
   log(DR_LOG_INFO, qPrintable(QString("Smash Remix starting!")));
 
@@ -183,8 +261,19 @@ dr_minigame_result_t SmashRemix::minigameResult(unsigned index)
 {
   dr_minigame_result_t result = { 0, 0 };
 
-  if (index < 4 && (m_winners & (1u << index)))
+  if (index >= 4)
+    return result;
+
+  if (m_minigame && m_minigame->type == DR_MINIGAME_BATTLE)
+  {
+    int place = m_placement[index];
+    if (place >= 0 && place <= 3)
+      result.coins = (unsigned)place;
+  }
+  else if (m_winners & (1u << index))
+  {
     result.coins = 10;
+  }
 
   return result;
 }
@@ -202,15 +291,15 @@ void SmashRemix::applyPlayers()
     m_slotCharacters[slot] = p.character;
 
     bool isBot = (p.control_type == DR_CONTROL_TYPE_CPU);
-    m_core->memory().writeValue<uint8_t>(isBot ? 1 : 0, SR_IS_BOT_ADDR[slot]);
+    core()->memory().writeValue<uint8_t>(isBot ? 1 : 0, SR_IS_BOT_ADDR[slot]);
 
     for (const auto &entry : SR_CHARACTER_ID)
     {
       if (entry.character == p.character)
       {
-        writeu8(entry.character_value, SR_CHARACTER_ADDR[slot]);
-        writeu8(entry.color_value, SR_COLOR_ADDR[slot]);
-        writeu8(isBot ? 4 : slot, SR_PORT_ADDR[slot]);
+        m_retro->writeu8(entry.character_value, SR_CHARACTER_ADDR[slot]);
+        m_retro->writeu8(entry.color_value, SR_COLOR_ADDR[slot]);
+        m_retro->writeu8(isBot ? 4 : slot, SR_PORT_ADDR[slot]);
         break;
       }
     }
@@ -237,7 +326,7 @@ void SmashRemix::applyPlayers()
       difficulty = 5;
       break;
     }
-    m_core->memory().writeValue<uint8_t>(
+    core()->memory().writeValue<uint8_t>(
       static_cast<uint8_t>(difficulty), SR_DIFFICULTY_ADDR[slot]);
 
     uint8_t color, team;
@@ -268,9 +357,9 @@ void SmashRemix::applyPlayers()
         color = slot;
       team = i;
     }
-    m_core->memory().writeValue<uint8_t>(color, SR_PORT_COLOR_ADDR[slot]);
-    m_core->memory().writeValue<uint8_t>(team, SR_TEAM_ADDR_1[slot]);
-    m_core->memory().writeValue<uint8_t>(team, SR_TEAM_ADDR_2[slot]);
+    core()->memory().writeValue<uint8_t>(color, SR_PORT_COLOR_ADDR[slot]);
+    core()->memory().writeValue<uint8_t>(team, SR_TEAM_ADDR_1[slot]);
+    core()->memory().writeValue<uint8_t>(team, SR_TEAM_ADDR_2[slot]);
 
     uint8_t size;
     bool tinyBattle = (m_minigame->minigame_id == 0x03);
@@ -278,8 +367,21 @@ void SmashRemix::applyPlayers()
       size = tinyBattle ? 0 : 1; // Tiny: solo=normal, Giant: solo=giant
     else
       size = tinyBattle ? 2 : 0; // Tiny: group=tiny,  Giant: group=normal
-    m_core->memory().writeValue<uint8_t>(size, SR_SIZE_ADDR_1[slot]);
-    m_core->memory().writeValue<uint8_t>(size, SR_SIZE_ADDR_2[slot]);
+    core()->memory().writeValue<uint8_t>(size, SR_SIZE_ADDR_1[slot]);
+    core()->memory().writeValue<uint8_t>(size, SR_SIZE_ADDR_2[slot]);
+  }
+
+  unsigned activeSlots = 0;
+  for (unsigned slot = 0; slot < 4; slot++)
+    if (m_slotToIndex[slot] >= 0)
+      activeSlots++;
+
+  unsigned expectedPlayers = (m_minigame->type == DR_MINIGAME_DUEL) ? 2 : 4;
+  if (activeSlots >= expectedPlayers)
+  {
+    for (unsigned slot = 0; slot < 4; slot++)
+      if (m_slotToIndex[slot] == -1)
+        m_retro->writes8(-1, SR_STOCKS_ADDR[slot]);
   }
 }
 

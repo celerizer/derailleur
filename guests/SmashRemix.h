@@ -11,6 +11,11 @@ public:
   SmashRemix(QObject *parent = nullptr);
   const char *name() const override { return "Smash Remix"; }
 
+  QRetro *core() const override { return m_retro ? m_retro->core() : nullptr; }
+  void startCore() override;
+  void pause() override { if (m_retro) m_retro->pause(); }
+  void unpause() override { if (m_retro) m_retro->unpause(); }
+
   dr_minigame_result_t minigameResult(unsigned index) override;
   const dr_mp_minigame_t *minigames() const override;
   void doSetMinigame(const dr_mp_minigame_t *minigame) override;
@@ -26,12 +31,15 @@ private:
   void applyPlayers();
   void run(void);
 
+  DrRetro *m_retro = nullptr;
   dr_player_t m_players[4] = {};
   dr_character m_slotCharacters[4] = {};
   int m_slotToIndex[4] = { -1, -1, -1, -1 };
-  uint8_t m_prevStocks[4] = { 0xFF, 0xFF, 0xFF, 0xFF };
+  int8_t m_prevStocks[4] = { -1, -1, -1, -1 };
   uint8_t m_winners = 0;
   int m_finishCountdown = 0;
+  int m_placement[4] = { -1, -1, -1, -1 };
+  unsigned m_eliminationCount = 0;
 };
 
 #endif

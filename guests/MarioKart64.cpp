@@ -1,5 +1,7 @@
 #include "MarioKart64.h"
 
+#include <QRetro.h>
+
 static const size_t MK64_MENU_CHAR_ADDR[4] = { 0x8018EDE7, 0x8018EDE6, 0x8018EDE5, 0x8018EDE4 };
 static const size_t MK64_REAL_CHAR_ADDR[4] = { 0x800e86ab, 0x800e86aa, 0x800e86a9, 0x800e86a8 };
 
@@ -69,20 +71,28 @@ static const mk64_character_t MK64_CHARACTER_ID[] = {
 MarioKart64::MarioKart64(QObject *parent)
   : DrGuest(parent)
 {
-  m_core = new QRetro();
-  m_ownCore = true;
+  m_retro = new DrRetro(this);
   QString corePath = dr_core_path(DR_CORE_MUPEN64PLUSNEXT);
   QString gamePath = dr_roms_directory() + "/Mario Kart 64 (USA).z64";
-  if (!m_core->loadCore(corePath.toUtf8().constData()))
+  QRetro *c = new QRetro();
+  if (!c->loadCore(corePath.toUtf8().constData()))
   {
     log(DR_LOG_ERROR, qPrintable(QString("failed to load core: %1").arg(corePath)));
     m_valid = false;
   }
-  if (!m_core->loadContent(gamePath.toUtf8().constData()))
+  if (!c->loadContent(gamePath.toUtf8().constData()))
   {
     log(DR_LOG_ERROR, qPrintable(QString("failed to load content: %1").arg(gamePath)));
     m_valid = false;
   }
+  m_retro->setCore(c, true);
+}
+
+void MarioKart64::startCore()
+{
+  if (auto *c = core())
+    connect(c, &QRetro::frameBegin, this, [this]() { run(); }, Qt::DirectConnection);
+  m_retro->startCore();
 }
 
 void MarioKart64::run()
@@ -91,7 +101,7 @@ void MarioKart64::run()
   {
     --m_lapsFreezeFrames;
     for (unsigned i = 0; i < 4; i++)
-      m_core->memory().writeValue<uint32_t>(1, MK64_LAPS_ADDR[i]);
+      core()->memory().writeValue<uint32_t>(1, MK64_LAPS_ADDR[i]);
   }
 
   if (m_winnerIndex == -1 && m_minigameActive)
@@ -99,7 +109,7 @@ void MarioKart64::run()
     for (unsigned i = 0; i < 4; i++)
     {
       uint32_t laps;
-      if (m_core->memory().readValue<uint32_t>(&laps, MK64_LAPS_ADDR[i]) && laps >= 3)
+      if (core()->memory().readValue<uint32_t>(&laps, MK64_LAPS_ADDR[i]) && laps >= 3)
       {
         m_winnerIndex = m_slotToIndex[i];
         m_finishCountdown = 240;
@@ -123,12 +133,12 @@ void MarioKart64::doSetMinigame(const dr_mp_minigame_t *minigame)
 {
   signed id = minigame->minigame_id;
   startMinigame();
-  m_core->unserializeFromFile(dr_state_directory() + "/mk64.state.zip");
-  m_core->memory().writeValue<uint8_t>(id % 4, MK64_COURSE_ADDR);
-  m_core->memory().writeValue<uint8_t>(id / 4, MK64_CUP_ADDR);
+  core()->unserializeFromFile(dr_state_directory() + "/mk64.state.zip");
+  core()->memory().writeValue<uint8_t>(id % 4, MK64_COURSE_ADDR);
+  core()->memory().writeValue<uint8_t>(id / 4, MK64_CUP_ADDR);
 
   if (id >= 0 && (size_t)id < sizeof(MK64_TRACK_ID) / sizeof(*MK64_TRACK_ID))
-    m_core->memory().writeValue<uint8_t>(MK64_TRACK_ID[id], MK64_TRACK_ADDR);
+    core()->memory().writeValue<uint8_t>(MK64_TRACK_ID[id], MK64_TRACK_ADDR);
 
   m_lapsFreezeFrames = 300;
   m_finishCountdown = -1;
@@ -156,8 +166,8 @@ dr_error MarioKart64::doSetPlayerCharacter(unsigned index, dr_character characte
     if (entry.character == character)
     {
       unsigned slot = m_ports[index] - DR_CONTROL_PORT_P1;
-      m_core->memory().writeValue<uint8_t>(entry.menu_value, MK64_MENU_CHAR_ADDR[slot]);
-      m_core->memory().writeValue<uint8_t>(entry.real_value, MK64_REAL_CHAR_ADDR[slot]);
+      core()->memory().writeValue<uint8_t>(entry.menu_value, MK64_MENU_CHAR_ADDR[slot]);
+      core()->memory().writeValue<uint8_t>(entry.real_value, MK64_REAL_CHAR_ADDR[slot]);
       break;
     }
   }

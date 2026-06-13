@@ -72,6 +72,12 @@ DrDebug::DrDebug(QWidget *parent)
         players[i].team_id = solo ? 0 : 1;
       }
       break;
+    case DR_MINIGAME_DUEL:
+      players[0].team_type = DR_TEAM_TYPE_SOLO;
+      players[1].team_type = DR_TEAM_TYPE_SOLO;
+      playerValid[2] = false;
+      playerValid[3] = false;
+      break;
     default:
       for (unsigned i = 0; i < 4; i++)
       {

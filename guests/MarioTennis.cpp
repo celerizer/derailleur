@@ -104,20 +104,28 @@ static const dr_mp_minigame_t MT_MINIGAMES[] = {
 MarioTennis::MarioTennis(QObject *parent)
   : DrGuest(parent)
 {
-  m_core = new QRetro();
-  m_ownCore = true;
+  m_retro = new DrRetro(this);
   QString corePath = dr_core_path(DR_CORE_MUPEN64PLUSNEXT);
   QString gamePath = dr_roms_directory() + "/Mario Tennis (USA).z64";
-  if (!m_core->loadCore(corePath.toUtf8().constData()))
+  QRetro *c = new QRetro();
+  if (!c->loadCore(corePath.toUtf8().constData()))
   {
     log(DR_LOG_ERROR, qPrintable(QString("failed to load core: %1").arg(corePath)));
     m_valid = false;
   }
-  if (!m_core->loadContent(gamePath.toUtf8().constData()))
+  if (!c->loadContent(gamePath.toUtf8().constData()))
   {
     log(DR_LOG_ERROR, qPrintable(QString("failed to load content: %1").arg(gamePath)));
     m_valid = false;
   }
+  m_retro->setCore(c, true);
+}
+
+void MarioTennis::startCore()
+{
+  if (auto *c = core())
+    connect(c, &QRetro::frameBegin, this, [this]() { run(); }, Qt::DirectConnection);
+  m_retro->startCore();
 }
 
 void MarioTennis::run()
@@ -135,7 +143,7 @@ void MarioTennis::run()
   for (unsigned team = 0; team < 2; team++)
   {
     uint8_t setsWon = 0;
-    if (readu8(&setsWon, MT_SETS_WON_ADDR[team]) != DR_OK || setsWon < 1)
+    if (m_retro->readu8(&setsWon, MT_SETS_WON_ADDR[team]) != DR_OK || setsWon < 1)
       continue;
 
     QString winners;
@@ -165,14 +173,14 @@ void MarioTennis::doSetMinigame(const dr_mp_minigame_t *minigame)
 {
   m_winners = 0;
   m_finishCountdown = 0;
-  m_core->unserializeFromFile(dr_state_directory() + "/mariotennis.state.zip");
+  core()->unserializeFromFile(dr_state_directory() + "/mariotennis.state.zip");
   bool doubles = (minigame->type == DR_MINIGAME_2V2);
   uint8_t court = (minigame->minigame_id == 0x06) ? 0x10 : (uint8_t)(rand() % 16);
-  writeu8(court, MT_COURT_ADDR);
-  writeu8(0x01, MT_SETS_ADDR);
-  writeu8(0x01, MT_GAMES_ADDR);
-  writeu32(minigame->minigame_id, MT_GAME_TYPE_ADDR);
-  writeu8(doubles ? 0x01 : 0x00, MT_DOUBLES_ADDR);
+  m_retro->writeu8(court, MT_COURT_ADDR);
+  m_retro->writeu8(0x01, MT_SETS_ADDR);
+  m_retro->writeu8(0x01, MT_GAMES_ADDR);
+  m_retro->writeu32(minigame->minigame_id, MT_GAME_TYPE_ADDR);
+  m_retro->writeu8(doubles ? 0x01 : 0x00, MT_DOUBLES_ADDR);
 
   log(DR_LOG_INFO,
     qPrintable(
@@ -200,8 +208,8 @@ dr_error MarioTennis::doSetPlayerCharacter(unsigned index, dr_character characte
   if (character >= DR_CHARACTER_SIZE || MT_DR_TO_CHAR[character].id == 0xFF)
     return DR_ERR_INVALID_PARAMETER;
   m_players[index].character = character;
-  writeu32(MT_DR_TO_CHAR[character].id, MT_CHARACTER_ADDR[index]);
-  writeu32(MT_DR_TO_CHAR[character].color, MT_COLOR_ADDR[index]);
+  m_retro->writeu32(MT_DR_TO_CHAR[character].id, MT_CHARACTER_ADDR[index]);
+  m_retro->writeu32(MT_DR_TO_CHAR[character].color, MT_COLOR_ADDR[index]);
   return DR_OK;
 }
 
@@ -239,7 +247,7 @@ dr_error MarioTennis::doSetPlayerDifficulty(unsigned index, dr_difficulty diffic
     val = 0x01;
     break;
   }
-  return writeu8(val, MT_DIFFICULTY_ADDR[index]);
+  return m_retro->writeu8(val, MT_DIFFICULTY_ADDR[index]);
 }
 
 void MarioTennis::applyTeams()
@@ -276,11 +284,11 @@ void MarioTennis::applyTeams()
   for (unsigned s = 0; s < slotCount; s++)
   {
     unsigned pi = slotPlayer[s];
-    writeu8(static_cast<uint8_t>(pi), MT_SLOT_ADDR[s]);
+    m_retro->writeu8(static_cast<uint8_t>(pi), MT_SLOT_ADDR[s]);
     uint8_t ctrl = (m_players[pi].control_type == DR_CONTROL_TYPE_CPU)
                      ? 0xFF
                      : static_cast<uint8_t>(m_players[pi].control_port - DR_CONTROL_PORT_P1);
-    writeu8(ctrl, MT_CONTROL_ADDR[s]);
+    m_retro->writeu8(ctrl, MT_CONTROL_ADDR[s]);
   }
 }
 
