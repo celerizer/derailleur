@@ -162,23 +162,23 @@ MarioParty3Host::MarioParty3Host(QObject *parent)
           "+8100B008 0000"
           "+8100B00A 0000"
           // Trampoline at 0x800A7A30
-          "+810A7A30 AFBF"
+          "+810A7A30 AFBF"  // SW   RA, 32(SP)          — displaced original insn from 0x8000B004
           "+810A7A32 0020"
-          "+810A7A34 AFA4"
+          "+810A7A34 AFA4"  // SW   A0, 20(SP)          — displaced original insn from 0x8000B008
           "+810A7A36 0014"
-          "+810A7A38 3C01"
+          "+810A7A38 3C01"  // LUI  AT, 0x0123          — AT = 0x01230000
           "+810A7A3A 0123"
-          "+810A7A3C 2421"
+          "+810A7A3C 2421"  // ADDIU AT, AT, -0x28B6    — AT = 0x0122D74A (title table ROM offset)
           "+810A7A3E D74A"
-          "+810A7A40 1481"
+          "+810A7A40 1481"  // BNE  A0, AT, +2          — if A0 != title table, skip A3 = 0
           "+810A7A42 0002"
-          "+810A7A44 0000"
+          "+810A7A44 0000"  // NOP                      — (delay slot)
           "+810A7A46 0000"
-          "+810A7A48 0000"
+          "+810A7A48 0000"  // OR   A3, R0, R0          — A3 = 0: signal decompressor to skip
           "+810A7A4A 3825"
-          "+810A7A4C 0800"
+          "+810A7A4C 0800"  // J    0x8000B00C          — return past the hooked instructions
           "+810A7A4E 2C03"
-          "+810A7A50 0000"
+          "+810A7A50 0000"  // NOP                      — (delay slot)
           "+810A7A52 0000"
           
           // This code intercepts the "next scene" value change to load them
@@ -232,15 +232,31 @@ MarioParty3Host::MarioParty3Host(QObject *parent)
         m_core->cheatSet(1, false, MP3_CHEAT_REGULAR_BOARD);
         m_core->cheatSet(2, false, MP3_CHEAT_DUEL_BOARD);
 
-        // Write 0x40-entry title table to ROM at 0xB122D74A
-        // Entries 0-15: 48 bytes each (full layout)
-        // Entries 16-63: 6 bytes each (minimal valid: 00 len 0B 'A' 00 00)
+        // Write 0x41-entry title table to ROM at 0xB122D74A
+        // Entries 0x00-0x0F: 48 bytes each (full layout, used for roulette slots)
+        // Entries 0x10-0x3A: 6 bytes each (minimal valid: 00 len 0B 'A' 00 00)
+        // Entries 0x3B-0x40: 48 bytes each (item minigame names)
         static constexpr size_t   TABLE_BASE        = 0xB122D74A;
-        static constexpr uint32_t ENTRY_COUNT       = 0x40;
+        static constexpr uint32_t ENTRY_COUNT       = 0x41;
         static constexpr uint32_t FULL_COUNT        = 16;
+        static constexpr uint32_t SMALL_COUNT       = 0x3B - FULL_COUNT; // 43
+        static constexpr uint32_t ITEM_BASE         = 0x3B;
+        static constexpr uint32_t ITEM_COUNT        = 6;
         static constexpr uint32_t ENTRY_SIZE        = 48;
         static constexpr uint32_t SMALL_ENTRY_SIZE  = 6;
-        static constexpr uint32_t HEADER_SIZE       = 4 + ENTRY_COUNT * 4; // 0x104
+        static constexpr uint32_t HEADER_SIZE       = 4 + ENTRY_COUNT * 4; // 0x108
+        static constexpr uint32_t FULL_AREA_SIZE    = FULL_COUNT * ENTRY_SIZE;
+        static constexpr uint32_t SMALL_AREA_SIZE   = SMALL_COUNT * SMALL_ENTRY_SIZE;
+        static constexpr uint32_t ITEM_AREA_OFFSET  = FULL_AREA_SIZE + SMALL_AREA_SIZE;
+
+        static const char * const ITEM_NAMES[ITEM_COUNT] = {
+          "Winner's Wheel",       // 0x3B
+          "Hey, Batter, Batter!", // 0x3C
+          "Bobbing Bow-loons",    // 0x3D
+          "Dorrie Dip",           // 0x3E
+          "Swinging with Sharks", // 0x3F
+          "Swing 'n' Swipe",      // 0x40
+        };
 
         auto xw = [this](uint8_t val, size_t addr) {
           writeu8(val, n64ByteAddr(addr));
@@ -255,8 +271,11 @@ MarioParty3Host::MarioParty3Host(QObject *parent)
         xw32(ENTRY_COUNT, TABLE_BASE);
         for (uint32_t i = 0; i < FULL_COUNT; i++)
           xw32(HEADER_SIZE + i * ENTRY_SIZE, TABLE_BASE + 4 + i * 4);
-        for (uint32_t i = FULL_COUNT; i < ENTRY_COUNT; i++)
-          xw32(HEADER_SIZE + FULL_COUNT * ENTRY_SIZE + (i - FULL_COUNT) * SMALL_ENTRY_SIZE,
+        for (uint32_t i = FULL_COUNT; i < ITEM_BASE; i++)
+          xw32(HEADER_SIZE + FULL_AREA_SIZE + (i - FULL_COUNT) * SMALL_ENTRY_SIZE,
+               TABLE_BASE + 4 + i * 4);
+        for (uint32_t i = ITEM_BASE; i < ENTRY_COUNT; i++)
+          xw32(HEADER_SIZE + ITEM_AREA_OFFSET + (i - ITEM_BASE) * ENTRY_SIZE,
                TABLE_BASE + 4 + i * 4);
 
         for (uint32_t i = 0; i < FULL_COUNT; i++)
@@ -269,15 +288,41 @@ MarioParty3Host::MarioParty3Host(QObject *parent)
             xw(0x00, base + j);
         }
 
-        for (uint32_t i = 0; i < ENTRY_COUNT - FULL_COUNT; i++)
+        for (uint32_t i = 0; i < SMALL_COUNT; i++)
         {
-          size_t base = TABLE_BASE + HEADER_SIZE + FULL_COUNT * ENTRY_SIZE + i * SMALL_ENTRY_SIZE;
+          size_t base = TABLE_BASE + HEADER_SIZE + FULL_AREA_SIZE + i * SMALL_ENTRY_SIZE;
           xw(0x00, base);     // alignment
           xw(0x04, base + 1); // len (offset 3 + strlen 1)
           xw(0x0B, base + 2); // marker
           xw('A',  base + 3);
           xw(0x00, base + 4);
           xw(0x00, base + 5);
+        }
+
+        for (uint32_t i = 0; i < ITEM_COUNT; i++)
+        {
+          size_t base = TABLE_BASE + HEADER_SIZE + ITEM_AREA_OFFSET + i * ENTRY_SIZE;
+          const char *name = ITEM_NAMES[i];
+          uint8_t encoded[32] = {};
+          uint8_t nameLen = 0;
+          for (size_t k = 0, srcLen = strlen(name); k < srcLen && nameLen < 32; k++)
+          {
+            char c = name[k];
+            uint8_t enc;
+            if (isalpha((unsigned char)c) || isdigit((unsigned char)c) || c == ' ')
+              enc = (uint8_t)c;
+            else if (c == '\'') enc = 0x5C;
+            else if (c == '-')  enc = 0x3D;
+            else if (c == ',')  enc = 0x82;
+            else if (c == '!')  enc = 0xC2;
+            else continue;
+            encoded[nameLen++] = enc;
+          }
+          xw(0x00, base);
+          xw(nameLen + 3, base + 1); // len = offset 3 + strlen
+          xw(0x0B, base + 2);        // marker
+          for (uint32_t j = 0; j < ENTRY_SIZE - 3; j++)
+            xw(j < nameLen ? encoded[j] : 0, base + 3 + j);
         }
       }
     },
