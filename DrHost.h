@@ -14,9 +14,7 @@ struct DrMinigameCandidate
 Q_DECLARE_METATYPE(DrMinigameCandidate)
 Q_DECLARE_METATYPE(dr_minigame_type)
 using DrPlayerArray = std::array<dr_player_t, 4>;
-using DrPlayerValidArray = std::array<bool, 4>;
 Q_DECLARE_METATYPE(DrPlayerArray)
-Q_DECLARE_METATYPE(DrPlayerValidArray)
 
 struct dr_scene_range_t
 {
@@ -95,6 +93,8 @@ struct DrHostConfig
   size_t (*title_addr_transform)(size_t); // byte-swap fn (e.g. n64ByteAddr), nullptr = identity
   const size_t *slot_addrs;              // 5 word-flipped RAM addrs holding per-slot minigame IDs
   size_t scene_trampoline_addr;          // packed word: upper half = scene, lower half = modifier; 0 = passthrough
+  size_t turn_total_addr;               // byte: total turn count; 0 = skip end-of-game check
+  size_t turn_current_addr;             // byte: current turn count
   size_t scene_duel_slot0_addr;         // word-flipped RAM addr of duel board's first slot; 0 = use minigame_type_addr
   const char *cheat_regular_board;      // cheat code string for regular board roulette (nullptr = unused)
   const char *cheat_duel_board;         // cheat code string for duel board roulette (nullptr = unused)
@@ -113,26 +113,27 @@ public:
 
   void run(void);
 
+  virtual dr_game game(void) const { return DR_GAME_INVALID; }
+
   virtual void injectMinigameTitles(const std::array<DrMinigameCandidate, 5> &candidates);
 
-  // Called when miniexplain is detected. Return true to suppress candidatesRequested.
+  // Called when miniexplain is detected. Return true to suppress candidatesNeeded.
   virtual bool onMiniexplainDetected(dr_minigame_type type, int16_t minigameId,
-    const DrPlayerArray &players, const DrPlayerValidArray &playerValid)
+    const DrPlayerArray &players)
   {
-    if (m_config.title_addrs && m_config.title_id_step > 0)
+    (void)type;
+    (void)players;
+    if (m_config.title_id_step > 0)
     {
       for (unsigned k = 0; k < 5; k++)
         if (minigameId == (int16_t)(m_config.title_id_base + k * m_config.title_id_step))
         {
-          if (m_config.next_scene_addr)
-            m_pendingStartIndex = k;
-          else
-            startMinigame(k);
+          m_pendingStartIndex = k;
           return true;
         }
       return false;
     }
-    if (m_config.title_addrs && m_config.slot_addrs)
+    if (m_config.slot_addrs)
     {
       for (unsigned k = 0; k < 5; k++)
       {
@@ -140,32 +141,19 @@ public:
         readu8(&slotId, m_config.slot_addrs[k]);
         if (minigameId == (int16_t)slotId)
         {
-          if (m_config.next_scene_addr)
-            m_pendingStartIndex = k;
-          else
-            startMinigame(k);
+          m_pendingStartIndex = k;
           return true;
         }
       }
       return false;
     }
-    if (m_config.minigame_type_addr)
-    {
-      if (m_config.next_scene_addr)
-        m_pendingStartIndex = 0;
-      else
-        startMinigame(0);
-      return true;
-    }
-    return false;
+    m_pendingStartIndex = 0;
+    return true;
   }
 
 signals:
   void candidatesNeeded(dr_minigame_type type);
-  void candidatesRequested(
-    dr_minigame_type type, DrPlayerArray players, DrPlayerValidArray playerValid);
-  void minigameRequested(
-    DrMinigameCandidate candidate, DrPlayerArray players, DrPlayerValidArray playerValid);
+  void minigameRequested(DrMinigameCandidate candidate, DrPlayerArray players);
 
 protected:
   bool initTitleSlots();
@@ -185,9 +173,7 @@ private:
   uint8_t m_resultsScene = 0;
   int16_t m_resultsModifier = 0;
   signed m_MinigameType = -1;
-  signed m_SceneId = 0;
-  uint8_t m_lastNextScene = 0xFF;
-  dr_minigame_type m_pendingMgType = DR_MINIGAME_INVALID;
+  bool m_isDuelBoard = false;
   uint8_t m_pendingStartIndex = 0;
   bool m_itemPending = false;
   bool m_itemSceneLeft = false;
@@ -198,7 +184,6 @@ private:
 
   std::array<DrMinigameCandidate, 5> m_candidates = {};
   std::array<dr_player_t, 4> m_pendingPlayers = {};
-  std::array<bool, 4> m_pendingPlayerValid = {};
 };
 
 #endif

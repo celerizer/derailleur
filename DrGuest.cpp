@@ -77,6 +77,8 @@ void DrGuest::setMinigame(const dr_mp_minigame_t *minigame)
   {
     const char *option_value = nullptr;
 
+    /// Graphics > Settings > Texture Cache Accuracy
+    /// 128=Normal, 512=Fast, 0=Safe
     if (minigame->quirks.dolphin.needs_safe_texture_cache)
     {
       log(DR_LOG_INFO, "Mini-game requires safe texture cache, enabling...");
@@ -86,6 +88,8 @@ void DrGuest::setMinigame(const dr_mp_minigame_t *minigame)
       option_value = "128";
     core()->options()->setOptionValue("dolphin_texture_cache_accuracy", option_value);
 
+    /// Graphics > Hacks > Skip EFB Copy to RAM
+    /// All the negative negation makes this look like a typo, but it's not
     if (minigame->quirks.dolphin.needs_efb_to_texture)
     {
       log(DR_LOG_INFO, "Mini-game requires EFB copy to RAM, enabling...");
@@ -95,6 +99,8 @@ void DrGuest::setMinigame(const dr_mp_minigame_t *minigame)
       option_value = "enabled";
     core()->options()->setOptionValue("dolphin_efb_to_texture", option_value);
 
+    /// Graphics > Settings > Internal Resolution
+    /// @todo Return to user's preferred setting when minigame is finished
     if (minigame->quirks.dolphin.needs_native_resolution)
     {
       log(DR_LOG_INFO, "Mini-game requires native resolution, enabling...");

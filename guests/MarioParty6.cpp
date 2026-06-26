@@ -35,11 +35,11 @@ static const dr_mp_minigame_t MP6_MINIGAMES[] = {
   { "Blooper Scooper", DR_MINIGAME_4P, 0x12, 0x18, DR_NO_QUIRKS },
   { "Trap Ease Artist", DR_MINIGAME_4P, 0x13, 0x19, DR_NO_QUIRKS },
   { "Pokey Punch-out", DR_MINIGAME_4P, 0x14, 0x1A, DR_NO_QUIRKS },
-  { "Money Belt", DR_MINIGAME_4P_LUCKY, 0x15, 0x1B, DR_NO_QUIRKS },
+  { "Money Belt", DR_MINIGAME_4P, 0x15, 0x1B, DR_NO_QUIRKS },
   { "Sunday Drivers", DR_MINIGAME_4P, 0x2F, 0x35, DR_NO_QUIRKS },
   { "Throw Me a Bone", DR_MINIGAME_4P, 0x31, 0x37, DR_NO_QUIRKS },
   // 1-vs-3
-  { "Cash Flow", DR_MINIGAME_1V3_LUCKY, 0x16, 0x1C, DR_NO_QUIRKS },
+  { "Cash Flow", DR_MINIGAME_1V3, 0x16, 0x1C, DR_NO_QUIRKS },
   { "Sink or Swim", DR_MINIGAME_1V3, 0x18, 0x1E, DR_NO_QUIRKS },
   { "Snow Brawl", DR_MINIGAME_1V3, 0x19, 0x1F, DR_NO_QUIRKS },
   { "Ball Dozers", DR_MINIGAME_1V3, 0x1A, 0x20, DR_NO_QUIRKS },

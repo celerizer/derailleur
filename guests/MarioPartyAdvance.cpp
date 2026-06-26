@@ -13,22 +13,38 @@
 #define MPA_TYPE_2_WINDOW 2
 #define MPA_TYPE_4_WINDOW 3
 
+enum
+{
+  MPA_COMPATICOM   = 0x04,
+  MPA_SHROOM_SLIDE = 0x07,
+  MPA_STICK_TO_IT  = 0x08,
+  MPA_SHROOM_DROP  = 0x14,
+  MPA_4P_PINBALL   = 0x16,
+  MPA_ATTACK_FROG  = 0x1A,
+  MPA_BOMB_GAME    = 0x1E,
+  MPA_EGG_PANIC    = 0x22,
+  MPA_BLOCK_PUNCH  = 0x23,
+  MPA_DART_ATTACK  = 0x25,
+  MPA_CHICKEN_RACE = 0x27,
+  MPA_BOO_BYE      = 0x44,
+};
+
 static const dr_mp_minigame_t MPA_MINIGAMES[] =
 {
-  { "Compat-I-Com", DR_MINIGAME_INVALID, 0x04, MPA_TYPE_1_WINDOW, DR_NO_QUIRKS },
-  { "Shroom Slide", DR_MINIGAME_INVALID, 0x07, MPA_TYPE_1_WINDOW, DR_NO_QUIRKS },
-  { "Stick to It",  DR_MINIGAME_INVALID, 0x08, MPA_TYPE_1_WINDOW, DR_NO_QUIRKS },
-  { "Shroom Drop",  DR_MINIGAME_INVALID, 0x14, MPA_TYPE_1_WINDOW, DR_NO_QUIRKS },
-  { "4-P Piball",   DR_MINIGAME_INVALID, 0x16, MPA_TYPE_1_WINDOW, DR_NO_QUIRKS },
-  { "Attack Frog",  DR_MINIGAME_INVALID, 0x1A, MPA_TYPE_1_WINDOW, DR_NO_QUIRKS },
-  { "Bomb Game",    DR_MINIGAME_INVALID, 0x1E, MPA_TYPE_1_WINDOW, DR_NO_QUIRKS },
-  { "Egg Panic",    DR_MINIGAME_INVALID, 0x22, MPA_TYPE_1_WINDOW, DR_NO_QUIRKS },
-  { "Block Punch",  DR_MINIGAME_INVALID, 0x23, MPA_TYPE_1_WINDOW, DR_NO_QUIRKS },
-  // toad force v
-  { "Dart Attack",  DR_MINIGAME_INVALID, 0x25, MPA_TYPE_1_WINDOW, DR_NO_QUIRKS },
-  { "Chicken Race", DR_MINIGAME_INVALID, 0x27, MPA_TYPE_1_WINDOW, DR_NO_QUIRKS },
+  { "Compat-I-Com", DR_MINIGAME_INVALID, MPA_COMPATICOM,   MPA_TYPE_1_WINDOW, DR_NO_QUIRKS },
+  { "Shroom Slide", DR_MINIGAME_INVALID, MPA_SHROOM_SLIDE, MPA_TYPE_1_WINDOW, DR_NO_QUIRKS },
+  { "Stick to It",  DR_MINIGAME_INVALID, MPA_STICK_TO_IT,  MPA_TYPE_1_WINDOW, DR_NO_QUIRKS },
+  { "Shroom Drop",  DR_MINIGAME_INVALID, MPA_SHROOM_DROP,  MPA_TYPE_1_WINDOW, DR_NO_QUIRKS },
+  { "4-P Piball",   DR_MINIGAME_INVALID, MPA_4P_PINBALL,   MPA_TYPE_1_WINDOW, DR_NO_QUIRKS },
+  { "Attack Frog",  DR_MINIGAME_INVALID, MPA_ATTACK_FROG,  MPA_TYPE_1_WINDOW, DR_NO_QUIRKS },
+  { "Bomb Game",    DR_MINIGAME_INVALID, MPA_BOMB_GAME,    MPA_TYPE_1_WINDOW, DR_NO_QUIRKS },
+  { "Egg Panic",    DR_MINIGAME_INVALID, MPA_EGG_PANIC,    MPA_TYPE_1_WINDOW, DR_NO_QUIRKS },
+  { "Block Punch",  DR_MINIGAME_INVALID, MPA_BLOCK_PUNCH,  MPA_TYPE_1_WINDOW, DR_NO_QUIRKS },
+  // 24 toad force v
+  { "Dart Attack",  DR_MINIGAME_INVALID, MPA_DART_ATTACK,  MPA_TYPE_1_WINDOW, DR_NO_QUIRKS },
+  { "Chicken Race", DR_MINIGAME_INVALID, MPA_CHICKEN_RACE, MPA_TYPE_1_WINDOW, DR_NO_QUIRKS },
 
-  { "Boo Bye", DR_MINIGAME_INVALID, 0x44, MPA_TYPE_1_WINDOW, DR_NO_QUIRKS },
+  { "Boo Bye", DR_MINIGAME_INVALID, MPA_BOO_BYE, MPA_TYPE_1_WINDOW, DR_NO_QUIRKS },
 
   { nullptr, DR_MINIGAME_INVALID, -1, -1, DR_NO_QUIRKS },
 };
@@ -66,13 +82,14 @@ const dr_mp_minigame_t *MarioPartyAdvance::minigames() const
 
 dr_minigame_result_t MarioPartyAdvance::minigameResult(unsigned index)
 {
-  return { (m_winners & (1u << index)) ? 10u : 0u, 0 };
+  return { (m_winners & (1u << index)) ? 10 : 0, 0 };
 }
 
 void MarioPartyAdvance::doSetMinigame(const dr_mp_minigame_t *minigame)
 {
   m_gameStarted = false;
   m_winners = 0;
+  m_EndWaitFrames = 0;
   if (m_retro && m_retro->core())
   {
     QString statePath = dr_state_directory() + "/mpadvance.state.zip";
@@ -95,17 +112,21 @@ void MarioPartyAdvance::run4pPinball()
 
   if (out_count >= 3)
   {
-    unsigned i;
-
-    for (i = 0; i < 4; i++)
+    if (!m_winners)
     {
-      uint8_t out = 0;
-
-      m_retro->readu8(&out, MPA_4PP_PLAYER_OUT + i);
-      if (!out)
-        m_winners |= (1u << i);
+      for (unsigned i = 0; i < 4; i++)
+      {
+        uint8_t out = 0;
+        m_retro->readu8(&out, MPA_4PP_PLAYER_OUT + i);
+        if (!out)
+          m_winners |= (1u << i);
+      }
     }
-    finishMinigameInFrames(240);
+    ++m_EndWaitFrames;
+    if (m_EndWaitFrames > 248)
+      core()->input()->joypads()[0].setForcedButton(RETRO_DEVICE_ID_JOYPAD_START, false);
+    else if (m_EndWaitFrames >= 240)
+      core()->input()->joypads()[0].setForcedButton(RETRO_DEVICE_ID_JOYPAD_START, true);
   }
 }
 
@@ -131,7 +152,7 @@ void MarioPartyAdvance::run()
   {
     switch (m_minigame->minigame_id)
     {
-    case 0x16:
+    case MPA_4P_PINBALL:
       run4pPinball();
       break;
     }

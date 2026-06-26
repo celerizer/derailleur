@@ -4,7 +4,6 @@
 #include <QRandomGenerator>
 #include <QRetro.h>
 #include <QString>
-#include <QStringList>
 #include <algorithm>
 #include <cctype>
 #include <cstring>
@@ -27,6 +26,13 @@ void DrHost::run(void)
   int16_t scene_id = 0;
   reads16(&scene_id, m_config.scene_addr);
 
+  if ((uint8_t)scene_id != m_lastScene)
+  {
+    emit logMessage(DR_LOG_INFO,
+      QString("scene: 0x%1").arg((uint8_t)scene_id, 2, 16, QChar('0')));
+    m_lastScene = (uint8_t)scene_id;
+  }
+
   switch (m_State)
   {
   case DR_HOST_STATE_INVALID:
@@ -37,8 +43,7 @@ void DrHost::run(void)
     break;
   case DR_HOST_STATE_BEFORE_BOARD:
   {
-    if (m_config.scene_trampoline_addr)
-      writeu32(0, m_config.scene_trampoline_addr);
+    writeu32(0, m_config.scene_trampoline_addr);
 
     writeForFrames(m_config.minigame_type_addr, &ff, 1, 180);
 
@@ -48,15 +53,13 @@ void DrHost::run(void)
           (uint8_t)scene_id <= m_config.scene_board_ranges[r].max)
       {
         m_lastBoardScene = (uint8_t)scene_id;
-        {
-          bool isDuelBoard = m_config.scene_duel_board_range.max &&
-            m_lastBoardScene >= m_config.scene_duel_board_range.min &&
-            m_lastBoardScene <= m_config.scene_duel_board_range.max;
-          if (m_config.cheat_regular_board)
-            m_core->cheatSet(1, !isDuelBoard, m_config.cheat_regular_board);
-          if (m_config.cheat_duel_board)
-            m_core->cheatSet(2, isDuelBoard, m_config.cheat_duel_board);
-        }
+        m_isDuelBoard = m_config.scene_duel_board_range.max &&
+          m_lastBoardScene >= m_config.scene_duel_board_range.min &&
+          m_lastBoardScene <= m_config.scene_duel_board_range.max;
+        if (m_config.cheat_regular_board)
+          m_core->cheatSet(1, !m_isDuelBoard, m_config.cheat_regular_board);
+        if (m_config.cheat_duel_board)
+          m_core->cheatSet(2, m_isDuelBoard, m_config.cheat_duel_board);
         setState(DR_HOST_STATE_BOARD);
         break;
       }
@@ -65,8 +68,6 @@ void DrHost::run(void)
   }
   case DR_HOST_STATE_BOARD:
   {
-    m_SceneId = scene_id;
-
     if (m_itemPending)
     {
       int16_t itemId = 0;
@@ -99,15 +100,10 @@ void DrHost::run(void)
     }
 
     /* Ignore any progression if we are not on the board */
-    if ((uint8_t)m_SceneId != m_lastBoardScene)
+    if ((uint8_t)scene_id != m_lastBoardScene)
       return;
 
-    bool isDuelBoard = m_config.scene_duel_slot0_addr &&
-      m_config.scene_duel_board_range.max &&
-      m_lastBoardScene >= m_config.scene_duel_board_range.min &&
-      m_lastBoardScene <= m_config.scene_duel_board_range.max;
-
-    if (isDuelBoard)
+    if (m_isDuelBoard)
     {
       uint8_t slot0 = 0;
       readu8(&slot0, m_config.scene_duel_slot0_addr);
@@ -134,11 +130,11 @@ void DrHost::run(void)
         static const uint8_t itemIds[] = { 0x40, 0x3C, 0x3B };
         for (unsigned k = 0; k < 3; k++)
           writeu8(itemIds[k], m_config.slot_addrs[k]);
-        if (m_config.scene_trampoline_addr)
-          writeu32(0, m_config.scene_trampoline_addr);
+        writeu32(0, m_config.scene_trampoline_addr);
         m_lastMinigameId = -1;
         writeu8(0xFF, m_config.minigame_id_addr);
-        m_itemChosenId = 0x3B + QRandomGenerator::global()->bounded(6);
+        /// @todo fix rng: fixed value (not random) so netplay peers stay in sync
+        m_itemChosenId = 0x3B + (0u % 6);
         m_itemPending = true;
         m_itemSceneLeft = false;
         break;
@@ -153,8 +149,7 @@ void DrHost::run(void)
       }
     }
     writeu8(0xFF, m_config.minigame_type_addr);
-    if (m_config.scene_trampoline_addr)
-      writeu32(0, m_config.scene_trampoline_addr);
+    writeu32(0, m_config.scene_trampoline_addr);
     break;
   }
   case DR_HOST_STATE_BEFORE_ROULETTE:
@@ -185,12 +180,7 @@ void DrHost::run(void)
       break;
     }
 
-    bool isDuelBoard = m_config.scene_duel_slot0_addr &&
-      m_config.scene_duel_board_range.max &&
-      m_lastBoardScene >= m_config.scene_duel_board_range.min &&
-      m_lastBoardScene <= m_config.scene_duel_board_range.max;
-
-    if (!isDuelBoard)
+    if (!m_isDuelBoard)
     {
       uint8_t minigame_type = 0;
       readu8(&minigame_type, m_config.minigame_type_addr);
@@ -226,6 +216,7 @@ void DrHost::run(void)
     case DR_MINIGAME_4P:
     case DR_MINIGAME_1V3:
     case DR_MINIGAME_2V2:
+    case DR_MINIGAME_1P:
       m_resultsScene = m_config.scene_miniresults;
       m_resultsModifier = 0;
       break;
@@ -235,10 +226,7 @@ void DrHost::run(void)
       break;
     case DR_MINIGAME_DUEL:
     {
-      bool isDuelBoard = m_config.scene_duel_board_range.max &&
-        m_lastBoardScene >= m_config.scene_duel_board_range.min &&
-        m_lastBoardScene <= m_config.scene_duel_board_range.max;
-      if (isDuelBoard && m_config.scene_miniresults_duel)
+      if (m_isDuelBoard && m_config.scene_miniresults_duel)
       {
         m_resultsScene = m_config.scene_miniresults;
         m_resultsModifier = 0;
@@ -264,8 +252,7 @@ void DrHost::run(void)
       QString("next_scene: 0x%1 modifier 0x%2")
         .arg(m_resultsScene, 2, 16, QChar('0'))
         .arg(m_resultsModifier, 2, 16, QChar('0')));
-    if (m_config.scene_trampoline_addr)
-      writeu32(((uint32_t)m_resultsScene << 16) | (uint16_t)m_resultsModifier, m_config.scene_trampoline_addr);
+    writeu32(((uint32_t)m_resultsScene << 16) | (uint16_t)m_resultsModifier, m_config.scene_trampoline_addr);
     m_afterRouletteSceneLeft = false;
     setState(DR_HOST_STATE_AFTER_ROULETTE);
     break;
@@ -286,24 +273,24 @@ void DrHost::run(void)
     dr_minigame_type mg_type = (m_MinigameType < (int)m_config.minigame_type_to_dr_size)
       ? m_config.minigame_type_to_dr[m_MinigameType] : DR_MINIGAME_INVALID;
     readPlayers(mg_type);
-    onMiniexplainDetected(mg_type, m_lastMinigameId, m_pendingPlayers, m_pendingPlayerValid);
+    onMiniexplainDetected(mg_type, m_lastMinigameId, m_pendingPlayers);
     startMinigame(m_pendingStartIndex);
 
     emit logMessage(DR_LOG_INFO,
       QString("board_scene: 0x%1 modifier 1").arg(m_lastBoardScene, 2, 16, QChar('0')));
-    if (m_config.scene_trampoline_addr)
+    if (m_config.turn_total_addr)
     {
       uint8_t totalTurns = 0, currentTurns = 0;
-      readu8(&totalTurns,   0x800CD059u);
-      readu8(&currentTurns, 0x800CD058u);
+      readu8(&totalTurns,   m_config.turn_total_addr);
+      readu8(&currentTurns, m_config.turn_current_addr);
       if (currentTurns > totalTurns)
       {
         writeu32(0, m_config.scene_trampoline_addr);
         setState(DR_HOST_STATE_INVALID);
         break;
       }
-      writeu32(((uint32_t)m_lastBoardScene << 16) | 1, m_config.scene_trampoline_addr);
     }
+    writeu32(((uint32_t)m_lastBoardScene << 16) | 1, m_config.scene_trampoline_addr);
     m_lastMinigameId = -1;
     writeu8(0xFF, m_config.minigame_id_addr);
     setState(DR_HOST_STATE_MINIGAME);
@@ -321,6 +308,8 @@ void DrHost::run(void)
     }
     break;
   }
+  case DR_HOST_STATE_SIZE:
+    break;
   }
 }
 
@@ -330,7 +319,6 @@ DrHost::DrHost(const DrHostConfig &config, QObject *parent)
 {
   qRegisterMetaType<DrMinigameCandidate>();
   qRegisterMetaType<DrPlayerArray>();
-  qRegisterMetaType<DrPlayerValidArray>();
   qRegisterMetaType<dr_minigame_type>();
   m_core = new QRetro();
   m_ownCore = true;
@@ -350,8 +338,6 @@ DrHost::DrHost(const DrHostConfig &config, QObject *parent)
 
 void DrHost::injectMinigameTitles(const std::array<DrMinigameCandidate, 5> &candidates)
 {
-  if (!m_config.title_addrs)
-    return;
   std::array<std::string, 5> names;
   for (unsigned i = 0; i < 5; i++)
   {
@@ -399,8 +385,6 @@ bool DrHost::initTitleSlots()
 
 void DrHost::writeMinigameNames(const std::array<std::string, 5> &names)
 {
-  if (!m_config.title_addrs)
-    return;
   if (!m_titleSlotsValid)
   {
     if (!initTitleSlots())
@@ -435,13 +419,12 @@ void DrHost::startMinigame(unsigned index)
 {
   if (index >= 5 || !m_candidates[index].guest || !m_candidates[index].minigame)
     return;
-  emit minigameRequested(m_candidates[index], m_pendingPlayers, m_pendingPlayerValid);
+  emit minigameRequested(m_candidates[index], m_pendingPlayers);
 }
 
 void DrHost::readPlayers(dr_minigame_type type)
 {
   m_pendingPlayers = {};
-  m_pendingPlayerValid = {};
 
   uint8_t panelColors[4];
   for (unsigned i = 0; i < 4; i++)
@@ -465,12 +448,10 @@ void DrHost::readPlayers(dr_minigame_type type)
     p.team_color  = (panelColors[i] < m_config.panel_color_to_dr_size)
                       ? m_config.panel_color_to_dr[panelColors[i]] : DR_TEAM_COLOR_INVALID;
     p.team_id = team;
-    m_pendingPlayerValid[i] = true;
   }
 
   for (unsigned i = 0; i < 4; i++)
   {
-    if (!m_pendingPlayerValid[i]) continue;
     if (type == DR_MINIGAME_1V3)
       m_pendingPlayers[i].team_type = (m_pendingPlayers[i].team_id == 0) ? DR_TEAM_TYPE_1V3_SOLO : DR_TEAM_TYPE_1V3_GROUP;
     else if (type == DR_MINIGAME_2V2)
@@ -545,7 +526,8 @@ void DrHost::writeBattleCoins()
       if (places[i] == firstPlace || places[i] == secondPlace)
         qualifying[numQ++] = i;
     if (numQ > 0)
-      bonusCoins[qualifying[rand() % numQ]] += remainder;
+      /// @todo fix rng: fixed value (not random) so netplay peers stay in sync
+      bonusCoins[qualifying[0u % numQ]] += remainder;
   }
 
   for (unsigned i = 0; i < 4; i++)
@@ -579,8 +561,7 @@ void DrHost::writeResults(DrGuest *guest)
   }
   if (m_resultsScene == m_config.scene_miniresults_battle)
     writeBattleCoins();
-  if (m_config.minigame_type_addr)
-    writeu8(0xFF, m_config.minigame_type_addr);
+  writeu8(0xFF, m_config.minigame_type_addr);
   m_writing = 30;
   m_lastScene = 0xFF;
 }

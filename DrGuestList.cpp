@@ -61,9 +61,6 @@ DrGuest *DrGuestList::pickMinigame(dr_minigame_type type, const dr_mp_minigame_t
 
 void DrGuestList::logSummary()
 {
-  static const char *typeNames[DR_MINIGAME_SIZE] = { nullptr, "4P", "1v3", "2v2", "1P", "Battle",
-    "Duel", "Item" };
-
   QStringList gameNames;
   unsigned typeCounts[DR_MINIGAME_SIZE] = {};
   unsigned total = 0;
@@ -88,7 +85,7 @@ void DrGuestList::logSummary()
   QStringList typeParts;
   for (unsigned t = 1; t < DR_MINIGAME_SIZE; t++)
     if (typeCounts[t] > 0)
-      typeParts.append(QString("%1x %2").arg(typeCounts[t]).arg(typeNames[t]));
+      typeParts.append(QString("%1x %2").arg(typeCounts[t]).arg(dr_minigame_type_name((dr_minigame_type)t)));
 
   log(DR_LOG_INFO, qPrintable(QString("%1 minigame(s): %2").arg(total).arg(typeParts.join(", "))));
 }

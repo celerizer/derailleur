@@ -1,7 +1,7 @@
 #include "MarioPartyGcn.h"
 
 MarioPartyGcn::MarioPartyGcn(const MpGcnConfig &config, QRetro *sharedCore, QObject *parent)
-  : DrGuest(parent)
+  : DolphinGuest(parent)
   , m_config(config)
 {
   m_retro = new DrRetro(sharedCore, this);

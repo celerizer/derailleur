@@ -4,10 +4,16 @@
 #include <QDir>
 #include <QFile>
 #include <QGuiApplication>
+#include <QInputDialog>
 #include <QLabel>
+#include <QLineEdit>
+#include <QMenu>
+#include <QMenuBar>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QRetro.h>
 #include <QScreen>
+#include <QSet>
 #include <QSettings>
 #include <QStackedWidget>
 #include <QString>
@@ -23,11 +29,13 @@
 #include "guests/MarioParty2.h"
 #include "guests/MarioParty3.h"
 #include "guests/CoreDolphin.h"
+#include "guests/KirbyAirRide.h"
 #include "guests/MarioParty4.h"
 #include "guests/MarioParty5.h"
 #include "guests/MarioParty6.h"
 #include "guests/MarioParty7.h"
 #include "guests/MarioPartyAdvance.h"
+#include "guests/MarioPartyE.h"
 #include "guests/SmashRemix.h"
 #include "guests/MarioTennis.h"
 
@@ -75,11 +83,16 @@ MainWindow::MainWindow(QWidget *parent)
   connect(m_Guests, &DrGuestList::logMessage, m_Logger, &DrLogger::message, Qt::QueuedConnection);
 #endif
 
+  m_InputStore = new DrInputStore();
+  m_Netplay = new DrNetplay(m_InputStore, this);
+  buildNetplayMenu();
+
   auto *dolphin = new CoreDolphin(this);
   dolphin->addGame(new MarioParty4(dolphin->core(), dolphin));
   dolphin->addGame(new MarioParty5(dolphin->core(), dolphin));
   dolphin->addGame(new MarioParty6(dolphin->core(), dolphin));
   dolphin->addGame(new MarioParty7(dolphin->core(), dolphin));
+  dolphin->addGame(new KirbyAirRide(dolphin->core(), dolphin));
   dolphin->finalizeGames();
   if (dolphin->isValid())
     m_Guests->add(dolphin);
@@ -91,12 +104,13 @@ MainWindow::MainWindow(QWidget *parent)
       delete g;
   };
   //addGuest(new MarioKart64());
-  addGuest(new MarioParty1());
+  //addGuest(new MarioParty1());
   //addGuest(new MarioParty2());
   //addGuest(new MarioParty3());
-  addGuest(new SmashRemix());
-  addGuest(new MarioTennis());
-  addGuest(new MarioPartyAdvance());
+  //addGuest(new SmashRemix());
+  //addGuest(new MarioTennis());
+  //addGuest(new MarioPartyAdvance());
+  //addGuest(new MarioPartyE());
 
 #if SHOW_LOGGER
   for (DrGuest *guest : m_Guests->guests())
@@ -180,6 +194,14 @@ void MainWindow::startWithHost(DrHost *host)
   connect(m_Host, &DrRetro::logMessage, m_Logger, &DrLogger::message, Qt::QueuedConnection);
 #endif
 
+  attachNetplay();
+
+  /* If we are the netplay server, tell the connected clients to start this same
+   * game. (On a client this is a no-op; the client got here via the server's
+   * startGameRequested signal.) */
+  if (m_Netplay->isServer())
+    m_Netplay->startGame(static_cast<int>(host->game()));
+
   for (DrGuest *guest : m_Guests->guests())
     guest->startCore();
   m_Host->startCore();
@@ -190,9 +212,8 @@ void MainWindow::startWithHost(DrHost *host)
 
 #if SHOW_DEBUG
   connect(m_Debug, &DrDebug::minigameRequested, this,
-    [this](DrGuest *guest, const dr_mp_minigame_t *minigame, std::array<dr_player_t, 4> players,
-      std::array<bool, 4> playerValid) {
-      launchMinigame(guest, minigame, players.data(), playerValid.data());
+    [this](DrGuest *guest, const dr_mp_minigame_t *minigame, std::array<dr_player_t, 4> players) {
+      launchMinigame(guest, minigame, players.data());
     });
 
   connect(m_Debug, &DrDebug::cancelRequested, this, [this]() {
@@ -202,7 +223,28 @@ void MainWindow::startWithHost(DrHost *host)
   });
 #endif
 
-  auto pickCandidates = [this](dr_minigame_type type) {
+  /* Map a candidate to opaque (guestIndex, minigameIndex) for the network. */
+  auto candidateToPair = [this](const DrMinigameCandidate &c) -> QPair<int, int> {
+    if (!c.guest || !c.minigame)
+      return { -1, -1 };
+    const int g = m_Guests->guests().indexOf(c.guest);
+    int m = -1;
+    const dr_mp_minigame_t *list = c.guest->minigames();
+    for (int i = 0; list && list[i].name; i++)
+      if (&list[i] == c.minigame)
+      {
+        m = i;
+        break;
+      }
+    return { g, m };
+  };
+
+  auto pickCandidates = [this, candidateToPair](dr_minigame_type type) {
+    /* On a client the candidates are authoritative from the server; wait for
+     * the candidatesReceived signal instead of rolling our own. */
+    if (m_Netplay->sessionActive() && !m_Netplay->isServer())
+      return;
+
     std::array<DrMinigameCandidate, 5> candidates = {};
     for (auto &c : candidates)
     {
@@ -211,22 +253,50 @@ void MainWindow::startWithHost(DrHost *host)
       c.minigame = mg;
     }
     m_Host->setCandidates(candidates);
+
+    /* As server, share the exact picks so every peer rolls the same roulette. */
+    if (m_Netplay->sessionActive() && m_Netplay->isServer())
+    {
+      QList<QPair<int, int>> picks;
+      for (const auto &c : candidates)
+        picks.append(candidateToPair(c));
+      m_Netplay->sendCandidates(picks);
+    }
   };
 
   connect(m_Host, &DrHost::candidatesNeeded, this,
     [this, pickCandidates](dr_minigame_type type) { pickCandidates(type); });
 
-  connect(m_Host, &DrHost::candidatesRequested, this,
-    [this, pickCandidates](
-      dr_minigame_type type, std::array<dr_player_t, 4> players, std::array<bool, 4> playerValid) {
-      pickCandidates(type);
-      m_Host->startMinigame(0);
+  /* Client: apply the server's candidate picks. */
+  connect(m_Netplay, &DrNetplay::candidatesReceived, this,
+    [this](QList<QPair<int, int>> picks) {
+      if (!m_Host)
+        return;
+      const auto &guests = m_Guests->guests();
+      std::array<DrMinigameCandidate, 5> candidates = {};
+      for (int i = 0; i < 5 && i < picks.size(); i++)
+      {
+        const int g = picks[i].first;
+        const int m = picks[i].second;
+        if (g < 0 || g >= guests.size() || m < 0)
+          continue;
+        DrGuest *guest = guests[g];
+        const dr_mp_minigame_t *list = guest->minigames();
+        int count = 0;
+        for (; list && list[count].name; count++)
+          ;
+        if (m < count)
+        {
+          candidates[i].guest = guest;
+          candidates[i].minigame = &list[m];
+        }
+      }
+      m_Host->setCandidates(candidates);
     });
 
   connect(m_Host, &DrHost::minigameRequested, this,
-    [this](DrMinigameCandidate candidate, std::array<dr_player_t, 4> players,
-      std::array<bool, 4> playerValid) {
-      launchMinigame(candidate.guest, candidate.minigame, players.data(), playerValid.data());
+    [this](DrMinigameCandidate candidate, std::array<dr_player_t, 4> players) {
+      launchMinigame(candidate.guest, candidate.minigame, players.data());
     });
 
   m_Stack->setCurrentWidget(m_Guests);
@@ -239,7 +309,7 @@ void MainWindow::startWithHost(DrHost *host)
 #endif
 
   QTimer *warmupTimer = new QTimer(this);
-  warmupTimer->setInterval(4000);
+  warmupTimer->setInterval(5000);
   connect(warmupTimer, &QTimer::timeout, this, [this, warmupTimer]() {
     int next = m_Guests->currentIndex() + 1;
     if (next < m_Guests->count())
@@ -268,8 +338,8 @@ void MainWindow::startWithHost(DrHost *host)
   warmupTimer->start();
 }
 
-void MainWindow::launchMinigame(DrGuest *guest, const dr_mp_minigame_t *minigame,
-  const dr_player_t players[4], const bool playerValid[4])
+void MainWindow::launchMinigame(
+  DrGuest *guest, const dr_mp_minigame_t *minigame, const dr_player_t players[4])
 {
   if (!m_Guests->activateGuest(guest))
     return;
@@ -283,9 +353,7 @@ void MainWindow::launchMinigame(DrGuest *guest, const dr_mp_minigame_t *minigame
 
   QTimer::singleShot(32, this,
     [this, guest, minigame,
-      players = std::array<dr_player_t, 4>{ players[0], players[1], players[2], players[3] },
-      playerValid =
-        std::array<bool, 4>{ playerValid[0], playerValid[1], playerValid[2], playerValid[3] }]() {
+      players = std::array<dr_player_t, 4>{ players[0], players[1], players[2], players[3] }]() {
       m_Host->pause();
       m_Stack->setCurrentWidget(m_Guests);
       for (DrGuest *g : m_Guests->guests())
@@ -294,8 +362,13 @@ void MainWindow::launchMinigame(DrGuest *guest, const dr_mp_minigame_t *minigame
       guest->core()->audio()->setVolume(0);
       guest->setMinigame(minigame);
       for (unsigned i = 0; i < 4; i++)
-        if (playerValid[i])
-          guest->setPlayer(i, players[i]);
+        guest->setPlayer(i, players[i]);
+
+      /* A minigame state was just loaded; make this guest the foreground netplay
+       * context so it resynchronizes from this sync point. Done before unpause
+       * so its frame counter is reset while the core is still stopped. */
+      m_Netplay->setActiveContext(guest->core());
+
       guest->core()->audio()->setVolume(100);
       guest->unpause();
 
@@ -305,43 +378,101 @@ void MainWindow::launchMinigame(DrGuest *guest, const dr_mp_minigame_t *minigame
     });
 }
 
-void MainWindow::launchMinigame(
-  dr_minigame_type type, const dr_player_t players[4], const bool playerValid[4])
+void MainWindow::buildNetplayMenu()
 {
-  const dr_mp_minigame_t *minigame = nullptr;
-  DrGuest *guest = m_Guests->pickMinigame(type, minigame);
-  if (!guest)
-    return;
+  QMenu *menu = menuBar()->addMenu(tr("Netplay"));
 
-#if SHOW_OVERLAY
+  menu->addAction(tr("Host session..."), this, [this]() {
+    bool ok = false;
+    int port = QInputDialog::getInt(this, tr("Host Session"), tr("Port:"), 55435, 1, 65535, 1, &ok);
+    if (!ok)
+      return;
+    int players = QInputDialog::getInt(this, tr("Host Session"), tr("Players:"), 2, 2,
+      DrNetplay::k_MaxPeers, 1, &ok);
+    if (!ok)
+      return;
+    m_Netplay->hostSession(static_cast<quint16>(port), players);
+  });
+
+  menu->addAction(tr("Join session..."), this, [this]() {
+    bool ok = false;
+    QString addr =
+      QInputDialog::getText(this, tr("Join Session"), tr("Server address:"), QLineEdit::Normal,
+        QStringLiteral("127.0.0.1"), &ok);
+    if (!ok || addr.isEmpty())
+      return;
+    int port = QInputDialog::getInt(this, tr("Join Session"), tr("Port:"), 55435, 1, 65535, 1, &ok);
+    if (!ok)
+      return;
+    m_Netplay->joinSession(addr, static_cast<quint16>(port));
+  });
+
+  connect(m_Netplay, &DrNetplay::sessionStarted, this, [this](int index, int count) {
+#if SHOW_LOGGER
+    m_Logger->message(DR_LOG_INFO,
+      QString("netplay started: peer %1 of %2").arg(index).arg(count));
+#endif
+  });
+  connect(m_Netplay, &DrNetplay::peerCountChanged, this, [this](int connected, int total) {
+#if SHOW_LOGGER
+    m_Logger->message(DR_LOG_INFO,
+      QString("netplay peers: %1/%2 connected").arg(connected).arg(total));
+#endif
+  });
+  connect(m_Netplay, &DrNetplay::sessionError, this, [this](const QString &reason) {
+#if SHOW_LOGGER
+    m_Logger->message(DR_LOG_ERROR, reason);
+#endif
+    QMessageBox::warning(this, tr("Netplay"), reason);
+  });
+#if SHOW_LOGGER
+  connect(m_Netplay, &DrNetplay::logMessage, m_Logger, &DrLogger::message, Qt::QueuedConnection);
+#endif
+
+  /* A client follows the server's game choice: build the matching host and
+   * start it locally. */
+  connect(m_Netplay, &DrNetplay::startGameRequested, this, [this](int gameId) {
+    if (m_Host)
+      return;
+    DrHost *host = nullptr;
+    switch (static_cast<dr_game>(gameId))
+    {
+    case DR_GAME_MARIOPARTY1:
+      host = new MarioParty1Host(this);
+      break;
+    case DR_GAME_MARIOPARTY2:
+      host = new MarioParty2Host(this);
+      break;
+    case DR_GAME_MARIOPARTY3:
+      host = new MarioParty3Host(this);
+      break;
+    default:
+      break;
+    }
+    if (host)
+      startWithHost(host);
+  });
+}
+
+void MainWindow::attachNetplay()
+{
+  /* Use the host core's existing physical backend as the local input source,
+   * then install a shared backend on every distinct core so host and guests
+   * read identical input from the store. */
+  m_Netplay->setLocalSource(m_Host->core()->input()->backend());
+
+  QSet<QRetro *> seen;
+  m_Netplay->attachCore(m_Host->core());
+  seen.insert(m_Host->core());
+  for (DrGuest *guest : m_Guests->guests())
   {
-    QScreen *screen = windowHandle() ? windowHandle()->screen() : QGuiApplication::primaryScreen();
-    m_Overlay->hold(screen->grabWindow(m_Host->core()->winId()));
+    QRetro *core = guest->core();
+    if (core && !seen.contains(core))
+    {
+      m_Netplay->attachCore(core);
+      seen.insert(core);
+    }
   }
-#endif
-
-  QTimer::singleShot(32, this,
-    [this, guest, minigame,
-      players = std::array<dr_player_t, 4>{ players[0], players[1], players[2], players[3] },
-      playerValid =
-        std::array<bool, 4>{ playerValid[0], playerValid[1], playerValid[2], playerValid[3] }]() {
-      m_Host->pause();
-      m_Stack->setCurrentWidget(m_Guests);
-      for (DrGuest *g : m_Guests->guests())
-        g->pause();
-
-      guest->core()->audio()->setVolume(0);
-      guest->setMinigame(minigame);
-      for (unsigned i = 0; i < 4; i++)
-        if (playerValid[i])
-          guest->setPlayer(i, players[i]);
-      guest->core()->audio()->setVolume(100);
-      guest->unpause();
-
-#if SHOW_OVERLAY
-      m_Overlay->fadeOut();
-#endif
-    });
 }
 
 void MainWindow::showHost()
@@ -356,6 +487,10 @@ void MainWindow::showHost()
   QTimer::singleShot(32, this, [this]() {
     for (DrGuest *guest : m_Guests->guests())
       guest->pause();
+    /* The host is the foreground netplay context; set it before unpause so its
+     * frame counter resets while the core is still stopped. This is the
+     * post-warmup (and post-minigame) sync point that locks the two peers. */
+    m_Netplay->setActiveContext(m_Host->core());
     m_Host->unpause();
     m_Stack->setCurrentWidget(m_HostContainer);
 #if SHOW_OVERLAY

@@ -1,7 +1,7 @@
 #ifndef DR_GUEST_MARIO_PARTY_GCN_H
 #define DR_GUEST_MARIO_PARTY_GCN_H
 
-#include "../DrGuest.h"
+#include "DolphinGuest.h"
 #include <string>
 
 struct MpGcnConfig
@@ -32,12 +32,16 @@ struct MpGcnConfig
   const dr_mp_minigame_t *minigames;
 };
 
-class MarioPartyGcn : public DrGuest
+class MarioPartyGcn : public DolphinGuest
 {
   Q_OBJECT
 
 public:
   MarioPartyGcn(const MpGcnConfig &config, QRetro *sharedCore, QObject *parent = nullptr);
+
+  std::string corePath() const override { return m_config.core; }
+  std::string discPath() const override { return m_config.game; }
+  std::string statePath() const override { return m_config.state; }
 
   QRetro *core() const override { return m_retro ? m_retro->core() : nullptr; }
   void startCore() override;

@@ -53,8 +53,8 @@ static const char MP3_CHEAT_DUEL_BOARD[] =
   "+810DFE74 2442"
   "+810DFE76 0002"
   "+810DFE80 A022"
-  "+810dfec4 2400"
-  "+810de2ac 2400";
+  "+810DFEC4 2400"
+  "+810DE2AC 2400";
 
 static const size_t MP3_SLOT_ADDRS[5] = {
   0x80102C0B, // slot 0 (raw 0x80102C08)
@@ -64,15 +64,15 @@ static const size_t MP3_SLOT_ADDRS[5] = {
   0x80102C0F, // slot 4 (raw 0x80102C0C)
 };
 
-// TABLE_BASE=0xB122D74A, HEADER=0x104, ENTRY=0x30
+// TABLE_BASE=0xB122D74A, HEADER=0x108, ENTRY=0x30
 // Slots use odd entries (1,3,5,7,9), each spanning into the next entry for capacity
 static const size_t MP3_MINIGAME_TITLE_ADDRS[6] = {
-  0xB122D87F, // entry  1 len byte
-  0xB122D8DF, // entry  3 len byte
-  0xB122D93F, // entry  5 len byte
-  0xB122D99F, // entry  7 len byte
-  0xB122D9FF, // entry  9 len byte
-  0xB122DA5F, // entry 11 len byte (sentinel)
+  0xB122D883, // entry  1 len byte
+  0xB122D8E3, // entry  3 len byte
+  0xB122D943, // entry  5 len byte
+  0xB122D9A3, // entry  7 len byte
+  0xB122DA03, // entry  9 len byte
+  0xB122DA63, // entry 11 len byte (sentinel)
 };
 
 static size_t n64ByteAddr(size_t addr)
@@ -136,6 +136,8 @@ static DrHostConfig makeConfig()
     .title_addr_transform = n64ByteAddr,
     .slot_addrs = MP3_SLOT_ADDRS,
     .scene_trampoline_addr = 0x800A7A54,
+    .turn_total_addr   = 0x800CD059u,
+    .turn_current_addr = 0x800CD058u,
     .scene_duel_slot0_addr = 0x80102BABu, // n64ByteAddr(0x80102BA8)
     .cheat_regular_board = MP3_CHEAT_REGULAR_BOARD,
     .cheat_duel_board = MP3_CHEAT_DUEL_BOARD,
@@ -223,11 +225,6 @@ MarioParty3Host::MarioParty3Host(QObject *parent)
           "+8111B75E 0041"
           "+D110AE18 1040"
           "+8011B761 0047");
-
-        // load next scene as immediate
-        //m_core->cheatSet(3, true,
-        //  "81048168 3404"
-        //  "+8104816C 3407");
 
         m_core->cheatSet(1, false, MP3_CHEAT_REGULAR_BOARD);
         m_core->cheatSet(2, false, MP3_CHEAT_DUEL_BOARD);

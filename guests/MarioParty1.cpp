@@ -19,7 +19,7 @@ static const dr_mp_minigame_t MP1_MINIGAMES[] = {
   { "Buried Treasure", DR_MINIGAME_4P, 0x03, 0x03, DR_NO_QUIRKS },
   { "Treasure Divers", DR_MINIGAME_4P, 0x04, 0x04, DR_NO_QUIRKS },
   { "Shell Game", DR_MINIGAME_1P, 0x05, 0x05, DR_NO_QUIRKS },
-  { "Same Game", DR_MINIGAME_1P, 0x06, 0x06, DR_NO_QUIRKS },
+  // { "Same Game", DR_MINIGAME_1P, 0x06, 0x06, DR_NO_QUIRKS },
   { "Hot Bob-omb", DR_MINIGAME_4P, 0x07, 0x07, DR_NO_QUIRKS },
   // 08 yoshis tongue meeting -- unused
   { "Pipe Maze", DR_MINIGAME_1V3, 0x09, 0x09, DR_NO_QUIRKS },

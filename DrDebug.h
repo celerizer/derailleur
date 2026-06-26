@@ -18,8 +18,8 @@ public:
   void populate(const QList<DrGuest *> &guests);
 
 signals:
-  void minigameRequested(DrGuest *guest, const dr_mp_minigame_t *minigame,
-    std::array<dr_player_t, 4> players, std::array<bool, 4> playerValid);
+  void minigameRequested(
+    DrGuest *guest, const dr_mp_minigame_t *minigame, std::array<dr_player_t, 4> players);
   void cancelRequested();
 
 private:

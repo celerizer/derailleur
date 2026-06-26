@@ -56,22 +56,22 @@ public:
   }
 
 public:
-  dr_error readu8(uint8_t *out, size_t addr, bool big_endian = false);
-  dr_error reads8(int8_t *out, size_t addr, bool big_endian = false);
-  dr_error readu16(uint16_t *out, size_t addr, bool big_endian = false);
-  dr_error reads16(int16_t *out, size_t addr, bool big_endian = false);
-  dr_error readu32(uint32_t *out, size_t addr, bool big_endian = false);
-  dr_error reads32(int32_t *out, size_t addr, bool big_endian = false);
-  dr_error writeu8(uint8_t val, size_t addr, bool big_endian = false);
-  dr_error writes8(int8_t val, size_t addr, bool big_endian = false);
-  dr_error writeu16(uint16_t val, size_t addr, bool big_endian = false);
-  dr_error writes16(int16_t val, size_t addr, bool big_endian = false);
-  dr_error writeu32(uint32_t val, size_t addr, bool big_endian = false);
-  dr_error writes32(int32_t val, size_t addr, bool big_endian = false);
+  dr_error readu8(uint8_t *out, size_t addr, dr_endianness endianness = DR_ENDIANNESS_LITTLE);
+  dr_error reads8(int8_t *out, size_t addr, dr_endianness endianness = DR_ENDIANNESS_LITTLE);
+  dr_error readu16(uint16_t *out, size_t addr, dr_endianness endianness = DR_ENDIANNESS_LITTLE);
+  dr_error reads16(int16_t *out, size_t addr, dr_endianness endianness = DR_ENDIANNESS_LITTLE);
+  dr_error readu32(uint32_t *out, size_t addr, dr_endianness endianness = DR_ENDIANNESS_LITTLE);
+  dr_error reads32(int32_t *out, size_t addr, dr_endianness endianness = DR_ENDIANNESS_LITTLE);
+  dr_error writeu8(uint8_t val, size_t addr, dr_endianness endianness = DR_ENDIANNESS_LITTLE);
+  dr_error writes8(int8_t val, size_t addr, dr_endianness endianness = DR_ENDIANNESS_LITTLE);
+  dr_error writeu16(uint16_t val, size_t addr, dr_endianness endianness = DR_ENDIANNESS_LITTLE);
+  dr_error writes16(int16_t val, size_t addr, dr_endianness endianness = DR_ENDIANNESS_LITTLE);
+  dr_error writeu32(uint32_t val, size_t addr, dr_endianness endianness = DR_ENDIANNESS_LITTLE);
+  dr_error writes32(int32_t val, size_t addr, dr_endianness endianness = DR_ENDIANNESS_LITTLE);
 
   void log(unsigned level, const char *message);
   void writeForFrames(
-    size_t addr, const void *value, unsigned bytes, unsigned frames, bool big_endian = false);
+    size_t addr, const void *value, unsigned bytes, unsigned frames, dr_endianness endianness = DR_ENDIANNESS_LITTLE);
   void tickFrameWrites();
 
   QRetro *m_core = nullptr;
@@ -83,7 +83,7 @@ private:
   {
     size_t addr;
     QByteArray data;
-    bool big_endian;
+    dr_endianness endianness;
     unsigned frames;
   };
   QList<FrameWrite> m_frameWrites;

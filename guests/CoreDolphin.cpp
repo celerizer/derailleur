@@ -25,14 +25,14 @@ CoreDolphin::~CoreDolphin()
   delete[] m_flatList;
 }
 
-void CoreDolphin::addGame(MarioPartyGcn *game)
+void CoreDolphin::addGame(DolphinGuest *game)
 {
   if (m_games.isEmpty())
   {
-    if (!core()->loadCore(game->config().core.c_str()))
+    if (!core()->loadCore(game->corePath().c_str()))
     {
       log(DR_LOG_ERROR,
-        qPrintable(QString("failed to load core: %1").arg(game->config().core.c_str())));
+        qPrintable(QString("failed to load core: %1").arg(game->corePath().c_str())));
       m_valid = false;
     }
 
@@ -54,7 +54,7 @@ void CoreDolphin::addGame(MarioPartyGcn *game)
   connect(game, &DrGuest::logMessage, this, &DrGuest::logMessage);
 
   // Collect all (non-sentinel) minigames from this game
-  for (const dr_mp_minigame_t *mg = game->config().minigames; mg && mg->name; mg++)
+  for (const dr_mp_minigame_t *mg = game->minigames(); mg && mg->name; mg++)
     m_entries.append({ game, mg });
 
   rebuildFlatList();
@@ -66,8 +66,8 @@ void CoreDolphin::finalizeGames()
   if (m3u.open(QIODevice::WriteOnly | QIODevice::Text))
   {
     QTextStream out(&m3u);
-    for (MarioPartyGcn *game : m_games)
-      out << game->config().game.c_str() << "\n";
+    for (DolphinGuest *game : m_games)
+      out << game->discPath().c_str() << "\n";
   }
 
   if (!core()->loadContent(m_m3uPath.toStdString().c_str()))
@@ -94,7 +94,7 @@ QList<DrMinigameGroup> CoreDolphin::minigameGroups() const
 {
   QList<DrMinigameGroup> result;
   int i = 0;
-  for (MarioPartyGcn *game : m_games)
+  for (DolphinGuest *game : m_games)
   {
     DrMinigameGroup group;
     group.name = game->name();
@@ -121,7 +121,7 @@ dr_minigame_result_t CoreDolphin::minigameResult(unsigned index)
 void CoreDolphin::doSetMinigame(const dr_mp_minigame_t *minigame)
 {
   // Find which child game owns this minigame entry
-  MarioPartyGcn *owner = nullptr;
+  DolphinGuest *owner = nullptr;
   for (int i = 0; i < m_entries.size(); i++)
   {
     if (&m_flatList[i] == minigame)
@@ -157,7 +157,7 @@ void CoreDolphin::doSetMinigame(const dr_mp_minigame_t *minigame)
   }
 
   // Load the per-game savestate
-  core()->unserializeFromFile(QString::fromStdString(owner->config().state));
+  core()->unserializeFromFile(QString::fromStdString(owner->statePath()));
   QApplication::processEvents();
 
   // Delegate game-specific setup (writes minigame_id etc.)
@@ -177,30 +177,30 @@ void CoreDolphin::doSetMinigame(const dr_mp_minigame_t *minigame)
 
 dr_error CoreDolphin::doSetPlayerCharacter(unsigned index, dr_character character)
 {
-  return m_delegate ? m_delegate->doSetPlayerCharacter(index, character) : DR_ERR_INVALID_PARAMETER;
+  return m_delegate ? m_delegate->setPlayerCharacter(index, character) : DR_ERR_INVALID_PARAMETER;
 }
 
 dr_error CoreDolphin::doSetPlayerControlPort(unsigned index, dr_control_port control_port)
 {
-  return m_delegate ? m_delegate->doSetPlayerControlPort(index, control_port)
+  return m_delegate ? m_delegate->setPlayerControlPort(index, control_port)
                     : DR_ERR_INVALID_PARAMETER;
 }
 
 dr_error CoreDolphin::doSetPlayerControlType(unsigned index, dr_control_type control_type)
 {
-  return m_delegate ? m_delegate->doSetPlayerControlType(index, control_type)
+  return m_delegate ? m_delegate->setPlayerControlType(index, control_type)
                     : DR_ERR_INVALID_PARAMETER;
 }
 
 dr_error CoreDolphin::doSetPlayerDifficulty(unsigned index, dr_difficulty difficulty)
 {
-  return m_delegate ? m_delegate->doSetPlayerDifficulty(index, difficulty)
+  return m_delegate ? m_delegate->setPlayerDifficulty(index, difficulty)
                     : DR_ERR_INVALID_PARAMETER;
 }
 
 dr_error CoreDolphin::doSetPlayerTeam(
   unsigned index, dr_team_color color, dr_team_type type, unsigned team_id)
 {
-  return m_delegate ? m_delegate->doSetPlayerTeam(index, color, type, team_id)
+  return m_delegate ? m_delegate->setPlayerTeam(index, color, type, team_id)
                     : DR_ERR_INVALID_PARAMETER;
 }

@@ -55,8 +55,14 @@ typedef enum
 {
   DR_CORE_INVALID = 0,
 
+  /// Mupen64Plus-Next, Nintendo 64 emulator
   DR_CORE_MUPEN64PLUSNEXT,
+
+  /// Dolphin, GameCube/Wii emulator
   DR_CORE_DOLPHIN,
+
+  /// mGBA, Game Boy Advance emulator
+  DR_CORE_MGBA,
 
   DR_CORE_SIZE
 } dr_core;
@@ -88,7 +94,7 @@ typedef union
 
   struct
   {
-    unsigned unused;
+    unsigned needs_native_boundaries : 1;
   } mupen64plus;
 } dr_emulation_quirk_t;
 
@@ -96,6 +102,29 @@ typedef union
 #define DR_QUIRK_EFB_TO_TEXTURE { .dolphin = { 1, 0, 0 } }
 #define DR_QUIRK_SAFE_TEXTURE_CACHE { .dolphin = { 0, 1, 0 } }
 #define DR_QUIRK_NATIVE_RESOLUTION { .dolphin = { 0, 0, 1 } }
+#define DR_QUIRK_NATIVE_BOUNDARIES { .mupen64plus = { 1 } }
+
+typedef enum
+{
+  DR_ENDIANNESS_INVALID = 0,
+
+  DR_ENDIANNESS_LITTLE,
+  DR_ENDIANNESS_BIG,
+  DR_ENDIANNESS_WORDFLIPPED,
+
+  DR_ENDIANNESS_SIZE
+} dr_endianness;
+
+typedef enum
+{
+  DR_GAME_INVALID = 0,
+
+  DR_GAME_MARIOPARTY1,
+  DR_GAME_MARIOPARTY2,
+  DR_GAME_MARIOPARTY3,
+
+  DR_GAME_SIZE
+} dr_game;
 
 typedef enum
 {
@@ -150,18 +179,9 @@ typedef enum
    */
   DR_MINIGAME_4P,
 
-  /**
-   * Mini-game where all 4 players collect as many coins as possible
-   */
-  DR_MINIGAME_4P_LUCKY,
-
   DR_MINIGAME_1V3,
 
-  DR_MINIGAME_1V3_LUCKY,
-
   DR_MINIGAME_2V2,
-
-  DR_MINIGAME_2V2_LUCKY,
 
   /**
    * Mini-game where a single player receives coins
@@ -259,6 +279,8 @@ static inline const char *dr_minigame_type_name(dr_minigame_type t)
     return "Duel";
   case DR_MINIGAME_GAME_GUY:
     return "Game Guy";
+  case DR_MINIGAME_SPECIAL:
+    return "Special";
   default:
     return "Unknown";
   }

@@ -16,7 +16,8 @@ DrLogger::DrLogger(QWidget *parent)
   layout->addWidget(m_text);
 
   m_file.setFileName("derailleur.log");
-  m_file.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text);
+  if (!m_file.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text))
+    qWarning("DrLogger: failed to open derailleur.log");
 }
 
 void DrLogger::message(unsigned level, const QString &message)

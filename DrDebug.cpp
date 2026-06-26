@@ -40,8 +40,6 @@ DrDebug::DrDebug(QWidget *parent)
       { DR_CHARACTER_LUIGI, DR_CONTROL_PORT_P4, DR_CONTROL_TYPE_CPU, DR_DIFFICULTY_NORMAL,
         DR_TEAM_COLOR_BLUE, DR_TEAM_TYPE_4P, 3 },
     } };
-    std::array<bool, 4> playerValid = { true, true, true, true };
-
     unsigned order[4] = { 0, 1, 2, 3 };
     auto *rng = QRandomGenerator::global();
     for (int i = 3; i > 0; i--)
@@ -75,8 +73,6 @@ DrDebug::DrDebug(QWidget *parent)
     case DR_MINIGAME_DUEL:
       players[0].team_type = DR_TEAM_TYPE_SOLO;
       players[1].team_type = DR_TEAM_TYPE_SOLO;
-      playerValid[2] = false;
-      playerValid[3] = false;
       break;
     default:
       for (unsigned i = 0; i < 4; i++)
@@ -88,7 +84,7 @@ DrDebug::DrDebug(QWidget *parent)
       break;
     }
 
-    emit minigameRequested(guest, minigame, players, playerValid);
+    emit minigameRequested(guest, minigame, players);
   });
   layout->addWidget(btn);
 

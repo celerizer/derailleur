@@ -2,7 +2,7 @@
 #define DR_GUEST_CORE_DOLPHIN_H
 
 #include "../DrGuest.h"
-#include "MarioPartyGcn.h"
+#include "DolphinGuest.h"
 #include <QList>
 #include <QPair>
 #include <QString>
@@ -15,7 +15,7 @@ public:
   CoreDolphin(QObject *parent = nullptr);
   ~CoreDolphin();
 
-  void addGame(MarioPartyGcn *game);
+  void addGame(DolphinGuest *game);
   void finalizeGames();
 
   const char *name() const override { return "Dolphin"; }
@@ -43,9 +43,9 @@ private:
   void rebuildFlatList();
 
   DrRetro *m_retro = nullptr;
-  QList<MarioPartyGcn *> m_games;
-  QList<QPair<MarioPartyGcn *, const dr_mp_minigame_t *>> m_entries;
-  MarioPartyGcn *m_delegate = nullptr;
+  QList<DolphinGuest *> m_games;
+  QList<QPair<DolphinGuest *, const dr_mp_minigame_t *>> m_entries;
+  DolphinGuest *m_delegate = nullptr;
   dr_mp_minigame_t *m_flatList = nullptr;
   QString m_m3uPath;
   int m_discIndex = -1;

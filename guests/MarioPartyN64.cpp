@@ -1,5 +1,11 @@
 #include "MarioPartyN64.h"
 
+MarioPartyN64::~MarioPartyN64()
+{
+  delete m_retro;
+  m_retro = nullptr;
+}
+
 MarioPartyN64::MarioPartyN64(const MpN64Config &config, QObject *parent)
   : DrGuest(parent)
   , m_config(config)

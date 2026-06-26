@@ -30,8 +30,8 @@ static const dr_mp_minigame_t MP5_MINIGAMES[] = {
   { "Will Flower", DR_MINIGAME_4P, 0x0C, 0x1B, DR_NO_QUIRKS },
   { "Triple Jump", DR_MINIGAME_4P, 0x0D, 0x1C, DR_NO_QUIRKS },
   { "Hotel Goomba", DR_MINIGAME_4P, 0x0E, 0x1D, DR_NO_QUIRKS },
-  { "Coin Cache", DR_MINIGAME_4P_LUCKY, 0x0F, 0x1E, DR_NO_QUIRKS },
-  { "Vicious Vending", DR_MINIGAME_4P_LUCKY, 0x17, 0x26, DR_NO_QUIRKS },
+  { "Coin Cache", DR_MINIGAME_4P, 0x0F, 0x1E, DR_NO_QUIRKS },
+  { "Vicious Vending", DR_MINIGAME_4P, 0x17, 0x26, DR_NO_QUIRKS },
   { "Flower Shower", DR_MINIGAME_4P, 0x3E, 0x4A, DR_NO_QUIRKS },
   { "Dodge Bomb", DR_MINIGAME_4P, 0x3F, 0x4B, DR_NO_QUIRKS },
   { "Fish Upon a Star", DR_MINIGAME_4P, 0x40, 0x4C, DR_NO_QUIRKS },
@@ -49,7 +49,7 @@ static const dr_mp_minigame_t MP5_MINIGAMES[] = {
   { "Big Top Drop", DR_MINIGAME_1V3, 0x18, 0x27, DR_NO_QUIRKS },
   { "Quilt for Speed", DR_MINIGAME_1V3, 0x42, 0x4E, DR_NO_QUIRKS },
   { "Tube It or Lose It", DR_MINIGAME_1V3, 0x43, 0x4F, DR_NO_QUIRKS },
-  { "Mathletes", DR_MINIGAME_1V3_LUCKY, 0x44, 0x50, DR_NO_QUIRKS },
+  { "Mathletes", DR_MINIGAME_1V3, 0x44, 0x50, DR_NO_QUIRKS },
   { "Fight Cards", DR_MINIGAME_1V3, 0x45, 0x51, DR_NO_QUIRKS },
   { "Curvy Curbs", DR_MINIGAME_1V3, 0x4C, 0x58, DR_NO_QUIRKS },
 
@@ -65,7 +65,7 @@ static const dr_mp_minigame_t MP5_MINIGAMES[] = {
   { "Submarathon", DR_MINIGAME_2V2, 0x20, 0x2F, DR_NO_QUIRKS },
   { "Manic Mallets", DR_MINIGAME_2V2, 0x21, 0x30, DR_NO_QUIRKS },
   { "Panic Pinball", DR_MINIGAME_2V2, 0x49, 0x55, DR_NO_QUIRKS },
-  { "Banking Coins", DR_MINIGAME_2V2_LUCKY, 0x4A, 0x56, DR_NO_QUIRKS },
+  { "Banking Coins", DR_MINIGAME_2V2, 0x4A, 0x56, DR_NO_QUIRKS },
 
   // Battle
   { "Astro-Logical", DR_MINIGAME_BATTLE, 0x22, 0x31, DR_NO_QUIRKS },

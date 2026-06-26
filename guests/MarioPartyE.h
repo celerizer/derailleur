@@ -1,24 +1,23 @@
-#ifndef DR_GUEST_MARIO_PARTY_ADVANCE_H
-#define DR_GUEST_MARIO_PARTY_ADVANCE_H
+#ifndef DR_GUEST_MARIO_PARTY_E_H
+#define DR_GUEST_MARIO_PARTY_E_H
 
 #include "../DrGuest.h"
 
-class MarioPartyAdvance : public DrGuest
+class MarioPartyE : public DrGuest
 {
   Q_OBJECT
 
 public:
-  MarioPartyAdvance(QObject *parent = nullptr);
-  const char *name() const override { return "Mario Party Advance"; }
+  MarioPartyE(QObject *parent = nullptr);
+  const char *name() const override { return "Mario Party-e"; }
 
   QRetro *core() const override { return m_retro ? m_retro->core() : nullptr; }
   void startCore() override;
-  void pause() override { if (m_retro) m_retro->pause(); }
+  void pause() override   { if (m_retro) m_retro->pause(); }
   void unpause() override { if (m_retro) m_retro->unpause(); }
 
   dr_minigame_result_t minigameResult(unsigned index) override;
   const dr_mp_minigame_t *minigames() const override;
-  void doSetMinigame(const dr_mp_minigame_t *minigame) override;
 
   dr_error doSetPlayerCharacter(unsigned index, dr_character character) override;
   dr_error doSetPlayerControlPort(unsigned index, dr_control_port control_port) override;
@@ -27,14 +26,15 @@ public:
   dr_error doSetPlayerTeam(
     unsigned index, dr_team_color color, dr_team_type type, unsigned team_id) override;
 
-private:
-  void run4pPinball();
+protected:
+  void doSetMinigame(const dr_mp_minigame_t *minigame) override;
   void run() override;
 
+private:
+  void runTimeBombTicks();
+
   DrRetro *m_retro = nullptr;
-  bool m_gameStarted = false;
   unsigned m_winners = 0;
-  unsigned m_EndWaitFrames = 0;
 };
 
 #endif

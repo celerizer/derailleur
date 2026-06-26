@@ -1,48 +1,32 @@
-#ifndef DR_GUEST_MARIO_PARTY_N64_H
-#define DR_GUEST_MARIO_PARTY_N64_H
+#ifndef KIRBY_AIR_RIDE_H
+#define KIRBY_AIR_RIDE_H
 
-#include "../DrGuest.h"
+#include "DolphinGuest.h"
 #include <string>
 
-struct MpN64Config
-{
-  std::string core;
-  std::string game;
-  std::string state;
-
-  int scene_miniexplain;
-  int scene_miniresults;
-
-  size_t scene_addr;
-  size_t minigame_addr;
-
-  size_t controller_addr[4];
-  size_t difficulty_addr[4];
-  size_t team_addr[4];
-  size_t bot_addr[4];
-  size_t character_addr[4];
-  size_t bonus_result_addr[4];
-  size_t result_addr[4];
-
-  const uint8_t *character_ids;
-  const dr_mp_minigame_t *minigames;
-};
-
-class MarioPartyN64 : public DrGuest
+class KirbyAirRide : public DolphinGuest
 {
   Q_OBJECT
 
 public:
-  MarioPartyN64(const MpN64Config &config, QObject *parent = nullptr);
-  ~MarioPartyN64() override;
+  KirbyAirRide(QRetro *sharedCore, QObject *parent = nullptr);
+
+  const char *name() const override { return "Kirby Air Ride"; }
+
+  std::string corePath() const override { return m_corePath; }
+  std::string discPath() const override { return m_discPath; }
+  std::string statePath() const override { return m_statePath; }
 
   QRetro *core() const override { return m_retro ? m_retro->core() : nullptr; }
   void startCore() override;
   void pause() override { if (m_retro) m_retro->pause(); }
   void unpause() override { if (m_retro) m_retro->unpause(); }
 
-  dr_minigame_result_t minigameResult(unsigned index) override;
   const dr_mp_minigame_t *minigames() const override;
+  dr_minigame_result_t minigameResult(unsigned index) override;
+
+protected:
+  void run() override;
   void doSetMinigame(const dr_mp_minigame_t *minigame) override;
 
   dr_error doSetPlayerCharacter(unsigned index, dr_character character) override;
@@ -53,11 +37,15 @@ public:
     unsigned index, dr_team_color color, dr_team_type type, unsigned team_id) override;
 
 private:
-  void run() override;
+  void applyPlayers();
+
   DrRetro *m_retro = nullptr;
-  MpN64Config m_config;
-  int16_t m_lastScene = -1;
+  std::string m_corePath;
+  std::string m_discPath;
+  std::string m_statePath;
   int m_minigameFrames = 0;
+  bool m_finishPending = false;
+  dr_player_t m_players[4] = {};
 };
 
 #endif

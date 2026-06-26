@@ -3,15 +3,15 @@
 #include <QApplication>
 
 static const dr_mp_minigame_t SR_MINIGAMES[] = {
-  { "Free-for-all", DR_MINIGAME_4P,     0x00, 0xFF, DR_NO_QUIRKS },
-  { "Battle",       DR_MINIGAME_BATTLE, 0x00, 0xFF, DR_NO_QUIRKS },
+  { "Remix Free-for-all", DR_MINIGAME_4P,     0x00, 0xFF, DR_NO_QUIRKS },
+  { "Remix Battle",       DR_MINIGAME_BATTLE, 0x00, 0xFF, DR_NO_QUIRKS },
 
-  { "Team Battle", DR_MINIGAME_2V2, 0x01, 0xFF, DR_NO_QUIRKS },
+  { "Remix Team Battle", DR_MINIGAME_2V2, 0x01, 0xFF, DR_NO_QUIRKS },
 
-  { "Giant Battle", DR_MINIGAME_1V3, 0x02, 0xFF, DR_NO_QUIRKS },
-  { "Tiny Battle",  DR_MINIGAME_1V3, 0x03, 0xFF, DR_NO_QUIRKS },
+  { "Remix Giant Battle", DR_MINIGAME_1V3, 0x02, 0xFF, DR_NO_QUIRKS },
+  { "Remix Tiny Battle",  DR_MINIGAME_1V3, 0x03, 0xFF, DR_NO_QUIRKS },
 
-  { "Duel", DR_MINIGAME_DUEL, 0x00, 0xFF, DR_NO_QUIRKS },
+  { "Remix Duel", DR_MINIGAME_DUEL, 0x00, 0xFF, DR_NO_QUIRKS },
 
   { nullptr, DR_MINIGAME_INVALID, 0xFF, 0xFF, DR_NO_QUIRKS },
 };

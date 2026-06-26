@@ -9,6 +9,7 @@ class MarioParty2Host : public DrHost
 
 public:
   explicit MarioParty2Host(QObject *parent = nullptr);
+  dr_game game(void) const override { return DR_GAME_MARIOPARTY2; }
 };
 
 #endif

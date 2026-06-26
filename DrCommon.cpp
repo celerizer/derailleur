@@ -37,6 +37,8 @@ QString dr_core_path(dr_core core)
     return s_coresDir + "/mupen64plus_next_libretro.so";
   case DR_CORE_DOLPHIN:
     return s_coresDir + "/dolphin_libretro.so";
+  case DR_CORE_MGBA:
+    return s_coresDir + "/mgba_libretro.so";
   default:
     return {};
   }
