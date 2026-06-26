@@ -294,6 +294,13 @@ void MainWindow::startWithHost(DrHost *host)
       m_Host->setCandidates(candidates);
     });
 
+  /* Freeze the host on the exact lockstep frame the minigame is chosen, before
+   * the async launchMinigame can run a different number of host frames per peer.
+   * DirectConnection so it executes synchronously on the host's timing thread. */
+  connect(m_Host, &DrHost::minigameRequested, m_Netplay,
+    [this](DrMinigameCandidate, std::array<dr_player_t, 4>) { m_Netplay->freezeActiveContext(); },
+    Qt::DirectConnection);
+
   connect(m_Host, &DrHost::minigameRequested, this,
     [this](DrMinigameCandidate candidate, std::array<dr_player_t, 4> players) {
       launchMinigame(candidate.guest, candidate.minigame, players.data());

@@ -72,6 +72,13 @@ public:
   /// minigame load), which acts as that context's per-context sync point.
   void setActiveContext(QRetro *core);
 
+  /// Freezes the currently active context at the current frame: its core stops
+  /// advancing (retro_run is held off in onFrameBegin) until it is re-activated.
+  /// Connect this to minigameRequested with a DirectConnection so every peer
+  /// freezes the host on the same lockstep frame before the async minigame
+  /// launch can run a different number of host frames on each peer.
+  void freezeActiveContext();
+
   void setInputDelay(int frames) { m_InputDelay = frames; }
   void setTimeout(int ms) { m_TimeoutMs = ms; }
 
@@ -168,7 +175,9 @@ private:
   QHash<QRetro *, int> m_ContextIds;
   int m_ContextCount = 0;
   int m_ActiveContext = -1;
-  quint64 m_CtxFrame[k_MaxContexts] = {}; // next netplay frame to consume per context
+  int m_FrozenContext = -1; // context held (retro_run paused) until re-activated
+  quint64 m_CtxFrame[k_MaxContexts] = {};   // next netplay frame to consume per context
+  quint64 m_CtxBarrier[k_MaxContexts] = {}; // per-context sync-point frame (waits w/o timeout)
 
   quint64 m_LocalFrame = 0; // singleplayer frame counter
   quint64 m_DebugTick = 0;

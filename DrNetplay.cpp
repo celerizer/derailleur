@@ -102,17 +102,33 @@ void DrNetplay::setActiveContext(QRetro *core)
   if (!m_Active || ctx < 0)
     return;
 
-  /* Becoming the foreground context is this context's per-context sync point:
-   * restart its frame counter and prime the input-delay frames so both peers
-   * resynchronize here regardless of boot/load timing differences. */
+  /* Becoming the foreground context is this context's per-context sync point.
+   * The frame counter is monotonic and only advances on gated frames, so it is
+   * already equal across peers — we do NOT reset it (that would reuse frame
+   * numbers) and we do NOT clear m_Received (that would wipe a peer's prime that
+   * already arrived). We just mark the current frame as a barrier, which is
+   * allowed to wait indefinitely for the other peer's warmup/load, and re-prime
+   * the input-delay pipeline from here. */
   {
     QMutexLocker lock(&m_RecvMutex);
-    m_Received.clear();
-    m_CtxFrame[ctx] = 0;
+    /* Re-activating a frozen context (e.g. returning to the host after a
+     * minigame) unfreezes it; switching to a different context leaves the old
+     * one frozen so its core stays put until we come back. */
+    if (m_FrozenContext == ctx)
+      m_FrozenContext = -1;
+    m_CtxBarrier[ctx] = m_CtxFrame[ctx];
     m_FrameReady.wakeAll();
   }
   primeContext(ctx);
-  emit logMessage(DR_LOG_INFO, QString("netplay: active context = %1 (resync)").arg(ctx));
+  emit logMessage(DR_LOG_INFO,
+    QString("netplay: active context = %1 (barrier frame %2)").arg(ctx).arg(m_CtxFrame[ctx]));
+}
+
+void DrNetplay::freezeActiveContext()
+{
+  QMutexLocker lock(&m_RecvMutex);
+  m_FrozenContext = m_ActiveContext;
+  m_FrameReady.wakeAll();
 }
 
 void DrNetplay::joinSession(const QString &address, quint16 port)
@@ -134,7 +150,10 @@ void DrNetplay::resetFrameCounter()
   m_ActiveContext = -1;
   QMutexLocker lock(&m_RecvMutex);
   for (int i = 0; i < k_MaxContexts; i++)
+  {
     m_CtxFrame[i] = 0;
+    m_CtxBarrier[i] = 0;
+  }
   m_Received.clear();
   m_FrameReady.wakeAll();
 }
@@ -172,6 +191,18 @@ void DrNetplay::onFrameBegin(int context)
     sampleLocal();
     m_Store->commitFrame(m_LocalFrame++, m_LocalPads);
     return;
+  }
+
+  /* Freeze: hold this context here (before retro_run) until it is re-activated.
+   * Triggered deterministically from the lockstep timeline (minigameRequested),
+   * so every peer stops the host on the exact same frame rather than running a
+   * different number of host frames before the async launch pauses it. */
+  {
+    QMutexLocker lock(&m_RecvMutex);
+    while (context == m_FrozenContext && m_Active && !m_Abort)
+      m_FrameReady.wait(&m_RecvMutex, 100);
+    if (!m_Active || m_Abort)
+      return;
   }
 
   /* During a session only the foreground context is gated; other (paused or
@@ -235,6 +266,14 @@ bool DrNetplay::waitForFrame(int context, quint64 frame)
   QElapsedTimer timer;
   timer.start();
 
+  /* The barrier frame — the first frame after a sync point (warmup done, state
+   * load, returning to the host) — may legitimately block for a long time while
+   * the other peer finishes its own warmup/load. Don't time out there; just
+   * pause until it arrives (or the socket actually drops, which is detected
+   * separately). Subsequent frames use the normal timeout so a genuinely hung
+   * peer is still caught. */
+  const bool barrier = (frame == m_CtxBarrier[context]);
+
   /* Block the emulation (timing) thread on a wait condition until the frame's
    * input arrives. This genuinely pauses the core — no busy-spin — and the main
    * thread wakes us as soon as a packet is recorded. */
@@ -243,11 +282,10 @@ bool DrNetplay::waitForFrame(int context, quint64 frame)
   {
     if (!m_Active || m_Abort)
       return false;
-    const qint64 remaining = m_TimeoutMs - timer.elapsed();
-    if (remaining <= 0)
+    if (!barrier && timer.hasExpired(m_TimeoutMs))
       return false;
     /* Re-check at least every 100ms so a session drop is noticed promptly. */
-    m_FrameReady.wait(&m_RecvMutex, qMin<qint64>(remaining, 100));
+    m_FrameReady.wait(&m_RecvMutex, 100);
   }
   if (timer.elapsed() > 4)
     emit logMessage(DR_LOG_INFO, QString("netplay: stalled %1ms on ctx %2 frame %3")
@@ -415,12 +453,14 @@ void DrNetplay::onSocketDisconnected()
 
 void DrNetplay::primeContext(int context)
 {
-  /* Each peer primes its own input for frames [0, delay) of this context so
-   * every peer can complete the first delay frames before real input arrives. */
+  /* Prime this peer's own input for the delay frames starting at the context's
+   * current (barrier) frame, so every peer can complete those frames before
+   * real input arrives after a sync point. */
+  const quint64 base = m_CtxFrame[context];
   for (int f = 0; f < m_InputDelay; f++)
   {
     DrNetplayPacket p{};
-    p.frame = static_cast<uint64_t>(f);
+    p.frame = base + static_cast<quint64>(f);
     p.peerIndex = static_cast<uint8_t>(m_PeerIndex);
     p.context = static_cast<uint8_t>(context);
     recordPacket(p);
