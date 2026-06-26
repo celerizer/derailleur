@@ -1,0 +1,74 @@
+name: Windows (Qt6)
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout (with QRetro submodule)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Qt 6
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.*'
+          host: windows
+          target: desktop
+          arch: win64_msvc2022_64
+          # qtbase covers core/gui/widgets/network/opengl; multimedia is separate.
+          modules: qtmultimedia
+
+      - name: Set up MSVC environment
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Fetch SDL3 (MSVC dev package)
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          $headers = @{ Authorization = "Bearer $env:GITHUB_TOKEN"; "User-Agent" = "gh-actions" }
+          $rel = Invoke-RestMethod -Headers $headers `
+            -Uri "https://api.github.com/repos/libsdl-org/SDL/releases/latest"
+          $asset = $rel.assets | Where-Object { $_.name -match '^SDL3-devel-.*-VC\.zip$' } |
+            Select-Object -First 1
+          if (-not $asset) { throw "Could not find an SDL3 VC devel asset in the latest release." }
+          Write-Host "Downloading $($asset.name)"
+          Invoke-WebRequest -Uri $asset.browser_download_url -OutFile sdl3.zip
+          Expand-Archive sdl3.zip -DestinationPath sdl3
+          $root = (Get-ChildItem -Directory sdl3 | Select-Object -First 1).FullName
+          # QRetro.pri expects $SDL3_PATH/lib/SDL3.lib and an include/ with SDL3/.
+          Copy-Item "$root\lib\x64\SDL3.lib" "$root\lib\SDL3.lib" -Force
+          Copy-Item "$root\lib\x64\SDL3.dll" "$root\lib\SDL3.dll" -Force
+          "SDL3_PATH=$root" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Configure (qmake)
+        run: qmake CONFIG+=release derailleur.pro
+
+      - name: Build (nmake)
+        run: nmake
+
+      - name: Package
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem -Recurse -Filter derailleur.exe | Select-Object -First 1
+          if (-not $exe) { throw "derailleur.exe was not produced by the build." }
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          Copy-Item $exe.FullName dist\ -Force
+          windeployqt --release --no-translations --no-compiler-runtime dist\derailleur.exe
+          Copy-Item "$env:SDL3_PATH\lib\SDL3.dll" dist\ -Force
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: derailleur-windows-x64
+          path: dist

@@ -1,0 +1,104 @@
+name: Linux (Qt6 AppImage)
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    # Build on the oldest supported runner so the AppImage works on older glibc.
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout (with QRetro submodule)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake ninja-build pkg-config \
+            libgl1-mesa-dev libegl1-mesa-dev \
+            libx11-dev libxext-dev libxrandr-dev libxi-dev libxcursor-dev \
+            libxfixes-dev libwayland-dev libxkbcommon-dev \
+            libudev-dev libasound2-dev libpulse-dev libfuse2
+
+      - name: Install Qt 6
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.*'
+          host: linux
+          target: desktop
+          arch: linux_gcc_64
+          # qtbase covers core/gui/widgets/network/opengl; multimedia is separate.
+          modules: qtmultimedia
+
+      - name: Build and install SDL3
+        run: |
+          rel=$(curl -fsSL https://api.github.com/repos/libsdl-org/SDL/releases/latest)
+          url=$(echo "$rel" | grep -oE 'https://[^"]+/SDL3-[0-9.]+\.tar\.gz' | head -n1)
+          echo "Downloading $url"
+          curl -fsSL "$url" -o sdl3.tar.gz
+          mkdir -p sdl3-src && tar -xzf sdl3.tar.gz -C sdl3-src --strip-components=1
+          cmake -S sdl3-src -B sdl3-build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX="$HOME/sdl3" \
+            -DSDL_STATIC=OFF -DSDL_SHARED=ON -DSDL_TEST_LIBRARY=OFF
+          cmake --build sdl3-build --parallel
+          cmake --install sdl3-build
+          echo "SDL3_PATH=$HOME/sdl3" >> "$GITHUB_ENV"
+
+      - name: Configure (qmake)
+        run: qmake CONFIG+=release derailleur.pro
+
+      - name: Build
+        run: make -j"$(nproc)"
+
+      - name: Assemble AppDir
+        run: |
+          mkdir -p AppDir/usr/bin
+          cp derailleur AppDir/usr/bin/derailleur
+          mkdir -p AppDir/usr/share/applications
+          cat > AppDir/usr/share/applications/derailleur.desktop <<'EOF'
+          [Desktop Entry]
+          Type=Application
+          Name=Derailleur
+          Exec=derailleur
+          Icon=derailleur
+          Categories=Game;
+          Terminal=false
+          EOF
+          mkdir -p AppDir/usr/share/icons/hicolor/256x256/apps
+          cp assets/loading.png AppDir/usr/share/icons/hicolor/256x256/apps/derailleur.png
+
+      - name: Build AppImage
+        env:
+          # No FUSE on the runner: make the *deploy AppImages self-extract.
+          APPIMAGE_EXTRACT_AND_RUN: '1'
+        run: |
+          curl -fsSL -o linuxdeploy.AppImage \
+            https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+          curl -fsSL -o linuxdeploy-plugin-qt.AppImage \
+            https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage
+          chmod +x linuxdeploy*.AppImage
+
+          export QMAKE="$(command -v qmake)"
+          export LD_LIBRARY_PATH="$SDL3_PATH/lib:$LD_LIBRARY_PATH"
+          ./linuxdeploy.AppImage --appdir AppDir \
+            --executable AppDir/usr/bin/derailleur \
+            --desktop-file AppDir/usr/share/applications/derailleur.desktop \
+            --icon-file AppDir/usr/share/icons/hicolor/256x256/apps/derailleur.png \
+            --library "$SDL3_PATH/lib/libSDL3.so.0" \
+            --plugin qt \
+            --output appimage
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: derailleur-linux-x86_64-appimage
+          # Only the produced image; the lowercase linuxdeploy tools won't match.
+          path: 'Derailleur*.AppImage'
