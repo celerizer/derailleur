@@ -24,7 +24,8 @@ jobs:
             build-essential cmake ninja-build pkg-config \
             libgl1-mesa-dev libegl1-mesa-dev \
             libx11-dev libxext-dev libxrandr-dev libxi-dev libxcursor-dev \
-            libxfixes-dev libwayland-dev libxkbcommon-dev \
+            libxfixes-dev libxss-dev libxinerama-dev libwayland-dev \
+            libxkbcommon-dev libdbus-1-dev \
             libudev-dev libasound2-dev libpulse-dev libfuse2
 
       - name: Install Qt 6

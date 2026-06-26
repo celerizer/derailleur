@@ -1,5 +1,7 @@
 #include "MarioParty3Host.h"
 
+#include <cstring>
+
 #include <QRetro.h>
 #include <QRetroDirectories.h>
 
@@ -85,63 +87,92 @@ static size_t n64ByteAddr(size_t addr)
 
 static DrHostConfig makeConfig()
 {
-  return {
-    .core = dr_core_path(DR_CORE_MUPEN64PLUSNEXT).toStdString(),
-    .game = (dr_roms_directory() + "/Mario Party 3 (USA).z64").toStdString(),
+  DrHostConfig config = {};
 
-    .scene_miniexplain = { 0x70 },
-    .scene_miniexplain_count = 1,
-    .scene_miniresults = 0x71,
-    .scene_miniresults_battle = 0x74,
-    .scene_miniresults_duel = 0x73,
-    .scene_addr = 0x800ce200,
+  config.core = dr_core_path(DR_CORE_MUPEN64PLUSNEXT).toStdString();
+  config.game = (dr_roms_directory() + "/Mario Party 3 (USA).z64").toStdString();
 
-    .scene_board_ranges = { { 0x48, 0x4D }, { 0x5B, 0x60 } },
-    .scene_board_range_count = 2,
-    .scene_duel_board_range = { 0x5B, 0x60 },
+  config.scene_miniexplain[0] = 0x70;
+  config.scene_miniexplain_count = 1;
+  config.scene_miniresults = 0x71;
+  config.scene_miniresults_battle = 0x74;
+  config.scene_miniresults_duel = 0x73;
+  config.scene_addr = 0x800ce200;
 
-    .character_addr = { 0x800d1108, 0x800d1140, 0x800d1178, 0x800d11b0 },
-    .controller_addr = { 0x800d1109, 0x800d1141, 0x800d1179, 0x800d11b1 },
-    .difficulty_addr = { 0x800d110a, 0x800d1142, 0x800d117a, 0x800d11b2 },
-    .team_addr = { 0x800d110b, 0x800d1143, 0x800d117b, 0x800d11b3 },
-    .bot_addr = { 0x800d110f, 0x800d1147, 0x800d117f, 0x800d11b7 },
-    .result_addr = { 0x800d1112, 0x800d114a, 0x800d1182, 0x800d11ba },
-    .bonus_result_addr = { 0x800d110c, 0x800d1144, 0x800d117c, 0x800d11b4 },
-    .panel_color_addr = { 0x800d1127, 0x800d115f, 0x800d1197, 0x800d11cf },
+  config.scene_board_ranges[0] = { 0x48, 0x4D };
+  config.scene_board_ranges[1] = { 0x5B, 0x60 };
+  config.scene_board_range_count = 2;
+  config.scene_duel_board_range = { 0x5B, 0x60 };
 
-    .char_to_dr = MP3_CHAR_TO_DR,
-    .char_to_dr_size = sizeof(MP3_CHAR_TO_DR) / sizeof(*MP3_CHAR_TO_DR),
-    .diff_to_dr = MP3_DIFF_TO_DR,
-    .diff_to_dr_size = sizeof(MP3_DIFF_TO_DR) / sizeof(*MP3_DIFF_TO_DR),
+  config.character_addr[0] = 0x800d1108;
+  config.character_addr[1] = 0x800d1140;
+  config.character_addr[2] = 0x800d1178;
+  config.character_addr[3] = 0x800d11b0;
+  config.controller_addr[0] = 0x800d1109;
+  config.controller_addr[1] = 0x800d1141;
+  config.controller_addr[2] = 0x800d1179;
+  config.controller_addr[3] = 0x800d11b1;
+  config.difficulty_addr[0] = 0x800d110a;
+  config.difficulty_addr[1] = 0x800d1142;
+  config.difficulty_addr[2] = 0x800d117a;
+  config.difficulty_addr[3] = 0x800d11b2;
+  config.team_addr[0] = 0x800d110b;
+  config.team_addr[1] = 0x800d1143;
+  config.team_addr[2] = 0x800d117b;
+  config.team_addr[3] = 0x800d11b3;
+  config.bot_addr[0] = 0x800d110f;
+  config.bot_addr[1] = 0x800d1147;
+  config.bot_addr[2] = 0x800d117f;
+  config.bot_addr[3] = 0x800d11b7;
+  config.result_addr[0] = 0x800d1112;
+  config.result_addr[1] = 0x800d114a;
+  config.result_addr[2] = 0x800d1182;
+  config.result_addr[3] = 0x800d11ba;
+  config.bonus_result_addr[0] = 0x800d110c;
+  config.bonus_result_addr[1] = 0x800d1144;
+  config.bonus_result_addr[2] = 0x800d117c;
+  config.bonus_result_addr[3] = 0x800d11b4;
+  config.panel_color_addr[0] = 0x800d1127;
+  config.panel_color_addr[1] = 0x800d115f;
+  config.panel_color_addr[2] = 0x800d1197;
+  config.panel_color_addr[3] = 0x800d11cf;
 
-    .battle_addr = 0x800cc69a,
+  config.char_to_dr = MP3_CHAR_TO_DR;
+  config.char_to_dr_size = sizeof(MP3_CHAR_TO_DR) / sizeof(*MP3_CHAR_TO_DR);
+  config.diff_to_dr = MP3_DIFF_TO_DR;
+  config.diff_to_dr_size = sizeof(MP3_DIFF_TO_DR) / sizeof(*MP3_DIFF_TO_DR);
 
-    .panel_color_to_dr = MP3_PANEL_COLOR_TO_DR,
-    .panel_color_to_dr_size = sizeof(MP3_PANEL_COLOR_TO_DR) / sizeof(*MP3_PANEL_COLOR_TO_DR),
+  config.battle_addr = 0x800cc69a;
 
-    .minigame_type_addr = 0x80102C0E,
-    .minigame_type_to_dr = MP3_MINIGAME_TYPE_TO_DR,
-    .minigame_type_to_dr_size = sizeof(MP3_MINIGAME_TYPE_TO_DR) / sizeof(*MP3_MINIGAME_TYPE_TO_DR),
-    .next_scene_addr = 0x800D2030, // 16-bit value at logical 0x800D2032, physical = addr ^ 2
-    .next_scene_modifier_addr = 0x800D2036, // 16-bit value at logical 0x800D2034
-    .minigame_id_addr = 0x800cd06b,
-    .minigame_id_is_8bit = true,
-    .minigame_blacklist = { 0x43, 0x44, 0x45 }, // ignore game guy
-    .minigame_blacklist_count = 3,
+  config.panel_color_to_dr = MP3_PANEL_COLOR_TO_DR;
+  config.panel_color_to_dr_size = sizeof(MP3_PANEL_COLOR_TO_DR) / sizeof(*MP3_PANEL_COLOR_TO_DR);
 
-    .title_addrs = MP3_MINIGAME_TITLE_ADDRS,
-    .title_id_base = 2,
-    .title_id_step = 2,
-    .title_len_offset = 3,
-    .title_addr_transform = n64ByteAddr,
-    .slot_addrs = MP3_SLOT_ADDRS,
-    .scene_trampoline_addr = 0x800A7A54,
-    .turn_total_addr   = 0x800CD059u,
-    .turn_current_addr = 0x800CD058u,
-    .scene_duel_slot0_addr = 0x80102BABu, // n64ByteAddr(0x80102BA8)
-    .cheat_regular_board = MP3_CHEAT_REGULAR_BOARD,
-    .cheat_duel_board = MP3_CHEAT_DUEL_BOARD,
-  };
+  config.minigame_type_addr = 0x80102C0E;
+  config.minigame_type_to_dr = MP3_MINIGAME_TYPE_TO_DR;
+  config.minigame_type_to_dr_size = sizeof(MP3_MINIGAME_TYPE_TO_DR) / sizeof(*MP3_MINIGAME_TYPE_TO_DR);
+  config.next_scene_addr = 0x800D2030; // 16-bit value at logical 0x800D2032, physical = addr ^ 2
+  config.next_scene_modifier_addr = 0x800D2036; // 16-bit value at logical 0x800D2034
+  config.minigame_id_addr = 0x800cd06b;
+  config.minigame_id_is_8bit = true;
+
+  static const uint8_t blacklist[] = { 0x43, 0x44, 0x45 }; // ignore game guy
+  memcpy(config.minigame_blacklist, blacklist, sizeof(blacklist));
+  config.minigame_blacklist_count = 3;
+
+  config.title_addrs = MP3_MINIGAME_TITLE_ADDRS;
+  config.title_id_base = 2;
+  config.title_id_step = 2;
+  config.title_len_offset = 3;
+  config.title_addr_transform = n64ByteAddr;
+  config.slot_addrs = MP3_SLOT_ADDRS;
+  config.scene_trampoline_addr = 0x800A7A54;
+  config.turn_total_addr = 0x800CD059u;
+  config.turn_current_addr = 0x800CD058u;
+  config.scene_duel_slot0_addr = 0x80102BABu; // n64ByteAddr(0x80102BA8)
+  config.cheat_regular_board = MP3_CHEAT_REGULAR_BOARD;
+  config.cheat_duel_board = MP3_CHEAT_DUEL_BOARD;
+
+  return config;
 }
 
 MarioParty3Host::MarioParty3Host(QObject *parent)

@@ -44,65 +44,75 @@ static const dr_minigame_type MP1_MINIGAME_TYPE_TO_DR[] = {
 
 static DrHostConfig makeConfig()
 {
-  return {
-    .core = dr_core_path(DR_CORE_MUPEN64PLUSNEXT).toStdString(),
-    .game = (dr_roms_directory() + "/Mario Party (USA).z64").toStdString(),
+  DrHostConfig config = {};
 
-    .scene_miniexplain = { 0x6F }, // TODO: verify, may have multiple
-    .scene_miniexplain_count = 1,
-    .scene_miniresults = 0x7C,
-    .scene_miniresults_battle = 0, // not available in mp1
-    .scene_miniresults_duel = 0, // not available in mp1
-    .scene_addr = 0x800C596E,
+  config.core = dr_core_path(DR_CORE_MUPEN64PLUSNEXT).toStdString();
+  config.game = (dr_roms_directory() + "/Mario Party (USA).z64").toStdString();
 
-    .scene_board_ranges = { { 0x36, 0x3D } },
-    .scene_board_range_count = 1,
-    .scene_duel_board_range = {},
+  config.scene_miniexplain[0] = 0x6F; // TODO: verify, may have multiple
+  config.scene_miniexplain_count = 1;
+  config.scene_miniresults = 0x7C;
+  // scene_miniresults_battle / scene_miniresults_duel: not available in mp1
+  config.scene_addr = 0x800C596E;
 
-    .character_addr = { 0x800f32b7, 0x800f32e7, 0x800f3317, 0x800f3347 },
-    .controller_addr = { 0x800f32b0, 0x800f32e0, 0x800f3310, 0x800f3340 },
-    .difficulty_addr = { 0x800f32b1, 0x800f32e1, 0x800f3311, 0x800f3341 },
-    .team_addr = { 0x800f32b3, 0x800f32e3, 0x800f3313, 0x800f3343 },
-    .bot_addr = { 0x800f32b4, 0x800f32e4, 0x800f3314, 0x800f3344 },
-    .result_addr = { 0x800f32b8, 0x800f32e8, 0x800f3318, 0x800f3348 },
-    .bonus_result_addr = { 0, 0, 0, 0 }, // not available in mp1
-    .panel_color_addr = { 0x800f32c4, 0x800f32f4, 0x800f3324, 0x800f3354 },
+  config.scene_board_ranges[0] = { 0x36, 0x3D };
+  config.scene_board_range_count = 1;
 
-    .char_to_dr = MP1_CHAR_TO_DR,
-    .char_to_dr_size = sizeof(MP1_CHAR_TO_DR) / sizeof(*MP1_CHAR_TO_DR),
-    .diff_to_dr = MP1_DIFF_TO_DR,
-    .diff_to_dr_size = sizeof(MP1_DIFF_TO_DR) / sizeof(*MP1_DIFF_TO_DR),
+  config.character_addr[0] = 0x800f32b7;
+  config.character_addr[1] = 0x800f32e7;
+  config.character_addr[2] = 0x800f3317;
+  config.character_addr[3] = 0x800f3347;
+  config.controller_addr[0] = 0x800f32b0;
+  config.controller_addr[1] = 0x800f32e0;
+  config.controller_addr[2] = 0x800f3310;
+  config.controller_addr[3] = 0x800f3340;
+  config.difficulty_addr[0] = 0x800f32b1;
+  config.difficulty_addr[1] = 0x800f32e1;
+  config.difficulty_addr[2] = 0x800f3311;
+  config.difficulty_addr[3] = 0x800f3341;
+  config.team_addr[0] = 0x800f32b3;
+  config.team_addr[1] = 0x800f32e3;
+  config.team_addr[2] = 0x800f3313;
+  config.team_addr[3] = 0x800f3343;
+  config.bot_addr[0] = 0x800f32b4;
+  config.bot_addr[1] = 0x800f32e4;
+  config.bot_addr[2] = 0x800f3314;
+  config.bot_addr[3] = 0x800f3344;
+  config.result_addr[0] = 0x800f32b8;
+  config.result_addr[1] = 0x800f32e8;
+  config.result_addr[2] = 0x800f3318;
+  config.result_addr[3] = 0x800f3348;
+  // bonus_result_addr: not available in mp1
+  config.panel_color_addr[0] = 0x800f32c4;
+  config.panel_color_addr[1] = 0x800f32f4;
+  config.panel_color_addr[2] = 0x800f3324;
+  config.panel_color_addr[3] = 0x800f3354;
 
-    .battle_addr = 0,
+  config.char_to_dr = MP1_CHAR_TO_DR;
+  config.char_to_dr_size = sizeof(MP1_CHAR_TO_DR) / sizeof(*MP1_CHAR_TO_DR);
+  config.diff_to_dr = MP1_DIFF_TO_DR;
+  config.diff_to_dr_size = sizeof(MP1_DIFF_TO_DR) / sizeof(*MP1_DIFF_TO_DR);
 
-    .panel_color_to_dr = MP1_PANEL_COLOR_TO_DR,
-    .panel_color_to_dr_size = sizeof(MP1_PANEL_COLOR_TO_DR) / sizeof(*MP1_PANEL_COLOR_TO_DR),
+  config.panel_color_to_dr = MP1_PANEL_COLOR_TO_DR;
+  config.panel_color_to_dr_size = sizeof(MP1_PANEL_COLOR_TO_DR) / sizeof(*MP1_PANEL_COLOR_TO_DR);
 
-    .minigame_type_addr = 0x800D645A,
-    .minigame_type_to_dr = MP1_MINIGAME_TYPE_TO_DR,
-    .minigame_type_to_dr_size = 4,
+  config.minigame_type_addr = 0x800D645A;
+  config.minigame_type_to_dr = MP1_MINIGAME_TYPE_TO_DR;
+  config.minigame_type_to_dr_size = 4;
 
-    .next_scene_addr = 0x800F09F4,
-    .next_scene_modifier_addr = 0,
-    .minigame_id_addr = 0x800ED5DC,
-    .minigame_id_is_8bit = false,
-    .minigame_blacklist = {},
-    .minigame_blacklist_count = 0,
+  config.next_scene_addr = 0x800F09F4;
+  config.minigame_id_addr = 0x800ED5DC;
+  config.minigame_id_is_8bit = false;
 
-    .title_addrs = MP1_MINIGAME_TITLE_ADDRS,
-    .title_id_base = 0x01,
-    .title_id_step = 4,
-    .title_len_offset = 2,
-    .title_addr_transform = n64ByteAddr,
-    .slot_addrs = nullptr,
+  config.title_addrs = MP1_MINIGAME_TITLE_ADDRS;
+  config.title_id_base = 0x01;
+  config.title_id_step = 4;
+  config.title_len_offset = 2;
+  config.title_addr_transform = n64ByteAddr;
 
-    .scene_trampoline_addr = 0x800CA9A0,
-    .turn_total_addr = 0,
-    .turn_current_addr = 0,
-    .scene_duel_slot0_addr = 0,
-    .cheat_regular_board = nullptr,
-    .cheat_duel_board = nullptr,
-  };
+  config.scene_trampoline_addr = 0x800CA9A0;
+
+  return config;
 }
 
 MarioParty1Host::MarioParty1Host(QObject *parent)
