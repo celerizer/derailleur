@@ -54,7 +54,7 @@ MarioPartyAdvance::MarioPartyAdvance(QObject *parent)
 {
   m_retro = new DrRetro(this);
   QRetro *c = new QRetro();
-  if (!c->loadCore((dr_cores_directory() + "/mgba_libretro.so").toStdString().c_str()))
+  if (!c->loadCore(dr_core_path(DR_CORE_MGBA).toStdString().c_str()))
   {
     log(DR_LOG_ERROR, "failed to load core: mgba_libretro.so");
     m_valid = false;

@@ -89,7 +89,7 @@ static const dr_mp_minigame_t KAR_MINIGAMES[] =
 
 KirbyAirRide::KirbyAirRide(QRetro *sharedCore, QObject *parent)
   : DolphinGuest(parent)
-  , m_corePath((dr_cores_directory() + "/dolphin_libretro.so").toStdString())
+  , m_corePath(dr_core_path(DR_CORE_DOLPHIN).toStdString())
   , m_discPath((dr_roms_directory() + "/Kirby Air Ride (USA).rvz").toStdString())
   , m_statePath((dr_state_directory() + "/kar.state.zip").toStdString())
 {

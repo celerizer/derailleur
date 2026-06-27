@@ -29,16 +29,25 @@ void dr_set_state_directory(const QString &path)
   s_stateDir = path;
 }
 
+QString dr_os_extension(void)
+{
+#if defined(Q_OS_WIN)
+  return ".dll";
+#else
+  return ".so";
+#endif
+}
+
 QString dr_core_path(dr_core core)
 {
   switch (core)
   {
   case DR_CORE_MUPEN64PLUSNEXT:
-    return s_coresDir + "/mupen64plus_next_libretro.so";
+    return s_coresDir + "/mupen64plus_next_libretro" + dr_os_extension();
   case DR_CORE_DOLPHIN:
-    return s_coresDir + "/dolphin_libretro.so";
+    return s_coresDir + "/dolphin_libretro" + dr_os_extension();
   case DR_CORE_MGBA:
-    return s_coresDir + "/mgba_libretro.so";
+    return s_coresDir + "/mgba_libretro" + dr_os_extension();
   default:
     return {};
   }
