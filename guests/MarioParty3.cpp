@@ -1,17 +1,11 @@
 #include "MarioParty3.h"
 
+#include <cstring>
+
 #include <QRetroDirectories.h>
 
 static const uint8_t MP3_CHARACTER_IDS[DR_CHARACTER_SIZE] = {
-  [DR_CHARACTER_INVALID] = 0xFF,
-  [DR_CHARACTER_MARIO] = 0x00,
-  [DR_CHARACTER_LUIGI] = 0x01,
-  [DR_CHARACTER_PEACH] = 0x02,
-  [DR_CHARACTER_YOSHI] = 0x03,
-  [DR_CHARACTER_WARIO] = 0x04,
-  [DR_CHARACTER_DONKEY_KONG] = 0x05,
-  [DR_CHARACTER_WALUIGI] = 0x06,
-  [DR_CHARACTER_DAISY] = 0x07,
+  0xFF, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
 };
 
 static const dr_mp_minigame_t MP3_MINIGAMES[] =
@@ -110,28 +104,37 @@ static const dr_mp_minigame_t MP3_MINIGAMES[] =
 
 static MpN64Config buildConfig()
 {
-  return {
-    .core = dr_core_path(DR_CORE_MUPEN64PLUSNEXT).toStdString(),
-    .game = (dr_roms_directory() + "/Mario Party 3 (USA).z64").toStdString(),
-    .state = (dr_state_directory() + "/mp3.state.zip").toStdString(),
+  MpN64Config config = {};
 
-    .scene_miniexplain = 0x70,
-    .scene_miniresults = 0x71,
+  config.core = dr_core_path(DR_CORE_MUPEN64PLUSNEXT).toStdString();
+  config.game = (dr_roms_directory() + "/Mario Party 3 (USA).z64").toStdString();
+  config.state = (dr_state_directory() + "/mp3.state.zip").toStdString();
 
-    .scene_addr    = 0x800ce200,
-    .minigame_addr = 0x800cd06b,
+  config.scene_miniexplain = 0x70;
+  config.scene_miniresults = 0x71;
 
-    .controller_addr   = { 0x800d1109, 0x800d1141, 0x800d1179, 0x800d11b1 },
-    .difficulty_addr   = { 0x800d110a, 0x800d1142, 0x800d117a, 0x800d11b2 },
-    .team_addr         = { 0x800d110b, 0x800d1143, 0x800d117b, 0x800d11b3 },
-    .bot_addr          = { 0x800d110f, 0x800d1147, 0x800d117f, 0x800d11b7 },
-    .character_addr    = { 0x800d1108, 0x800d1140, 0x800d1178, 0x800d11b0 },
-    .bonus_result_addr = { 0x800d110c, 0x800d1144, 0x800d117c, 0x800d11b4 },
-    .result_addr       = { 0x800d1112, 0x800d114a, 0x800d1182, 0x800d11ba },
+  config.scene_addr = 0x800ce200;
+  config.minigame_addr = 0x800cd06b;
 
-    .character_ids = MP3_CHARACTER_IDS,
-    .minigames = MP3_MINIGAMES,
-  };
+  const size_t controller_addr[4]   = { 0x800d1109, 0x800d1141, 0x800d1179, 0x800d11b1 };
+  const size_t difficulty_addr[4]   = { 0x800d110a, 0x800d1142, 0x800d117a, 0x800d11b2 };
+  const size_t team_addr[4]         = { 0x800d110b, 0x800d1143, 0x800d117b, 0x800d11b3 };
+  const size_t bot_addr[4]          = { 0x800d110f, 0x800d1147, 0x800d117f, 0x800d11b7 };
+  const size_t character_addr[4]    = { 0x800d1108, 0x800d1140, 0x800d1178, 0x800d11b0 };
+  const size_t bonus_result_addr[4] = { 0x800d110c, 0x800d1144, 0x800d117c, 0x800d11b4 };
+  const size_t result_addr[4]       = { 0x800d1112, 0x800d114a, 0x800d1182, 0x800d11ba };
+  memcpy(config.controller_addr, controller_addr, sizeof(controller_addr));
+  memcpy(config.difficulty_addr, difficulty_addr, sizeof(difficulty_addr));
+  memcpy(config.team_addr, team_addr, sizeof(team_addr));
+  memcpy(config.bot_addr, bot_addr, sizeof(bot_addr));
+  memcpy(config.character_addr, character_addr, sizeof(character_addr));
+  memcpy(config.bonus_result_addr, bonus_result_addr, sizeof(bonus_result_addr));
+  memcpy(config.result_addr, result_addr, sizeof(result_addr));
+
+  config.character_ids = MP3_CHARACTER_IDS;
+  config.minigames = MP3_MINIGAMES;
+
+  return config;
 }
 
 MarioParty3::MarioParty3(QObject *parent)

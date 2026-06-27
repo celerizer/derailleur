@@ -1,15 +1,9 @@
 #include "MarioParty4.h"
 
+#include <cstring>
+
 static const uint16_t MP4_CHARACTER_IDS[DR_CHARACTER_SIZE] = {
-  [DR_CHARACTER_INVALID] = 0xFF,
-  [DR_CHARACTER_MARIO] = 0x00,
-  [DR_CHARACTER_LUIGI] = 0x01,
-  [DR_CHARACTER_PEACH] = 0x02,
-  [DR_CHARACTER_YOSHI] = 0x03,
-  [DR_CHARACTER_WARIO] = 0x04,
-  [DR_CHARACTER_DONKEY_KONG] = 0x05,
-  [DR_CHARACTER_WALUIGI] = 0x07,
-  [DR_CHARACTER_DAISY] = 0x06,
+  0xFF, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x07, 0x06,
 };
 
 static const dr_mp_minigame_t MP4_MINIGAMES[] = {
@@ -79,29 +73,37 @@ static const dr_mp_minigame_t MP4_MINIGAMES[] = {
 
 static MpGcnConfig buildConfig()
 {
-  return {
-    .core = (dr_cores_directory() + "/dolphin_libretro.so").toStdString(),
-    .game = (dr_roms_directory() + "/Mario Party 4 (USA) (Rev 1).rvz").toStdString(),
-    .state = (dr_state_directory() + "/mp4.state.zip").toStdString(),
+  MpGcnConfig config = {};
 
-    .scene_miniexplain = 0x03,
-    .scene_miniresults = 0x54,
+  config.core = (dr_cores_directory() + "/dolphin_libretro.so").toStdString();
+  config.game = (dr_roms_directory() + "/Mario Party 4 (USA) (Rev 1).rvz").toStdString();
+  config.state = (dr_state_directory() + "/mp4.state.zip").toStdString();
 
-    .scene_addr = 0x801d3ce0,
-    .minigame_addr = 0x8018fd2c,
+  config.scene_miniexplain = 0x03;
+  config.scene_miniresults = 0x54;
 
-    .character_addr = { 0x8018fc10, 0x8018fc1a, 0x8018fc24, 0x8018fc2e },
-    .controller_addr = { 0x8018fc12, 0x8018fc1c, 0x8018fc26, 0x8018fc30 },
-    .difficulty_addr = { 0x8018fc14, 0x8018fc1e, 0x8018fc28, 0x8018fc32 },
-    .team_addr = { 0x8018fc16, 0x8018fc20, 0x8018fc2a, 0x8018fc34 },
-    .bot_addr = { 0x8018fc18, 0x8018fc22, 0x8018fc2c, 0x8018fc36 },
+  config.scene_addr = 0x801d3ce0;
+  config.minigame_addr = 0x8018fd2c;
 
-    .bonus_result_addr = { 0x8018fc5e, 0x8018fc8e, 0x8018fcbe, 0x8018fcee },
-    .result_addr = { 0x8018fc60, 0x8018fc90, 0x8018fcc0, 0x8018fcf0 },
+  const size_t character_addr[4]    = { 0x8018fc10, 0x8018fc1a, 0x8018fc24, 0x8018fc2e };
+  const size_t controller_addr[4]   = { 0x8018fc12, 0x8018fc1c, 0x8018fc26, 0x8018fc30 };
+  const size_t difficulty_addr[4]   = { 0x8018fc14, 0x8018fc1e, 0x8018fc28, 0x8018fc32 };
+  const size_t team_addr[4]         = { 0x8018fc16, 0x8018fc20, 0x8018fc2a, 0x8018fc34 };
+  const size_t bot_addr[4]          = { 0x8018fc18, 0x8018fc22, 0x8018fc2c, 0x8018fc36 };
+  const size_t bonus_result_addr[4] = { 0x8018fc5e, 0x8018fc8e, 0x8018fcbe, 0x8018fcee };
+  const size_t result_addr[4]       = { 0x8018fc60, 0x8018fc90, 0x8018fcc0, 0x8018fcf0 };
+  memcpy(config.character_addr, character_addr, sizeof(character_addr));
+  memcpy(config.controller_addr, controller_addr, sizeof(controller_addr));
+  memcpy(config.difficulty_addr, difficulty_addr, sizeof(difficulty_addr));
+  memcpy(config.team_addr, team_addr, sizeof(team_addr));
+  memcpy(config.bot_addr, bot_addr, sizeof(bot_addr));
+  memcpy(config.bonus_result_addr, bonus_result_addr, sizeof(bonus_result_addr));
+  memcpy(config.result_addr, result_addr, sizeof(result_addr));
 
-    .character_ids = MP4_CHARACTER_IDS,
-    .minigames = MP4_MINIGAMES,
-  };
+  config.character_ids = MP4_CHARACTER_IDS;
+  config.minigames = MP4_MINIGAMES;
+
+  return config;
 }
 
 MarioParty4::MarioParty4(QRetro *sharedCore, QObject *parent)

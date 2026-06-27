@@ -98,11 +98,11 @@ typedef union
   } mupen64plus;
 } dr_emulation_quirk_t;
 
-#define DR_NO_QUIRKS { .raw = 0 }
-#define DR_QUIRK_EFB_TO_TEXTURE { .dolphin = { 1, 0, 0 } }
-#define DR_QUIRK_SAFE_TEXTURE_CACHE { .dolphin = { 0, 1, 0 } }
-#define DR_QUIRK_NATIVE_RESOLUTION { .dolphin = { 0, 0, 1 } }
-#define DR_QUIRK_NATIVE_BOUNDARIES { .mupen64plus = { 1 } }
+#define DR_NO_QUIRKS { 0u }
+#define DR_QUIRK_EFB_TO_TEXTURE { 0x1u }     // dolphin.needs_efb_to_texture
+#define DR_QUIRK_SAFE_TEXTURE_CACHE { 0x2u } // dolphin.needs_safe_texture_cache
+#define DR_QUIRK_NATIVE_RESOLUTION { 0x4u }  // dolphin.needs_native_resolution
+#define DR_QUIRK_NATIVE_BOUNDARIES { 0x1u }  // mupen64plus.needs_native_boundaries
 
 typedef enum
 {

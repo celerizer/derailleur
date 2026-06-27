@@ -73,8 +73,8 @@ jobs:
           Categories=Game;
           Terminal=false
           EOF
-          mkdir -p AppDir/usr/share/icons/hicolor/256x256/apps
-          cp assets/loading.png AppDir/usr/share/icons/hicolor/256x256/apps/derailleur.png
+          mkdir -p AppDir/usr/share/icons/hicolor/160x160/apps
+          cp assets/icon.png AppDir/usr/share/icons/hicolor/160x160/apps/derailleur.png
 
       - name: Build AppImage
         env:
@@ -92,7 +92,7 @@ jobs:
           ./linuxdeploy.AppImage --appdir AppDir \
             --executable AppDir/usr/bin/derailleur \
             --desktop-file AppDir/usr/share/applications/derailleur.desktop \
-            --icon-file AppDir/usr/share/icons/hicolor/256x256/apps/derailleur.png \
+            --icon-file AppDir/usr/share/icons/hicolor/160x160/apps/derailleur.png \
             --library "$SDL3_PATH/lib/libSDL3.so.0" \
             --plugin qt \
             --output appimage

@@ -82,21 +82,21 @@ struct mt_character_t
 };
 
 static const mt_character_t MT_DR_TO_CHAR[DR_CHARACTER_SIZE] = {
-  [DR_CHARACTER_INVALID] = { 0x14, 0x00 },
-  [DR_CHARACTER_MARIO] = { 0x02, 0x00 },
-  [DR_CHARACTER_LUIGI] = { 0x0A, 0x00 },
-  [DR_CHARACTER_PEACH] = { 0x01, 0x00 },
-  [DR_CHARACTER_YOSHI] = { 0x00, 0x00 },
-  [DR_CHARACTER_WARIO] = { 0x09, 0x00 },
-  [DR_CHARACTER_DONKEY_KONG] = { 0x05, 0x00 },
-  [DR_CHARACTER_WALUIGI] = { 0x08, 0x00 },
-  [DR_CHARACTER_DAISY] = { 0x0B, 0x00 },
-  [DR_CHARACTER_TOAD] = { 0x07, 0x00 },
-  [DR_CHARACTER_BOO] = { 0x04, 0x00 },
-  [DR_CHARACTER_KOOPA_KID] = { 0x0F, 0x01 }, // Paratroopa (Green)
-  [DR_CHARACTER_TOADETTE] = { 0x13, 0x01 },
-  [DR_CHARACTER_BIRDO] = { 0x0C, 0x00 },
-  [DR_CHARACTER_DRY_BONES] = { 0xFF, 0x00 },
+  { 0x14, 0x00 }, // DR_CHARACTER_INVALID
+  { 0x02, 0x00 }, // DR_CHARACTER_MARIO
+  { 0x0A, 0x00 }, // DR_CHARACTER_LUIGI
+  { 0x01, 0x00 }, // DR_CHARACTER_PEACH
+  { 0x00, 0x00 }, // DR_CHARACTER_YOSHI
+  { 0x09, 0x00 }, // DR_CHARACTER_WARIO
+  { 0x05, 0x00 }, // DR_CHARACTER_DONKEY_KONG
+  { 0x08, 0x00 }, // DR_CHARACTER_WALUIGI
+  { 0x0B, 0x00 }, // DR_CHARACTER_DAISY
+  { 0x07, 0x00 }, // DR_CHARACTER_TOAD
+  { 0x04, 0x00 }, // DR_CHARACTER_BOO
+  { 0x0F, 0x01 }, // DR_CHARACTER_KOOPA_KID (Paratroopa, Green)
+  { 0x13, 0x01 }, // DR_CHARACTER_TOADETTE
+  { 0x0C, 0x00 }, // DR_CHARACTER_BIRDO
+  { 0xFF, 0x00 }, // DR_CHARACTER_DRY_BONES
 };
 
 static const dr_mp_minigame_t MT_MINIGAMES[] = {

@@ -1,16 +1,10 @@
 #include "MarioParty6.h"
 
-static const uint16_t MP6_CHARACTER_IDS[DR_CHARACTER_SIZE] = {
-  [DR_CHARACTER_INVALID] = 0xFF,
+#include <cstring>
 
-  [DR_CHARACTER_MARIO] = 0x00,
-  [DR_CHARACTER_LUIGI] = 0x01,
-  [DR_CHARACTER_PEACH] = 0x02,
-  [DR_CHARACTER_YOSHI] = 0x03,
-  [DR_CHARACTER_WARIO] = 0x04,
-  [DR_CHARACTER_DONKEY_KONG] = 0x08, // Use Boo instead
-  [DR_CHARACTER_WALUIGI] = 0x06,
-  [DR_CHARACTER_DAISY] = 0x05,
+// DONKEY_KONG maps to 0x08 (Boo) as MP6 has no DK.
+static const uint16_t MP6_CHARACTER_IDS[DR_CHARACTER_SIZE] = {
+  0xFF, 0x00, 0x01, 0x02, 0x03, 0x04, 0x08, 0x06, 0x05,
 };
 
 static const dr_mp_minigame_t MP6_MINIGAMES[] = {
@@ -111,38 +105,37 @@ static const dr_mp_minigame_t MP6_MINIGAMES[] = {
 
 static MpGcnConfig buildConfig()
 {
-  return {
-    .core = (dr_cores_directory() + "/dolphin_libretro.so").toStdString(),
-    .game = (dr_roms_directory() + "/Mario Party 6 (USA).rvz").toStdString(),
-    .state = (dr_state_directory() + "/mp6.state.zip").toStdString(),
+  MpGcnConfig config = {};
 
-    .scene_miniexplain = 0x04,
-    .scene_miniresults = 0x71,
+  config.core = (dr_cores_directory() + "/dolphin_libretro.so").toStdString();
+  config.game = (dr_roms_directory() + "/Mario Party 6 (USA).rvz").toStdString();
+  config.state = (dr_state_directory() + "/mp6.state.zip").toStdString();
 
-    .scene_addr = 0x802C0254,
-    .minigame_addr = 0x80265BA8,
+  config.scene_miniexplain = 0x04;
+  config.scene_miniresults = 0x71;
 
-    .character_addr = { 0x80265728, 0x80265732, 0x8026573c, 0x80265746 },
-    .controller_addr = { 0x8026572a, 0x80265734, 0x8026573e, 0x80265748 },
-    .difficulty_addr = { 0x8026572c, 0x80265736, 0x80265740, 0x8026574a },
-    .team_addr = { 0x8026572e, 0x80265738, 0x80265742, 0x8026574c },
-    .bot_addr = { 0x80265730, 0x8026573a, 0x80265744, 0x8026574e },
+  config.scene_addr = 0x802C0254;
+  config.minigame_addr = 0x80265BA8;
 
-    // player struct 2 -- size 0x108
-    //.coin_addr       = { 0x8026576c, 0x80265874, 0x8026597c, 0x80265a84 },
-    //.game_star_addr   = { 0x8026576e, 0x80265876, 0x8026597e, 0x80265a86 },
-    // coin star
-    // coin star again?
-    // idk
-    .bonus_result_addr = { 0x80265776, 0x8026587e, 0x80265986, 0x80265a8e },
-    .result_addr = { 0x80265778, 0x80265880, 0x80265988, 0x80265a90 },
+  const size_t character_addr[4]    = { 0x80265728, 0x80265732, 0x8026573c, 0x80265746 };
+  const size_t controller_addr[4]   = { 0x8026572a, 0x80265734, 0x8026573e, 0x80265748 };
+  const size_t difficulty_addr[4]   = { 0x8026572c, 0x80265736, 0x80265740, 0x8026574a };
+  const size_t team_addr[4]         = { 0x8026572e, 0x80265738, 0x80265742, 0x8026574c };
+  const size_t bot_addr[4]          = { 0x80265730, 0x8026573a, 0x80265744, 0x8026574e };
+  const size_t bonus_result_addr[4] = { 0x80265776, 0x8026587e, 0x80265986, 0x80265a8e };
+  const size_t result_addr[4]       = { 0x80265778, 0x80265880, 0x80265988, 0x80265a90 };
+  memcpy(config.character_addr, character_addr, sizeof(character_addr));
+  memcpy(config.controller_addr, controller_addr, sizeof(controller_addr));
+  memcpy(config.difficulty_addr, difficulty_addr, sizeof(difficulty_addr));
+  memcpy(config.team_addr, team_addr, sizeof(team_addr));
+  memcpy(config.bot_addr, bot_addr, sizeof(bot_addr));
+  memcpy(config.bonus_result_addr, bonus_result_addr, sizeof(bonus_result_addr));
+  memcpy(config.result_addr, result_addr, sizeof(result_addr));
 
-    //.stars_addr     = { 0x80265780, 0x00000000, 0x00000000, 0x00000000 },
-    //.max_stars?_addr     = { 0x80265782, 0x00000000, 0x00000000, 0x00000000 },
+  config.character_ids = MP6_CHARACTER_IDS;
+  config.minigames = MP6_MINIGAMES;
 
-    .character_ids = MP6_CHARACTER_IDS,
-    .minigames = MP6_MINIGAMES,
-  };
+  return config;
 }
 
 MarioParty6::MarioParty6(QRetro *sharedCore, QObject *parent)

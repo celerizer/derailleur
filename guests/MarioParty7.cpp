@@ -1,16 +1,10 @@
 #include "MarioParty7.h"
 
-static const uint16_t MP7_CHARACTER_IDS[DR_CHARACTER_SIZE] = {
-  [DR_CHARACTER_INVALID] = 0xFF,
+#include <cstring>
 
-  [DR_CHARACTER_MARIO] = 0x00,
-  [DR_CHARACTER_LUIGI] = 0x01,
-  [DR_CHARACTER_PEACH] = 0x02,
-  [DR_CHARACTER_YOSHI] = 0x03,
-  [DR_CHARACTER_WARIO] = 0x04,
-  [DR_CHARACTER_DONKEY_KONG] = 0x08, // Use Boo instead
-  [DR_CHARACTER_WALUIGI] = 0x06,
-  [DR_CHARACTER_DAISY] = 0x05,
+// DONKEY_KONG maps to 0x08 (Boo) as MP7 has no DK.
+static const uint16_t MP7_CHARACTER_IDS[DR_CHARACTER_SIZE] = {
+  0xFF, 0x00, 0x01, 0x02, 0x03, 0x04, 0x08, 0x06, 0x05,
 };
 
 static const dr_mp_minigame_t MP7_MINIGAMES[] = {
@@ -118,31 +112,37 @@ static const dr_mp_minigame_t MP7_MINIGAMES[] = {
 
 static MpGcnConfig buildConfig()
 {
-  return {
-    .core = (dr_cores_directory() + "/dolphin_libretro.so").toStdString(),
-    .game = (dr_roms_directory() + "/Mario Party 7 (USA) (Rev 1).rvz").toStdString(),
-    .state = (dr_state_directory() + "/mp7.state.zip").toStdString(),
+  MpGcnConfig config = {};
 
-    .scene_miniexplain = 0x06,
-    .scene_miniresults = 0x73,
+  config.core = (dr_cores_directory() + "/dolphin_libretro.so").toStdString();
+  config.game = (dr_roms_directory() + "/Mario Party 7 (USA) (Rev 1).rvz").toStdString();
+  config.state = (dr_state_directory() + "/mp7.state.zip").toStdString();
 
-    .scene_addr = 0x802f2f3c,
-    .minigame_addr = 0x80291558,
+  config.scene_miniexplain = 0x06;
+  config.scene_miniresults = 0x73;
 
-    .character_addr = { 0x80290c48, 0x80290c52, 0x80290c5c, 0x80290c66 },
-    .controller_addr = { 0x80290c4a, 0x80290c54, 0x80290c5e, 0x80290c68 },
-    .difficulty_addr = { 0x80290c4c, 0x80290c56, 0x80290c60, 0x80290c6a },
-    .team_addr = { 0x80290c4e, 0x80290c58, 0x80290c62, 0x80290c6c },
-    .bot_addr = { 0x80290c50, 0x80290c5a, 0x80290c64, 0x80290c6e },
+  config.scene_addr = 0x802f2f3c;
+  config.minigame_addr = 0x80291558;
 
-    // struct 2 (size 0x110)
-    //.coins_addr      = { 0x80290cbe, 0x80290dce, 0x00000000, 0x00000000 },
-    .bonus_result_addr = { 0x80290cc8, 0x80290dd8, 0x80290ee8, 0x80290ff8 },
-    .result_addr = { 0x80290cca, 0x80290dda, 0x80290eea, 0x80290ffa },
+  const size_t character_addr[4]    = { 0x80290c48, 0x80290c52, 0x80290c5c, 0x80290c66 };
+  const size_t controller_addr[4]   = { 0x80290c4a, 0x80290c54, 0x80290c5e, 0x80290c68 };
+  const size_t difficulty_addr[4]   = { 0x80290c4c, 0x80290c56, 0x80290c60, 0x80290c6a };
+  const size_t team_addr[4]         = { 0x80290c4e, 0x80290c58, 0x80290c62, 0x80290c6c };
+  const size_t bot_addr[4]          = { 0x80290c50, 0x80290c5a, 0x80290c64, 0x80290c6e };
+  const size_t bonus_result_addr[4] = { 0x80290cc8, 0x80290dd8, 0x80290ee8, 0x80290ff8 };
+  const size_t result_addr[4]       = { 0x80290cca, 0x80290dda, 0x80290eea, 0x80290ffa };
+  memcpy(config.character_addr, character_addr, sizeof(character_addr));
+  memcpy(config.controller_addr, controller_addr, sizeof(controller_addr));
+  memcpy(config.difficulty_addr, difficulty_addr, sizeof(difficulty_addr));
+  memcpy(config.team_addr, team_addr, sizeof(team_addr));
+  memcpy(config.bot_addr, bot_addr, sizeof(bot_addr));
+  memcpy(config.bonus_result_addr, bonus_result_addr, sizeof(bonus_result_addr));
+  memcpy(config.result_addr, result_addr, sizeof(result_addr));
 
-    .character_ids = MP7_CHARACTER_IDS,
-    .minigames = MP7_MINIGAMES,
-  };
+  config.character_ids = MP7_CHARACTER_IDS;
+  config.minigames = MP7_MINIGAMES;
+
+  return config;
 }
 
 MarioParty7::MarioParty7(QRetro *sharedCore, QObject *parent)
