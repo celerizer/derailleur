@@ -10,6 +10,7 @@ class MarioParty2 : public MarioPartyN64
 public:
   MarioParty2(QObject *parent = nullptr);
   const char *name() const override { return "Mario Party 2"; }
+  dr_guest id() const override { return DR_GUEST_MARIOPARTY2; }
 };
 
 #endif

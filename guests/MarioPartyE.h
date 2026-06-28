@@ -10,6 +10,7 @@ class MarioPartyE : public DrGuest
 public:
   MarioPartyE(QObject *parent = nullptr);
   const char *name() const override { return "Mario Party-e"; }
+  dr_guest id() const override { return DR_GUEST_MARIOPARTYE; }
 
   QRetro *core() const override { return m_retro ? m_retro->core() : nullptr; }
   void startCore() override;

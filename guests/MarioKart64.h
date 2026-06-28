@@ -10,6 +10,7 @@ class MarioKart64 : public DrGuest
 public:
   MarioKart64(QObject *parent = nullptr);
   const char *name() const override { return "Mario Kart 64"; }
+  dr_guest id() const override { return DR_GUEST_MARIOKART64; }
 
   QRetro *core() const override { return m_retro ? m_retro->core() : nullptr; }
   void startCore() override;

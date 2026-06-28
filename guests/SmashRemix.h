@@ -10,6 +10,7 @@ class SmashRemix : public DrGuest
 public:
   SmashRemix(QObject *parent = nullptr);
   const char *name() const override { return "Smash Remix"; }
+  dr_guest id() const override { return DR_GUEST_SMASHREMIX; }
 
   QRetro *core() const override { return m_retro ? m_retro->core() : nullptr; }
   void startCore() override;

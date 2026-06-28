@@ -220,11 +220,13 @@ void MainWindow::startWithHost(DrHost *host)
   });
 #endif
 
-  /* Map a candidate to opaque (guestIndex, minigameIndex) for the network. */
-  auto candidateToPair = [this](const DrMinigameCandidate &c) -> QPair<int, int> {
+  /* Map a candidate to (guestId, minigameIndex) for the network. The guest is
+   * keyed by its stable dr_guest id rather than its list position, so peers stay
+   * in sync even if they loaded their guests in a different order. */
+  auto candidateToPair = [](const DrMinigameCandidate &c) -> QPair<int, int> {
     if (!c.guest || !c.minigame)
       return { -1, -1 };
-    const int g = m_Guests->guests().indexOf(c.guest);
+    const int g = static_cast<int>(c.guest->id());
     int m = -1;
     const dr_mp_minigame_t *list = c.guest->minigames();
     for (int i = 0; list && list[i].name; i++)
@@ -273,11 +275,19 @@ void MainWindow::startWithHost(DrHost *host)
       std::array<DrMinigameCandidate, 5> candidates = {};
       for (int i = 0; i < 5 && i < picks.size(); i++)
       {
-        const int g = picks[i].first;
+        const int g = picks[i].first; // dr_guest id
         const int m = picks[i].second;
-        if (g < 0 || g >= guests.size() || m < 0)
+        if (g <= DR_GUEST_INVALID || m < 0)
           continue;
-        DrGuest *guest = guests[g];
+        DrGuest *guest = nullptr;
+        for (DrGuest *candidate : guests)
+          if (static_cast<int>(candidate->id()) == g)
+          {
+            guest = candidate;
+            break;
+          }
+        if (!guest)
+          continue;
         const dr_mp_minigame_t *list = guest->minigames();
         int count = 0;
         for (; list && list[count].name; count++)

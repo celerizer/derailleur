@@ -12,6 +12,7 @@ public:
   KirbyAirRide(QRetro *sharedCore, QObject *parent = nullptr);
 
   const char *name() const override { return "Kirby Air Ride"; }
+  dr_guest id() const override { return DR_GUEST_KIRBYAIRRIDE; }
 
   std::string corePath() const override { return m_corePath; }
   std::string discPath() const override { return m_discPath; }

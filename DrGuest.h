@@ -45,6 +45,7 @@ public:
   virtual dr_minigame_result_t minigameResult(unsigned index) = 0;
   virtual const dr_mp_minigame_t *minigames() const = 0;
   virtual const char *name(void) const = 0;
+  virtual dr_guest id(void) const { return DR_GUEST_INVALID; }
   virtual QList<DrMinigameGroup> minigameGroups() const;
   void setMinigame(const dr_mp_minigame_t *minigame);
   void cancelMinigame() { m_minigameActive = false; }
