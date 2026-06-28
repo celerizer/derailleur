@@ -86,6 +86,7 @@ MarioKart64::MarioKart64(QObject *parent)
     m_valid = false;
   }
   m_retro->setCore(c, true);
+  m_retro->applyN64Remaps();
 }
 
 void MarioKart64::startCore()

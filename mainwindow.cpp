@@ -7,6 +7,7 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QMessageBox>
+#include <QRandomGenerator>
 #include <QPushButton>
 #include <QRetro.h>
 #include <QScreen>
@@ -80,6 +81,10 @@ MainWindow::MainWindow(QWidget *parent)
   connect(m_Guests, &DrGuestList::logMessage, m_Logger, &DrLogger::message, Qt::QueuedConnection);
 #endif
 
+  /* Randomize the shared PRNG for singleplayer; a netplay session re-seeds it
+   * from the server so peers match. */
+  dr_srand(QRandomGenerator::global()->generate());
+
   m_InputStore = new DrInputStore();
   m_Netplay = new DrNetplay(m_InputStore, this);
   setupNetplay();
@@ -91,8 +96,8 @@ MainWindow::MainWindow(QWidget *parent)
   dolphin->addGame(new MarioParty7(dolphin->core(), dolphin));
   //dolphin->addGame(new KirbyAirRide(dolphin->core(), dolphin));
   dolphin->finalizeGames();
-  if (dolphin->isValid())
-    m_Guests->add(dolphin);
+  //if (dolphin->isValid())
+  //  m_Guests->add(dolphin);
 
   auto addGuest = [this](DrGuest *g) {
     if (g->isValid())
@@ -101,11 +106,11 @@ MainWindow::MainWindow(QWidget *parent)
       delete g;
   };
   //addGuest(new MarioKart64());
-  addGuest(new MarioParty1());
-  addGuest(new MarioParty2());
-  addGuest(new MarioParty3());
+  //addGuest(new MarioParty1());
+  //addGuest(new MarioParty2());
+  //addGuest(new MarioParty3());
   addGuest(new SmashRemix());
-  addGuest(new MarioTennis());
+  //addGuest(new MarioTennis());
   //addGuest(new MarioPartyAdvance());
   //addGuest(new MarioPartyE());
 
@@ -220,30 +225,11 @@ void MainWindow::startWithHost(DrHost *host)
   });
 #endif
 
-  /* Map a candidate to (guestId, minigameIndex) for the network. The guest is
-   * keyed by its stable dr_guest id rather than its list position, so peers stay
-   * in sync even if they loaded their guests in a different order. */
-  auto candidateToPair = [](const DrMinigameCandidate &c) -> QPair<int, int> {
-    if (!c.guest || !c.minigame)
-      return { -1, -1 };
-    const int g = static_cast<int>(c.guest->id());
-    int m = -1;
-    const dr_mp_minigame_t *list = c.guest->minigames();
-    for (int i = 0; list && list[i].name; i++)
-      if (&list[i] == c.minigame)
-      {
-        m = i;
-        break;
-      }
-    return { g, m };
-  };
-
-  auto pickCandidates = [this, candidateToPair](dr_minigame_type type) {
-    /* On a client the candidates are authoritative from the server; wait for
-     * the candidatesReceived signal instead of rolling our own. */
-    if (m_Netplay->sessionActive() && !m_Netplay->isServer())
-      return;
-
+  /* Every peer rolls its own candidates locally from the shared seeded PRNG
+   * (dr_rand), so the picks are identical without a network round-trip. This
+   * keeps the host state machine in lockstep — the client reaches ROULETTE on
+   * the same frame as the server instead of waiting for candidates to arrive. */
+  connect(m_Host, &DrHost::candidatesNeeded, this, [this](dr_minigame_type type) {
     std::array<DrMinigameCandidate, 5> candidates = {};
     for (auto &c : candidates)
     {
@@ -252,54 +238,7 @@ void MainWindow::startWithHost(DrHost *host)
       c.minigame = mg;
     }
     m_Host->setCandidates(candidates);
-
-    /* As server, share the exact picks so every peer rolls the same roulette. */
-    if (m_Netplay->sessionActive() && m_Netplay->isServer())
-    {
-      QList<QPair<int, int>> picks;
-      for (const auto &c : candidates)
-        picks.append(candidateToPair(c));
-      m_Netplay->sendCandidates(picks);
-    }
-  };
-
-  connect(m_Host, &DrHost::candidatesNeeded, this,
-    [this, pickCandidates](dr_minigame_type type) { pickCandidates(type); });
-
-  /* Client: apply the server's candidate picks. */
-  connect(m_Netplay, &DrNetplay::candidatesReceived, this,
-    [this](QList<QPair<int, int>> picks) {
-      if (!m_Host)
-        return;
-      const auto &guests = m_Guests->guests();
-      std::array<DrMinigameCandidate, 5> candidates = {};
-      for (int i = 0; i < 5 && i < picks.size(); i++)
-      {
-        const int g = picks[i].first; // dr_guest id
-        const int m = picks[i].second;
-        if (g <= DR_GUEST_INVALID || m < 0)
-          continue;
-        DrGuest *guest = nullptr;
-        for (DrGuest *candidate : guests)
-          if (static_cast<int>(candidate->id()) == g)
-          {
-            guest = candidate;
-            break;
-          }
-        if (!guest)
-          continue;
-        const dr_mp_minigame_t *list = guest->minigames();
-        int count = 0;
-        for (; list && list[count].name; count++)
-          ;
-        if (m < count)
-        {
-          candidates[i].guest = guest;
-          candidates[i].minigame = &list[m];
-        }
-      }
-      m_Host->setCandidates(candidates);
-    });
+  });
 
   /* Freeze the host on the exact lockstep frame the minigame is chosen, before
    * the async launchMinigame can run a different number of host frames per peer.

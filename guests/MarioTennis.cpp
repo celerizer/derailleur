@@ -124,6 +124,7 @@ MarioTennis::MarioTennis(QObject *parent)
     m_valid = false;
   }
   m_retro->setCore(c, true);
+  m_retro->applyN64Remaps();
 }
 
 void MarioTennis::startCore()

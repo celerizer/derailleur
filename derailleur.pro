@@ -4,6 +4,13 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 CONFIG += c++17
 
+# Capture the git commit at qmake time so netplay peers can verify they are
+# running the same build. Re-run qmake to refresh it. Passed as a bare token and
+# stringized in code to avoid cross-platform quote-escaping issues.
+GIT_HASH = $$system(git -C $$PWD rev-parse --short HEAD)
+isEmpty(GIT_HASH): GIT_HASH = unknown
+DEFINES += DR_GIT_HASH=$$GIT_HASH
+
 DEFINES += QRETRO_INTERNAL
 
 CONFIG += QRETRO_CONFIG_NO_GAMEPAD

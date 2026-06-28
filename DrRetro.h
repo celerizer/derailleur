@@ -55,6 +55,25 @@ public:
       m_core->startCore();
   }
 
+  void applyN64Remaps()
+  {
+    if (!m_core)
+      return;
+    for (unsigned port = 0; port < DR_CONTROL_PORT_SIZE - 1; port++)
+    {
+      /**
+       * libretro Mupen64 lays out the Nintendo 64 buttons in an odd order.
+       * We normalize them here so they feel natural across system shifts.
+       */
+      m_core->input()->remapButton(port, RETRO_DEVICE_ID_JOYPAD_B, RETRO_DEVICE_ID_JOYPAD_Y); // B = B
+      m_core->input()->remapButton(port, RETRO_DEVICE_ID_JOYPAD_A, RETRO_DEVICE_ID_JOYPAD_B); // A = A
+      m_core->input()->remapButton(port, RETRO_DEVICE_ID_JOYPAD_Y, RETRO_DEVICE_ID_JOYPAD_A); // Y = C??
+
+      m_core->input()->remapButton(port, RETRO_DEVICE_ID_JOYPAD_L, RETRO_DEVICE_ID_JOYPAD_L2); // L1 = Z
+      m_core->input()->remapButton(port, RETRO_DEVICE_ID_JOYPAD_R, RETRO_DEVICE_ID_JOYPAD_R2); // R1 = R
+    }
+  }
+
 public:
   dr_error readu8(uint8_t *out, size_t addr, dr_endianness endianness = DR_ENDIANNESS_LITTLE);
   dr_error reads8(int8_t *out, size_t addr, dr_endianness endianness = DR_ENDIANNESS_LITTLE);

@@ -3,6 +3,7 @@
 #include <QDataStream>
 #include <QElapsedTimer>
 #include <QHostAddress>
+#include <QRandomGenerator>
 #include <QTcpServer>
 #include <QTcpSocket>
 
@@ -21,6 +22,17 @@ static constexpr quint8 k_MsgCandidates = 0x04; // server -> client: 5 (guest, m
 static constexpr quint8 k_MsgSetDelay = 0x05;   // any peer (relayed): new input delay, 1 byte
 static constexpr quint8 k_MsgResyncBegin = 0x06; // server -> clients: { context } stop for resync
 static constexpr quint8 k_MsgResyncState = 0x07; // server -> clients: [u32 len][u64 frame][zstate]
+static constexpr quint8 k_MsgVersion = 0x08;     // client -> server: build hash on connect
+
+// Build identity exchanged on connect so peers can warn about version mismatch.
+// DR_GIT_HASH is a bare token from qmake; stringize it here.
+#ifndef DR_GIT_HASH
+#define DR_GIT_HASH unknown
+#endif
+#define DR_STRINGIZE_(x) #x
+#define DR_STRINGIZE(x) DR_STRINGIZE_(x)
+static const char *const k_BuildHash = DR_STRINGIZE(DR_GIT_HASH);
+static constexpr int k_VersionHashLen = 16; // fixed, null-padded git short hash
 
 // A hard resync jumps the per-context frame counter forward by this margin so
 // the post-resync timeline can never collide with stale in-flight packets from
@@ -66,8 +78,18 @@ void DrNetplay::startGame(int gameId)
   if (!m_IsServer)
     return;
 
+  /* Seed the shared PRNG so every peer rolls identical minigame candidates, and
+   * ship the seed alongside the game so clients seed the same. */
+  const quint32 seed = QRandomGenerator::global()->generate();
+  dr_srand(seed);
+
   QByteArray payload;
   payload.append(static_cast<char>(gameId));
+  {
+    QDataStream s(&payload, QIODevice::WriteOnly | QIODevice::Append);
+    s.setByteOrder(QDataStream::LittleEndian);
+    s << seed;
+  }
   broadcast(k_MsgStart, payload);
 
   /* The server's buffer setting is authoritative at session start. */
@@ -183,7 +205,13 @@ void DrNetplay::setActiveContext(QRetro *core)
   /* Prime fills m_CtxSend before we publish this context as active, so the
    * timing thread never runs the send loop with a stale pipeline cursor. */
   primeContext(ctx);
-  m_ActiveContext = ctx;
+  {
+    /* Publish the new foreground and wake any context still parked in
+     * waitForFrame so the one being switched away bails promptly. */
+    QMutexLocker lock(&m_RecvMutex);
+    m_ActiveContext = ctx;
+    m_FrameReady.wakeAll();
+  }
   emit logMessage(DR_LOG_INFO,
     QString("netplay: active context = %1 (barrier frame %2)").arg(ctx).arg(m_CtxFrame[ctx]));
 }
@@ -295,15 +323,6 @@ void DrNetplay::onFrameBegin(int context)
 
     const quint64 frame = m_CtxFrame[context];
 
-    if ((m_DebugTick++ % 120) == 0)
-      emit logMessage(DR_LOG_INFO,
-        QString("netplay tick: ctx=%1 peer=%2/%3 frame=%4 store=%5")
-          .arg(context)
-          .arg(m_PeerIndex)
-          .arg(m_PeerCount)
-          .arg(frame)
-          .arg(m_Store->currentFrame()));
-
     /* Sample this peer's controller and send it for every frame from the send
      * cursor up to frame + delay. Normally that is exactly one frame; when the
      * delay was just increased it back-fills the newly opened gap so no peer
@@ -332,6 +351,11 @@ void DrNetplay::onFrameBegin(int context)
      * wait deliberately — loop to service it without running retro_run. */
     if (m_ResyncActive.load())
       continue;
+
+    /* The foreground switched away from this context — stop gating it, don't
+     * treat it as a timeout. */
+    if (context != m_ActiveContext)
+      return;
 
     const QString err =
       QString("netplay: timed out waiting for ctx %1 frame %2").arg(context).arg(frame);
@@ -384,16 +408,16 @@ bool DrNetplay::waitForFrame(int context, quint64 frame)
     /* A hard resync interrupts the wait so onFrameBegin can reload state. */
     if (m_ResyncActive.load() && context == m_ResyncCtx)
       return false;
+    /* The foreground switched away (e.g. a minigame ended and we returned to the
+     * host). This context is no longer gated, so stop waiting for input that will
+     * never arrive instead of timing out and dropping the session. */
+    if (context != m_ActiveContext)
+      return false;
     if (!barrier && timer.hasExpired(m_TimeoutMs))
       return false;
     /* Re-check at least every 100ms so a session drop is noticed promptly. */
     m_FrameReady.wait(&m_RecvMutex, 100);
   }
-  if (timer.elapsed() > 4)
-    emit logMessage(DR_LOG_INFO, QString("netplay: stalled %1ms on ctx %2 frame %3")
-                                   .arg(timer.elapsed())
-                                   .arg(context)
-                                   .arg(frame));
   return true;
 }
 
@@ -507,12 +531,42 @@ void DrNetplay::handleMessage(QTcpSocket *sock, quint8 type, const QByteArray &p
       m_PeerCount = static_cast<quint8>(payload.at(1));
       emit logMessage(DR_LOG_INFO,
         QString("netplay: client assigned peer %1 of %2").arg(m_PeerIndex).arg(m_PeerCount));
+
+      /* Report our build so the server can warn about a version mismatch. The
+       * hash is fixed-width and null-padded to match the wire framing. */
+      const QByteArray v =
+        QByteArray(k_BuildHash).leftJustified(k_VersionHashLen, '\0', true);
+      writeMessage(sock, k_MsgVersion, v);
     }
     break;
+
+  case k_MsgVersion:
+  {
+    const QByteArray theirs(payload.constData()); // null-padded -> trims to the hash
+    const QByteArray ours(k_BuildHash);
+    if (theirs != ours)
+      emit logMessage(DR_LOG_WARN,
+        QString("netplay: peer build %1 does not match this build %2 — desyncs are likely")
+          .arg(QString::fromLatin1(theirs.constData()))
+          .arg(QString::fromLatin1(ours.constData())));
+    else
+      emit logMessage(DR_LOG_INFO,
+        QString("netplay: peer build %1 verified").arg(QString::fromLatin1(theirs.constData())));
+    break;
+  }
 
   case k_MsgStart:
   {
     const int gameId = payload.isEmpty() ? 0 : static_cast<quint8>(payload.at(0));
+    /* Seed the shared PRNG with the server's seed so candidate rolls match. */
+    quint32 seed = 0;
+    if (payload.size() >= 5)
+    {
+      QDataStream s(payload.mid(1, 4));
+      s.setByteOrder(QDataStream::LittleEndian);
+      s >> seed;
+    }
+    dr_srand(seed);
     m_Active = true;
     resetFrameCounter();
     emit logMessage(DR_LOG_INFO,
@@ -846,7 +900,7 @@ int DrNetplay::payloadLength(quint8 type)
   case k_MsgHandshake:
     return 2;
   case k_MsgStart:
-    return 1;
+    return 5; // 1-byte game id + 4-byte PRNG seed
   case k_MsgInput:
     return k_PacketPayloadSize;
   case k_MsgCandidates:
@@ -855,6 +909,8 @@ int DrNetplay::payloadLength(quint8 type)
     return 1;
   case k_MsgResyncBegin:
     return 1;
+  case k_MsgVersion:
+    return k_VersionHashLen;
   default:
     return -1;
   }

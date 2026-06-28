@@ -201,7 +201,6 @@ private:
   quint64 m_CtxSend[k_MaxContexts] = {};    // next local frame to send per context (delay pipeline)
 
   quint64 m_LocalFrame = 0; // singleplayer frame counter
-  quint64 m_DebugTick = 0;
 
   struct FrameInputs
   {

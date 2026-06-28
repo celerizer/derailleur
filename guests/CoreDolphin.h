@@ -19,7 +19,7 @@ public:
   void finalizeGames();
 
   const char *name() const override { return "Dolphin"; }
-  dr_guest id() const override { return DR_GUEST_INVALID; }
+  dr_guest id() const override { return DR_GUEST_DOLPHIN; }
 
   QRetro *core() const override { return m_retro ? m_retro->core() : nullptr; }
   void startCore() override;

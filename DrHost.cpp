@@ -79,10 +79,6 @@ void DrHost::run(void)
       }
       else
         reads16(&itemId, m_config.minigame_id_addr);
-      emit logMessage(DR_LOG_INFO,
-        QString("item pending: scene=0x%1 id=0x%2")
-          .arg((uint8_t)scene_id, 2, 16, QChar('0'))
-          .arg((uint16_t)itemId, 2, 16, QChar('0')));
 
       if (!m_itemSceneLeft)
       {
@@ -332,6 +328,9 @@ DrHost::DrHost(const DrHostConfig &config, QObject *parent)
     log(DR_LOG_ERROR, qPrintable(QString("failed to load content: %1").arg(config.game.c_str())));
     m_valid = false;
   }
+
+  /* Every host is currently an N64 game, so use the N64 face-button layout. */
+  applyN64Remaps();
 
   connect(m_core, &QRetro::frameEnd, this, [this]() { run(); }, Qt::DirectConnection);
 }

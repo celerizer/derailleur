@@ -1,5 +1,7 @@
 #include "DrCommon.h"
 
+#include <cstdint>
+
 static QString s_romsDir = "roms";
 static QString s_coresDir = "cores";
 static QString s_stateDir = "state";
@@ -51,4 +53,19 @@ QString dr_core_path(dr_core core)
   default:
     return {};
   }
+}
+
+/* Classic 32-bit LCG. Fixed-width unsigned math keeps the sequence identical on
+ * every platform (the whole point — std::rand does not). */
+static uint32_t s_randState = 1u;
+
+void dr_srand(unsigned seed)
+{
+  s_randState = static_cast<uint32_t>(seed);
+}
+
+int dr_rand(void)
+{
+  s_randState = s_randState * 1103515245u + 12345u;
+  return static_cast<int>((s_randState >> 16) & DR_RAND_MAX);
 }

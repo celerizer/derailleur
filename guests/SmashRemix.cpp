@@ -216,6 +216,21 @@ SmashRemix::SmashRemix(QObject *parent)
     m_valid = false;
   }
   m_retro->setCore(core, true);
+
+  /* Apply base N64 remaps. Additionally... */
+  m_retro->applyN64Remaps();
+
+  for (unsigned i = 0; i < 4; i++)
+  {
+    /* ...map all D-pad directions to L (taunt) */
+    m_retro->core()->input()->remapButton(i, RETRO_DEVICE_ID_JOYPAD_UP, RETRO_DEVICE_ID_JOYPAD_SELECT);
+    m_retro->core()->input()->remapButton(i, RETRO_DEVICE_ID_JOYPAD_DOWN, RETRO_DEVICE_ID_JOYPAD_SELECT);
+    m_retro->core()->input()->remapButton(i, RETRO_DEVICE_ID_JOYPAD_LEFT, RETRO_DEVICE_ID_JOYPAD_SELECT);
+    m_retro->core()->input()->remapButton(i, RETRO_DEVICE_ID_JOYPAD_RIGHT, RETRO_DEVICE_ID_JOYPAD_SELECT);
+
+    /* ...map R2 to Z (shield) */
+    m_retro->core()->input()->remapButton(i, RETRO_DEVICE_ID_JOYPAD_R2, RETRO_DEVICE_ID_JOYPAD_L2);
+  }
 }
 
 void SmashRemix::startCore()

@@ -23,6 +23,7 @@ MarioPartyN64::MarioPartyN64(const MpN64Config &config, QObject *parent)
     m_valid = false;
   }
   m_retro->setCore(core, true);
+  m_retro->applyN64Remaps();
 }
 
 void MarioPartyN64::startCore()

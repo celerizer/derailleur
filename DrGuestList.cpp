@@ -1,6 +1,5 @@
 #include "DrGuestList.h"
 
-#include <QRandomGenerator>
 #include <QWidget>
 
 DrGuestList::DrGuestList(QWidget *parent)
@@ -45,9 +44,9 @@ DrGuest *DrGuestList::pickMinigame(dr_minigame_type type, const dr_mp_minigame_t
   if (eligible.isEmpty())
     return nullptr;
 
-  // Pick a group with equal probability, then a random minigame from that group
-  const auto &picked = eligible[QRandomGenerator::global()->bounded(eligible.size())];
-  outMinigame = picked.minigames[QRandomGenerator::global()->bounded(picked.minigames.size())];
+  // Pick a group with equal probability, then a random minigame from that group.
+  const auto &picked = eligible[dr_rand() % eligible.size()];
+  outMinigame = picked.minigames[dr_rand() % picked.minigames.size()];
 
   log(DR_LOG_INFO, qPrintable(QString("guest: %1").arg(picked.name)));
   log(DR_LOG_INFO, qPrintable(QString("minigame: %1 (0x%2)")
