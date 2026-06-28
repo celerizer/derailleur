@@ -9,6 +9,7 @@
 #include <QPair>
 #include <QString>
 #include <QWaitCondition>
+#include <atomic>
 #include <cstdint>
 
 #include "QRetroInput.h"
@@ -80,7 +81,14 @@ public:
   void freezeActiveContext();
 
   void setInputDelay(int frames) { m_InputDelay = frames; }
+  int inputDelay() const { return m_InputDelay.load(); }
   void setTimeout(int ms) { m_TimeoutMs = ms; }
+
+  /// Changes the input delay (buffer frames) locally and, during a session,
+  /// propagates it to every peer (the server relays). Safe to call mid-session:
+  /// each context back-fills any send gap so no peer stalls. Callable from the
+  /// main (UI) thread.
+  void changeInputDelay(int frames);
 
   bool isServer() const { return m_IsServer; }
   bool hasSession() const { return m_Server != nullptr || !m_Sockets.isEmpty(); }
@@ -92,6 +100,11 @@ public:
   /// Server only: tells every connected client which game to start (a dr_game
   /// value), then begins lockstep locally.
   void startGame(int gameId);
+
+  /// Server only: forces a hard resync of the active context — every client
+  /// stops, receives the host's (compressed) savestate, loads it and resumes
+  /// in lockstep from a fresh sync point. Safe to call mid-session.
+  void requestHardResync();
 
   /// Server only: broadcasts the chosen minigame candidates to clients as
   /// opaque (guestIndex, minigameIndex) pairs (-1 = none). Always exactly 5.
@@ -115,6 +128,9 @@ signals:
   /// Emitted on a client with the server's chosen candidate (guest, minigame)
   /// index pairs (-1 = none).
   void candidatesReceived(QList<QPair<int, int>> candidates);
+  /// Emitted when the input delay changes (locally or from a peer) so the UI
+  /// can reflect the new value. Does not re-broadcast.
+  void inputDelayChanged(int frames);
   /// Diagnostic log; level matches DrLogger::message (DR_LOG_*).
   void logMessage(unsigned level, const QString &msg);
 
@@ -128,6 +144,7 @@ private:
 
   // Frame coordination (timing thread).
   void onFrameBegin(int context);
+  void runResync(int context);
   void sampleLocal();
   bool isFrameCompleteLocked(int context, quint64 frame) const;
   bool waitForFrame(int context, quint64 frame);
@@ -139,6 +156,8 @@ private:
   void sendInput(const DrNetplayPacket &p);
   void writeMessage(QTcpSocket *sock, quint8 type, const QByteArray &payload);
   void broadcast(quint8 type, const QByteArray &payload, QTcpSocket *except = nullptr);
+  void writeVarMessage(QTcpSocket *sock, quint8 type, const QByteArray &payload);
+  void broadcastVar(quint8 type, const QByteArray &payload, QTcpSocket *except = nullptr);
   void handleMessage(QTcpSocket *sock, quint8 type, const QByteArray &payload);
   void dropSession(const QString &reason);
 
@@ -164,7 +183,7 @@ private:
   bool m_IsServer = false;
   int m_PeerIndex = 0;
   int m_PeerCount = 1;
-  int m_InputDelay = 2;
+  std::atomic<int> m_InputDelay{ 2 };
   int m_TimeoutMs = 10000;
 
   bool m_Active = false;
@@ -173,11 +192,13 @@ private:
   // Per-context state. attachCore() assigns each QRetro a context id in a
   // deterministic order (host first, then guests), identical across peers.
   QHash<QRetro *, int> m_ContextIds;
+  QRetro *m_Contexts[k_MaxContexts] = {}; // context id -> core, for state I/O
   int m_ContextCount = 0;
   int m_ActiveContext = -1;
   int m_FrozenContext = -1; // context held (retro_run paused) until re-activated
   quint64 m_CtxFrame[k_MaxContexts] = {};   // next netplay frame to consume per context
   quint64 m_CtxBarrier[k_MaxContexts] = {}; // per-context sync-point frame (waits w/o timeout)
+  quint64 m_CtxSend[k_MaxContexts] = {};    // next local frame to send per context (delay pipeline)
 
   quint64 m_LocalFrame = 0; // singleplayer frame counter
   quint64 m_DebugTick = 0;
@@ -190,6 +211,15 @@ private:
   QMutex m_RecvMutex;
   QWaitCondition m_FrameReady;
   QHash<quint64, FrameInputs> m_Received;
+
+  // Hard resync. m_ResyncActive is read on the timing thread; the rest is guarded
+  // by m_RecvMutex. The host serializes the active core and ships it; clients park
+  // until the state arrives, load it, and resume from m_ResyncFrame.
+  std::atomic<bool> m_ResyncActive{ false };
+  int m_ResyncCtx = -1;
+  bool m_ResyncStateReady = false;
+  quint64 m_ResyncFrame = 0;
+  QByteArray m_ResyncState; // decompressed savestate awaiting load (client)
 };
 
 #endif

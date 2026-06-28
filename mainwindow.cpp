@@ -4,11 +4,8 @@
 #include <QDir>
 #include <QFile>
 #include <QGuiApplication>
-#include <QInputDialog>
 #include <QLabel>
 #include <QLineEdit>
-#include <QMenu>
-#include <QMenuBar>
 #include <QMessageBox>
 #include <QPushButton>
 #include <QRetro.h>
@@ -85,7 +82,7 @@ MainWindow::MainWindow(QWidget *parent)
 
   m_InputStore = new DrInputStore();
   m_Netplay = new DrNetplay(m_InputStore, this);
-  buildNetplayMenu();
+  setupNetplay();
 
   auto *dolphin = new CoreDolphin(this);
   dolphin->addGame(new MarioParty4(dolphin->core(), dolphin));
@@ -385,34 +382,10 @@ void MainWindow::launchMinigame(
     });
 }
 
-void MainWindow::buildNetplayMenu()
+void MainWindow::setupNetplay()
 {
-  QMenu *menu = menuBar()->addMenu(tr("Netplay"));
-
-  menu->addAction(tr("Host session..."), this, [this]() {
-    bool ok = false;
-    int port = QInputDialog::getInt(this, tr("Host Session"), tr("Port:"), 55435, 1, 65535, 1, &ok);
-    if (!ok)
-      return;
-    int players = QInputDialog::getInt(this, tr("Host Session"), tr("Players:"), 2, 2,
-      DrNetplay::k_MaxPeers, 1, &ok);
-    if (!ok)
-      return;
-    m_Netplay->hostSession(static_cast<quint16>(port), players);
-  });
-
-  menu->addAction(tr("Join session..."), this, [this]() {
-    bool ok = false;
-    QString addr =
-      QInputDialog::getText(this, tr("Join Session"), tr("Server address:"), QLineEdit::Normal,
-        QStringLiteral("127.0.0.1"), &ok);
-    if (!ok || addr.isEmpty())
-      return;
-    int port = QInputDialog::getInt(this, tr("Join Session"), tr("Port:"), 55435, 1, 65535, 1, &ok);
-    if (!ok)
-      return;
-    m_Netplay->joinSession(addr, static_cast<quint16>(port));
-  });
+  m_NetplayUi = new DrNetplayWidget(m_Netplay, nullptr);
+  m_NetplayUi->show();
 
   connect(m_Netplay, &DrNetplay::sessionStarted, this, [this](int index, int count) {
 #if SHOW_LOGGER

@@ -18,6 +18,14 @@ static constexpr quint8 k_MsgHandshake = 0x01;  // server -> client: { peerIndex
 static constexpr quint8 k_MsgStart = 0x02;      // server -> client: begin lockstep
 static constexpr quint8 k_MsgInput = 0x03;      // either direction: DrNetplayPacket
 static constexpr quint8 k_MsgCandidates = 0x04; // server -> client: 5 (guest, minigame) pairs
+static constexpr quint8 k_MsgSetDelay = 0x05;   // any peer (relayed): new input delay, 1 byte
+static constexpr quint8 k_MsgResyncBegin = 0x06; // server -> clients: { context } stop for resync
+static constexpr quint8 k_MsgResyncState = 0x07; // server -> clients: [u32 len][u64 frame][zstate]
+
+// A hard resync jumps the per-context frame counter forward by this margin so
+// the post-resync timeline can never collide with stale in-flight packets from
+// before the resync (which sit within a few frames of the old counter).
+static constexpr quint64 k_ResyncMargin = 600;
 
 // quint64 + quint8 + quint8 + quint16 + 6 * qint16
 static constexpr int k_PacketPayloadSize = 8 + 1 + 1 + 2 + 6 * 2;
@@ -50,8 +58,6 @@ void DrNetplay::hostSession(quint16 port, int playerCount)
     return;
   }
 
-  /* The session does not begin on connection; it begins when the host selects
-   * a game via startGame(). */
   emit peerCountChanged(1, m_PeerCount);
 }
 
@@ -64,6 +70,11 @@ void DrNetplay::startGame(int gameId)
   payload.append(static_cast<char>(gameId));
   broadcast(k_MsgStart, payload);
 
+  /* The server's buffer setting is authoritative at session start. */
+  QByteArray delayPayload;
+  delayPayload.append(static_cast<char>(m_InputDelay.load()));
+  broadcast(k_MsgSetDelay, delayPayload);
+
   m_Active = true;
   resetFrameCounter();
   emit logMessage(DR_LOG_INFO,
@@ -72,6 +83,54 @@ void DrNetplay::startGame(int gameId)
       .arg(m_PeerCount)
       .arg(m_Sockets.size()));
   emit sessionStarted(m_PeerIndex, m_PeerCount);
+}
+
+void DrNetplay::changeInputDelay(int frames)
+{
+  frames = qBound(0, frames, 30);
+  if (frames == m_InputDelay.load())
+    return;
+  m_InputDelay = frames;
+  emit inputDelayChanged(frames);
+
+  /* Outside a session this is just a local default. During one, push it to the
+   * peers; each context's send loop back-fills the gap so nobody stalls. */
+  if (!m_Active)
+    return;
+
+  QByteArray payload;
+  payload.append(static_cast<char>(frames));
+  if (m_IsServer)
+    broadcast(k_MsgSetDelay, payload);
+  else if (!m_Sockets.isEmpty())
+    writeMessage(m_Sockets.first(), k_MsgSetDelay, payload);
+}
+
+void DrNetplay::requestHardResync()
+{
+  if (!m_IsServer || !m_Active || m_ActiveContext < 0)
+    return;
+  if (m_ResyncActive.load())
+    return;
+
+  const int ctx = m_ActiveContext;
+
+  /* Tell the clients to stop and await state, then arm ourselves. The timing
+   * thread picks this up (interrupting any stall) and does the serialize. */
+  QByteArray payload;
+  payload.append(static_cast<char>(ctx));
+  broadcast(k_MsgResyncBegin, payload);
+
+  m_ResyncCtx = ctx;
+  {
+    QMutexLocker lock(&m_RecvMutex);
+    m_ResyncStateReady = false;
+    m_ResyncState.clear();
+    m_Received.clear();
+    m_ResyncActive = true;
+    m_FrameReady.wakeAll();
+  }
+  emit logMessage(DR_LOG_INFO, QString("netplay: hard resync requested for ctx %1").arg(ctx));
 }
 
 void DrNetplay::sendCandidates(const QList<QPair<int, int>> &candidates)
@@ -98,9 +157,11 @@ void DrNetplay::sendCandidates(const QList<QPair<int, int>> &candidates)
 void DrNetplay::setActiveContext(QRetro *core)
 {
   const int ctx = m_ContextIds.value(core, -1);
-  m_ActiveContext = ctx;
   if (!m_Active || ctx < 0)
+  {
+    m_ActiveContext = ctx;
     return;
+  }
 
   /* Becoming the foreground context is this context's per-context sync point.
    * The frame counter is monotonic and only advances on gated frames, so it is
@@ -119,7 +180,10 @@ void DrNetplay::setActiveContext(QRetro *core)
     m_CtxBarrier[ctx] = m_CtxFrame[ctx];
     m_FrameReady.wakeAll();
   }
+  /* Prime fills m_CtxSend before we publish this context as active, so the
+   * timing thread never runs the send loop with a stale pipeline cursor. */
   primeContext(ctx);
+  m_ActiveContext = ctx;
   emit logMessage(DR_LOG_INFO,
     QString("netplay: active context = %1 (barrier frame %2)").arg(ctx).arg(m_CtxFrame[ctx]));
 }
@@ -153,8 +217,13 @@ void DrNetplay::resetFrameCounter()
   {
     m_CtxFrame[i] = 0;
     m_CtxBarrier[i] = 0;
+    m_CtxSend[i] = 0;
   }
   m_Received.clear();
+  m_ResyncActive = false;
+  m_ResyncStateReady = false;
+  m_ResyncState.clear();
+  m_ResyncCtx = -1;
   m_FrameReady.wakeAll();
 }
 
@@ -172,6 +241,7 @@ void DrNetplay::attachCore(QRetro *core)
 
   const int ctx = m_ContextCount++;
   m_ContextIds.insert(core, ctx);
+  m_Contexts[ctx] = core;
 
   auto *backend = new QRetroInputBackendShared(m_Store, core);
   backend->init(core->input()->joypads(), core->input()->maxUsers());
@@ -210,35 +280,64 @@ void DrNetplay::onFrameBegin(int context)
   if (context != m_ActiveContext)
     return;
 
-  const quint64 frame = m_CtxFrame[context];
-
-  if ((m_DebugTick++ % 120) == 0)
-    emit logMessage(DR_LOG_INFO,
-      QString("netplay tick: ctx=%1 peer=%2/%3 frame=%4 store=%5")
-        .arg(context)
-        .arg(m_PeerIndex)
-        .arg(m_PeerCount)
-        .arg(frame)
-        .arg(m_Store->currentFrame()));
-
-  /* Sample this peer's controller and send it for frame + delay. The delay
-   * gives the network m_InputDelay frames of slack before any stall. */
-  sampleLocal();
-  DrNetplayPacket mine =
-    packetFromJoypad(m_LocalPads[0], m_PeerIndex, context, frame + m_InputDelay);
-  recordPacket(mine);
-  sendInput(mine);
-
-  if (!waitForFrame(context, frame))
+  /* Stay inside onFrameBegin (holding off retro_run) until a frame is gated or
+   * the session ends. The loop lets a hard resync, which can interrupt a stalled
+   * waitForFrame, be serviced here on the timing thread before the core advances. */
+  for (;;)
   {
+    /* Hard resync: the core is quiescent here (between frames), so serialize /
+     * unserialize run inline. runResync replaces this context's state from the
+     * host and re-arms the frame counter + barrier before we gate again. */
+    if (m_ResyncActive.load() && context == m_ResyncCtx)
+      runResync(context);
+    if (!m_Active || m_Abort)
+      return;
+
+    const quint64 frame = m_CtxFrame[context];
+
+    if ((m_DebugTick++ % 120) == 0)
+      emit logMessage(DR_LOG_INFO,
+        QString("netplay tick: ctx=%1 peer=%2/%3 frame=%4 store=%5")
+          .arg(context)
+          .arg(m_PeerIndex)
+          .arg(m_PeerCount)
+          .arg(frame)
+          .arg(m_Store->currentFrame()));
+
+    /* Sample this peer's controller and send it for every frame from the send
+     * cursor up to frame + delay. Normally that is exactly one frame; when the
+     * delay was just increased it back-fills the newly opened gap so no peer
+     * stalls, and when decreased it sends nothing until the buffered frames
+     * drain. The delay therefore gives the network `delay` frames of slack and
+     * can be retuned live. */
+    sampleLocal();
+    const quint64 target = frame + static_cast<quint64>(m_InputDelay.load());
+    while (m_CtxSend[context] <= target)
+    {
+      DrNetplayPacket mine =
+        packetFromJoypad(m_LocalPads[0], m_PeerIndex, context, m_CtxSend[context]);
+      recordPacket(mine);
+      sendInput(mine);
+      m_CtxSend[context]++;
+    }
+
+    if (waitForFrame(context, frame))
+    {
+      commitMergedFrame(context, frame);
+      m_CtxFrame[context] = frame + 1;
+      return;
+    }
+
+    /* waitForFrame bailed. If a resync was just requested it interrupted the
+     * wait deliberately — loop to service it without running retro_run. */
+    if (m_ResyncActive.load())
+      continue;
+
     const QString err =
       QString("netplay: timed out waiting for ctx %1 frame %2").arg(context).arg(frame);
     QMetaObject::invokeMethod(this, [this, err]() { dropSession(err); }, Qt::QueuedConnection);
     return;
   }
-
-  commitMergedFrame(context, frame);
-  m_CtxFrame[context] = frame + 1;
 }
 
 void DrNetplay::sampleLocal()
@@ -281,6 +380,9 @@ bool DrNetplay::waitForFrame(int context, quint64 frame)
   while (!isFrameCompleteLocked(context, frame))
   {
     if (!m_Active || m_Abort)
+      return false;
+    /* A hard resync interrupts the wait so onFrameBegin can reload state. */
+    if (m_ResyncActive.load() && context == m_ResyncCtx)
       return false;
     if (!barrier && timer.hasExpired(m_TimeoutMs))
       return false;
@@ -359,6 +461,26 @@ void DrNetplay::onSocketReadyRead()
     if (buf.isEmpty())
       break;
     const quint8 type = static_cast<quint8>(buf.at(0));
+
+    /* The resync state is the one variable-length message: [type][u32 len][..]. */
+    if (type == k_MsgResyncState)
+    {
+      if (buf.size() < 1 + 4)
+        break;
+      quint32 len = 0;
+      {
+        QDataStream s(buf.mid(1, 4));
+        s.setByteOrder(QDataStream::LittleEndian);
+        s >> len;
+      }
+      if (buf.size() < static_cast<int>(1 + 4 + len))
+        break;
+      const QByteArray payload = buf.mid(5, static_cast<int>(len));
+      buf.remove(0, static_cast<int>(5 + len));
+      handleMessage(sock, type, payload);
+      continue;
+    }
+
     const int len = payloadLength(type);
     if (len < 0)
     {
@@ -426,6 +548,53 @@ void DrNetplay::handleMessage(QTcpSocket *sock, quint8 type, const QByteArray &p
     break;
   }
 
+  case k_MsgSetDelay:
+  {
+    const int d = payload.isEmpty() ? m_InputDelay.load() : static_cast<quint8>(payload.at(0));
+    m_InputDelay = d;
+    emit inputDelayChanged(d);
+    /* The server relays the change on to the other clients. */
+    if (m_IsServer)
+      broadcast(k_MsgSetDelay, payload, sock);
+    break;
+  }
+
+  case k_MsgResyncBegin:
+  {
+    /* Server told us to stop the given context; its state is on the way. Clearing
+     * pending input here (main thread, before the state/prime messages that follow
+     * on this socket) keeps stale frames from lingering. */
+    const int ctx = payload.isEmpty() ? m_ActiveContext : static_cast<quint8>(payload.at(0));
+    m_ResyncCtx = ctx;
+    {
+      QMutexLocker lock(&m_RecvMutex);
+      m_ResyncStateReady = false;
+      m_ResyncState.clear();
+      m_Received.clear();
+      m_ResyncActive = true;
+      m_FrameReady.wakeAll();
+    }
+    emit logMessage(DR_LOG_INFO, QString("netplay: hard resync incoming for ctx %1").arg(ctx));
+    break;
+  }
+
+  case k_MsgResyncState:
+  {
+    quint64 frame = 0;
+    {
+      QDataStream s(payload.left(8));
+      s.setByteOrder(QDataStream::LittleEndian);
+      s >> frame;
+    }
+    const QByteArray raw = qUncompress(payload.mid(8));
+    QMutexLocker lock(&m_RecvMutex);
+    m_ResyncFrame = frame;
+    m_ResyncState = raw;
+    m_ResyncStateReady = true;
+    m_FrameReady.wakeAll();
+    break;
+  }
+
   default:
     break;
   }
@@ -457,7 +626,8 @@ void DrNetplay::primeContext(int context)
    * current (barrier) frame, so every peer can complete those frames before
    * real input arrives after a sync point. */
   const quint64 base = m_CtxFrame[context];
-  for (int f = 0; f < m_InputDelay; f++)
+  const int delay = m_InputDelay.load();
+  for (int f = 0; f < delay; f++)
   {
     DrNetplayPacket p{};
     p.frame = base + static_cast<quint64>(f);
@@ -465,6 +635,93 @@ void DrNetplay::primeContext(int context)
     p.context = static_cast<uint8_t>(context);
     recordPacket(p);
     sendInput(p);
+  }
+  /* Next real (sampled) input goes one past the primed window. */
+  m_CtxSend[context] = base + static_cast<quint64>(delay);
+}
+
+void DrNetplay::runResync(int context)
+{
+  QRetro *core = (context >= 0 && context < k_MaxContexts) ? m_Contexts[context] : nullptr;
+  if (!core)
+  {
+    m_ResyncActive = false;
+    return;
+  }
+
+  if (m_IsServer)
+  {
+    /* The host is the source of truth: serialize the live core (inline on this
+     * timing thread, between frames) and ship it to the clients. The new frame
+     * counter is pushed forward by k_ResyncMargin so it cannot collide with any
+     * stale in-flight packets. */
+    const quint64 newFrame = m_CtxFrame[context] + k_ResyncMargin;
+    const size_t sz = core->serializeSize();
+    QByteArray raw(static_cast<int>(sz), '\0');
+    if (sz == 0 || !core->serialize(raw.data(), sz))
+    {
+      emit logMessage(DR_LOG_ERROR, "netplay: hard resync serialize failed");
+      m_ResyncActive = false;
+      return;
+    }
+
+    QByteArray payload;
+    {
+      QDataStream s(&payload, QIODevice::WriteOnly);
+      s.setByteOrder(QDataStream::LittleEndian);
+      s << static_cast<quint64>(newFrame);
+    }
+    payload.append(qCompress(raw));
+    QMetaObject::invokeMethod(
+      this, [this, payload]() { broadcastVar(k_MsgResyncState, payload); },
+      Qt::QueuedConnection);
+
+    emit logMessage(DR_LOG_INFO,
+      QString("netplay: hard resync sent (%1 bytes) at frame %2").arg(raw.size()).arg(newFrame));
+
+    {
+      QMutexLocker lock(&m_RecvMutex);
+      m_CtxFrame[context] = newFrame;
+      m_CtxBarrier[context] = newFrame;
+      m_ResyncActive = false;
+      m_FrameReady.wakeAll();
+    }
+    primeContext(context);
+  }
+  else
+  {
+    /* Client: park here until the host's state arrives, load it, then jump to the
+     * host's frame and re-prime so the next gate is a clean barrier. */
+    QByteArray state;
+    quint64 frame = 0;
+    {
+      QMutexLocker lock(&m_RecvMutex);
+      while (!m_ResyncStateReady && m_Active && !m_Abort && m_ResyncActive.load())
+        m_FrameReady.wait(&m_RecvMutex, 100);
+      if (!m_ResyncStateReady)
+      {
+        m_ResyncActive = false; // session ended/aborted before state arrived
+        return;
+      }
+      state = m_ResyncState;
+      frame = m_ResyncFrame;
+      m_ResyncStateReady = false;
+      m_ResyncState.clear();
+    }
+
+    if (state.isEmpty() ||
+        !core->unserialize(state.constData(), static_cast<size_t>(state.size())))
+      emit logMessage(DR_LOG_ERROR, "netplay: hard resync unserialize failed");
+
+    {
+      QMutexLocker lock(&m_RecvMutex);
+      m_CtxFrame[context] = frame;
+      m_CtxBarrier[context] = frame;
+      m_ResyncActive = false;
+      m_FrameReady.wakeAll();
+    }
+    primeContext(context);
+    emit logMessage(DR_LOG_INFO, QString("netplay: hard resync applied at frame %1").arg(frame));
   }
 }
 
@@ -511,6 +768,26 @@ void DrNetplay::broadcast(quint8 type, const QByteArray &payload, QTcpSocket *ex
       writeMessage(sock, type, payload);
 }
 
+void DrNetplay::writeVarMessage(QTcpSocket *sock, quint8 type, const QByteArray &payload)
+{
+  if (!sock)
+    return;
+  QByteArray msg;
+  msg.append(static_cast<char>(type));
+  QDataStream s(&msg, QIODevice::WriteOnly | QIODevice::Append);
+  s.setByteOrder(QDataStream::LittleEndian);
+  s << static_cast<quint32>(payload.size());
+  msg.append(payload);
+  sock->write(msg);
+}
+
+void DrNetplay::broadcastVar(quint8 type, const QByteArray &payload, QTcpSocket *except)
+{
+  for (QTcpSocket *sock : m_Sockets)
+    if (sock != except)
+      writeVarMessage(sock, type, payload);
+}
+
 void DrNetplay::dropSession(const QString &reason)
 {
   if (!m_Active && !m_Server && m_Sockets.isEmpty())
@@ -537,6 +814,10 @@ void DrNetplay::dropSession(const QString &reason)
   {
     QMutexLocker lock(&m_RecvMutex);
     m_Received.clear();
+    /* Release any timing thread parked in a resync wait, then disarm. */
+    m_ResyncActive = false;
+    m_ResyncStateReady = false;
+    m_ResyncState.clear();
     /* Wake any timing thread parked in waitForFrame so it exits promptly. */
     m_FrameReady.wakeAll();
   }
@@ -570,6 +851,10 @@ int DrNetplay::payloadLength(quint8 type)
     return k_PacketPayloadSize;
   case k_MsgCandidates:
     return k_CandidatesPayloadSize;
+  case k_MsgSetDelay:
+    return 1;
+  case k_MsgResyncBegin:
+    return 1;
   default:
     return -1;
   }

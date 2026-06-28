@@ -1,8 +1,9 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
+#include <cstdlib>
+
 #include <QCloseEvent>
-#include <QCoreApplication>
 #include <QMainWindow>
 #include <QStackedWidget>
 #include <QTimer>
@@ -14,6 +15,7 @@
 #include "DrInputStore.h"
 #include "DrLogger.h"
 #include "DrNetplay.h"
+#include "DrNetplayWidget.h"
 #include "DrOverlay.h"
 
 class MainWindow : public QMainWindow
@@ -30,7 +32,7 @@ private:
   void showGuests();
   void launchMinigame(
     DrGuest *guest, const dr_mp_minigame_t *minigame, const dr_player_t players[4]);
-  void buildNetplayMenu();
+  void setupNetplay();
   void attachNetplay();
 
   DrGuestList *m_Guests = nullptr;
@@ -42,6 +44,7 @@ private:
   DrDebug *m_Debug = nullptr;
   DrInputStore *m_InputStore = nullptr;
   DrNetplay *m_Netplay = nullptr;
+  DrNetplayWidget *m_NetplayUi = nullptr;
 
 protected:
   void showEvent(QShowEvent *) override
@@ -61,17 +64,18 @@ protected:
   }
   void closeEvent(QCloseEvent *e) override
   {
-    if (m_Netplay)
-      m_Netplay->abort();
     if (m_Logger)
       m_Logger->close();
     if (m_Debug)
       m_Debug->close();
+    if (m_NetplayUi)
+      m_NetplayUi->close();
     QMainWindow::closeEvent(e);
-    // Guest/host cores run in their own top-level windows (e.g. the shared
-    // Dolphin core), so closing the main window won't trigger Qt's
-    // quit-on-last-window-closed. Quit explicitly so emulation stops.
-    QCoreApplication::quit();
+    // The emulator cores run background threads (timing, SDL, libusb) that fire
+    // DirectConnection signals into our objects. Unwinding all of that during
+    // normal teardown races with object destruction and crashes (notably under
+    // Wine). There is no exit-time state to flush, so terminate immediately.
+    std::_Exit(0);
   }
 };
 

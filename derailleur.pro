@@ -21,6 +21,7 @@ SOURCES += \
     DrHost.cpp \
     DrInputStore.cpp \
     DrNetplay.cpp \
+    DrNetplayWidget.cpp \
     DrOverlay.cpp \
     DrGuestList.cpp \
     DrLogger.cpp \
@@ -56,6 +57,7 @@ HEADERS += \
     DrHost.h \
     DrInputStore.h \
     DrNetplay.h \
+    DrNetplayWidget.h \
     DrLogger.h \
     DrOverlay.h \
     DrRetro.h \
