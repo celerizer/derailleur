@@ -96,8 +96,8 @@ MainWindow::MainWindow(QWidget *parent)
   dolphin->addGame(new MarioParty7(dolphin->core(), dolphin));
   //dolphin->addGame(new KirbyAirRide(dolphin->core(), dolphin));
   dolphin->finalizeGames();
-  //if (dolphin->isValid())
-  //  m_Guests->add(dolphin);
+  if (dolphin->isValid())
+    m_Guests->add(dolphin);
 
   auto addGuest = [this](DrGuest *g) {
     if (g->isValid())
@@ -106,11 +106,11 @@ MainWindow::MainWindow(QWidget *parent)
       delete g;
   };
   //addGuest(new MarioKart64());
-  //addGuest(new MarioParty1());
-  //addGuest(new MarioParty2());
-  //addGuest(new MarioParty3());
+  addGuest(new MarioParty1());
+  addGuest(new MarioParty2());
+  addGuest(new MarioParty3());
   addGuest(new SmashRemix());
-  //addGuest(new MarioTennis());
+  addGuest(new MarioTennis());
   //addGuest(new MarioPartyAdvance());
   //addGuest(new MarioPartyE());
 
