@@ -261,21 +261,23 @@ MarioParty3Host::MarioParty3Host(QObject *parent)
         m_core->cheatSet(2, false, MP3_CHEAT_DUEL_BOARD);
 
         // Write 0x41-entry title table to ROM at 0xB122D74A
-        // Entries 0x00-0x0F: 48 bytes each (full layout, used for roulette slots)
-        // Entries 0x10-0x3A: 6 bytes each (minimal valid: 00 len 0B 'A' 00 00)
-        // Entries 0x3B-0x40: 48 bytes each (item minigame names)
+        // Entries 0x00-0x0F: 48-byte roulette slots (names injected at runtime)
+        // Entries 0x10-0x3A: unused ids, all sharing one 6-byte filler entry
+        // Entries 0x3B-0x40: item minigame names, 24 bytes each
         static constexpr size_t   TABLE_BASE        = 0xB122D74A;
         static constexpr uint32_t ENTRY_COUNT       = 0x41;
         static constexpr uint32_t FULL_COUNT        = 16;
-        static constexpr uint32_t SMALL_COUNT       = 0x3B - FULL_COUNT; // 43
         static constexpr uint32_t ITEM_BASE         = 0x3B;
         static constexpr uint32_t ITEM_COUNT        = 6;
         static constexpr uint32_t ENTRY_SIZE        = 48;
-        static constexpr uint32_t SMALL_ENTRY_SIZE  = 6;
+        static constexpr uint32_t SMALL_ENTRY_SIZE  = 6;  // single shared filler
+        static constexpr uint32_t ITEM_ENTRY_SIZE   = 24; // longest item name is 20 chars + 3
         static constexpr uint32_t HEADER_SIZE       = 4 + ENTRY_COUNT * 4; // 0x108
         static constexpr uint32_t FULL_AREA_SIZE    = FULL_COUNT * ENTRY_SIZE;
-        static constexpr uint32_t SMALL_AREA_SIZE   = SMALL_COUNT * SMALL_ENTRY_SIZE;
-        static constexpr uint32_t ITEM_AREA_OFFSET  = FULL_AREA_SIZE + SMALL_AREA_SIZE;
+        // Unused ids share one filler entry and items are sized to their names, so the
+        // table no longer spills past the adjacent ROM table.
+        static constexpr uint32_t FILLER_OFFSET     = HEADER_SIZE + FULL_AREA_SIZE;
+        static constexpr uint32_t ITEM_AREA_OFFSET  = FULL_AREA_SIZE + SMALL_ENTRY_SIZE;
 
         static const char * const ITEM_NAMES[ITEM_COUNT] = {
           "Winner's Wheel",       // 0x3B
@@ -300,10 +302,9 @@ MarioParty3Host::MarioParty3Host(QObject *parent)
         for (uint32_t i = 0; i < FULL_COUNT; i++)
           xw32(HEADER_SIZE + i * ENTRY_SIZE, TABLE_BASE + 4 + i * 4);
         for (uint32_t i = FULL_COUNT; i < ITEM_BASE; i++)
-          xw32(HEADER_SIZE + FULL_AREA_SIZE + (i - FULL_COUNT) * SMALL_ENTRY_SIZE,
-               TABLE_BASE + 4 + i * 4);
+          xw32(FILLER_OFFSET, TABLE_BASE + 4 + i * 4); // every unused id -> shared filler
         for (uint32_t i = ITEM_BASE; i < ENTRY_COUNT; i++)
-          xw32(HEADER_SIZE + ITEM_AREA_OFFSET + (i - ITEM_BASE) * ENTRY_SIZE,
+          xw32(HEADER_SIZE + ITEM_AREA_OFFSET + (i - ITEM_BASE) * ITEM_ENTRY_SIZE,
                TABLE_BASE + 4 + i * 4);
 
         for (uint32_t i = 0; i < FULL_COUNT; i++)
@@ -316,9 +317,9 @@ MarioParty3Host::MarioParty3Host(QObject *parent)
             xw(0x00, base + j);
         }
 
-        for (uint32_t i = 0; i < SMALL_COUNT; i++)
         {
-          size_t base = TABLE_BASE + HEADER_SIZE + FULL_AREA_SIZE + i * SMALL_ENTRY_SIZE;
+          // One filler entry shared by every unused id 0x10-0x3A.
+          size_t base = TABLE_BASE + FILLER_OFFSET;
           xw(0x00, base);     // alignment
           xw(0x04, base + 1); // len (offset 3 + strlen 1)
           xw(0x0B, base + 2); // marker
@@ -329,11 +330,11 @@ MarioParty3Host::MarioParty3Host(QObject *parent)
 
         for (uint32_t i = 0; i < ITEM_COUNT; i++)
         {
-          size_t base = TABLE_BASE + HEADER_SIZE + ITEM_AREA_OFFSET + i * ENTRY_SIZE;
+          size_t base = TABLE_BASE + HEADER_SIZE + ITEM_AREA_OFFSET + i * ITEM_ENTRY_SIZE;
           const char *name = ITEM_NAMES[i];
           uint8_t encoded[32] = {};
           uint8_t nameLen = 0;
-          for (size_t k = 0, srcLen = strlen(name); k < srcLen && nameLen < 32; k++)
+          for (size_t k = 0, srcLen = strlen(name); k < srcLen && nameLen < ITEM_ENTRY_SIZE - 3; k++)
           {
             char c = name[k];
             uint8_t enc;
@@ -349,7 +350,7 @@ MarioParty3Host::MarioParty3Host(QObject *parent)
           xw(0x00, base);
           xw(nameLen + 3, base + 1); // len = offset 3 + strlen
           xw(0x0B, base + 2);        // marker
-          for (uint32_t j = 0; j < ENTRY_SIZE - 3; j++)
+          for (uint32_t j = 0; j < ITEM_ENTRY_SIZE - 3; j++)
             xw(j < nameLen ? encoded[j] : 0, base + 3 + j);
         }
       }
