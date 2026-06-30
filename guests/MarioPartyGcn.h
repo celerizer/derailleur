@@ -63,10 +63,14 @@ public:
 
 protected:
   void run() override;
+  void applyPlayers();
   DrRetro *m_retro = nullptr;
   MpGcnConfig m_config;
   int32_t m_lastScene = -1;
   int m_minigameFrames = 0;
+
+  dr_player_t m_players[4] = {};
+  int m_slotOf[4] = { 0, 1, 2, 3 }; // board player index -> game slot
 };
 
 #endif
