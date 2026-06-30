@@ -461,6 +461,8 @@ void DrHost::readPlayers(dr_minigame_type type)
       m_pendingPlayers[i].team_type = DR_TEAM_TYPE_2V2;
     else if (type == DR_MINIGAME_4P)
       m_pendingPlayers[i].team_type = DR_TEAM_TYPE_4P;
+    else if (type == DR_MINIGAME_DUEL)
+      m_pendingPlayers[i].team_type = (m_pendingPlayers[i].team_id == 0) ? DR_TEAM_TYPE_SOLO : DR_TEAM_TYPE_INVALID;
     else
       m_pendingPlayers[i].team_type = DR_TEAM_TYPE_SOLO;
   }

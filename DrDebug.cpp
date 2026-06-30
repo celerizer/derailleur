@@ -72,7 +72,9 @@ DrDebug::DrDebug(QWidget *parent)
       break;
     case DR_MINIGAME_DUEL:
       players[0].team_type = DR_TEAM_TYPE_SOLO;
-      players[1].team_type = DR_TEAM_TYPE_SOLO;
+      players[1].team_type = ((order[0] == 1) || (order[1] == 1)) ? DR_TEAM_TYPE_SOLO : DR_TEAM_TYPE_INVALID;
+      players[2].team_type = order[2] == 1 ? DR_TEAM_TYPE_SOLO : DR_TEAM_TYPE_INVALID;
+      players[3].team_type = order[3] == 1 ? DR_TEAM_TYPE_SOLO : DR_TEAM_TYPE_INVALID;
       break;
     default:
       for (unsigned i = 0; i < 4; i++)
