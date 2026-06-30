@@ -20,6 +20,41 @@ class QRetroInputBackend;
 class QTcpServer;
 class QTcpSocket;
 
+/* Wire message types: [1-byte type][fixed-size payload]. */
+typedef enum
+{
+  DR_NETPLAY_PACKET_HANDSHAKE    = 0x01, /* server -> client: { peerIndex, peerCount } */
+  DR_NETPLAY_PACKET_START        = 0x02, /* server -> client: begin lockstep */
+  DR_NETPLAY_PACKET_INPUT        = 0x03, /* either direction: DrNetplayPacket */
+  DR_NETPLAY_PACKET_CANDIDATES   = 0x04, /* server -> client: candidate (guest, minigame) pairs */
+  DR_NETPLAY_PACKET_SET_DELAY    = 0x05, /* any peer (relayed): new input delay, 1 byte */
+  DR_NETPLAY_PACKET_RESYNC_BEGIN = 0x06, /* server -> clients: { context } stop for resync */
+  DR_NETPLAY_PACKET_RESYNC_STATE = 0x07, /* server -> clients: [u32 len][u64 frame][zstate] */
+  DR_NETPLAY_PACKET_VERSION      = 0x08  /* client -> server: build hash on connect */
+} dr_netplay_packet_type;
+
+/* Maximum peers in a session (also the per-frame input array width). */
+#define DR_NETPLAY_MAX_PEERS 4
+
+/* Maximum QRetro contexts (host + guests) tracked per peer. */
+#define DR_NETPLAY_MAX_CONTEXTS 16
+
+/* A hard resync jumps the per-context frame counter forward by this margin so
+ * the post-resync timeline can never collide with stale in-flight packets from
+ * before the resync (which sit within a few frames of the old counter). */
+#define DR_NETPLAY_RESYNC_MARGIN 600
+
+/* Input packet payload: quint64 + quint8 + quint8 + quint16 + 6 * qint16. */
+#define DR_NETPLAY_PACKET_PAYLOAD_SIZE (8 + 1 + 1 + 2 + 6 * 2)
+
+/* Minigame candidates: this many slots, each a pair of quint16 (guest index,
+ * minigame index). */
+#define DR_NETPLAY_CANDIDATE_SLOTS 5
+#define DR_NETPLAY_CANDIDATES_PAYLOAD_SIZE (DR_NETPLAY_CANDIDATE_SLOTS * 2 * 2)
+
+/* Fixed, null-padded git short hash exchanged on connect for version checks. */
+#define DR_NETPLAY_VERSION_HASH_LEN 16
+
 #pragma pack(push, 1)
 struct DrNetplayPacket
 {
@@ -57,8 +92,6 @@ class DrNetplay : public QObject
   Q_OBJECT
 
 public:
-  static constexpr int k_MaxPeers = 4;
-
   explicit DrNetplay(DrInputStore *store, QObject *parent = nullptr);
 
   void hostSession(quint16 port, int playerCount);
@@ -140,8 +173,6 @@ private slots:
   void onSocketDisconnected();
 
 private:
-  static constexpr int k_MaxContexts = 16;
-
   // Frame coordination (timing thread).
   void onFrameBegin(int context);
   void runResync(int context);
@@ -173,7 +204,7 @@ private:
 
   QRetroInputBackend *m_LocalSource = nullptr;
   QRetroInputJoypad m_LocalPads[QRETRO_INPUT_DEFAULT_MAX_JOYPADS];
-  QRetroInputJoypad m_CommitPads[k_MaxPeers];
+  QRetroInputJoypad m_CommitPads[DR_NETPLAY_MAX_PEERS];
 
   QTcpServer *m_Server = nullptr;
   QList<QTcpSocket *> m_Sockets;
@@ -192,20 +223,20 @@ private:
   // Per-context state. attachCore() assigns each QRetro a context id in a
   // deterministic order (host first, then guests), identical across peers.
   QHash<QRetro *, int> m_ContextIds;
-  QRetro *m_Contexts[k_MaxContexts] = {}; // context id -> core, for state I/O
+  QRetro *m_Contexts[DR_NETPLAY_MAX_CONTEXTS] = {}; // context id -> core, for state I/O
   int m_ContextCount = 0;
   int m_ActiveContext = -1;
   int m_FrozenContext = -1; // context held (retro_run paused) until re-activated
-  quint64 m_CtxFrame[k_MaxContexts] = {};   // next netplay frame to consume per context
-  quint64 m_CtxBarrier[k_MaxContexts] = {}; // per-context sync-point frame (waits w/o timeout)
-  quint64 m_CtxSend[k_MaxContexts] = {};    // next local frame to send per context (delay pipeline)
+  quint64 m_CtxFrame[DR_NETPLAY_MAX_CONTEXTS] = {};   // next netplay frame to consume per context
+  quint64 m_CtxBarrier[DR_NETPLAY_MAX_CONTEXTS] = {}; // per-context sync-point frame (waits w/o timeout)
+  quint64 m_CtxSend[DR_NETPLAY_MAX_CONTEXTS] = {};    // next local frame to send per context (delay pipeline)
 
   quint64 m_LocalFrame = 0; // singleplayer frame counter
 
   struct FrameInputs
   {
-    DrNetplayPacket pkts[k_MaxPeers] = {};
-    bool have[k_MaxPeers] = {};
+    DrNetplayPacket pkts[DR_NETPLAY_MAX_PEERS] = {};
+    bool have[DR_NETPLAY_MAX_PEERS] = {};
   };
   QMutex m_RecvMutex;
   QWaitCondition m_FrameReady;

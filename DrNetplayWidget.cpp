@@ -34,7 +34,7 @@ DrNetplayWidget::DrNetplayWidget(DrNetplay *netplay, QWidget *parent)
   m_hostPort->setRange(1, 65535);
   m_hostPort->setValue(settings.value("netplay/host_port", 55435).toInt());
   m_hostPlayers = new QSpinBox(hostBox);
-  m_hostPlayers->setRange(2, DrNetplay::k_MaxPeers);
+  m_hostPlayers->setRange(2, DR_NETPLAY_MAX_PEERS);
   m_hostPlayers->setValue(2);
   m_hostButton = new QPushButton(tr("Host session"), hostBox);
   hostForm->addRow(tr("Port:"), m_hostPort);
