@@ -1,5 +1,6 @@
 #include "DrGuestList.h"
 
+#include <QDataStream>
 #include <QWidget>
 
 DrGuestList::DrGuestList(QWidget *parent)
@@ -30,12 +31,18 @@ DrGuest *DrGuestList::pickMinigame(dr_minigame_type type, const dr_mp_minigame_t
 
   for (int i = 0; i < m_guests.size(); i++)
   {
+    /* The ordinal flattens minigameGroups() in order and increments for every
+     * mini-game (matching DrMinigameFilter), so disabled-keys line up. */
+    quint32 ord = 0;
     for (const DrMinigameGroup &group : m_guests[i]->minigameGroups())
     {
       QList<const dr_mp_minigame_t *> minigames;
       for (const dr_mp_minigame_t *mg : group.minigames)
-        if (mg->type == type && mg->minigame_id != 0xFF)
+      {
+        const quint32 key = (static_cast<quint32>(i) << 16) | ord++;
+        if (mg->type == type && mg->minigame_id != 0xFF && !m_disabled.contains(key))
           minigames.append(mg);
+      }
       if (!minigames.isEmpty())
         eligible.append({ m_guests[i], i, group.name, minigames });
     }
@@ -56,6 +63,40 @@ DrGuest *DrGuestList::pickMinigame(dr_minigame_type type, const dr_mp_minigame_t
   m_activeGuest = picked.guest;
   setCurrentIndex(picked.guestIndex);
   return picked.guest;
+}
+
+void DrGuestList::applyFilter(const QByteArray &payload)
+{
+  m_disabled.clear();
+  QDataStream s(payload);
+  s.setByteOrder(QDataStream::LittleEndian);
+  quint16 count = 0;
+  s >> count;
+  for (quint16 i = 0; i < count && s.status() == QDataStream::Ok; i++)
+  {
+    quint32 key = 0;
+    s >> key;
+    m_disabled.insert(key);
+  }
+  log(DR_LOG_INFO, qPrintable(QString("minigame filter: %1 disabled").arg(m_disabled.size())));
+}
+
+bool DrGuestList::guestHasCandidate(DrGuest *guest) const
+{
+  const int gi = m_guests.indexOf(guest);
+  if (gi < 0)
+    return false;
+
+  // Same ordinal scheme as pickMinigame / DrMinigameFilter.
+  quint32 ord = 0;
+  for (const DrMinigameGroup &group : guest->minigameGroups())
+    for (const dr_mp_minigame_t *mg : group.minigames)
+    {
+      const quint32 key = (static_cast<quint32>(gi) << 16) | ord++;
+      if (mg->minigame_id != 0xFF && !m_disabled.contains(key))
+        return true;
+    }
+  return false;
 }
 
 void DrGuestList::logSummary()

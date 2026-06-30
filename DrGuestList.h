@@ -2,7 +2,9 @@
 #define DR_GUEST_LIST_H
 
 #include "DrGuest.h"
+#include <QByteArray>
 #include <QList>
+#include <QSet>
 #include <QStackedWidget>
 
 class DrGuestList : public QStackedWidget
@@ -21,6 +23,18 @@ public:
   bool activateGuest(DrGuest *guest);
   void logSummary();
 
+  /// Replaces the set of disabled mini-games from an opaque payload produced by
+  /// DrMinigameFilter ([u16 count][count * u32 key]). pickMinigame skips any
+  /// mini-game whose key is disabled. Must be identical across netplay peers at
+  /// selection time, so it is driven by the host.
+  void applyFilter(const QByteArray &payload);
+
+  /// True if the guest has at least one selectable mini-game (minigame_id valid)
+  /// that is not disabled by the current filter. Guests with none should not be
+  /// loaded at all. Derived purely from the shared filter, so it is identical
+  /// across netplay peers.
+  bool guestHasCandidate(DrGuest *guest) const;
+
 signals:
   void minigameFinished();
   void logMessage(unsigned level, const QString &message);
@@ -32,6 +46,7 @@ private:
   }
   QList<DrGuest *> m_guests;
   DrGuest *m_activeGuest = nullptr;
+  QSet<quint32> m_disabled; // disabled mini-game keys: (guestIndex << 16) | ordinal
 };
 
 #endif

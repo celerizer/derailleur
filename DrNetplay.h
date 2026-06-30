@@ -30,7 +30,8 @@ typedef enum
   DR_NETPLAY_PACKET_SET_DELAY    = 0x05, /* any peer (relayed): new input delay, 1 byte */
   DR_NETPLAY_PACKET_RESYNC_BEGIN = 0x06, /* server -> clients: { context } stop for resync */
   DR_NETPLAY_PACKET_RESYNC_STATE = 0x07, /* server -> clients: [u32 len][u64 frame][zstate] */
-  DR_NETPLAY_PACKET_VERSION      = 0x08  /* client -> server: build hash on connect */
+  DR_NETPLAY_PACKET_VERSION      = 0x08, /* client -> server: build hash on connect */
+  DR_NETPLAY_PACKET_MINIGAME_FILTER = 0x09 /* server -> clients: var-length disabled-set payload */
 } dr_netplay_packet_type;
 
 /* Maximum peers in a session (also the per-frame input array width). */
@@ -143,6 +144,12 @@ public:
   /// opaque (guestIndex, minigameIndex) pairs (-1 = none). Always exactly 5.
   void sendCandidates(const QList<QPair<int, int>> &candidates);
 
+  /// Sets the authoritative allowed-mini-games filter (opaque payload from
+  /// DrMinigameFilter). The server broadcasts it to every client and re-sends it
+  /// at session start so it is delivered at least once; clients store it for
+  /// relay. Emits minigameFilterReceived locally so the caller applies it too.
+  void setMinigameFilter(const QByteArray &payload);
+
   /// Re-targets an existing physical (e.g. SDL3) backend so it samples local
   /// hardware into our private joypad array instead of a core's array.
   void setLocalSource(QRetroInputBackend *backend);
@@ -161,6 +168,9 @@ signals:
   /// Emitted on a client with the server's chosen candidate (guest, minigame)
   /// index pairs (-1 = none).
   void candidatesReceived(QList<QPair<int, int>> candidates);
+  /// Emitted (locally on set, or on a client when the host's filter arrives)
+  /// with the opaque allowed-mini-games payload to apply.
+  void minigameFilterReceived(QByteArray payload);
   /// Emitted when the input delay changes (locally or from a peer) so the UI
   /// can reflect the new value. Does not re-broadcast.
   void inputDelayChanged(int frames);
@@ -219,6 +229,11 @@ private:
 
   bool m_Active = false;
   bool m_Abort = false;
+
+  // Authoritative allowed-mini-games filter (opaque payload). Empty = all
+  // allowed. The server re-sends this at session start so every client gets it
+  // at least once.
+  QByteArray m_MinigameFilter;
 
   // Per-context state. attachCore() assigns each QRetro a context id in a
   // deterministic order (host first, then guests), identical across peers.

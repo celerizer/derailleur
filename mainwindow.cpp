@@ -120,6 +120,20 @@ MainWindow::MainWindow(QWidget *parent)
   m_Guests->logSummary();
 #endif
 
+  /* Allowed-mini-games chooser. Edits are routed through DrNetplay so the host
+   * is authoritative: setMinigameFilter applies locally (host/singleplayer) and
+   * broadcasts; minigameFilterReceived applies the resulting payload everywhere
+   * (and reflects the host's choice on a client). */
+  m_Filter = new DrMinigameFilter(nullptr);
+  m_Filter->populate(m_Guests->guests());
+  m_Filter->show();
+  connect(m_Filter, &DrMinigameFilter::filterChanged, this,
+    [this](const QByteArray &payload) { m_Netplay->setMinigameFilter(payload); });
+  connect(m_Netplay, &DrNetplay::minigameFilterReceived, this, [this](QByteArray payload) {
+    m_Guests->applyFilter(payload);
+    m_Filter->setFromPayload(payload);
+  });
+
   m_Stack = new QStackedWidget(this);
 
   // Host chooser — shown once at boot, never again
@@ -204,8 +218,17 @@ void MainWindow::startWithHost(DrHost *host)
   if (m_Netplay->isServer())
     m_Netplay->startGame(static_cast<int>(host->game()));
 
+  /* Only load guests that have at least one allowed mini-game; the rest never
+   * boot (e.g. disabling every Dolphin mini-game skips the Dolphin core load
+   * entirely). guestHasCandidate is derived from the host-authoritative filter,
+   * so every peer loads the same set. */
+  m_warmupQueue.clear();
   for (DrGuest *guest : m_Guests->guests())
-    guest->startCore();
+    if (m_Guests->guestHasCandidate(guest))
+    {
+      guest->startCore();
+      m_warmupQueue.append(guest);
+    }
   m_Host->startCore();
 
   m_HostContainer = QWidget::createWindowContainer(m_Host->core(), m_Stack);
@@ -254,47 +277,46 @@ void MainWindow::startWithHost(DrHost *host)
 
   m_Stack->setCurrentWidget(m_Guests);
   for (DrGuest *g : m_Guests->guests())
-    if (g != m_Guests->currentGuest())
-      g->pause();
+    g->pause();
 
-#if SHOW_LOGGER
-  m_Logger->message(DR_LOG_INFO, QString("preloading %1...").arg(m_Guests->currentGuest()->name()));
-#endif
-
-  warmupStep();
+  m_warmupIndex = 0;
+  if (m_warmupQueue.isEmpty())
+    showHost(); // nothing allowed to load; go straight to the host
+  else
+    warmupStep();
 }
 
 void MainWindow::warmupStep()
 {
-  DrGuest *guest = m_Guests->currentGuest();
+  DrGuest *guest = m_warmupQueue.value(m_warmupIndex, nullptr);
+  if (!guest)
+  {
+    showHost();
+    return;
+  }
+
+  // Show and run this guest while it warms up.
+  m_Guests->setCurrentIndex(m_Guests->guests().indexOf(guest));
+  guest->unpause();
+#if SHOW_LOGGER
+  m_Logger->message(DR_LOG_INFO, QString("preloading %1...").arg(guest->name()));
+#endif
+
   m_warmupFrameCount = 0;
   m_warmupConnection = connect(guest->core(), &QRetro::frameEnd, this,
     [this, guest]() {
       if (++m_warmupFrameCount < guest->warmupFrames())
         return;
       disconnect(m_warmupConnection);
-      int next = m_Guests->currentIndex() + 1;
-      if (next < m_Guests->count())
-      {
 #if SHOW_LOGGER
-        m_Logger->message(DR_LOG_INFO, QString("%1 ready").arg(m_Guests->currentGuest()->name()));
+      m_Logger->message(DR_LOG_INFO, QString("%1 ready").arg(guest->name()));
 #endif
-        m_Guests->currentGuest()->pause();
-        m_Guests->setCurrentIndex(next);
-        m_Guests->currentGuest()->unpause();
-#if SHOW_LOGGER
-        m_Logger->message(
-          DR_LOG_INFO, QString("preloading %1...").arg(m_Guests->currentGuest()->name()));
-#endif
+      guest->pause();
+      m_warmupIndex++;
+      if (m_warmupIndex < m_warmupQueue.size())
         warmupStep();
-      }
       else
-      {
-#if SHOW_LOGGER
-        m_Logger->message(DR_LOG_INFO, QString("%1 ready").arg(m_Guests->currentGuest()->name()));
-#endif
         showHost();
-      }
     }, Qt::QueuedConnection);
 }
 
@@ -402,6 +424,12 @@ void MainWindow::attachNetplay()
   seen.insert(m_Host->core());
   for (DrGuest *guest : m_Guests->guests())
   {
+    /* Skip guests with no allowed mini-game: they are not loaded, so they must
+     * not consume a netplay context id either. The filter is identical across
+     * peers, so every peer skips the same guests and the remaining context ids
+     * line up. */
+    if (!m_Guests->guestHasCandidate(guest))
+      continue;
     QRetro *core = guest->core();
     if (core && !seen.contains(core))
     {

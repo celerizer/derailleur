@@ -15,6 +15,7 @@
 #include "DrHost.h"
 #include "DrInputStore.h"
 #include "DrLogger.h"
+#include "DrMinigameFilter.h"
 #include "DrNetplay.h"
 #include "DrNetplayWidget.h"
 #include "DrOverlay.h"
@@ -39,6 +40,8 @@ private:
 
   QMetaObject::Connection m_warmupConnection;
   unsigned m_warmupFrameCount = 0;
+  QList<DrGuest *> m_warmupQueue; // guests with an allowed mini-game, warmed in order
+  int m_warmupIndex = 0;
 
   DrGuestList *m_Guests = nullptr;
   DrHost *m_Host = nullptr;
@@ -47,6 +50,7 @@ private:
   DrLogger *m_Logger = nullptr;
   DrOverlay *m_Overlay = nullptr;
   DrDebug *m_Debug = nullptr;
+  DrMinigameFilter *m_Filter = nullptr;
   DrInputStore *m_InputStore = nullptr;
   DrNetplay *m_Netplay = nullptr;
   DrNetplayWidget *m_NetplayUi = nullptr;
@@ -73,6 +77,8 @@ protected:
       m_Logger->close();
     if (m_Debug)
       m_Debug->close();
+    if (m_Filter)
+      m_Filter->close();
     if (m_NetplayUi)
       m_NetplayUi->close();
     QMainWindow::closeEvent(e);

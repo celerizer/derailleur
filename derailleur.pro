@@ -27,6 +27,7 @@ SOURCES += \
     DrGuest.cpp \
     DrHost.cpp \
     DrInputStore.cpp \
+    DrMinigameFilter.cpp \
     DrNetplay.cpp \
     DrNetplayWidget.cpp \
     DrOverlay.cpp \
@@ -63,6 +64,7 @@ HEADERS += \
     DrGuestList.h \
     DrHost.h \
     DrInputStore.h \
+    DrMinigameFilter.h \
     DrNetplay.h \
     DrNetplayWidget.h \
     DrLogger.h \

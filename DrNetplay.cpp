@@ -63,6 +63,12 @@ void DrNetplay::startGame(int gameId)
     s.setByteOrder(QDataStream::LittleEndian);
     s << seed;
   }
+  /* Deliver the authoritative allowed-mini-games filter *before* START so each
+   * client applies it before it builds its host and decides which guests to
+   * load. TCP preserves order and onSocketReadyRead processes messages
+   * front-to-back, so the filter is applied first. (Delivered at least once.) */
+  broadcastVar(DR_NETPLAY_PACKET_MINIGAME_FILTER, m_MinigameFilter);
+
   broadcast(DR_NETPLAY_PACKET_START, payload);
 
   /* The server's buffer setting is authoritative at session start. */
@@ -147,6 +153,20 @@ void DrNetplay::sendCandidates(const QList<QPair<int, int>> &candidates)
     s << guest << minigame;
   }
   broadcast(DR_NETPLAY_PACKET_CANDIDATES, payload);
+}
+
+void DrNetplay::setMinigameFilter(const QByteArray &payload)
+{
+  m_MinigameFilter = payload;
+
+  /* Apply locally so the caller (host or singleplayer) takes effect immediately;
+   * a client in a session is not authoritative and just stores it for relay. */
+  if (m_IsServer || !m_Active)
+    emit minigameFilterReceived(payload);
+
+  /* During a session the server pushes the authoritative filter to clients. */
+  if (m_Active && m_IsServer)
+    broadcastVar(DR_NETPLAY_PACKET_MINIGAME_FILTER, payload);
 }
 
 void DrNetplay::setActiveContext(QRetro *core)
@@ -458,8 +478,8 @@ void DrNetplay::onSocketReadyRead()
       break;
     const quint8 type = static_cast<quint8>(buf.at(0));
 
-    /* The resync state is the one variable-length message: [type][u32 len][..]. */
-    if (type == DR_NETPLAY_PACKET_RESYNC_STATE)
+    /* Variable-length messages are framed [type][u32 len][payload]. */
+    if (type == DR_NETPLAY_PACKET_RESYNC_STATE || type == DR_NETPLAY_PACKET_MINIGAME_FILTER)
     {
       if (buf.size() < 1 + 4)
         break;
@@ -616,6 +636,17 @@ void DrNetplay::handleMessage(QTcpSocket *sock, quint8 type, const QByteArray &p
     m_ResyncState = raw;
     m_ResyncStateReady = true;
     m_FrameReady.wakeAll();
+    break;
+  }
+
+  case DR_NETPLAY_PACKET_MINIGAME_FILTER:
+  {
+    /* The host is authoritative; store it (so a server can re-send) and apply it
+     * locally. The server relays to the other clients. */
+    m_MinigameFilter = payload;
+    emit minigameFilterReceived(payload);
+    if (m_IsServer)
+      broadcastVar(DR_NETPLAY_PACKET_MINIGAME_FILTER, payload, sock);
     break;
   }
 
