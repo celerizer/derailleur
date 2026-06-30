@@ -214,9 +214,17 @@ void DrNetplay::setActiveContext(QRetro *core)
 
 void DrNetplay::freezeActiveContext()
 {
-  QMutexLocker lock(&m_RecvMutex);
-  m_FrozenContext = m_ActiveContext;
-  m_FrameReady.wakeAll();
+  int ctx;
+  quint64 frame;
+  {
+    QMutexLocker lock(&m_RecvMutex);
+    m_FrozenContext = m_ActiveContext;
+    ctx = m_FrozenContext;
+    frame = (ctx >= 0 && ctx < DR_NETPLAY_MAX_CONTEXTS) ? m_CtxFrame[ctx] : 0;
+    m_FrameReady.wakeAll();
+  }
+  emit logMessage(DR_LOG_INFO,
+    QString("netplay: froze ctx %1 at frame %2").arg(ctx).arg(frame));
 }
 
 void DrNetplay::joinSession(const QString &address, quint16 port)
@@ -339,6 +347,12 @@ void DrNetplay::onFrameBegin(int context)
     if (waitForFrame(context, frame))
     {
       commitMergedFrame(context, frame);
+      /* The barrier frame is the first gated frame after a sync point (activation
+       * or resync), so this logs once per switch — compare it across peers to see
+       * whether they cleared the same per-context frame. */
+      if (frame == m_CtxBarrier[context])
+        emit logMessage(DR_LOG_INFO,
+          QString("netplay: ctx %1 passed barrier frame %2").arg(context).arg(frame));
       m_CtxFrame[context] = frame + 1;
       return;
     }
@@ -349,9 +363,14 @@ void DrNetplay::onFrameBegin(int context)
       continue;
 
     /* The foreground switched away from this context — stop gating it, don't
-     * treat it as a timeout. */
+     * treat it as a timeout. Log the frame it stopped on so it can be compared
+     * to the other peer's (a mismatch here is the classic context-switch desync). */
     if (context != m_ActiveContext)
+    {
+      emit logMessage(DR_LOG_INFO,
+        QString("netplay: ctx %1 stopped gating at frame %2 (switched away)").arg(context).arg(frame));
       return;
+    }
 
     const QString err =
       QString("netplay: timed out waiting for ctx %1 frame %2").arg(context).arg(frame);
