@@ -313,6 +313,9 @@ DrHost::DrHost(const DrHostConfig &config, QObject *parent)
   : DrRetro(parent)
   , m_config(config)
 {
+  /* Every host is an N64 game: default RAM access to wordflipped so the state
+   * machine can use hardware addresses. ROM patches/cheats pass LITTLE/raw. */
+  m_endianness = DR_ENDIANNESS_WORDFLIPPED;
   qRegisterMetaType<DrMinigameCandidate>();
   qRegisterMetaType<DrPlayerArray>();
   qRegisterMetaType<dr_minigame_type>();
@@ -371,7 +374,7 @@ bool DrHost::initTitleSlots()
   {
     size_t addr = m_config.title_addrs[i];
     uint8_t marker = 0;
-    if (readu8(&marker, xform ? xform(addr + 1) : addr + 1) != DR_OK)
+    if (readu8(&marker, xform ? xform(addr + 1) : addr + 1, DR_ENDIANNESS_LITTLE) != DR_OK)
       return false;
     if (marker != 0x0B)
       log(DR_LOG_WARN,
@@ -393,7 +396,8 @@ void DrHost::writeMinigameNames(const std::array<std::string, 5> &names)
 
   auto xform = m_config.title_addr_transform;
   auto w = [&](uint8_t val, size_t addr) {
-    writeu8(val, xform ? xform(addr) : addr);
+    // title_addr_transform already applies the N64 byte flip, so write raw.
+    writeu8(val, xform ? xform(addr) : addr, DR_ENDIANNESS_LITTLE);
   };
 
   for (unsigned i = 0; i < 5; i++)

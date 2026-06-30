@@ -53,40 +53,40 @@ static DrHostConfig makeConfig()
   config.scene_miniexplain_count = 1;
   config.scene_miniresults = 0x7C;
   // scene_miniresults_battle / scene_miniresults_duel: not available in mp1
-  config.scene_addr = 0x800C596E;
+  config.scene_addr = 0x800C596C; // u16
 
   config.scene_board_ranges[0] = { 0x36, 0x3D };
   config.scene_board_range_count = 1;
 
-  config.character_addr[0] = 0x800f32b7;
-  config.character_addr[1] = 0x800f32e7;
-  config.character_addr[2] = 0x800f3317;
-  config.character_addr[3] = 0x800f3347;
-  config.controller_addr[0] = 0x800f32b0;
-  config.controller_addr[1] = 0x800f32e0;
-  config.controller_addr[2] = 0x800f3310;
-  config.controller_addr[3] = 0x800f3340;
-  config.difficulty_addr[0] = 0x800f32b1;
-  config.difficulty_addr[1] = 0x800f32e1;
-  config.difficulty_addr[2] = 0x800f3311;
-  config.difficulty_addr[3] = 0x800f3341;
-  config.team_addr[0] = 0x800f32b3;
-  config.team_addr[1] = 0x800f32e3;
-  config.team_addr[2] = 0x800f3313;
-  config.team_addr[3] = 0x800f3343;
-  config.bot_addr[0] = 0x800f32b4;
-  config.bot_addr[1] = 0x800f32e4;
-  config.bot_addr[2] = 0x800f3314;
-  config.bot_addr[3] = 0x800f3344;
-  config.result_addr[0] = 0x800f32b8;
-  config.result_addr[1] = 0x800f32e8;
-  config.result_addr[2] = 0x800f3318;
-  config.result_addr[3] = 0x800f3348;
+  config.character_addr[0] = 0x800f32b4;
+  config.character_addr[1] = 0x800f32e4;
+  config.character_addr[2] = 0x800f3314;
+  config.character_addr[3] = 0x800f3344;
+  config.controller_addr[0] = 0x800f32b3;
+  config.controller_addr[1] = 0x800f32e3;
+  config.controller_addr[2] = 0x800f3313;
+  config.controller_addr[3] = 0x800f3343;
+  config.difficulty_addr[0] = 0x800f32b2;
+  config.difficulty_addr[1] = 0x800f32e2;
+  config.difficulty_addr[2] = 0x800f3312;
+  config.difficulty_addr[3] = 0x800f3342;
+  config.team_addr[0] = 0x800f32b0;
+  config.team_addr[1] = 0x800f32e0;
+  config.team_addr[2] = 0x800f3310;
+  config.team_addr[3] = 0x800f3340;
+  config.bot_addr[0] = 0x800f32b7;
+  config.bot_addr[1] = 0x800f32e7;
+  config.bot_addr[2] = 0x800f3317;
+  config.bot_addr[3] = 0x800f3347;
+  config.result_addr[0] = 0x800f32ba;
+  config.result_addr[1] = 0x800f32ea;
+  config.result_addr[2] = 0x800f331a;
+  config.result_addr[3] = 0x800f334a;
   // bonus_result_addr: not available in mp1
-  config.panel_color_addr[0] = 0x800f32c4;
-  config.panel_color_addr[1] = 0x800f32f4;
-  config.panel_color_addr[2] = 0x800f3324;
-  config.panel_color_addr[3] = 0x800f3354;
+  config.panel_color_addr[0] = 0x800f32c7;
+  config.panel_color_addr[1] = 0x800f32f7;
+  config.panel_color_addr[2] = 0x800f3327;
+  config.panel_color_addr[3] = 0x800f3357;
 
   config.char_to_dr = MP1_CHAR_TO_DR;
   config.char_to_dr_size = sizeof(MP1_CHAR_TO_DR) / sizeof(*MP1_CHAR_TO_DR);
@@ -96,12 +96,12 @@ static DrHostConfig makeConfig()
   config.panel_color_to_dr = MP1_PANEL_COLOR_TO_DR;
   config.panel_color_to_dr_size = sizeof(MP1_PANEL_COLOR_TO_DR) / sizeof(*MP1_PANEL_COLOR_TO_DR);
 
-  config.minigame_type_addr = 0x800D645A;
+  config.minigame_type_addr = 0x800D6459; // u8
   config.minigame_type_to_dr = MP1_MINIGAME_TYPE_TO_DR;
   config.minigame_type_to_dr_size = 4;
 
-  config.next_scene_addr = 0x800F09F4;
-  config.minigame_id_addr = 0x800ED5DC;
+  config.next_scene_addr = 0x800F09F4; // unused
+  config.minigame_id_addr = 0x800ED5DE; // u16 (minigame_id_is_8bit == false)
   config.minigame_id_is_8bit = false;
 
   config.title_addrs = MP1_MINIGAME_TITLE_ADDRS;

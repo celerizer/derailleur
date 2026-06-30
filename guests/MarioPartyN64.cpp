@@ -10,7 +10,7 @@ MarioPartyN64::MarioPartyN64(const MpN64Config &config, QObject *parent)
   : DrGuest(parent)
   , m_config(config)
 {
-  m_retro = new DrRetro(this);
+  m_retro = new DrRetroN64(this);
   QRetro *core = new QRetro();
   if (!core->loadCore(m_config.core.c_str()))
   {

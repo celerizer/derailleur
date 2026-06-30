@@ -26,6 +26,7 @@ public:
 
   virtual QRetro *core() const { return nullptr; }
   virtual bool isValid() const { return m_valid; }
+  virtual unsigned warmupFrames() const { return 30; }
 
   virtual void startCore() {}
   virtual void pause() {}

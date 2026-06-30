@@ -4,6 +4,7 @@ dr_error DrRetro::readu8(uint8_t *out, size_t addr, dr_endianness endianness)
 {
   if (!m_core)
     return DR_ERR_MEMORY_ACCESS_CORE;
+  endianness = resolveEndianness(endianness);
   if (endianness == DR_ENDIANNESS_WORDFLIPPED)
     addr = (addr & ~3UL) | (3 - (addr & 3));
   return m_core->memory().readValue<uint8_t>(out, addr) ? DR_OK : DR_ERR_MEMORY_ACCESS_CORE;
@@ -18,6 +19,7 @@ dr_error DrRetro::readu16(uint16_t *out, size_t addr, dr_endianness endianness)
 {
   if (!m_core)
     return DR_ERR_MEMORY_ACCESS_CORE;
+  endianness = resolveEndianness(endianness);
   if (endianness == DR_ENDIANNESS_WORDFLIPPED)
     addr ^= 2;
   if (!m_core->memory().readValue<uint16_t>(out, addr))
@@ -36,6 +38,7 @@ dr_error DrRetro::readu32(uint32_t *out, size_t addr, dr_endianness endianness)
 {
   if (!m_core)
     return DR_ERR_MEMORY_ACCESS_CORE;
+  endianness = resolveEndianness(endianness);
   if (!m_core->memory().readValue<uint32_t>(out, addr))
     return DR_ERR_MEMORY_ACCESS_CORE;
   if (endianness == DR_ENDIANNESS_BIG)
@@ -52,6 +55,7 @@ dr_error DrRetro::writeu8(uint8_t val, size_t addr, dr_endianness endianness)
 {
   if (!m_core)
     return DR_ERR_MEMORY_ACCESS_CORE;
+  endianness = resolveEndianness(endianness);
   if (endianness == DR_ENDIANNESS_WORDFLIPPED)
     addr = (addr & ~3UL) | (3 - (addr & 3));
   return m_core->memory().writeValue<uint8_t>(val, addr) ? DR_OK : DR_ERR_MEMORY_ACCESS_CORE;
@@ -66,6 +70,7 @@ dr_error DrRetro::writeu16(uint16_t val, size_t addr, dr_endianness endianness)
 {
   if (!m_core)
     return DR_ERR_MEMORY_ACCESS_CORE;
+  endianness = resolveEndianness(endianness);
   if (endianness == DR_ENDIANNESS_WORDFLIPPED)
     addr ^= 2;
   else if (endianness == DR_ENDIANNESS_BIG)
@@ -82,6 +87,7 @@ dr_error DrRetro::writeu32(uint32_t val, size_t addr, dr_endianness endianness)
 {
   if (!m_core)
     return DR_ERR_MEMORY_ACCESS_CORE;
+  endianness = resolveEndianness(endianness);
   if (endianness == DR_ENDIANNESS_BIG)
     val = qbswap(val);
   return m_core->memory().writeValue<uint32_t>(val, addr) ? DR_OK : DR_ERR_MEMORY_ACCESS_CORE;

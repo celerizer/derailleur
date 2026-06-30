@@ -5,6 +5,7 @@
 
 #include <QCloseEvent>
 #include <QMainWindow>
+#include <QMetaObject>
 #include <QStackedWidget>
 #include <QTimer>
 
@@ -30,10 +31,14 @@ private:
   void startWithHost(DrHost *host);
   void showHost();
   void showGuests();
+  void warmupStep();
   void launchMinigame(
     DrGuest *guest, const dr_mp_minigame_t *minigame, const dr_player_t players[4]);
   void setupNetplay();
   void attachNetplay();
+
+  QMetaObject::Connection m_warmupConnection;
+  unsigned m_warmupFrameCount = 0;
 
   DrGuestList *m_Guests = nullptr;
   DrHost *m_Host = nullptr;

@@ -84,15 +84,16 @@ static MpN64Config buildConfig()
   config.scene_miniexplain = 0x6f;
   config.scene_miniresults = 0x7c;
 
-  config.scene_addr = 0x800C596E;
-  config.minigame_addr = 0x800ED5DC;
+  // Hardware addresses (accessed wordflipped via DrRetroN64).
+  config.scene_addr = 0x800C596C;    // u16
+  config.minigame_addr = 0x800ED5DE; // u16
 
-  const size_t controller_addr[4] = { 0x800f32b0, 0x800f32e0, 0x800f3310, 0x800f3340 };
-  const size_t difficulty_addr[4] = { 0x800f32b1, 0x800f32e1, 0x800f3311, 0x800f3341 };
-  const size_t team_addr[4]       = { 0x800f32b3, 0x800f32e3, 0x800f3313, 0x800f3343 };
-  const size_t bot_addr[4]        = { 0x800f32b4, 0x800f32e4, 0x800f3314, 0x800f3344 };
-  const size_t character_addr[4]  = { 0x800f32b7, 0x800f32e7, 0x800f3317, 0x800f3347 };
-  const size_t result_addr[4]     = { 0x800f32b8, 0x800f32e8, 0x800f3318, 0x800f3348 };
+  const size_t controller_addr[4] = { 0x800f32b3, 0x800f32e3, 0x800f3313, 0x800f3343 };
+  const size_t difficulty_addr[4] = { 0x800f32b2, 0x800f32e2, 0x800f3312, 0x800f3342 };
+  const size_t team_addr[4]       = { 0x800f32b0, 0x800f32e0, 0x800f3310, 0x800f3340 };
+  const size_t bot_addr[4]        = { 0x800f32b7, 0x800f32e7, 0x800f3317, 0x800f3347 };
+  const size_t character_addr[4]  = { 0x800f32b4, 0x800f32e4, 0x800f3314, 0x800f3344 };
+  const size_t result_addr[4]     = { 0x800f32ba, 0x800f32ea, 0x800f331a, 0x800f334a }; // u16
   memcpy(config.controller_addr, controller_addr, sizeof(controller_addr));
   memcpy(config.difficulty_addr, difficulty_addr, sizeof(difficulty_addr));
   memcpy(config.team_addr, team_addr, sizeof(team_addr));

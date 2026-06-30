@@ -261,34 +261,41 @@ void MainWindow::startWithHost(DrHost *host)
   m_Logger->message(DR_LOG_INFO, QString("preloading %1...").arg(m_Guests->currentGuest()->name()));
 #endif
 
-  QTimer *warmupTimer = new QTimer(this);
-  warmupTimer->setInterval(5000);
-  connect(warmupTimer, &QTimer::timeout, this, [this, warmupTimer]() {
-    int next = m_Guests->currentIndex() + 1;
-    if (next < m_Guests->count())
-    {
+  warmupStep();
+}
+
+void MainWindow::warmupStep()
+{
+  DrGuest *guest = m_Guests->currentGuest();
+  m_warmupFrameCount = 0;
+  m_warmupConnection = connect(guest->core(), &QRetro::frameEnd, this,
+    [this, guest]() {
+      if (++m_warmupFrameCount < guest->warmupFrames())
+        return;
+      disconnect(m_warmupConnection);
+      int next = m_Guests->currentIndex() + 1;
+      if (next < m_Guests->count())
+      {
 #if SHOW_LOGGER
-      m_Logger->message(DR_LOG_INFO, QString("%1 ready").arg(m_Guests->currentGuest()->name()));
+        m_Logger->message(DR_LOG_INFO, QString("%1 ready").arg(m_Guests->currentGuest()->name()));
 #endif
-      m_Guests->currentGuest()->pause();
-      m_Guests->setCurrentIndex(next);
-      m_Guests->currentGuest()->unpause();
+        m_Guests->currentGuest()->pause();
+        m_Guests->setCurrentIndex(next);
+        m_Guests->currentGuest()->unpause();
 #if SHOW_LOGGER
-      m_Logger->message(
-        DR_LOG_INFO, QString("preloading %1...").arg(m_Guests->currentGuest()->name()));
+        m_Logger->message(
+          DR_LOG_INFO, QString("preloading %1...").arg(m_Guests->currentGuest()->name()));
 #endif
-    }
-    else
-    {
+        warmupStep();
+      }
+      else
+      {
 #if SHOW_LOGGER
-      m_Logger->message(DR_LOG_INFO, QString("%1 ready").arg(m_Guests->currentGuest()->name()));
+        m_Logger->message(DR_LOG_INFO, QString("%1 ready").arg(m_Guests->currentGuest()->name()));
 #endif
-      warmupTimer->stop();
-      warmupTimer->deleteLater();
-      showHost();
-    }
-  });
-  warmupTimer->start();
+        showHost();
+      }
+    }, Qt::QueuedConnection);
 }
 
 void MainWindow::launchMinigame(

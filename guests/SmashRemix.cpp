@@ -16,33 +16,35 @@ static const dr_mp_minigame_t SR_MINIGAMES[] = {
   { nullptr, DR_MINIGAME_INVALID, 0xFF, 0xFF, DR_NO_QUIRKS },
 };
 
-/* Whether the game is in team battle mode */
-static const size_t SR_GAME_TYPE_ADDR = 0x800a4d09;
-static const size_t SR_STAGE_ADDR = 0x800a4d0a;
+/* Hardware addresses (all u8), accessed wordflipped via DrRetroN64. */
 
-static const size_t SR_CHARACTER_ADDR[4] = { 0x800a4d28, 0x800a4d9c, 0x800a4e10, 0x800a4e84 };
+/* Whether the game is in team battle mode */
+static const size_t SR_GAME_TYPE_ADDR = 0x800a4d0a;
+static const size_t SR_STAGE_ADDR = 0x800a4d09;
+
+static const size_t SR_CHARACTER_ADDR[4] = { 0x800a4d2b, 0x800a4d9f, 0x800a4e13, 0x800a4e87 };
 
 /* If this value is 1, the player is CPU-controlled */
-static const size_t SR_IS_BOT_ADDR[4] = { 0x800a4d29, 0x800a4d9d, 0x800a4e11, 0x800a4e85 };
+static const size_t SR_IS_BOT_ADDR[4] = { 0x800a4d2a, 0x800a4d9e, 0x800a4e12, 0x800a4e86 };
 
-static const size_t SR_DIFFICULTY_ADDR[4] = { 0x800a4d2b, 0x800a4daf, 0x800a4e13, 0x800a4e87 };
+static const size_t SR_DIFFICULTY_ADDR[4] = { 0x800a4d28, 0x800a4dac, 0x800a4e10, 0x800a4e84 };
 
-static const size_t SR_COLOR_ADDR[4] = { 0x800a4d2d, 0x800a4da1, 0x800a4e15, 0x800a4e89 };
+static const size_t SR_COLOR_ADDR[4] = { 0x800a4d2e, 0x800a4da2, 0x800a4e16, 0x800a4e8a };
 
-static const size_t SR_TEAM_ADDR_1[4] = { 0x800a4d2e, 0x800a4da2, 0x800a4e16, 0x800a4e8a };
-static const size_t SR_TEAM_ADDR_2[4] = { 0x800a4d2f, 0x800a4da3, 0x800a4e17, 0x800a4e8b };
+static const size_t SR_TEAM_ADDR_1[4] = { 0x800a4d2d, 0x800a4da1, 0x800a4e15, 0x800a4e89 };
+static const size_t SR_TEAM_ADDR_2[4] = { 0x800a4d2c, 0x800a4da0, 0x800a4e14, 0x800a4e88 };
 
-static const size_t SR_STOCKS_ADDR[4] = { 0x800a4d30, 0x800a4da4, 0x800a4e18, 0x800a4e8c };
+static const size_t SR_STOCKS_ADDR[4] = { 0x800a4d33, 0x800a4da7, 0x800a4e1b, 0x800a4e8f };
 
 /* The controller port for this player, or 4 if CPU-controlled */
-static const size_t SR_PORT_ADDR[4] = { 0x800a4d31, 0x800a4da5, 0x800a4e19, 0x800a4e8d };
+static const size_t SR_PORT_ADDR[4] = { 0x800a4d32, 0x800a4da6, 0x800a4e1a, 0x800a4e8e };
 
 /* The color drawn behind the percentage, should match SR_PORT_ADDR */
-static const size_t SR_PORT_COLOR_ADDR[4] = { 0x800a4d33, 0x800a4da7, 0x800a4e1b, 0x800a4e8f };
+static const size_t SR_PORT_COLOR_ADDR[4] = { 0x800a4d30, 0x800a4da4, 0x800a4e18, 0x800a4e8c };
 
 /* The size of the player. 0=normal, 1=giant, 2=tiny */
-static const size_t SR_SIZE_ADDR_1[4] = { 0x80502fac, 0x80502fb0, 0x80502fb4, 0x80502fb8 };
-static const size_t SR_SIZE_ADDR_2[4] = { 0x80502fbc, 0x80502fc0, 0x80502fc4, 0x80502fc8 };
+static const size_t SR_SIZE_ADDR_1[4] = { 0x80502faf, 0x80502fb3, 0x80502fb7, 0x80502fbb };
+static const size_t SR_SIZE_ADDR_2[4] = { 0x80502fbf, 0x80502fc3, 0x80502fc7, 0x80502fcb };
 
 typedef struct
 {
@@ -201,7 +203,7 @@ void SmashRemix::run(void)
 SmashRemix::SmashRemix(QObject *parent)
   : DrGuest(parent)
 {
-  m_retro = new DrRetro(this);
+  m_retro = new DrRetroN64(this);
   QString corePath = dr_core_path(DR_CORE_MUPEN64PLUSNEXT);
   QString gamePath = dr_roms_directory() + "/smashremix.z64";
   QRetro *core = new QRetro();
@@ -261,11 +263,11 @@ void SmashRemix::doSetMinigame(const dr_mp_minigame_t *minigame)
   core()->unserializeFromFile(dr_state_directory() + "/smashremix.state.zip");
 
   /* Use a random stage from the original stage list */
-  core()->memory().writeValue<uint8_t>(rand() % 9, SR_STAGE_ADDR);
+  m_retro->writeu8(rand() % 9, SR_STAGE_ADDR);
 
   /* Enable team battle for the 2v2 and 1v3 minigames */
   bool teamBattle = (minigame->type == DR_MINIGAME_2V2 || minigame->type == DR_MINIGAME_1V3);
-  core()->memory().writeValue<uint8_t>(teamBattle ? 1 : 0, SR_GAME_TYPE_ADDR);
+  m_retro->writeu8(teamBattle ? 1 : 0, SR_GAME_TYPE_ADDR);
 
   log(DR_LOG_INFO, qPrintable(QString("Smash Remix starting!")));
 
@@ -306,7 +308,7 @@ void SmashRemix::applyPlayers()
     m_slotCharacters[slot] = p.character;
 
     bool isBot = (p.control_type == DR_CONTROL_TYPE_CPU);
-    core()->memory().writeValue<uint8_t>(isBot ? 1 : 0, SR_IS_BOT_ADDR[slot]);
+    m_retro->writeu8(isBot ? 1 : 0, SR_IS_BOT_ADDR[slot]);
 
     for (const auto &entry : SR_CHARACTER_ID)
     {
@@ -341,7 +343,7 @@ void SmashRemix::applyPlayers()
       difficulty = 5;
       break;
     }
-    core()->memory().writeValue<uint8_t>(
+    m_retro->writeu8(
       static_cast<uint8_t>(difficulty), SR_DIFFICULTY_ADDR[slot]);
 
     uint8_t color, team;
@@ -372,9 +374,9 @@ void SmashRemix::applyPlayers()
         color = slot;
       team = i;
     }
-    core()->memory().writeValue<uint8_t>(color, SR_PORT_COLOR_ADDR[slot]);
-    core()->memory().writeValue<uint8_t>(team, SR_TEAM_ADDR_1[slot]);
-    core()->memory().writeValue<uint8_t>(team, SR_TEAM_ADDR_2[slot]);
+    m_retro->writeu8(color, SR_PORT_COLOR_ADDR[slot]);
+    m_retro->writeu8(team, SR_TEAM_ADDR_1[slot]);
+    m_retro->writeu8(team, SR_TEAM_ADDR_2[slot]);
 
     uint8_t size;
     bool tinyBattle = (m_minigame->minigame_id == 0x03);
@@ -382,8 +384,8 @@ void SmashRemix::applyPlayers()
       size = tinyBattle ? 0 : 1; // Tiny: solo=normal, Giant: solo=giant
     else
       size = tinyBattle ? 2 : 0; // Tiny: group=tiny,  Giant: group=normal
-    core()->memory().writeValue<uint8_t>(size, SR_SIZE_ADDR_1[slot]);
-    core()->memory().writeValue<uint8_t>(size, SR_SIZE_ADDR_2[slot]);
+    m_retro->writeu8(size, SR_SIZE_ADDR_1[slot]);
+    m_retro->writeu8(size, SR_SIZE_ADDR_2[slot]);
   }
 
   unsigned activeSlots = 0;

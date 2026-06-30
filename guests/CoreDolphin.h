@@ -20,6 +20,7 @@ public:
 
   const char *name() const override { return "Dolphin"; }
   dr_guest id() const override { return DR_GUEST_DOLPHIN; }
+  unsigned warmupFrames() const override { return 5 * 60; }
 
   QRetro *core() const override { return m_retro ? m_retro->core() : nullptr; }
   void startCore() override;

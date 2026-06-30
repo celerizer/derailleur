@@ -2,16 +2,18 @@
 
 #include <QRetro.h>
 
-static const size_t MK64_MENU_CHAR_ADDR[4] = { 0x8018EDE7, 0x8018EDE6, 0x8018EDE5, 0x8018EDE4 };
-static const size_t MK64_REAL_CHAR_ADDR[4] = { 0x800e86ab, 0x800e86aa, 0x800e86a9, 0x800e86a8 };
+// Hardware addresses (accessed wordflipped via DrRetroN64). u8 fields unflip ^3;
+// the u32 lap counters are word-sized and need no flip.
+static const size_t MK64_MENU_CHAR_ADDR[4] = { 0x8018EDE4, 0x8018EDE5, 0x8018EDE6, 0x8018EDE7 };
+static const size_t MK64_REAL_CHAR_ADDR[4] = { 0x800e86a8, 0x800e86a9, 0x800e86aa, 0x800e86ab };
 
-static const size_t MK64_COURSE_ADDR = 0x8018EE08;
-static const size_t MK64_CUP_ADDR = 0x8018EE0A;
-static const size_t MK64_TRACK_ADDR = 0x800dc5a2;
+static const size_t MK64_COURSE_ADDR = 0x8018EE0B;
+static const size_t MK64_CUP_ADDR = 0x8018EE09;
+static const size_t MK64_TRACK_ADDR = 0x800dc5a1;
 
-static const size_t MK64_LAPS_ADDR[4] = { 0x80164390, 0x80164394, 0x80164398, 0x8016439C };
+static const size_t MK64_LAPS_ADDR[4] = { 0x80164390, 0x80164394, 0x80164398, 0x8016439C }; // u32
 
-static const size_t MK64_NUMBER_PLAYERS_ADDR = 0x8018EDF0;
+static const size_t MK64_NUMBER_PLAYERS_ADDR = 0x8018EDF3;
 
 static const dr_mp_minigame_t MK64_MINIGAMES[] = {
   { "Single Race: Luigi Raceway", DR_MINIGAME_4P, 0x00, 0xFF, DR_NO_QUIRKS },
@@ -71,7 +73,7 @@ static const mk64_character_t MK64_CHARACTER_ID[] = {
 MarioKart64::MarioKart64(QObject *parent)
   : DrGuest(parent)
 {
-  m_retro = new DrRetro(this);
+  m_retro = new DrRetroN64(this);
   QString corePath = dr_core_path(DR_CORE_MUPEN64PLUSNEXT);
   QString gamePath = dr_roms_directory() + "/Mario Kart 64 (USA).z64";
   QRetro *c = new QRetro();
@@ -102,7 +104,7 @@ void MarioKart64::run()
   {
     --m_lapsFreezeFrames;
     for (unsigned i = 0; i < 4; i++)
-      core()->memory().writeValue<uint32_t>(1, MK64_LAPS_ADDR[i]);
+      m_retro->writeu32(1, MK64_LAPS_ADDR[i]);
   }
 
   if (m_winnerIndex == -1 && m_minigameActive)
@@ -110,7 +112,7 @@ void MarioKart64::run()
     for (unsigned i = 0; i < 4; i++)
     {
       uint32_t laps;
-      if (core()->memory().readValue<uint32_t>(&laps, MK64_LAPS_ADDR[i]) && laps >= 3)
+      if (m_retro->readu32(&laps, MK64_LAPS_ADDR[i]) == DR_OK && laps >= 3)
       {
         m_winnerIndex = m_slotToIndex[i];
         m_finishCountdown = 240;
@@ -135,11 +137,11 @@ void MarioKart64::doSetMinigame(const dr_mp_minigame_t *minigame)
   signed id = minigame->minigame_id;
   startMinigame();
   core()->unserializeFromFile(dr_state_directory() + "/mk64.state.zip");
-  core()->memory().writeValue<uint8_t>(id % 4, MK64_COURSE_ADDR);
-  core()->memory().writeValue<uint8_t>(id / 4, MK64_CUP_ADDR);
+  m_retro->writeu8(id % 4, MK64_COURSE_ADDR);
+  m_retro->writeu8(id / 4, MK64_CUP_ADDR);
 
   if (id >= 0 && (size_t)id < sizeof(MK64_TRACK_ID) / sizeof(*MK64_TRACK_ID))
-    core()->memory().writeValue<uint8_t>(MK64_TRACK_ID[id], MK64_TRACK_ADDR);
+    m_retro->writeu8(MK64_TRACK_ID[id], MK64_TRACK_ADDR);
 
   m_lapsFreezeFrames = 300;
   m_finishCountdown = -1;
@@ -167,8 +169,8 @@ dr_error MarioKart64::doSetPlayerCharacter(unsigned index, dr_character characte
     if (entry.character == character)
     {
       unsigned slot = m_ports[index] - DR_CONTROL_PORT_P1;
-      core()->memory().writeValue<uint8_t>(entry.menu_value, MK64_MENU_CHAR_ADDR[slot]);
-      core()->memory().writeValue<uint8_t>(entry.real_value, MK64_REAL_CHAR_ADDR[slot]);
+      m_retro->writeu8(entry.menu_value, MK64_MENU_CHAR_ADDR[slot]);
+      m_retro->writeu8(entry.real_value, MK64_REAL_CHAR_ADDR[slot]);
       break;
     }
   }
@@ -192,7 +194,7 @@ dr_error MarioKart64::doSetPlayerControlType(unsigned index, dr_control_type con
   for (unsigned i = 0; i < 4; i++)
     if (m_controlTypes[i] == DR_CONTROL_TYPE_HUMAN)
       humanCount++;
-  core()->memory().writeValue<uint8_t>(static_cast<uint8_t>(humanCount), MK64_NUMBER_PLAYERS_ADDR);
+  m_retro->writeu8(static_cast<uint8_t>(humanCount), MK64_NUMBER_PLAYERS_ADDR);
 
   return DR_OK;
 }

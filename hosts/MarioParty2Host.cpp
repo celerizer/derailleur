@@ -37,12 +37,13 @@ static const dr_team_color MP2_PANEL_COLOR_TO_DR[] = {
   DR_TEAM_COLOR_GREEN, // 0x04
 };
 
+// Hardware addresses (accessed wordflipped via DrHost). u8 fields unflip ^3.
 static const size_t MP2_SLOT_ADDRS[5] = {
-  0x800df6c7,
-  0x800df6c3,
-  0x800df6c2,
-  0x800df6c1,
+  0x800df6c4,
   0x800df6c0,
+  0x800df6c1,
+  0x800df6c2,
+  0x800df6c3,
 };
 
 static const size_t MP2_MINIGAME_TITLE_ADDRS[6] = {
@@ -67,59 +68,59 @@ static DrHostConfig makeConfig()
   config.scene_miniresults = 0x70;
   config.scene_miniresults_battle = 0x6f;
   // scene_miniresults_duel: not available in mp2
-  config.scene_addr = 0x800FA63C;
+  config.scene_addr = 0x800FA63E; // u16
 
   config.scene_board_ranges[0] = { 0x3E, 0x43 };
   config.scene_board_range_count = 1;
 
-  config.character_addr[0] = 0x800fd2c7;
-  config.character_addr[1] = 0x800fd2fb;
-  config.character_addr[2] = 0x800fd32f;
-  config.character_addr[3] = 0x800fd363;
-  config.controller_addr[0] = 0x800fd2c0;
-  config.controller_addr[1] = 0x800fd2f4;
-  config.controller_addr[2] = 0x800fd328;
-  config.controller_addr[3] = 0x800fd35c;
-  config.difficulty_addr[0] = 0x800fd2c1;
-  config.difficulty_addr[1] = 0x800fd2f5;
-  config.difficulty_addr[2] = 0x800fd329;
-  config.difficulty_addr[3] = 0x800fd35d;
-  config.team_addr[0] = 0x800fd2c3;
-  config.team_addr[1] = 0x800fd2f7;
-  config.team_addr[2] = 0x800fd32b;
-  config.team_addr[3] = 0x800fd35f;
-  config.bot_addr[0] = 0x800fd2c4;
-  config.bot_addr[1] = 0x800fd2f8;
-  config.bot_addr[2] = 0x800fd32c;
-  config.bot_addr[3] = 0x800fd360;
-  config.result_addr[0] = 0x800fd2ce;
-  config.result_addr[1] = 0x800fd302;
-  config.result_addr[2] = 0x800fd336;
-  config.result_addr[3] = 0x800fd36a;
-  config.bonus_result_addr[0] = 0x800fd2c8;
-  config.bonus_result_addr[1] = 0x800fd2fc;
-  config.bonus_result_addr[2] = 0x800fd330;
-  config.bonus_result_addr[3] = 0x800fd364;
-  config.panel_color_addr[0] = 0x800fd2d8;
-  config.panel_color_addr[1] = 0x800fd30c;
-  config.panel_color_addr[2] = 0x800fd340;
-  config.panel_color_addr[3] = 0x800fd374;
+  config.character_addr[0] = 0x800fd2c4;
+  config.character_addr[1] = 0x800fd2f8;
+  config.character_addr[2] = 0x800fd32c;
+  config.character_addr[3] = 0x800fd360;
+  config.controller_addr[0] = 0x800fd2c3;
+  config.controller_addr[1] = 0x800fd2f7;
+  config.controller_addr[2] = 0x800fd32b;
+  config.controller_addr[3] = 0x800fd35f;
+  config.difficulty_addr[0] = 0x800fd2c2;
+  config.difficulty_addr[1] = 0x800fd2f6;
+  config.difficulty_addr[2] = 0x800fd32a;
+  config.difficulty_addr[3] = 0x800fd35e;
+  config.team_addr[0] = 0x800fd2c0;
+  config.team_addr[1] = 0x800fd2f4;
+  config.team_addr[2] = 0x800fd328;
+  config.team_addr[3] = 0x800fd35c;
+  config.bot_addr[0] = 0x800fd2c7;
+  config.bot_addr[1] = 0x800fd2fb;
+  config.bot_addr[2] = 0x800fd32f;
+  config.bot_addr[3] = 0x800fd363;
+  config.result_addr[0] = 0x800fd2cc;
+  config.result_addr[1] = 0x800fd300;
+  config.result_addr[2] = 0x800fd334;
+  config.result_addr[3] = 0x800fd368;
+  config.bonus_result_addr[0] = 0x800fd2ca;
+  config.bonus_result_addr[1] = 0x800fd2fe;
+  config.bonus_result_addr[2] = 0x800fd332;
+  config.bonus_result_addr[3] = 0x800fd366;
+  config.panel_color_addr[0] = 0x800fd2db;
+  config.panel_color_addr[1] = 0x800fd30f;
+  config.panel_color_addr[2] = 0x800fd343;
+  config.panel_color_addr[3] = 0x800fd377;
 
   config.char_to_dr = MP2_CHAR_TO_DR;
   config.char_to_dr_size = sizeof(MP2_CHAR_TO_DR) / sizeof(*MP2_CHAR_TO_DR);
   config.diff_to_dr = MP2_DIFF_TO_DR;
   config.diff_to_dr_size = sizeof(MP2_DIFF_TO_DR) / sizeof(*MP2_DIFF_TO_DR);
 
-  config.battle_addr = 0x800F920A;
+  config.battle_addr = 0x800F9208; // u16
 
   config.panel_color_to_dr = MP2_PANEL_COLOR_TO_DR;
   config.panel_color_to_dr_size = sizeof(MP2_PANEL_COLOR_TO_DR) / sizeof(*MP2_PANEL_COLOR_TO_DR);
 
-  config.minigame_type_addr = 0x800DF6C6;
+  config.minigame_type_addr = 0x800DF6C5; // u8
   config.minigame_type_to_dr = MP2_MINIGAME_TYPE_TO_DR;
   config.minigame_type_to_dr_size = sizeof(MP2_MINIGAME_TYPE_TO_DR) / sizeof(*MP2_MINIGAME_TYPE_TO_DR);
-  config.next_scene_addr = 0x800fdc08; // hw 0x800fdc0b
-  config.minigame_id_addr = 0x800F93CA;
+  config.next_scene_addr = 0x800fdc0b; // unused
+  config.minigame_id_addr = 0x800F93C8; // u16 (minigame_id_is_8bit == false)
   config.minigame_id_is_8bit = false;
 
   static const uint8_t blacklist[] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06 };

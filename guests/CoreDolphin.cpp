@@ -140,15 +140,18 @@ void CoreDolphin::doSetMinigame(const dr_mp_minigame_t *minigame)
   int discIndex = m_games.indexOf(owner);
   if (discIndex != m_discIndex)
   {
+    /* Expose the core so it will run frames */
     core()->show();
+
+    /* Use the disk interface to change games */
     core()->diskControl()->setEjectState(true);
     core()->diskControl()->setImageIndex(discIndex);
     core()->diskControl()->setEjectState(false);
     m_discIndex = discIndex;
 
-    // Spin for 60 frames while the disc takes (MPGC needed about this much)
+    /* Spin frames while the disc takes (MPGC needed about this much) */
     core()->unpause();
-    for (int i = 0; i < 60; i++)
+    for (int i = 0; i < 120; i++)
     {
       core()->waitFrames(1);
       QApplication::processEvents();

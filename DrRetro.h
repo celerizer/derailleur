@@ -75,27 +75,37 @@ public:
   }
 
 public:
-  dr_error readu8(uint8_t *out, size_t addr, dr_endianness endianness = DR_ENDIANNESS_LITTLE);
-  dr_error reads8(int8_t *out, size_t addr, dr_endianness endianness = DR_ENDIANNESS_LITTLE);
-  dr_error readu16(uint16_t *out, size_t addr, dr_endianness endianness = DR_ENDIANNESS_LITTLE);
-  dr_error reads16(int16_t *out, size_t addr, dr_endianness endianness = DR_ENDIANNESS_LITTLE);
-  dr_error readu32(uint32_t *out, size_t addr, dr_endianness endianness = DR_ENDIANNESS_LITTLE);
-  dr_error reads32(int32_t *out, size_t addr, dr_endianness endianness = DR_ENDIANNESS_LITTLE);
-  dr_error writeu8(uint8_t val, size_t addr, dr_endianness endianness = DR_ENDIANNESS_LITTLE);
-  dr_error writes8(int8_t val, size_t addr, dr_endianness endianness = DR_ENDIANNESS_LITTLE);
-  dr_error writeu16(uint16_t val, size_t addr, dr_endianness endianness = DR_ENDIANNESS_LITTLE);
-  dr_error writes16(int16_t val, size_t addr, dr_endianness endianness = DR_ENDIANNESS_LITTLE);
-  dr_error writeu32(uint32_t val, size_t addr, dr_endianness endianness = DR_ENDIANNESS_LITTLE);
-  dr_error writes32(int32_t val, size_t addr, dr_endianness endianness = DR_ENDIANNESS_LITTLE);
+  dr_error readu8(uint8_t *out, size_t addr, dr_endianness endianness = DR_ENDIANNESS_INVALID);
+  dr_error reads8(int8_t *out, size_t addr, dr_endianness endianness = DR_ENDIANNESS_INVALID);
+  dr_error readu16(uint16_t *out, size_t addr, dr_endianness endianness = DR_ENDIANNESS_INVALID);
+  dr_error reads16(int16_t *out, size_t addr, dr_endianness endianness = DR_ENDIANNESS_INVALID);
+  dr_error readu32(uint32_t *out, size_t addr, dr_endianness endianness = DR_ENDIANNESS_INVALID);
+  dr_error reads32(int32_t *out, size_t addr, dr_endianness endianness = DR_ENDIANNESS_INVALID);
+  dr_error writeu8(uint8_t val, size_t addr, dr_endianness endianness = DR_ENDIANNESS_INVALID);
+  dr_error writes8(int8_t val, size_t addr, dr_endianness endianness = DR_ENDIANNESS_INVALID);
+  dr_error writeu16(uint16_t val, size_t addr, dr_endianness endianness = DR_ENDIANNESS_INVALID);
+  dr_error writes16(int16_t val, size_t addr, dr_endianness endianness = DR_ENDIANNESS_INVALID);
+  dr_error writeu32(uint32_t val, size_t addr, dr_endianness endianness = DR_ENDIANNESS_INVALID);
+  dr_error writes32(int32_t val, size_t addr, dr_endianness endianness = DR_ENDIANNESS_INVALID);
 
   void log(unsigned level, const char *message);
   void writeForFrames(
-    size_t addr, const void *value, unsigned bytes, unsigned frames, dr_endianness endianness = DR_ENDIANNESS_LITTLE);
+    size_t addr, const void *value, unsigned bytes, unsigned frames, dr_endianness endianness = DR_ENDIANNESS_INVALID);
   void tickFrameWrites();
 
   QRetro *m_core = nullptr;
   bool m_ownCore = false;
   bool m_valid = true;
+
+protected:
+  /// Endianness used when an access doesn't pass one explicitly. Plain DrRetro is
+  /// little-endian (raw); DrRetroN64 sets this to wordflipped so N64 code can use
+  /// hardware addresses without repeating the flag on every call.
+  dr_endianness m_endianness = DR_ENDIANNESS_LITTLE;
+  dr_endianness resolveEndianness(dr_endianness e) const
+  {
+    return e == DR_ENDIANNESS_INVALID ? m_endianness : e;
+  }
 
 private:
   struct FrameWrite
@@ -109,6 +119,27 @@ private:
 
 signals:
   void logMessage(unsigned level, const QString &message);
+};
+
+/// DrRetro whose accesses default to wordflipped, matching mupen64plus's RAM
+/// layout. N64 guests/hosts use this so they can define hardware addresses and
+/// read/write without passing DR_ENDIANNESS_WORDFLIPPED every time. An explicit
+/// endianness argument still overrides it (e.g. raw ROM patches).
+class DrRetroN64 : public DrRetro
+{
+  Q_OBJECT
+
+public:
+  DrRetroN64(QObject *parent = nullptr)
+    : DrRetro(parent)
+  {
+    m_endianness = DR_ENDIANNESS_WORDFLIPPED;
+  }
+  explicit DrRetroN64(QRetro *sharedCore, QObject *parent = nullptr)
+    : DrRetro(sharedCore, parent)
+  {
+    m_endianness = DR_ENDIANNESS_WORDFLIPPED;
+  }
 };
 
 #endif
