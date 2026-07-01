@@ -347,9 +347,6 @@ void DrNetplay::onFrameBegin(int context)
     if (waitForFrame(context, frame))
     {
       commitMergedFrame(context, frame);
-      /* The barrier frame is the first gated frame after a sync point (activation
-       * or resync), so this logs once per switch — compare it across peers to see
-       * whether they cleared the same per-context frame. */
       if (frame == m_CtxBarrier[context])
         emit logMessage(DR_LOG_INFO,
           QString("netplay: ctx %1 passed barrier frame %2").arg(context).arg(frame));
@@ -357,14 +354,11 @@ void DrNetplay::onFrameBegin(int context)
       return;
     }
 
-    /* waitForFrame bailed. If a resync was just requested it interrupted the
-     * wait deliberately — loop to service it without running retro_run. */
+    /* If there's a pending resync, service it and try again after */
     if (m_ResyncActive.load())
       continue;
 
-    /* The foreground switched away from this context — stop gating it, don't
-     * treat it as a timeout. Log the frame it stopped on so it can be compared
-     * to the other peer's (a mismatch here is the classic context-switch desync). */
+    /* Context has already changed, log it and move on instead of timing out */
     if (context != m_ActiveContext)
     {
       emit logMessage(DR_LOG_INFO,
@@ -372,10 +366,24 @@ void DrNetplay::onFrameBegin(int context)
       return;
     }
 
-    const QString err =
-      QString("netplay: timed out waiting for ctx %1 frame %2").arg(context).arg(frame);
-    QMetaObject::invokeMethod(this, [this, err]() { dropSession(err); }, Qt::QueuedConnection);
-    return;
+    /* If we timeout waiting for an input frame, either request a hard sync (client) or do it ourselves (host) */
+    emit logMessage(DR_LOG_WARN,
+      QString("netplay: timed out waiting for ctx %1 frame %2 — requesting hard resync")
+        .arg(context).arg(frame));
+    if (!m_ResyncActive.load())
+    {
+      if (m_IsServer)
+        QMetaObject::invokeMethod(this, [this]() { requestHardResync(); }, Qt::QueuedConnection);
+      else
+        QMetaObject::invokeMethod(
+          this,
+          [this]() {
+            if (!m_Sockets.isEmpty())
+              writeMessage(m_Sockets.first(), DR_NETPLAY_PACKET_RESYNC_REQUEST, QByteArray());
+          },
+          Qt::QueuedConnection);
+    }
+    continue;
   }
 }
 
@@ -660,14 +668,17 @@ void DrNetplay::handleMessage(QTcpSocket *sock, quint8 type, const QByteArray &p
 
   case DR_NETPLAY_PACKET_MINIGAME_FILTER:
   {
-    /* The host is authoritative; store it (so a server can re-send) and apply it
-     * locally. The server relays to the other clients. */
     m_MinigameFilter = payload;
     emit minigameFilterReceived(payload);
     if (m_IsServer)
       broadcastVar(DR_NETPLAY_PACKET_MINIGAME_FILTER, payload, sock);
     break;
   }
+
+  case DR_NETPLAY_PACKET_RESYNC_REQUEST:
+    if (m_IsServer)
+      requestHardResync();
+    break;
 
   default:
     break;
@@ -931,6 +942,8 @@ int DrNetplay::payloadLength(quint8 type)
     return 1;
   case DR_NETPLAY_PACKET_VERSION:
     return DR_NETPLAY_VERSION_HASH_LEN;
+  case DR_NETPLAY_PACKET_RESYNC_REQUEST:
+    return 0;
   default:
     return -1;
   }
