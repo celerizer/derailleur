@@ -10,13 +10,14 @@ static const dr_mp_minigame_t SR_MINIGAMES[] = {
 
   { "Remix Giant Battle", DR_MINIGAME_1V3, 0x02, 0xFF, DR_NO_QUIRKS },
   { "Remix Tiny Battle",  DR_MINIGAME_1V3, 0x03, 0xFF, DR_NO_QUIRKS },
+  { "Remix Golden Gun",   DR_MINIGAME_1V3, 0x04, 0xFF, DR_NO_QUIRKS },
+
+  { "Remix Pokemon", DR_MINIGAME_4P, 0x05, 0xFF, DR_NO_QUIRKS },
 
   { "Remix Duel", DR_MINIGAME_DUEL, 0x00, 0xFF, DR_NO_QUIRKS },
 
   { nullptr, DR_MINIGAME_INVALID, 0xFF, 0xFF, DR_NO_QUIRKS },
 };
-
-/* Hardware addresses (all u8), accessed wordflipped via DrRetroN64. */
 
 /* Whether the game is in team battle mode */
 static const size_t SR_GAME_TYPE_ADDR = 0x800a4d0a;
@@ -24,8 +25,8 @@ static const size_t SR_STAGE_ADDR = 0x800a4d09;
 
 static const size_t SR_CHARACTER_ADDR[4] = { 0x800a4d2b, 0x800a4d9f, 0x800a4e13, 0x800a4e87 };
 
-/* If this value is 1, the player is CPU-controlled */
-static const size_t SR_IS_BOT_ADDR[4] = { 0x800a4d2a, 0x800a4d9e, 0x800a4e12, 0x800a4e86 };
+/* Player type for this slot: 0 = human, 1 = CPU, 2 = inactive (no player) */
+static const size_t SR_PLAYER_TYPE_ADDR[4] = { 0x800a4d2a, 0x800a4d9e, 0x800a4e12, 0x800a4e86 };
 
 static const size_t SR_DIFFICULTY_ADDR[4] = { 0x800a4d28, 0x800a4dac, 0x800a4e10, 0x800a4e84 };
 
@@ -42,9 +43,39 @@ static const size_t SR_PORT_ADDR[4] = { 0x800a4d32, 0x800a4da6, 0x800a4e1a, 0x80
 /* The color drawn behind the percentage, should match SR_PORT_ADDR */
 static const size_t SR_PORT_COLOR_ADDR[4] = { 0x800a4d30, 0x800a4da4, 0x800a4e18, 0x800a4e8c };
 
-/* The size of the player. 0=normal, 1=giant, 2=tiny */
-static const size_t SR_SIZE_ADDR_1[4] = { 0x80502faf, 0x80502fb3, 0x80502fb7, 0x80502fbb };
-static const size_t SR_SIZE_ADDR_2[4] = { 0x80502fbf, 0x80502fc3, 0x80502fc7, 0x80502fcb };
+/* The size of the player, a u32. 0=normal, 1=giant, 2=tiny */
+static const size_t SR_SIZE_ADDR_1[4] = { 0x80502fac, 0x80502fb0, 0x80502fb4, 0x80502fb8 };
+static const size_t SR_SIZE_ADDR_2[4] = { 0x80502fbc, 0x80502fc0, 0x80502fc4, 0x80502fc8 };
+
+/* The item the player starts with */
+static const size_t SR_START_ITEM_ADDR[4] = { 0x80453748, 0x8045374c, 0x80453750, 0x80453754 };
+
+/* The item the player can spawn by taunting */
+static const size_t SR_TAUNT_ITEM_ADDR[4] = { 0x804539a8, 0x804539ac, 0x804539b0, 0x804539b4 };
+
+typedef enum
+{
+  SR_ITEM_NONE        = 0,
+  SR_ITEM_BEAM_SWORD  = 1,
+  SR_ITEM_HOMERUN_BAT = 2,
+  SR_ITEM_FAN         = 3,
+  SR_ITEM_STAR_ROD    = 4,
+  SR_ITEM_RAY_GUN     = 5,
+  SR_ITEM_FIRE_FLOWER = 6,
+  SR_ITEM_HAMMER      = 7,
+  SR_ITEM_MS_BOMB     = 8,
+  SR_ITEM_BOBOMB      = 9,
+  SR_ITEM_BUMPER      = 10,
+  SR_ITEM_GREEN_SHELL = 11,
+  SR_ITEM_RED_SHELL   = 12,
+  SR_ITEM_POKEBALL    = 13,
+  SR_ITEM_SPINY_SHELL = 14,
+  SR_ITEM_DEKU_NUT    = 15,
+  SR_ITEM_PITFALL     = 16,
+  SR_ITEM_GOLDEN_GUN  = 17,
+  SR_ITEM_MR_SATURN   = 18,
+  SR_ITEM_RANDOM      = 19
+} sr_item;
 
 typedef struct
 {
@@ -302,13 +333,18 @@ void SmashRemix::applyPlayers()
     const dr_player_t &p = m_players[i];
     if (p.control_port == DR_CONTROL_PORT_INVALID || p.control_port >= DR_CONTROL_PORT_SIZE)
       continue;
+    /* Non-participants (e.g. the two board players sitting out a duel) are marked
+     * INVALID by the host; skip them so their slot stays empty and gets
+     * eliminated below, leaving only the two real participants spawned. */
+    if (p.team_type == DR_TEAM_TYPE_INVALID)
+      continue;
 
     unsigned slot = p.control_port - DR_CONTROL_PORT_P1;
     m_slotToIndex[slot] = i;
     m_slotCharacters[slot] = p.character;
 
     bool isBot = (p.control_type == DR_CONTROL_TYPE_CPU);
-    m_retro->writeu8(isBot ? 1 : 0, SR_IS_BOT_ADDR[slot]);
+    m_retro->writeu8(isBot ? 1 : 0, SR_PLAYER_TYPE_ADDR[slot]);
 
     for (const auto &entry : SR_CHARACTER_ID)
     {
@@ -378,14 +414,30 @@ void SmashRemix::applyPlayers()
     m_retro->writeu8(team, SR_TEAM_ADDR_1[slot]);
     m_retro->writeu8(team, SR_TEAM_ADDR_2[slot]);
 
-    uint8_t size;
-    bool tinyBattle = (m_minigame->minigame_id == 0x03);
-    if (p.team_type == DR_TEAM_TYPE_1V3_SOLO)
-      size = tinyBattle ? 0 : 1; // Tiny: solo=normal, Giant: solo=giant
-    else
-      size = tinyBattle ? 2 : 0; // Tiny: group=tiny,  Giant: group=normal
-    m_retro->writeu8(size, SR_SIZE_ADDR_1[slot]);
-    m_retro->writeu8(size, SR_SIZE_ADDR_2[slot]);
+    uint8_t size = 0; // normal
+    if (m_minigame->minigame_id == 0x02) // Giant Battle: solo is giant
+      size = (p.team_type == DR_TEAM_TYPE_1V3_SOLO) ? 1 : 0;
+    else if (m_minigame->minigame_id == 0x03) // Tiny Battle: group is tiny
+      size = (p.team_type == DR_TEAM_TYPE_1V3_SOLO) ? 0 : 2;
+    m_retro->writeu32(size, SR_SIZE_ADDR_1[slot]);
+    m_retro->writeu32(size, SR_SIZE_ADDR_2[slot]);
+
+    /* Items: none by default. */
+    sr_item startItem = SR_ITEM_NONE;
+    sr_item tauntItem = SR_ITEM_NONE;
+    if (m_minigame->minigame_id == 0x04 && p.team_type == DR_TEAM_TYPE_1V3_SOLO)
+    {
+      /* Remix Golden Gun: arm the 1v3 solo player with a golden gun in both. */
+      startItem = SR_ITEM_GOLDEN_GUN;
+      tauntItem = SR_ITEM_GOLDEN_GUN;
+    }
+    else if (m_minigame->minigame_id == 0x05)
+    {
+      /* Remix Pokemon: everyone starts with a pokeball (no taunt item). */
+      startItem = SR_ITEM_POKEBALL;
+    }
+    m_retro->writeu32(startItem, SR_START_ITEM_ADDR[slot]);
+    m_retro->writeu32(tauntItem, SR_TAUNT_ITEM_ADDR[slot]);
   }
 
   unsigned activeSlots = 0;
@@ -398,7 +450,13 @@ void SmashRemix::applyPlayers()
   {
     for (unsigned slot = 0; slot < 4; slot++)
       if (m_slotToIndex[slot] == -1)
+      {
+        /* Mark the slot totally inactive (2), not just out of stocks — otherwise
+         * a slot the savestate had populated (e.g. slot 1 when the duelists land
+         * on slots 0 and 2) still spawns a stale player. */
+        m_retro->writeu8(2, SR_PLAYER_TYPE_ADDR[slot]);
         m_retro->writes8(-1, SR_STOCKS_ADDR[slot]);
+      }
   }
 }
 
