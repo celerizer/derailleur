@@ -356,13 +356,10 @@ QString dr_core_path(dr_core core);
 /// The dynamic library extension for the current platform (".dll" or ".so").
 QString dr_os_extension(void);
 
-/// Deterministic PRNG shared by netplay peers so random rolls (minigame
-/// candidates, etc.) match across machines — unlike std::rand, whose sequence
-/// differs by platform/libc. Seed once per session from a value every peer
-/// agrees on; both then produce the identical sequence.
-#define DR_RAND_MAX 0x7FFF
 void dr_srand(unsigned seed);
+
 int dr_rand(void);
+
 unsigned long dr_rand_count(void);
 
 #endif
