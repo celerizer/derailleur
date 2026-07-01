@@ -182,7 +182,10 @@ void MarioTennis::doSetMinigame(const dr_mp_minigame_t *minigame)
   m_finishCountdown = 0;
   core()->unserializeFromFile(dr_state_directory() + "/mariotennis.state.zip");
   bool doubles = (minigame->type == DR_MINIGAME_2V2);
-  uint8_t court = (minigame->minigame_id == 0x06) ? 0x10 : (uint8_t)(rand() % 16);
+  unsigned long rc = dr_rand_count();
+  uint8_t court = (minigame->minigame_id == 0x06) ? 0x10 : (uint8_t)(dr_rand() % 16);
+  log(DR_LOG_INFO, qPrintable(QString("MT court=%1 id=0x%2 randcount=%3")
+                       .arg(court).arg(minigame->minigame_id, 2, 16, QChar('0')).arg(rc)));
   m_retro->writeu8(court, MT_COURT_ADDR);
   m_retro->writeu8(0x01, MT_SETS_ADDR);
   m_retro->writeu8(0x01, MT_GAMES_ADDR);

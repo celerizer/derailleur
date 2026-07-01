@@ -48,6 +48,9 @@ DrGuest *DrGuestList::pickMinigame(dr_minigame_type type, const dr_mp_minigame_t
     }
   }
 
+  log(DR_LOG_INFO, qPrintable(QString("pick type=%1 eligible=%2 randcount=%3")
+                       .arg((int)type).arg(eligible.size()).arg(dr_rand_count())));
+
   if (eligible.isEmpty())
     return nullptr;
 

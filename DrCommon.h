@@ -363,5 +363,6 @@ QString dr_os_extension(void);
 #define DR_RAND_MAX 0x7FFF
 void dr_srand(unsigned seed);
 int dr_rand(void);
+unsigned long dr_rand_count(void);
 
 #endif

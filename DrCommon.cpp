@@ -55,17 +55,23 @@ QString dr_core_path(dr_core core)
   }
 }
 
-/* Classic 32-bit LCG. Fixed-width unsigned math keeps the sequence identical on
- * every platform (the whole point — std::rand does not). */
 static uint32_t s_randState = 1u;
+static unsigned long s_randCount = 0;
 
 void dr_srand(unsigned seed)
 {
   s_randState = static_cast<uint32_t>(seed);
+  s_randCount = 0;
 }
 
 int dr_rand(void)
 {
+  s_randCount++;
   s_randState = s_randState * 1103515245u + 12345u;
   return static_cast<int>((s_randState >> 16) & DR_RAND_MAX);
+}
+
+unsigned long dr_rand_count(void)
+{
+  return s_randCount;
 }

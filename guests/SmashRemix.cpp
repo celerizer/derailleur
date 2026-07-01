@@ -294,7 +294,10 @@ void SmashRemix::doSetMinigame(const dr_mp_minigame_t *minigame)
   core()->unserializeFromFile(dr_state_directory() + "/smashremix.state.zip");
 
   /* Use a random stage from the original stage list */
-  m_retro->writeu8(rand() % 9, SR_STAGE_ADDR);
+  unsigned long rc = dr_rand_count();
+  uint8_t stage = dr_rand() % 9;
+  log(DR_LOG_INFO, qPrintable(QString("SR stage=%1 randcount=%2").arg(stage).arg(rc)));
+  m_retro->writeu8(stage, SR_STAGE_ADDR);
 
   /* Enable team battle for the 2v2 and 1v3 minigames */
   bool teamBattle = (minigame->type == DR_MINIGAME_2V2 || minigame->type == DR_MINIGAME_1V3);
