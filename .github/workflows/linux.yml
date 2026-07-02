@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  build-linux:
     # Build on the oldest supported runner so the AppImage works on older glibc.
     runs-on: ubuntu-22.04
 
