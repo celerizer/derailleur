@@ -128,14 +128,10 @@ void DrHost::run(void)
 
       if (mg_type == DR_MINIGAME_ITEM)
       {
-        static const uint8_t itemIds[] = { 0x40, 0x3C, 0x3B };
-        for (unsigned k = 0; k < 3; k++)
-          writeu8(itemIds[k], m_config.slot_addrs[k]);
         writeu32(0, m_config.scene_trampoline_addr);
         m_lastMinigameId = -1;
         writeu8(0xFF, m_config.minigame_id_addr);
-        /// @todo fix rng: fixed value (not random) so netplay peers stay in sync
-        m_itemChosenId = 0x3B + (0u % 6);
+        m_itemChosenId = 0x3B + (dr_rand() % 6);
         m_itemPending = true;
         m_itemSceneLeft = false;
         break;
