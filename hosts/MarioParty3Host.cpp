@@ -67,15 +67,15 @@ static const size_t MP3_SLOT_ADDRS[5] = {
   0x80102C0C, // slot 4
 };
 
-// TABLE_BASE=0xB122D74A, HEADER=0x108, ENTRY=0x30
+// TABLE_BASE=0xB122D74A, HEADER=0x124 (0x48 entries), ENTRY=0x30
 // Slots use odd entries (1,3,5,7,9), each spanning into the next entry for capacity
 static const size_t MP3_MINIGAME_TITLE_ADDRS[6] = {
-  0xB122D883, // entry  1 len byte
-  0xB122D8E3, // entry  3 len byte
-  0xB122D943, // entry  5 len byte
-  0xB122D9A3, // entry  7 len byte
-  0xB122DA03, // entry  9 len byte
-  0xB122DA63, // entry 11 len byte (sentinel)
+  0xB122D89F, // entry  1 len byte
+  0xB122D8FF, // entry  3 len byte
+  0xB122D95F, // entry  5 len byte
+  0xB122D9BF, // entry  7 len byte
+  0xB122DA1F, // entry  9 len byte
+  0xB122DA7F, // entry 11 len byte (sentinel)
 };
 
 static size_t n64ByteAddr(size_t addr)
