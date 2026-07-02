@@ -22,6 +22,27 @@ struct dr_scene_range_t
   uint8_t max;
 };
 
+/// One entry in a host's scene-name table. Tables are terminated by an entry
+/// whose scene_id is -1 (scene_id is signed so the sentinel can't collide with
+/// any real 0x00-0xFF scene).
+struct dr_scene_name_t
+{
+  int scene_id;
+  const char *name;
+};
+
+/// Returns the descriptive name for `scene_id` by scanning `scenes` until a
+/// match or the -1 terminator, or nullptr if there is no table or no match.
+static inline const char *dr_scene_name(const dr_scene_name_t *scenes, int scene_id)
+{
+  if (!scenes)
+    return nullptr;
+  for (; scenes->scene_id != -1; scenes++)
+    if (scenes->scene_id == scene_id)
+      return scenes->name;
+  return nullptr;
+}
+
 typedef enum
 {
   DR_HOST_STATE_INVALID = 0,
@@ -98,6 +119,7 @@ struct DrHostConfig
   size_t scene_duel_slot0_addr;         // word-flipped RAM addr of duel board's first slot; 0 = use minigame_type_addr
   const char *cheat_regular_board;      // cheat code string for regular board roulette (nullptr = unused)
   const char *cheat_duel_board;         // cheat code string for duel board roulette (nullptr = unused)
+  const dr_scene_name_t *scene_names;   // scene id -> name table (-1 terminated); nullptr = none
 };
 
 class DrHost : public DrRetro

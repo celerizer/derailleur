@@ -28,8 +28,13 @@ void DrHost::run(void)
 
   if ((uint8_t)scene_id != m_lastScene)
   {
-    emit logMessage(DR_LOG_INFO,
-      QString("scene: 0x%1").arg((uint8_t)scene_id, 2, 16, QChar('0')));
+    const char *scene_name = dr_scene_name(m_config.scene_names, (uint8_t)scene_id);
+    if (scene_name)
+      emit logMessage(DR_LOG_INFO,
+        QString("scene: 0x%1 (%2)").arg((uint8_t)scene_id, 2, 16, QChar('0')).arg(scene_name));
+    else
+      emit logMessage(DR_LOG_WARN,
+        QString("scene: 0x%1 <<< UNKNOWN SCENE ID >>>").arg((uint8_t)scene_id, 2, 16, QChar('0')));
     m_lastScene = (uint8_t)scene_id;
   }
 

@@ -86,6 +86,101 @@ static size_t n64ByteAddr(size_t addr)
 // 72 game guy results
 /* duel results on duel map scene 0x73 */
 
+static const dr_scene_name_t MP3_SCENE_NAMES[] =
+{
+  { 0x00, "Booting up" },
+
+  { 0x01, "Hand, Line and Sinker" },
+  { 0x02, "Coconut Conk" },
+  { 0x03, "Spotlight Swim" },
+  { 0x04, "Boulder Ball" },
+  { 0x05, "Crazy Cogs" },
+  { 0x06, "Hide and Sneak" },
+  { 0x07, "Ridiculous Relay" },
+  { 0x08, "Thwomp Pull" },
+  { 0x09, "River Raiders" },
+  { 0x0a, "Tidal Toss" },
+  { 0x0b, "Eatsa Pizza" },
+  { 0x0c, "Baby Bowser Broadside" },
+  { 0x0d, "Pump, Pump and Away" },
+  { 0x0e, "Hyper Hydrants" },
+  { 0x0f, "Picking Panic" },
+  { 0x10, "Cosmic Coaster" },
+  { 0x11, "Puddle Paddle" },
+  { 0x12, "Etch 'n' Catch" },
+  { 0x13, "Log Jam" },
+  { 0x14, "Slot Synch" },
+  { 0x15, "Treadmill Grill" },
+  { 0x16, "Toadstool Titan" },
+  { 0x17, "Aces High" },
+  { 0x18, "Bounce 'n' Trounce" },
+  { 0x19, "Ice Rink Risk" },
+  { 0x1a, "Locked Out" },
+  { 0x1b, "Chip Shot Challenge" },
+  { 0x1c, "Parasol Plummet" },
+  { 0x1d, "Messy Memory" },
+  { 0x1e, "Picture Imperfect" },
+  { 0x1f, "Mario's Puzzle Party" },
+  { 0x20, "The Beat Goes On" },
+  { 0x21, "M.P.I.Q." },
+  { 0x22, "Curtain Call" },
+  { 0x23, "Water Whirled" },
+  { 0x24, "Frigid Bridges" },
+  { 0x25, "Awful Tower" },
+  { 0x26, "Cheep Cheep Chase" },
+  { 0x27, "Pipe Cleaners" },
+  { 0x28, "Snowball Summit" },
+  { 0x29, "All Fired Up" },
+  { 0x2a, "Stacked Deck" },
+  { 0x2b, "Three Door Monty" },
+  { 0x2c, "Rockin' Raceway" },
+  { 0x2d, "Merry-Go-Chomp" },
+  { 0x2e, "Slap Down" },
+  { 0x2f, "Storm Chasers" },
+  { 0x30, "Eye Sore" },
+  { 0x31, "Vine With Me" },
+  { 0x32, "Popgun Pick-Off" },
+  { 0x33, "End of the Line" },
+  { 0x34, "Bowser Toss" },
+  { 0x35, "Baby Bowser Bonkers" },
+  { 0x36, "Motor Rooter" },
+  { 0x37, "Silly Screws" },
+  { 0x38, "Crowd Cover" },
+  { 0x39, "Tick Tock Hop" },
+  { 0x3a, "Fowl Play" },
+  { 0x3b, "Winner's Wheel" },
+  { 0x3c, "Hey, Batter, Batter!" },
+  { 0x3d, "Bobbing Bow-loons" },
+  { 0x3e, "Dorrie Dip" },
+  { 0x3f, "Swinging with Sharks" },
+  { 0x40, "Swing 'n' Swipe" },
+  { 0x41, "Stardust Battle" },
+  { 0x42, "Game Guy's Roulette" },
+  { 0x43, "Game Guy's Lucky 7" },
+  { 0x44, "Game Guy's Magic Boxes" },
+  { 0x45, "Game Guy's Sweet Surprise" },
+  { 0x46, "Dizzy Dinghies" },
+
+  { 0x47, "Loading" },
+  { 0x4c, "Creepy Cavern" },
+  { 0x4d, "Waluigi's Island" },
+  { 0x4e, "Battle Royal Rule Map" },
+  { 0x53, "Board intro" },
+  { 0x54, "Battle Royal Rule Map intro" },
+  { 0x58, "Booting up" }, // Nintendo/Hudson logos
+  { 0x5a, "Loading" },
+  { 0x5b, "Gate Guy" },
+  { 0x69, "Mini-Game Room" },
+  { 0x71, "Mini-Game results" },
+  { 0x77, "Castle Grounds" },
+  { 0x78, "Star Lift" },
+  { 0x79, "File select" },
+  { 0x7a, "Cutscene" },
+  { 0x7b, "Princess Peach's Castle" },
+
+  { -1, nullptr },
+};
+
 static DrHostConfig makeConfig()
 {
   DrHostConfig config = {};
@@ -172,6 +267,8 @@ static DrHostConfig makeConfig()
   config.scene_duel_slot0_addr = 0x80102BA8u; // u8
   config.cheat_regular_board = MP3_CHEAT_REGULAR_BOARD;
   config.cheat_duel_board = MP3_CHEAT_DUEL_BOARD;
+
+  config.scene_names = MP3_SCENE_NAMES;
 
   return config;
 }
@@ -261,33 +358,35 @@ MarioParty3Host::MarioParty3Host(QObject *parent)
         m_core->cheatSet(1, false, MP3_CHEAT_REGULAR_BOARD);
         m_core->cheatSet(2, false, MP3_CHEAT_DUEL_BOARD);
 
-        // Write 0x41-entry title table to ROM at 0xB122D74A
-        // Entries 0x00-0x0F: 48-byte roulette slots (names injected at runtime)
-        // Entries 0x10-0x3A: unused ids, all sharing one 6-byte filler entry
-        // Entries 0x3B-0x40: item minigame names, 24 bytes each
+        // Write the minigame-title table to ROM at 0xB122D74A. Entries are indexed
+        // by (minigame_id - 1); MarioParty3.cpp uses ids 0x01-0x48, so the table
+        // needs 0x48 entries (strings 0x00-0x47).
+        //   0x00-0x0F : 48-byte roulette slots (names injected at runtime)
+        //   named     : item + special names, each at its (id - 1) string index
+        //   all others: share one 6-byte filler entry
         static constexpr size_t   TABLE_BASE        = 0xB122D74A;
-        static constexpr uint32_t ENTRY_COUNT       = 0x41;
+        static constexpr uint32_t ENTRY_COUNT       = 0x48; // strings 0x00-0x47
         static constexpr uint32_t FULL_COUNT        = 16;
-        static constexpr uint32_t ITEM_BASE         = 0x3B;
-        static constexpr uint32_t ITEM_COUNT        = 6;
         static constexpr uint32_t ENTRY_SIZE        = 48;
         static constexpr uint32_t SMALL_ENTRY_SIZE  = 6;  // single shared filler
-        static constexpr uint32_t ITEM_ENTRY_SIZE   = 24; // longest item name is 20 chars + 3
-        static constexpr uint32_t HEADER_SIZE       = 4 + ENTRY_COUNT * 4; // 0x108
+        static constexpr uint32_t NAMED_ENTRY_SIZE  = 24; // longest name is 20 chars + 3
+        static constexpr uint32_t HEADER_SIZE       = 4 + ENTRY_COUNT * 4;
         static constexpr uint32_t FULL_AREA_SIZE    = FULL_COUNT * ENTRY_SIZE;
-        // Unused ids share one filler entry and items are sized to their names, so the
-        // table no longer spills past the adjacent ROM table.
         static constexpr uint32_t FILLER_OFFSET     = HEADER_SIZE + FULL_AREA_SIZE;
-        static constexpr uint32_t ITEM_AREA_OFFSET  = FULL_AREA_SIZE + SMALL_ENTRY_SIZE;
+        static constexpr uint32_t NAMED_AREA_OFFSET = FULL_AREA_SIZE + SMALL_ENTRY_SIZE;
 
-        static const char * const ITEM_NAMES[ITEM_COUNT] = {
-          "Winner's Wheel",       // 0x3B
-          "Hey, Batter, Batter!", // 0x3C
-          "Bobbing Bow-loons",    // 0x3D
-          "Dorrie Dip",           // 0x3E
-          "Swinging with Sharks", // 0x3F
-          "Swing 'n' Swipe",      // 0x40
+        // Static (non-roulette) names, placed at string index = minigame_id - 1.
+        struct NamedEntry { uint32_t index; const char *name; };
+        static const NamedEntry NAMED[] = {
+          { 0x3A, "Winner's Wheel" },       // id 0x3B
+          { 0x3B, "Hey, Batter, Batter!" }, // id 0x3C
+          { 0x3C, "Bobbing Bow-loons" },    // id 0x3D
+          { 0x3D, "Dorrie Dip" },           // id 0x3E
+          { 0x3E, "Swinging with Sharks" }, // id 0x3F
+          { 0x3F, "Swing 'n' Swipe" },      // id 0x40
+          { 0x41, "Stardust Battle" },      // id 0x42
         };
+        static constexpr uint32_t NAMED_COUNT = sizeof(NAMED) / sizeof(*NAMED);
 
         auto xw = [this](uint8_t val, size_t addr) {
           // n64ByteAddr already applies the byte flip, so write raw.
@@ -303,11 +402,11 @@ MarioParty3Host::MarioParty3Host(QObject *parent)
         xw32(ENTRY_COUNT, TABLE_BASE);
         for (uint32_t i = 0; i < FULL_COUNT; i++)
           xw32(HEADER_SIZE + i * ENTRY_SIZE, TABLE_BASE + 4 + i * 4);
-        for (uint32_t i = FULL_COUNT; i < ITEM_BASE; i++)
-          xw32(FILLER_OFFSET, TABLE_BASE + 4 + i * 4); // every unused id -> shared filler
-        for (uint32_t i = ITEM_BASE; i < ENTRY_COUNT; i++)
-          xw32(HEADER_SIZE + ITEM_AREA_OFFSET + (i - ITEM_BASE) * ITEM_ENTRY_SIZE,
-               TABLE_BASE + 4 + i * 4);
+        for (uint32_t i = FULL_COUNT; i < ENTRY_COUNT; i++)
+          xw32(FILLER_OFFSET, TABLE_BASE + 4 + i * 4); // default: shared filler
+        for (uint32_t n = 0; n < NAMED_COUNT; n++)
+          xw32(HEADER_SIZE + NAMED_AREA_OFFSET + n * NAMED_ENTRY_SIZE,
+               TABLE_BASE + 4 + NAMED[n].index * 4);
 
         for (uint32_t i = 0; i < FULL_COUNT; i++)
         {
@@ -320,7 +419,7 @@ MarioParty3Host::MarioParty3Host(QObject *parent)
         }
 
         {
-          // One filler entry shared by every unused id 0x10-0x3A.
+          // One filler entry shared by every unnamed id.
           size_t base = TABLE_BASE + FILLER_OFFSET;
           xw(0x00, base);     // alignment
           xw(0x04, base + 1); // len (offset 3 + strlen 1)
@@ -330,13 +429,13 @@ MarioParty3Host::MarioParty3Host(QObject *parent)
           xw(0x00, base + 5);
         }
 
-        for (uint32_t i = 0; i < ITEM_COUNT; i++)
+        for (uint32_t n = 0; n < NAMED_COUNT; n++)
         {
-          size_t base = TABLE_BASE + HEADER_SIZE + ITEM_AREA_OFFSET + i * ITEM_ENTRY_SIZE;
-          const char *name = ITEM_NAMES[i];
+          size_t base = TABLE_BASE + HEADER_SIZE + NAMED_AREA_OFFSET + n * NAMED_ENTRY_SIZE;
+          const char *name = NAMED[n].name;
           uint8_t encoded[32] = {};
           uint8_t nameLen = 0;
-          for (size_t k = 0, srcLen = strlen(name); k < srcLen && nameLen < ITEM_ENTRY_SIZE - 3; k++)
+          for (size_t k = 0, srcLen = strlen(name); k < srcLen && nameLen < NAMED_ENTRY_SIZE - 3; k++)
           {
             char c = name[k];
             uint8_t enc;
@@ -352,7 +451,7 @@ MarioParty3Host::MarioParty3Host(QObject *parent)
           xw(0x00, base);
           xw(nameLen + 3, base + 1); // len = offset 3 + strlen
           xw(0x0B, base + 2);        // marker
-          for (uint32_t j = 0; j < ITEM_ENTRY_SIZE - 3; j++)
+          for (uint32_t j = 0; j < NAMED_ENTRY_SIZE - 3; j++)
             xw(j < nameLen ? encoded[j] : 0, base + 3 + j);
         }
       }

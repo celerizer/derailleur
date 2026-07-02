@@ -55,6 +55,77 @@ static size_t n64ByteAddr(size_t addr)
   return (addr & ~size_t(3)) | (3 - (addr & 3));
 }
 
+static const dr_scene_name_t MP2_SCENE_NAMES[] =
+{
+  { 0x00, "Booting up" },
+
+  { 0x01, "Bowser Slots" },
+  { 0x02, "Roll Out the Barrels" },
+  { 0x03, "Coffin Congestion" },
+  { 0x04, "Hammer Slammer" },
+  { 0x05, "Give Me a Brake!" },
+  { 0x06, "Mallet-Go-Round" },
+  { 0x07, "Grab Bag" },
+  { 0x08, "Lava Tile Isle" },
+  { 0x09, "Bumper Balloon Cars" },
+  { 0x0a, "Rakin' 'em In" },
+  { 0x0b, "Day at the Races" },
+  { 0x0c, "Hot Rope Jump" },
+  { 0x0d, "Hot Bob-omb" },
+  { 0x0e, "Bowl Over" },
+  { 0x0f, "Rainbow Run" },
+  { 0x10, "Crane Game" },
+  { 0x11, "Move to the Music" },
+  { 0x12, "Bob-omb Barrage" },
+  { 0x13, "Look Away" },
+  { 0x14, "Shock, Drop or Roll" },
+  { 0x15, "Lights Out" },
+  { 0x16, "Filet Relay" },
+  { 0x17, "Archer-ival" },
+  { 0x18, "Toad Bandstand" },
+  { 0x1a, "Handcar Havoc" },
+  { 0x1b, "Balloon Burst" },
+  { 0x1c, "Sky Pilots" },
+  { 0x1d, "Speed Hockey" },
+  { 0x1e, "Cake Factory" },
+  { 0x1f, "Dungeon Dash" },
+  { 0x21, "Face Lift" },
+  { 0x22, "Shell Shocked" },
+  { 0x23, "Crazy Cutters" },
+  { 0x24, "Toad in the Box" },
+  { 0x25, "Mecha-Marathon" },
+  { 0x26, "Roll Call" },
+  { 0x27, "Abandon Ship" },
+  { 0x28, "Platform Peril" },
+  { 0x29, "Totem Pole Pound" },
+  { 0x2a, "Bumper Balls" },
+  { 0x2b, "Bombs Away" },
+  { 0x2c, "Tipsy Tourney" },
+  { 0x2d, "Honeycomb Havoc" },
+  { 0x2e, "Hexagon Heat" },
+  { 0x2f, "Skateboard Scamper" },
+  { 0x30, "Slot Car Derby" },
+  { 0x31, "Shy Guy Says" },
+  { 0x32, "Sneak 'n' Snore" },
+  { 0x33, "Driver's Ed" },
+  { 0x35, "Looney Lumberjacks" },
+  { 0x36, "Dizzy Dancing" },
+  { 0x37, "Tile Driver" },
+  { 0x38, "Quicksand Cache" },
+  { 0x39, "Bowser's Big Blast" },
+  { 0x3a, "Torpedo Targets" },
+  { 0x3b, "Destruction Duet" },
+  { 0x3c, "Deep Sea Salvage" },
+  { 0x3f, "Quick Draw Corks" },
+  { 0x42, "Saber Swipes" },
+  { 0x44, "Mushroom Brew" },
+  { 0x46, "Time Bomb" },
+  { 0x48, "Psychic Safari" },
+  { 0x4a, "Rock, Paper, Mario" },
+
+  { -1, nullptr },
+};
+
 static DrHostConfig makeConfig()
 {
   DrHostConfig config = {};
@@ -135,6 +206,8 @@ static DrHostConfig makeConfig()
 
   config.slot_addrs = MP2_SLOT_ADDRS;
   config.scene_trampoline_addr = 0x800D34E0;
+
+  config.scene_names = MP2_SCENE_NAMES;
 
   return config;
 }

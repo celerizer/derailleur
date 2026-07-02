@@ -42,6 +42,88 @@ static const dr_minigame_type MP1_MINIGAME_TYPE_TO_DR[] = {
   DR_MINIGAME_1P // 0x03
 };
 
+static const dr_scene_name_t MP1_SCENE_NAMES[] =
+{
+  { 0x00, "Memory Match" },
+  { 0x01, "Chance Time" },
+  { 0x02, "Slot Machine" },
+  { 0x03, "Buried Treasure" },
+  { 0x04, "Treasure Divers" },
+  { 0x05, "Shell Game" },
+  { 0x06, "Same Game" },
+  { 0x07, "Hot Bob-omb" },
+  { 0x08, "Yoshi no Shita Awase" },
+  { 0x09, "Pipe Maze" },
+  { 0x0a, "Ghost Guess" },
+  { 0x0b, "Musical Mushroom" },
+  { 0x0c, "Pedal Power" },
+  { 0x0d, "Crazy Cutter" },
+  { 0x0e, "Face Lift" },
+  { 0x0f, "Whack-a-Plant" },
+  { 0x10, "Bash 'n' Cash" },
+  { 0x11, "Bowl Over" },
+  { 0x12, "Ground Pound" },
+  { 0x13, "Balloon Burst" },
+  { 0x14, "Coin Block Blitz" },
+  { 0x15, "Coin Block Bash" },
+  { 0x16, "Skateboard Scamper" },
+  { 0x17, "Box Mountain Mayhem" },
+  { 0x18, "Platform Peril" },
+  { 0x19, "Teetering Towers" },
+  { 0x1a, "Mushroom Mix-up" },
+  { 0x1b, "Hammer Drop" },
+  { 0x1c, "Grab Bag" },
+  { 0x1d, "Bobsled Run" },
+  { 0x1e, "Bumper Balls" },
+  { 0x1f, "Tightrope Treachery" },
+  { 0x20, "Knock Block Tower" },
+  { 0x21, "Tipsy Tourney" },
+  { 0x22, "Bombs Away" },
+  { 0x23, "Crane Game" },
+  { 0x24, "Coin Shower Flower" },
+  { 0x25, "Slot Car Derby" },
+  { 0x26, "Mario Bandstand" },
+  { 0x27, "Desert Dash" },
+  { 0x28, "Shy Guy Says" },
+  { 0x29, "Limbo Dance" },
+  { 0x2a, "Bombsketball" },
+  { 0x2b, "Cast Aways" },
+  { 0x2c, "Key-pa-way" },
+  { 0x2d, "Running of the Bulb" },
+  { 0x2e, "Hot Rope Jump" },
+  { 0x2f, "Handcar Havoc" },
+  { 0x30, "Deep Sea Divers" },
+  { 0x31, "Piranha's Pursuit" },
+  { 0x32, "Tug o' War" },
+  { 0x33, "Paddle Battle" },
+  { 0x34, "Bumper Ball Maze" },
+
+  { 0x35, "Loading" },
+  { 0x3b, "Mario's Rainbow Castle" },
+  { 0x3e, "First Map" }, // "rules" map
+  { 0x56, "Board event" },
+  { 0x61, "Intro" },
+  { 0x62, "Board intro" },
+  { 0x66, "Booting up" },
+  { 0x67, "Booting up" },
+  { 0x69, "Mushroom Village" },
+  { 0x6a, "Traveling the Warp Pipe" },
+  { 0x6b, "Mini-Game House" },
+  { 0x6c, "Mushroom Shop" },
+  { 0x6d, "Mushroom Bank" },
+  { 0x6e, "Option House" },
+  { 0x6f, "Mini-Game Explanation" },
+  { 0x71, "Mini-Game Island loading" },
+  { 0x72, "Mini-Game Island" },
+  { 0x78, "Mini-Game Island intro" },
+  { 0x79, "Mini-Game Island save space" },
+  { 0x7c, "Mini-Game results" },
+  { 0x7d, "Mini-Game Island results" },
+  { 0x81, "Title Screen" },
+
+  { -1, nullptr },
+};
+
 static DrHostConfig makeConfig()
 {
   DrHostConfig config = {};
@@ -111,6 +193,8 @@ static DrHostConfig makeConfig()
   config.title_addr_transform = n64ByteAddr;
 
   config.scene_trampoline_addr = 0x800CA9A0;
+
+  config.scene_names = MP1_SCENE_NAMES;
 
   return config;
 }
