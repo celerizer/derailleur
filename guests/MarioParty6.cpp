@@ -57,7 +57,7 @@ static const dr_mp_minigame_t MP6_MINIGAMES[] = {
   { "Jump the Gun", DR_MINIGAME_2V2, 0x2A, 0x30, DR_NO_QUIRKS },
   { "Rocky Road", DR_MINIGAME_2V2, 0x2B, 0x31, DR_NO_QUIRKS },
   { "Clean Team", DR_MINIGAME_2V2, 0x2C, 0x32, DR_NO_QUIRKS },
-  { "Burnstile", DR_MINIGAME_2V2, 0x43, 0x46, DR_NO_QUIRKS },
+  { "Burnstile", DR_MINIGAME_2V2, 0x43, 0x49, DR_NO_QUIRKS },
   // Battle
   { "Hyper Sniper", DR_MINIGAME_BATTLE, 0x2D, 0x33, DR_NO_QUIRKS },
   { "Insectiride", DR_MINIGAME_BATTLE, 0x2E, 0x34, DR_NO_QUIRKS },
@@ -82,7 +82,7 @@ static const dr_mp_minigame_t MP6_MINIGAMES[] = {
   { "Trick or Tree", DR_MINIGAME_DUEL, 0x3D, 0x43, DR_NO_QUIRKS },
   { "Something's Amist", DR_MINIGAME_DUEL, 0x3E, 0x44, DR_NO_QUIRKS },
   // Mic minigames (not selectable)
-  { "Verbal Assault", DR_MINIGAME_INVALID, 0x40, 0x49, DR_NO_QUIRKS },
+  { "Verbal Assault", DR_MINIGAME_INVALID, 0x40, 0x46, DR_NO_QUIRKS },
   { "Shoot Yer Mouth Off", DR_MINIGAME_INVALID, 0x41, 0x4A, DR_NO_QUIRKS },
   { "Talkie Walkie", DR_MINIGAME_INVALID, 0x42, 0x4B, DR_NO_QUIRKS },
   { "Word Herd", DR_MINIGAME_INVALID, 0x44, 0x47, DR_NO_QUIRKS },
