@@ -159,11 +159,14 @@ void MarioTennis::run()
   if (allCpu)
   {
     m_allCpuFrames++;
-    // Hold A for a few frames starting at 300, then release so it reads as a press.
-    if (m_allCpuFrames == 300)
-      core()->input()->joypads()[0].setForcedButton(RETRO_DEVICE_ID_JOYPAD_B, true);
-    else if (m_allCpuFrames == 308)
-      core()->input()->joypads()[0].setForcedButton(RETRO_DEVICE_ID_JOYPAD_B, false);
+    // Hold A for a few frames, then release so it reads as a press.
+    if (m_allCpuFrames == 600)
+    {
+      log(DR_LOG_INFO, "all players CPU: forcing controller 1 A press to advance");
+      core()->input()->joypads()[0].setForcedButton(RETRO_DEVICE_ID_JOYPAD_A, true);
+    }
+    else if (m_allCpuFrames == 608)
+      core()->input()->joypads()[0].setForcedButton(RETRO_DEVICE_ID_JOYPAD_A, false);
   }
 
   for (unsigned team = 0; team < 2; team++)
