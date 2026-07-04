@@ -6,6 +6,13 @@
 DrGuestList::DrGuestList(QWidget *parent)
   : QStackedWidget(parent)
 {
+  /* Move focus to the next widget */
+  connect(this, &QStackedWidget::currentChanged, this, [this](int index) {
+    QWidget *w = widget(index);
+    setFocusProxy(w);
+    if (w)
+      w->setFocus();
+  });
 }
 
 void DrGuestList::add(DrGuest *guest)
@@ -31,8 +38,6 @@ DrGuest *DrGuestList::pickMinigame(dr_minigame_type type, const dr_mp_minigame_t
 
   for (int i = 0; i < m_guests.size(); i++)
   {
-    /* The ordinal flattens minigameGroups() in order and increments for every
-     * mini-game (matching DrMinigameFilter), so disabled-keys line up. */
     quint32 ord = 0;
     for (const DrMinigameGroup &group : m_guests[i]->minigameGroups())
     {

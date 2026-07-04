@@ -31,7 +31,15 @@ public:
   virtual void startCore() {}
   virtual void pause() {}
   virtual void unpause() {}
-  virtual QWidget *createWidget(QWidget *parent) { return QWidget::createWindowContainer(core(), parent); }
+  virtual QWidget *createWidget(QWidget *parent)
+  {
+    QWidget *container = QWidget::createWindowContainer(core(), parent);
+
+    /* Accept keyboard focus without needing to click */
+    container->setFocusPolicy(Qt::StrongFocus);
+
+    return container;
+  }
 
   void tick()
   {
