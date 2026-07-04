@@ -105,6 +105,9 @@ struct DrHostConfig
   uint8_t minigame_blacklist[16];
   unsigned minigame_blacklist_count;
 
+  size_t next_scene_addr;
+  size_t next_scene_modifier_addr;
+
   const size_t *title_addrs;              // 6 addrs (5 slots + sentinel), nullptr = no injection
   uint8_t title_id_base;                  // first roulette ID (e.g. 0x25)
   uint8_t title_id_step;                  // step between IDs (e.g. 2); 0 = use slot_addrs instead
