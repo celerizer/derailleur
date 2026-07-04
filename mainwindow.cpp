@@ -175,6 +175,9 @@ MainWindow::MainWindow(QWidget *parent)
 #endif
 
   connect(m_Stack, &QStackedWidget::currentChanged, this, [this](int index) {
+    if (QWidget *page = m_Stack->widget(index))
+      page->setFocus();
+
     const auto &guests = m_Guests->guests();
     if (m_Stack->widget(index) == m_Guests && m_Guests->currentIndex() >= 0 &&
         m_Guests->currentIndex() < guests.size())
