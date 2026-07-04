@@ -1,9 +1,53 @@
 #include "DrDebug.h"
 
+#include <functional>
+
+#include <QComboBox>
+#include <QFormLayout>
+#include <QGridLayout>
+#include <QGroupBox>
+#include <QPushButton>
 #include <QRandomGenerator>
 #include <QVBoxLayout>
-#include <QComboBox>
-#include <QPushButton>
+
+namespace
+{
+/* Names for the dr_player_t enums that DrCommon.h doesn't already provide a
+ * helper for. dr_character_name comes from the header. */
+const char *controlTypeName(dr_control_type t)
+{
+  switch (t)
+  {
+  case DR_CONTROL_TYPE_HUMAN: return "Human";
+  case DR_CONTROL_TYPE_CPU: return "CPU";
+  default: return "Invalid";
+  }
+}
+
+/* Fill a combo with [first, size) enum values, storing each raw value as item
+ * data, and preselect def. */
+void fillCombo(QComboBox *combo, int first, int size,
+  const std::function<QString(int)> &namer, int def)
+{
+  for (int v = first; v < size; v++)
+    combo->addItem(namer(v), v);
+  const int idx = combo->findData(def);
+  if (idx >= 0)
+    combo->setCurrentIndex(idx);
+}
+
+/* Per-player field defaults, matching the values this dialog used to hardcode. */
+const dr_player_t k_Defaults[4] = {
+  { DR_CHARACTER_DAISY, DR_CONTROL_PORT_P1, DR_CONTROL_TYPE_HUMAN, DR_DIFFICULTY_HARD,
+    DR_TEAM_COLOR_BLUE, DR_TEAM_TYPE_4P, 0 },
+  { DR_CHARACTER_WARIO, DR_CONTROL_PORT_P2, DR_CONTROL_TYPE_CPU, DR_DIFFICULTY_VERY_HARD,
+    DR_TEAM_COLOR_BLUE, DR_TEAM_TYPE_4P, 1 },
+  { DR_CHARACTER_YOSHI, DR_CONTROL_PORT_P3, DR_CONTROL_TYPE_CPU, DR_DIFFICULTY_EASY,
+    DR_TEAM_COLOR_BLUE, DR_TEAM_TYPE_4P, 2 },
+  { DR_CHARACTER_LUIGI, DR_CONTROL_PORT_P4, DR_CONTROL_TYPE_CPU, DR_DIFFICULTY_NORMAL,
+    DR_TEAM_COLOR_BLUE, DR_TEAM_TYPE_4P, 3 },
+};
+}
 
 DrDebug::DrDebug(QWidget *parent)
   : QWidget(parent)
@@ -21,6 +65,41 @@ DrDebug::DrDebug(QWidget *parent)
   connect(m_guestCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
     [this](int idx) { refreshMinis(idx); });
 
+  /* One group box of dropdowns per player, arranged P1/P2 on top, P3/P4 below. */
+  QGridLayout *playerGrid = new QGridLayout;
+  for (int i = 0; i < 4; i++)
+  {
+    PlayerControls &pc = m_players[i];
+    const dr_player_t &def = k_Defaults[i];
+
+    QGroupBox *box = new QGroupBox(tr("Player %1").arg(i + 1), this);
+    QFormLayout *form = new QFormLayout(box);
+    form->setLabelAlignment(Qt::AlignRight);
+    form->setContentsMargins(6, 4, 6, 4);
+    form->setVerticalSpacing(3);
+
+    pc.character = new QComboBox(box);
+    fillCombo(pc.character, DR_CHARACTER_MARIO, DR_CHARACTER_SIZE,
+      [](int v) { return QString::fromUtf8(dr_character_name(dr_character(v))); }, def.character);
+
+    pc.controlType = new QComboBox(box);
+    fillCombo(pc.controlType, DR_CONTROL_TYPE_HUMAN, DR_CONTROL_TYPE_SIZE,
+      [](int v) { return QString::fromUtf8(controlTypeName(dr_control_type(v))); }, def.control_type);
+
+    pc.difficulty = new QComboBox(box);
+    fillCombo(pc.difficulty, DR_DIFFICULTY_VERY_EASY, DR_DIFFICULTY_SIZE,
+      [](int v) { return QString::fromUtf8(dr_difficulty_name(dr_difficulty(v))); }, def.difficulty);
+
+    form->addRow(tr("Char:"), pc.character);
+    form->addRow(tr("Type:"), pc.controlType);
+    form->addRow(tr("Diff:"), pc.difficulty);
+
+    playerGrid->addWidget(box, i / 2, i % 2);
+  }
+  playerGrid->setColumnStretch(0, 1);
+  playerGrid->setColumnStretch(1, 1);
+  layout->addLayout(playerGrid);
+
   QPushButton *btn = new QPushButton("Request Minigame", this);
   connect(btn, &QPushButton::clicked, this, [this]() {
     int idx = m_combo->currentIndex();
@@ -30,16 +109,21 @@ DrDebug::DrDebug(QWidget *parent)
     DrGuest *guest = m_entries[idx].first;
     const dr_mp_minigame_t *minigame = m_entries[idx].second;
 
-    std::array<dr_player_t, 4> players = { {
-      { DR_CHARACTER_DAISY, DR_CONTROL_PORT_P1, DR_CONTROL_TYPE_HUMAN, DR_DIFFICULTY_HARD,
-        DR_TEAM_COLOR_BLUE, DR_TEAM_TYPE_4P, 0 },
-      { DR_CHARACTER_WARIO, DR_CONTROL_PORT_P2, DR_CONTROL_TYPE_CPU, DR_DIFFICULTY_VERY_HARD,
-        DR_TEAM_COLOR_BLUE, DR_TEAM_TYPE_4P, 1 },
-      { DR_CHARACTER_YOSHI, DR_CONTROL_PORT_P3, DR_CONTROL_TYPE_CPU, DR_DIFFICULTY_EASY,
-        DR_TEAM_COLOR_BLUE, DR_TEAM_TYPE_4P, 2 },
-      { DR_CHARACTER_LUIGI, DR_CONTROL_PORT_P4, DR_CONTROL_TYPE_CPU, DR_DIFFICULTY_NORMAL,
-        DR_TEAM_COLOR_BLUE, DR_TEAM_TYPE_4P, 3 },
-    } };
+    std::array<dr_player_t, 4> players{};
+    for (int i = 0; i < 4; i++)
+    {
+      const PlayerControls &pc = m_players[i];
+      players[i].character = dr_character(pc.character->currentData().toInt());
+      players[i].control_port = dr_control_port(DR_CONTROL_PORT_P1 + i);
+      players[i].control_type = dr_control_type(pc.controlType->currentData().toInt());
+      players[i].difficulty = dr_difficulty(pc.difficulty->currentData().toInt());
+      players[i].team_color = DR_TEAM_COLOR_BLUE;
+      players[i].team_type = DR_TEAM_TYPE_4P;
+      players[i].team_id = i;
+    }
+
+    /* Team layout is inferred from the minigame type, with a random assignment
+     * of players to teams. */
     unsigned order[4] = { 0, 1, 2, 3 };
     auto *rng = QRandomGenerator::global();
     for (int i = 3; i > 0; i--)

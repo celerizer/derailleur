@@ -144,6 +144,7 @@ typedef enum
   DR_GUEST_MARIOKART64,
   DR_GUEST_MARIOPARTYADVANCE,
   DR_GUEST_MARIOPARTYE,
+  DR_GUEST_MARIOKARTDOUBLEDASH,
 
   DR_GUEST_SIZE
 } dr_guest;
@@ -340,6 +341,25 @@ static inline const char *dr_character_name(dr_character c)
     return "Birdo";
   case DR_CHARACTER_DRY_BONES:
     return "Dry Bones";
+  default:
+    return "Unknown";
+  }
+}
+
+static inline const char *dr_difficulty_name(dr_difficulty d)
+{
+  switch (d)
+  {
+  case DR_DIFFICULTY_VERY_EASY:
+    return "Very Easy";
+  case DR_DIFFICULTY_EASY:
+    return "Easy";
+  case DR_DIFFICULTY_NORMAL:
+    return "Normal";
+  case DR_DIFFICULTY_HARD:
+    return "Hard";
+  case DR_DIFFICULTY_VERY_HARD:
+    return "Very Hard";
   default:
     return "Unknown";
   }

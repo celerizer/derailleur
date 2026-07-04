@@ -277,6 +277,9 @@ void DrNetplay::attachCore(QRetro *core)
 
   auto *backend = new QRetroInputBackendShared(m_Store, core);
   backend->init(core->input()->joypads(), core->input()->maxUsers());
+  /* Forward device queries to the real hardware backend so QRetroConfig on any
+   * core sees the physical controllers instead of falling back to keyboard. */
+  backend->setDeviceBackend(m_LocalSource);
   core->input()->setBackend(backend);
 
   connect(

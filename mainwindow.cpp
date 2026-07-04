@@ -28,6 +28,7 @@
 #include "guests/MarioParty3.h"
 #include "guests/CoreDolphin.h"
 #include "guests/KirbyAirRide.h"
+#include "guests/MarioKartDoubleDash.h"
 #include "guests/MarioParty4.h"
 #include "guests/MarioParty5.h"
 #include "guests/MarioParty6.h"
@@ -44,11 +45,15 @@
 MainWindow::MainWindow(QWidget *parent)
   : QMainWindow(parent)
 {
+  // Single helper window that gathers the auxiliary tool widgets as sidebar
+  // categories. Each tool is added below via m_Tools->addTool() instead of
+  // being shown as its own top-level window.
+  m_Tools = new DrToolWindow(nullptr);
+  m_Tools->show();
+
 #if SHOW_LOGGER
   m_Logger = new DrLogger(nullptr);
-  m_Logger->setWindowTitle("Log");
-  m_Logger->resize(600, 300);
-  m_Logger->show();
+  m_Tools->addTool(tr("Log"), m_Logger);
 #endif
 
   {
@@ -95,6 +100,7 @@ MainWindow::MainWindow(QWidget *parent)
   dolphin->addGame(new MarioParty6(dolphin->core(), dolphin));
   dolphin->addGame(new MarioParty7(dolphin->core(), dolphin));
   dolphin->addGame(new KirbyAirRide(dolphin->core(), dolphin));
+  dolphin->addGame(new MarioKartDoubleDash(dolphin->core(), dolphin));
   dolphin->finalizeGames();
   if (dolphin->isValid())
     m_Guests->add(dolphin);
@@ -126,7 +132,7 @@ MainWindow::MainWindow(QWidget *parent)
    * (and reflects the host's choice on a client). */
   m_Filter = new DrMinigameFilter(nullptr);
   m_Filter->populate(m_Guests->guests());
-  m_Filter->show();
+  m_Tools->addTool(tr("Minigame Filter"), m_Filter);
   connect(m_Filter, &DrMinigameFilter::filterChanged, this,
     [this](const QByteArray &payload) { m_Netplay->setMinigameFilter(payload); });
   connect(m_Netplay, &DrNetplay::minigameFilterReceived, this, [this](QByteArray payload) {
@@ -168,10 +174,8 @@ MainWindow::MainWindow(QWidget *parent)
 
 #if SHOW_DEBUG
   m_Debug = new DrDebug(nullptr);
-  m_Debug->setWindowTitle("Debug");
-  m_Debug->resize(300, 200);
   m_Debug->populate(m_Guests->guests());
-  m_Debug->show();
+  m_Tools->addTool(tr("Debug"), m_Debug);
 #endif
 
   connect(m_Stack, &QStackedWidget::currentChanged, this, [this](int index) {
@@ -369,7 +373,7 @@ void MainWindow::launchMinigame(
 void MainWindow::setupNetplay()
 {
   m_NetplayUi = new DrNetplayWidget(m_Netplay, nullptr);
-  m_NetplayUi->show();
+  m_Tools->addTool(tr("Netplay"), m_NetplayUi);
 
   connect(m_Netplay, &DrNetplay::sessionStarted, this, [this](int index, int count) {
 #if SHOW_LOGGER

@@ -25,8 +25,18 @@ signals:
 private:
   void refreshMinis(int guestIdx);
 
+  /* Per-player dropdowns. Port is fixed by player index and the team fields are
+   * inferred from the minigame type, so only these are user-selectable. */
+  struct PlayerControls
+  {
+    QComboBox *character = nullptr;
+    QComboBox *controlType = nullptr;
+    QComboBox *difficulty = nullptr;
+  };
+
   QComboBox *m_guestCombo = nullptr;
   QComboBox *m_combo = nullptr;
+  std::array<PlayerControls, 4> m_players{};
   QList<QPair<DrGuest *, DrMinigameGroup>> m_groups;
   QList<QPair<DrGuest *, const dr_mp_minigame_t *>> m_entries;
 };

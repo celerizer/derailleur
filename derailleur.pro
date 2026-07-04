@@ -31,6 +31,7 @@ SOURCES += \
     DrNetplay.cpp \
     DrNetplayWidget.cpp \
     DrOverlay.cpp \
+    DrToolWindow.cpp \
     DrGuestList.cpp \
     DrLogger.cpp \
     DrRetro.cpp \
@@ -41,6 +42,7 @@ SOURCES += \
     guests/CoreDolphin.cpp \
     guests/KirbyAirRide.cpp \
     guests/MarioKart64.cpp \
+    guests/MarioKartDoubleDash.cpp \
     guests/MarioParty1.cpp \
     guests/MarioParty2.cpp \
     guests/MarioParty3.cpp \
@@ -69,6 +71,7 @@ HEADERS += \
     DrNetplayWidget.h \
     DrLogger.h \
     DrOverlay.h \
+    DrToolWindow.h \
     DrRetro.h \
     QRetroInputBackendShared.h \
     hosts/MarioParty1Host.h \
@@ -78,6 +81,7 @@ HEADERS += \
     guests/DolphinGuest.h \
     guests/KirbyAirRide.h \
     guests/MarioKart64.h \
+    guests/MarioKartDoubleDash.h \
     guests/MarioParty1.h \
     guests/MarioParty2.h \
     guests/MarioParty3.h \

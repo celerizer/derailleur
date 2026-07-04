@@ -19,6 +19,7 @@
 #include "DrNetplay.h"
 #include "DrNetplayWidget.h"
 #include "DrOverlay.h"
+#include "DrToolWindow.h"
 
 class MainWindow : public QMainWindow
 {
@@ -54,6 +55,7 @@ private:
   DrInputStore *m_InputStore = nullptr;
   DrNetplay *m_Netplay = nullptr;
   DrNetplayWidget *m_NetplayUi = nullptr;
+  DrToolWindow *m_Tools = nullptr;
 
 protected:
   void showEvent(QShowEvent *) override
@@ -73,14 +75,9 @@ protected:
   }
   void closeEvent(QCloseEvent *e) override
   {
-    if (m_Logger)
-      m_Logger->close();
-    if (m_Debug)
-      m_Debug->close();
-    if (m_Filter)
-      m_Filter->close();
-    if (m_NetplayUi)
-      m_NetplayUi->close();
+    // The tool pages are children of m_Tools, so closing it closes them all.
+    if (m_Tools)
+      m_Tools->close();
     QMainWindow::closeEvent(e);
     // The emulator cores run background threads (timing, SDL, libusb) that fire
     // DirectConnection signals into our objects. Unwinding all of that during

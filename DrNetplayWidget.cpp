@@ -3,6 +3,7 @@
 #include <QDir>
 #include <QFormLayout>
 #include <QGroupBox>
+#include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
 #include <QPushButton>
@@ -71,9 +72,14 @@ DrNetplayWidget::DrNetplayWidget(DrNetplay *netplay, QWidget *parent)
 
   m_status = new QLabel(tr("Not connected"), this);
 
+  QHBoxLayout *connectRow = new QHBoxLayout;
+  connectRow->setContentsMargins(0, 0, 0, 0);
+  connectRow->addWidget(hostBox, 1);
+  connectRow->addWidget(joinBox, 1);
+
   QVBoxLayout *layout = new QVBoxLayout(this);
-  layout->addWidget(hostBox);
-  layout->addWidget(joinBox);
+  layout->setSpacing(6);
+  layout->addLayout(connectRow);
   layout->addWidget(tuningBox);
   layout->addWidget(m_status);
   layout->addStretch();

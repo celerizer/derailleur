@@ -10,6 +10,7 @@
 class QTreeWidget;
 class QTreeWidgetItem;
 class QTimer;
+class QLabel;
 
 /**
  * Standalone window listing every guest game (expandable, with an all/none/some
@@ -47,9 +48,18 @@ signals:
 private:
   void onItemChanged(QTreeWidgetItem *item, int column);
 
+  /// Recount the allowed (checked) mini-games per type, refresh the count
+  /// fields, and flag any Mario Party game that can no longer be played.
+  void updateCounts();
+
   QTreeWidget *m_tree = nullptr;
   QTimer *m_coalesce = nullptr;
   bool m_applying = false; // suppress emits during programmatic updates
+
+  // Count name/value labels, indexed by dr_minigame_type (unused slots stay null).
+  QLabel *m_countNames[DR_MINIGAME_SIZE] = {};
+  QLabel *m_counts[DR_MINIGAME_SIZE] = {};
+  QLabel *m_note = nullptr;
 };
 
 #endif
