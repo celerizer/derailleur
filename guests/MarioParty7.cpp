@@ -115,7 +115,7 @@ static MpGcnConfig buildConfig()
   MpGcnConfig config = {};
 
   config.core = dr_core_path(DR_CORE_DOLPHIN).toStdString();
-  config.game = (dr_roms_directory() + "/Mario Party 7 (USA) (Rev 1).rvz").toStdString();
+  config.game = (dr_roms_directory() + "/Mario Party 7 (USA) (Rev 1)").toStdString();
   config.state = (dr_state_directory() + "/mp7.state.zip").toStdString();
 
   config.scene_miniexplain = 0x06;

@@ -6,6 +6,7 @@
 #include <QList>
 #include <QPair>
 #include <QString>
+#include <QStringList>
 
 class CoreDolphin : public DrGuest
 {
@@ -46,6 +47,7 @@ private:
 
   DrRetro *m_retro = nullptr;
   QList<DolphinGuest *> m_games;
+  QStringList m_discPaths;
   QList<QPair<DolphinGuest *, const dr_mp_minigame_t *>> m_entries;
   DolphinGuest *m_delegate = nullptr;
   dr_mp_minigame_t *m_flatList = nullptr;

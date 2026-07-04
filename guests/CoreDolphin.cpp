@@ -5,6 +5,16 @@
 #include <QDir>
 #include <QApplication>
 
+static QString resolveDiscPath(const QString &base)
+{
+  if (QFile::exists(base + ".rvz"))
+    return base + ".rvz";
+  else if (QFile::exists(base + ".iso"))
+    return base + ".iso";
+  else
+    return QString();
+}
+
 CoreDolphin::CoreDolphin(QObject *parent)
   : DrGuest(parent)
 {
@@ -27,6 +37,16 @@ CoreDolphin::~CoreDolphin()
 
 void CoreDolphin::addGame(DolphinGuest *game)
 {
+  QString base = QString::fromStdString(game->discPath());
+  QString discPath = resolveDiscPath(base);
+  if (discPath.isEmpty())
+  {
+    log(DR_LOG_WARN,
+      qPrintable(
+        QString("skipping %1: rom not found (tried .rvz, .iso): %2").arg(game->name()).arg(base)));
+    return;
+  }
+
   if (m_games.isEmpty())
   {
     if (!core()->loadCore(game->corePath().c_str()))
@@ -49,11 +69,12 @@ void CoreDolphin::addGame(DolphinGuest *game)
   }
 
   m_games.append(game);
+  m_discPaths.append(discPath);
 
   connect(game, &DrGuest::minigameFinished, this, [this]() { finishMinigame(); });
   connect(game, &DrGuest::logMessage, this, &DrGuest::logMessage);
 
-  // Collect all (non-sentinel) minigames from this game
+  // Collect all mini-games from this game
   for (const dr_mp_minigame_t *mg = game->minigames(); mg && mg->name; mg++)
     m_entries.append({ game, mg });
 
@@ -66,8 +87,8 @@ void CoreDolphin::finalizeGames()
   if (m3u.open(QIODevice::WriteOnly | QIODevice::Text))
   {
     QTextStream out(&m3u);
-    for (DolphinGuest *game : m_games)
-      out << game->discPath().c_str() << "\n";
+    for (const QString &path : m_discPaths)
+      out << path << "\n";
   }
 
   if (!core()->loadContent(m_m3uPath.toStdString().c_str()))

@@ -1,7 +1,5 @@
 #include "KirbyAirRide.h"
 
-#include <QRandomGenerator>
-
 // Addresses
 static const size_t KAR_COLOR_ADDR[4]        = { 0x80535BF9, 0x80535BFA, 0x80535BFB, 0x80535BFC };
 static const size_t KAR_MACHINE_ADDR[4]      = { 0x80535C09, 0x80535C0A, 0x80535C0B, 0x80535C0C };
@@ -90,7 +88,7 @@ static const dr_mp_minigame_t KAR_MINIGAMES[] =
 KirbyAirRide::KirbyAirRide(QRetro *sharedCore, QObject *parent)
   : DolphinGuest(parent)
   , m_corePath(dr_core_path(DR_CORE_DOLPHIN).toStdString())
-  , m_discPath((dr_roms_directory() + "/Kirby Air Ride (USA).rvz").toStdString())
+  , m_discPath((dr_roms_directory() + "/Kirby Air Ride (USA)").toStdString())
   , m_statePath((dr_state_directory() + "/kar.state.zip").toStdString())
 {
   m_retro = new DrRetro(sharedCore, this);
@@ -138,24 +136,21 @@ void KirbyAirRide::doSetMinigame(const dr_mp_minigame_t *minigame)
 {
   m_minigameFrames = 0;
   m_finishPending = false;
-
-  // Each entry stores the first variant of its stadium type; for types with
-  // multiple variants, pick one at random from the contiguous id range.
-  auto *rng = QRandomGenerator::global();
   uint8_t stadium;
+
   switch (minigame->minigame_id)
   {
   case KAR_STADIUM_DRAG_RACE_1:
-    stadium = KAR_STADIUM_DRAG_RACE_1 + rng->bounded(4);
+    stadium = KAR_STADIUM_DRAG_RACE_1 + (dr_rand() % 4);
     break;
   case KAR_STADIUM_KIRBY_MELEE_1:
-    stadium = KAR_STADIUM_KIRBY_MELEE_1 + rng->bounded(2);
+    stadium = KAR_STADIUM_KIRBY_MELEE_1 + (dr_rand() % 2);
     break;
   case KAR_STADIUM_DESTRUCTION_DERBY_1:
-    stadium = KAR_STADIUM_DESTRUCTION_DERBY_1 + rng->bounded(3); // rng->bounded(5);
+    stadium = KAR_STADIUM_DESTRUCTION_DERBY_1 + (dr_rand() % 3); // % 5
     break;
   case KAR_STADIUM_SINGLE_RACE_FANTASY_MEADOWS:
-    stadium = KAR_STADIUM_SINGLE_RACE_FANTASY_MEADOWS; // + rng->bounded(9);
+    stadium = KAR_STADIUM_SINGLE_RACE_FANTASY_MEADOWS; // + (dr_rand() % 9);
     break;
   default:
     stadium = static_cast<uint8_t>(minigame->minigame_id);
@@ -187,22 +182,40 @@ void KirbyAirRide::applyPlayers()
   for (unsigned i = 0; i < 4; i++)
   {
     const dr_player_t &p = m_players[i];
+    uint8_t color;
+
     if (p.control_port == DR_CONTROL_PORT_INVALID || p.control_port >= DR_CONTROL_PORT_SIZE)
       continue;
 
     // Every racer is Kirby, so a character is represented by a Kirby color.
-    uint8_t color;
     switch (p.character)
     {
-    case DR_CHARACTER_MARIO:       color = KAR_COLOR_RED;    break;
-    case DR_CHARACTER_LUIGI:       color = KAR_COLOR_BLUE;   break;
-    case DR_CHARACTER_PEACH:       color = KAR_COLOR_PINK;   break;
-    case DR_CHARACTER_YOSHI:       color = KAR_COLOR_GREEN;  break;
-    case DR_CHARACTER_WARIO:       color = KAR_COLOR_PURPLE; break;
-    case DR_CHARACTER_DONKEY_KONG: color = KAR_COLOR_BROWN;  break;
-    case DR_CHARACTER_WALUIGI:     color = KAR_COLOR_WHITE;  break;
-    case DR_CHARACTER_DAISY:       color = KAR_COLOR_YELLOW; break;
-    default:                       color = KAR_COLOR_PINK;   break;
+    case DR_CHARACTER_MARIO:
+      color = KAR_COLOR_RED;
+      break;
+    case DR_CHARACTER_LUIGI:
+      color = KAR_COLOR_BLUE;
+      break;
+    case DR_CHARACTER_PEACH:
+      color = KAR_COLOR_PINK;
+      break;
+    case DR_CHARACTER_YOSHI:
+      color = KAR_COLOR_GREEN;
+      break;
+    case DR_CHARACTER_WARIO:
+      color = KAR_COLOR_PURPLE;
+      break;
+    case DR_CHARACTER_DONKEY_KONG:
+      color = KAR_COLOR_BROWN;
+      break;
+    case DR_CHARACTER_WALUIGI:
+      color = KAR_COLOR_WHITE;
+      break;
+    case DR_CHARACTER_DAISY:
+      color = KAR_COLOR_YELLOW;
+      break;
+    default:
+      color = KAR_COLOR_PINK;
     }
     m_retro->writeForFrames(KAR_COLOR_ADDR[i], &color, sizeof(color), 120);
 
@@ -212,12 +225,23 @@ void KirbyAirRide::applyPlayers()
     uint8_t level;
     switch (p.difficulty)
     {
-    case DR_DIFFICULTY_VERY_EASY: level = KAR_CPU_LEVEL_MIN; break;
-    case DR_DIFFICULTY_EASY:      level = 2; break;
-    case DR_DIFFICULTY_NORMAL:    level = 4; break;
-    case DR_DIFFICULTY_HARD:      level = 6; break;
-    case DR_DIFFICULTY_VERY_HARD: level = KAR_CPU_LEVEL_MAX; break;
-    default:                      level = 4; break;
+    case DR_DIFFICULTY_VERY_EASY:
+      level = KAR_CPU_LEVEL_MIN;
+      break;
+    case DR_DIFFICULTY_EASY:
+      level = 2;
+      break;
+    case DR_DIFFICULTY_NORMAL:
+      level = 4;
+      break;
+    case DR_DIFFICULTY_HARD:
+      level = 6;
+      break;
+    case DR_DIFFICULTY_VERY_HARD:
+      level = KAR_CPU_LEVEL_MAX;
+      break;
+    default:
+      level = 4;
     }
     m_retro->writeForFrames(KAR_CPU_LEVEL_ADDR[i], &level, sizeof(level), 120);
   }
