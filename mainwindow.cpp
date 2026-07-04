@@ -94,7 +94,7 @@ MainWindow::MainWindow(QWidget *parent)
   dolphin->addGame(new MarioParty5(dolphin->core(), dolphin));
   dolphin->addGame(new MarioParty6(dolphin->core(), dolphin));
   dolphin->addGame(new MarioParty7(dolphin->core(), dolphin));
-  //dolphin->addGame(new KirbyAirRide(dolphin->core(), dolphin));
+  dolphin->addGame(new KirbyAirRide(dolphin->core(), dolphin));
   dolphin->finalizeGames();
   if (dolphin->isValid())
     m_Guests->add(dolphin);
@@ -105,14 +105,14 @@ MainWindow::MainWindow(QWidget *parent)
     else
       delete g;
   };
-  //addGuest(new MarioKart64());
+  addGuest(new MarioKart64());
   addGuest(new MarioParty1());
   addGuest(new MarioParty2());
   addGuest(new MarioParty3());
   addGuest(new SmashRemix());
   addGuest(new MarioTennis());
-  //addGuest(new MarioPartyAdvance());
-  //addGuest(new MarioPartyE());
+  addGuest(new MarioPartyAdvance());
+  addGuest(new MarioPartyE());
 
 #if SHOW_LOGGER
   for (DrGuest *guest : m_Guests->guests())
