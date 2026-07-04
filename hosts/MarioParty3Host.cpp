@@ -78,11 +78,6 @@ static const size_t MP3_MINIGAME_TITLE_ADDRS[6] = {
   0xB122DA7F, // entry 11 len byte (sentinel)
 };
 
-static size_t n64ByteAddr(size_t addr)
-{
-  return (addr & ~size_t(3)) | (3 - (addr & 3));
-}
-
 // 72 game guy results
 /* duel results on duel map scene 0x73 */
 
@@ -262,7 +257,6 @@ static DrHostConfig makeConfig()
   config.title_id_base = 2;
   config.title_id_step = 2;
   config.title_len_offset = 3;
-  config.title_addr_transform = n64ByteAddr;
   config.slot_addrs = MP3_SLOT_ADDRS;
   config.scene_trampoline_addr = 0x800A7A54;
   config.turn_total_addr = 0x800CD05Au; // u8
@@ -392,8 +386,7 @@ MarioParty3Host::MarioParty3Host(QObject *parent)
         static constexpr uint32_t NAMED_COUNT = sizeof(NAMED) / sizeof(*NAMED);
 
         auto xw = [this](uint8_t val, size_t addr) {
-          // n64ByteAddr already applies the byte flip, so write raw.
-          writeu8(val, n64ByteAddr(addr), DR_ENDIANNESS_LITTLE);
+          writeu8(val, addr);
         };
         auto xw32 = [&xw](uint32_t val, size_t addr) {
           xw(uint8_t(val >> 24), addr);

@@ -49,11 +49,6 @@ static const size_t MP2_MINIGAME_TITLE_ADDRS[6] = {
   0xB1157363, 0xB1157389, 0xB11573AF, 0xB11573D1, 0xB11573F7, 0xB115741D,
 };
 
-static size_t n64ByteAddr(size_t addr)
-{
-  return (addr & ~size_t(3)) | (3 - (addr & 3));
-}
-
 static const dr_scene_name_t MP2_SCENE_NAMES[] =
 {
   { 0x00, "Booting up" },
@@ -207,7 +202,6 @@ static DrHostConfig makeConfig()
   config.title_id_base = 0x25;
   config.title_id_step = 2;
   config.title_len_offset = 2;
-  config.title_addr_transform = n64ByteAddr;
 
   config.slot_addrs = MP2_SLOT_ADDRS;
   config.scene_trampoline_addr = 0x800D34E0;

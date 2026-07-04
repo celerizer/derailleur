@@ -314,12 +314,10 @@ DrHost::DrHost(const DrHostConfig &config, QObject *parent)
   : DrRetro(parent)
   , m_config(config)
 {
-  /* Every host is an N64 game: default RAM access to wordflipped so the state
-   * machine can use hardware addresses. ROM patches/cheats pass LITTLE/raw. */
-  m_endianness = DR_ENDIANNESS_WORDFLIPPED;
   qRegisterMetaType<DrMinigameCandidate>();
   qRegisterMetaType<DrPlayerArray>();
   qRegisterMetaType<dr_minigame_type>();
+
   m_core = new QRetro();
   m_ownCore = true;
   if (!m_core->loadCore(config.core.c_str()))
@@ -333,7 +331,8 @@ DrHost::DrHost(const DrHostConfig &config, QObject *parent)
     m_valid = false;
   }
 
-  /* Every host is currently an N64 game, so use the N64 face-button layout. */
+  /** @todo For right now, every host is N64 */
+  m_endianness = DR_ENDIANNESS_WORDFLIPPED;
   applyN64Remaps();
 
   connect(m_core, &QRetro::frameEnd, this, [this]() { run(); }, Qt::DirectConnection);
@@ -370,12 +369,12 @@ void DrHost::injectMinigameTitles(const std::array<DrMinigameCandidate, 5> &cand
 
 bool DrHost::initTitleSlots()
 {
-  auto xform = m_config.title_addr_transform;
   for (unsigned i = 0; i < 5; i++)
   {
     size_t addr = m_config.title_addrs[i];
     uint8_t marker = 0;
-    if (readu8(&marker, xform ? xform(addr + 1) : addr + 1, DR_ENDIANNESS_LITTLE) != DR_OK)
+
+    if (readu8(&marker, addr + 1) != DR_OK)
       return false;
     if (marker != 0x0B)
       log(DR_LOG_WARN,
@@ -395,10 +394,8 @@ void DrHost::writeMinigameNames(const std::array<std::string, 5> &names)
     m_titleSlotsValid = true;
   }
 
-  auto xform = m_config.title_addr_transform;
   auto w = [&](uint8_t val, size_t addr) {
-    // title_addr_transform already applies the N64 byte flip, so write raw.
-    writeu8(val, xform ? xform(addr) : addr, DR_ENDIANNESS_LITTLE);
+    writeu8(val, addr);
   };
 
   for (unsigned i = 0; i < 5; i++)
@@ -532,8 +529,7 @@ void DrHost::writeBattleCoins()
       if (places[i] == firstPlace || places[i] == secondPlace)
         qualifying[numQ++] = i;
     if (numQ > 0)
-      /// @todo fix rng: fixed value (not random) so netplay peers stay in sync
-      bonusCoins[qualifying[0u % numQ]] += remainder;
+      bonusCoins[qualifying[dr_rand() % numQ]] += remainder;
   }
 
   for (unsigned i = 0; i < 4; i++)

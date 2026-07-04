@@ -2,11 +2,6 @@
 
 #include <QRetroDirectories.h>
 
-static size_t n64ByteAddr(size_t addr)
-{
-  return (addr & ~size_t(3)) | (3 - (addr & 3));
-}
-
 static const dr_character MP1_CHAR_TO_DR[] = {
   DR_CHARACTER_MARIO, // 0x00
   DR_CHARACTER_LUIGI, // 0x01
@@ -190,7 +185,6 @@ static DrHostConfig makeConfig()
   config.title_id_base = 0x01;
   config.title_id_step = 4;
   config.title_len_offset = 2;
-  config.title_addr_transform = n64ByteAddr;
 
   config.scene_trampoline_addr = 0x800CA9A0;
 

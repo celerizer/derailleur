@@ -100,8 +100,6 @@ struct DrHostConfig
   size_t minigame_type_addr;
   const dr_minigame_type *minigame_type_to_dr;
   unsigned minigame_type_to_dr_size;
-  size_t next_scene_addr;
-  size_t next_scene_modifier_addr;
   size_t minigame_id_addr;
   bool minigame_id_is_8bit;
   uint8_t minigame_blacklist[16];
@@ -111,7 +109,6 @@ struct DrHostConfig
   uint8_t title_id_base;                  // first roulette ID (e.g. 0x25)
   uint8_t title_id_step;                  // step between IDs (e.g. 2); 0 = use slot_addrs instead
   uint8_t title_len_offset;              // added to nameLen when writing the length byte
-  size_t (*title_addr_transform)(size_t); // byte-swap fn (e.g. n64ByteAddr), nullptr = identity
   const size_t *slot_addrs;              // 5 word-flipped RAM addrs holding per-slot minigame IDs
   size_t scene_trampoline_addr;          // packed word: upper half = scene, lower half = modifier; 0 = passthrough
   size_t turn_total_addr;               // byte: total turn count; 0 = skip end-of-game check
