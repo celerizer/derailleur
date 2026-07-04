@@ -36,6 +36,7 @@ private:
   dr_player_t m_players[4] = {};
   unsigned m_winners = 0;
   int m_finishCountdown = 0;
+  int m_allCpuFrames = 0;
 };
 
 #endif

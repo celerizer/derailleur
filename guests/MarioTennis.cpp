@@ -146,6 +146,26 @@ void MarioTennis::run()
     return;
   }
 
+  /* If every player is a CPU, force controller 1 to press A so the game can proceed */
+  bool allCpu = true;
+  for (unsigned i = 0; i < 4; i++)
+    if (m_players[i].team_type != DR_TEAM_TYPE_INVALID &&
+        m_players[i].control_type == DR_CONTROL_TYPE_HUMAN)
+    {
+      allCpu = false;
+      break;
+    }
+
+  if (allCpu)
+  {
+    m_allCpuFrames++;
+    // Hold A for a few frames starting at 300, then release so it reads as a press.
+    if (m_allCpuFrames == 300)
+      core()->input()->joypads()[0].setForcedButton(RETRO_DEVICE_ID_JOYPAD_B, true);
+    else if (m_allCpuFrames == 308)
+      core()->input()->joypads()[0].setForcedButton(RETRO_DEVICE_ID_JOYPAD_B, false);
+  }
+
   for (unsigned team = 0; team < 2; team++)
   {
     uint8_t setsWon = 0;
@@ -180,6 +200,7 @@ void MarioTennis::doSetMinigame(const dr_mp_minigame_t *minigame)
 {
   m_winners = 0;
   m_finishCountdown = 0;
+  m_allCpuFrames = 0;
   core()->unserializeFromFile(dr_state_directory() + "/mariotennis.state.zip");
   bool doubles = (minigame->type == DR_MINIGAME_2V2);
   unsigned long rc = dr_rand_count();
