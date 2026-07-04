@@ -162,9 +162,11 @@ static const dr_scene_name_t MP3_SCENE_NAMES[] =
   { 0x46, "Dizzy Dinghies" },
 
   { 0x47, "Loading" },
+  { 0x48, "Chilly Waters" },
   { 0x4c, "Creepy Cavern" },
   { 0x4d, "Waluigi's Island" },
   { 0x4e, "Battle Royal Rule Map" },
+  { 0x52, "Mushroom Genie" },
   { 0x53, "Board intro" },
   { 0x54, "Battle Royal Rule Map intro" },
   { 0x58, "Booting up" }, // Nintendo/Hudson logos
@@ -172,6 +174,7 @@ static const dr_scene_name_t MP3_SCENE_NAMES[] =
   { 0x5b, "Gate Guy" },
   { 0x69, "Mini-Game Room" },
   { 0x71, "Mini-Game results" },
+  { 0x74, "Battle Game results" },
   { 0x77, "Castle Grounds" },
   { 0x78, "Star Lift" },
   { 0x79, "File select" },

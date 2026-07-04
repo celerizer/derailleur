@@ -37,7 +37,6 @@ static const dr_team_color MP2_PANEL_COLOR_TO_DR[] = {
   DR_TEAM_COLOR_GREEN, // 0x04
 };
 
-// Hardware addresses (accessed wordflipped via DrHost). u8 fields unflip ^3.
 static const size_t MP2_SLOT_ADDRS[5] = {
   0x800df6c4,
   0x800df6c0,
@@ -116,12 +115,18 @@ static const dr_scene_name_t MP2_SCENE_NAMES[] =
   { 0x3a, "Torpedo Targets" },
   { 0x3b, "Destruction Duet" },
   { 0x3c, "Deep Sea Salvage" },
+
+  { 0x3d, "Loading" },
+  { 0x3e, "Western Land" },
   { 0x3f, "Quick Draw Corks" },
   { 0x42, "Saber Swipes" },
   { 0x44, "Mushroom Brew" },
   { 0x46, "Time Bomb" },
   { 0x48, "Psychic Safari" },
   { 0x4a, "Rock, Paper, Mario" },
+
+  { 0x6f, "Battle Game results" },
+  { 0x70, "Mini-Game results" },
 
   { -1, nullptr },
 };
