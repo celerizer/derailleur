@@ -189,7 +189,7 @@ void MarioTennis::run()
     }
     log(DR_LOG_INFO, qPrintable(QString("team %1 wins: %2").arg(team).arg(winners)));
 
-    m_finishCountdown = 3 * 60;
+    m_finishCountdown = 5 * 60;
     break;
   }
 }
