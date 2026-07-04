@@ -99,6 +99,10 @@ HEADERS += \
 
 RESOURCES += assets.qrc
 
+win32:exists($$PWD/assets/icon.ico) {
+    RC_ICONS = assets/icon.ico
+}
+
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /opt/$${TARGET}/bin
