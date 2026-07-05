@@ -190,6 +190,9 @@ static DrHostConfig makeConfig()
 
   config.scene_names = MP1_SCENE_NAMES;
 
+  config.turn_total_addr = 0x800ED5C7;   // u8
+  config.turn_current_addr = 0x800ED5C9; // u8
+
   return config;
 }
 

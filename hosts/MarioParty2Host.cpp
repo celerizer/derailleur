@@ -184,6 +184,9 @@ static DrHostConfig makeConfig()
 
   config.battle_addr = 0x800F9208; // u16
 
+  config.turn_total_addr = 0x800F93AF;   // u8
+  config.turn_current_addr = 0x800F93B1; // u8
+
   config.panel_color_to_dr = MP2_PANEL_COLOR_TO_DR;
   config.panel_color_to_dr_size = sizeof(MP2_PANEL_COLOR_TO_DR) / sizeof(*MP2_PANEL_COLOR_TO_DR);
 
