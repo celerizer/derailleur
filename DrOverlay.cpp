@@ -2,6 +2,7 @@
 
 #include <cmath>
 #include <QPainter>
+#include <QRandomGenerator>
 #include <QTimer>
 
 #include "DrCommon.h"
@@ -109,7 +110,7 @@ void DrOverlay::fadeOut(int durationMs)
 
 void DrOverlay::pickRandomSprite()
 {
-  int index = dr_rand() % DR_OVERLAY_SPRITE_COUNT;
+  int index = QRandomGenerator::global()->bounded(DR_OVERLAY_SPRITE_COUNT);
   QPixmap sprite(QString(":/assets/char/%1.png").arg(index));
   if (!sprite.isNull())
     setSprite(sprite.scaled(
