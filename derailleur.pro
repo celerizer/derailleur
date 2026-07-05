@@ -1,4 +1,5 @@
 QT       += core gui network
+QT       += gui-private
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
@@ -24,6 +25,7 @@ include(QRetro/QRetro.pri)
 SOURCES += \
     DrCommon.cpp \
     DrDebug.cpp \
+    DrDownloader.cpp \
     DrGuest.cpp \
     DrHost.cpp \
     DrInputStore.cpp \
@@ -62,6 +64,7 @@ SOURCES += \
 HEADERS += \
     DrCommon.h \
     DrDebug.h \
+    DrDownloader.h \
     DrGuest.h \
     DrGuestList.h \
     DrHost.h \

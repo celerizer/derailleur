@@ -5,6 +5,7 @@
 static QString roms_dir = "roms";
 static QString cores_dir = "cores";
 static QString state_dir = "state";
+static QString save_dir = "save";
 
 QString dr_roms_directory(void)
 {
@@ -34,6 +35,16 @@ QString dr_state_directory(void)
 void dr_set_state_directory(const QString &path)
 {
   state_dir = path;
+}
+
+QString dr_save_directory(void)
+{
+  return save_dir;
+}
+
+void dr_set_save_directory(const QString &path)
+{
+  save_dir = path;
 }
 
 QString dr_os_extension(void)

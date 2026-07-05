@@ -19,6 +19,7 @@
 #include <QWidget>
 
 #include "DrDebug.h"
+#include "DrDownloader.h"
 #include "hosts/MarioParty1Host.h"
 #include "hosts/MarioParty2Host.h"
 #include "hosts/MarioParty3Host.h"
@@ -69,6 +70,7 @@ MainWindow::MainWindow(QWidget *parent)
     dr_set_roms_directory(load("paths/roms", cwd.filePath("roms")));
     dr_set_cores_directory(load("paths/cores", cwd.filePath("cores")));
     dr_set_state_directory(load("paths/state", cwd.filePath("state")));
+    dr_set_save_directory(load("paths/save", cwd.filePath("save")));
     s.sync();
 #if SHOW_LOGGER
     if (!iniExisted)
@@ -78,7 +80,16 @@ MainWindow::MainWindow(QWidget *parent)
     m_Logger->message(DR_LOG_INFO, QString("paths/roms: %1").arg(dr_roms_directory()));
     m_Logger->message(DR_LOG_INFO, QString("paths/cores: %1").arg(dr_cores_directory()));
     m_Logger->message(DR_LOG_INFO, QString("paths/state: %1").arg(dr_state_directory()));
+    m_Logger->message(DR_LOG_INFO, QString("paths/save: %1").arg(dr_save_directory()));
 #endif
+
+    DrDownloader downloader;
+#if SHOW_LOGGER
+    connect(&downloader, &DrDownloader::logMessage, m_Logger, &DrLogger::message);
+    connect(&downloader, &DrDownloader::progressStarted, m_Logger, &DrLogger::showProgress);
+    connect(&downloader, &DrDownloader::progressFinished, m_Logger, &DrLogger::hideProgress);
+#endif
+    downloader.runBlocking(s, dr_save_directory(), dr_state_directory());
   }
 
   m_Guests = new DrGuestList(this);

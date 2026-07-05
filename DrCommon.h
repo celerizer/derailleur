@@ -371,6 +371,8 @@ QString dr_cores_directory(void);
 void dr_set_cores_directory(const QString &path);
 QString dr_state_directory(void);
 void dr_set_state_directory(const QString &path);
+QString dr_save_directory(void);
+void dr_set_save_directory(const QString &path);
 QString dr_core_path(dr_core core);
 
 /// The dynamic library extension for the current platform (".dll" or ".so").
