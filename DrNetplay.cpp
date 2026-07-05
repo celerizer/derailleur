@@ -1,13 +1,17 @@
 #include "DrNetplay.h"
 
+#include <QApplication>
 #include <QDataStream>
 #include <QElapsedTimer>
 #include <QHostAddress>
+#include <QKeyEvent>
 #include <QRandomGenerator>
 #include <QTcpServer>
 #include <QTcpSocket>
+#include <QWidget>
 
 #include <QRetro.h>
+#include <QRetroCommon.h>
 #include <libretro.h>
 
 #include "DrCommon.h"
@@ -25,6 +29,31 @@ DrNetplay::DrNetplay(DrInputStore *store, QObject *parent)
   : QObject(parent)
   , m_Store(store)
 {
+  /* Catch keyboard events app-wide so the local pipeline sees them regardless
+   * of which core window has focus. */
+  if (qApp)
+    qApp->installEventFilter(this);
+}
+
+bool DrNetplay::eventFilter(QObject *watched, QEvent *event)
+{
+  const QEvent::Type type = event->type();
+  if (type == QEvent::KeyPress || type == QEvent::KeyRelease)
+  {
+    /* Ignore presses while a text field has focus; always apply releases so a key
+     * held before focus moved can't stick down. */
+    QWidget *focus = QApplication::focusWidget();
+    const bool typing = focus &&
+      (focus->inherits("QLineEdit") || focus->inherits("QAbstractSpinBox") ||
+        focus->inherits("QTextEdit") || focus->inherits("QPlainTextEdit") ||
+        focus->inherits("QComboBox"));
+    const auto *ke = static_cast<QKeyEvent *>(event);
+    if (type == QEvent::KeyRelease)
+      m_LocalInput.setKey(qt2lr_keyboard(ke->key()), false);
+    else if (!typing)
+      m_LocalInput.setKey(qt2lr_keyboard(ke->key()), true);
+  }
+  return QObject::eventFilter(watched, event);
 }
 
 void DrNetplay::hostSession(quint16 port, int playerCount)
@@ -263,7 +292,11 @@ void DrNetplay::setLocalSource(QRetroInputBackend *backend)
 {
   m_LocalSource = backend;
   if (m_LocalSource)
-    m_LocalSource->init(m_LocalPads, DrInputStore::k_MaxPorts);
+    m_LocalSource->init(m_LocalInput.joypads(), DrInputStore::k_MaxPorts);
+  m_LocalInput.setBackend(m_LocalSource);
+  /* The local player is logical port 0 on the wire; route keyboard macros there. */
+  m_LocalInput.setUseMaps(true);
+  m_LocalInput.setKeyboardPort(0);
 }
 
 void DrNetplay::attachCore(QRetro *core)
@@ -281,6 +314,9 @@ void DrNetplay::attachCore(QRetro *core)
    * core sees the physical controllers instead of falling back to keyboard. */
   backend->setDeviceBackend(m_LocalSource);
   core->input()->setBackend(backend);
+  /* Input arrives pre-processed via the store; the core must not re-apply keyboard
+   * macros (that would bypass the netplay delay). Per-game remaps still run. */
+  core->input()->setUseMaps(false);
 
   connect(
     core, &QRetro::frameBegin, this, [this, ctx]() { onFrameBegin(ctx); }, Qt::DirectConnection);
@@ -294,7 +330,7 @@ void DrNetplay::onFrameBegin(int context)
   {
     /* Singleplayer passthrough: sample all local controllers and commit. */
     sampleLocal();
-    m_Store->commitFrame(m_LocalFrame++, m_LocalPads);
+    m_Store->commitFrame(m_LocalFrame++, m_LocalInput.joypads());
     return;
   }
 
@@ -341,7 +377,7 @@ void DrNetplay::onFrameBegin(int context)
     while (m_CtxSend[context] <= target)
     {
       DrNetplayPacket mine =
-        packetFromJoypad(m_LocalPads[0], m_PeerIndex, context, m_CtxSend[context]);
+        packetFromJoypad(m_LocalInput.joypads()[0], m_PeerIndex, context, m_CtxSend[context]);
       recordPacket(mine);
       sendInput(mine);
       m_CtxSend[context]++;
@@ -392,11 +428,9 @@ void DrNetplay::onFrameBegin(int context)
 
 void DrNetplay::sampleLocal()
 {
-  if (m_LocalSource)
-    m_LocalSource->poll();
-  /* Finalize each joypad's bitmask from its digital buttons. */
-  for (unsigned i = 0; i < DrInputStore::k_MaxPorts; i++)
-    m_LocalPads[i].poll();
+  /* Full pipeline (backend + keyboard macros + turbo/forced/analog-to-digital),
+   * so what we send is exactly what the player produced. */
+  m_LocalInput.poll();
 }
 
 bool DrNetplay::isFrameCompleteLocked(int context, quint64 frame) const

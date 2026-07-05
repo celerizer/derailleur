@@ -15,6 +15,7 @@
 #include "QRetroInput.h"
 
 class DrInputStore;
+class QEvent;
 class QRetro;
 class QRetroInputBackend;
 class QTcpServer;
@@ -160,6 +161,10 @@ public:
 
   bool sessionActive() const { return m_Active; }
 
+protected:
+  /// Forwards app-wide keyboard events into m_LocalInput regardless of focus.
+  bool eventFilter(QObject *watched, QEvent *event) override;
+
 signals:
   void sessionStarted(int peerIndex, int peerCount);
   void sessionError(const QString &reason);
@@ -214,7 +219,9 @@ private:
   DrInputStore *m_Store = nullptr;
 
   QRetroInputBackend *m_LocalSource = nullptr;
-  QRetroInputJoypad m_LocalPads[QRETRO_INPUT_DEFAULT_MAX_JOYPADS];
+  /* Canonical local input pipeline: poll() bakes in keyboard macros/turbo/etc.
+   * before we send. Remaps stay identity here; each core applies its own. */
+  QRetroInput m_LocalInput;
   QRetroInputJoypad m_CommitPads[DR_NETPLAY_MAX_PEERS];
 
   QTcpServer *m_Server = nullptr;
