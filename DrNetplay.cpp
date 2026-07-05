@@ -294,9 +294,7 @@ void DrNetplay::setLocalSource(QRetroInputBackend *backend)
   if (m_LocalSource)
     m_LocalSource->init(m_LocalInput.joypads(), DrInputStore::k_MaxPorts);
   m_LocalInput.setBackend(m_LocalSource);
-  /* The local player is logical port 0 on the wire; route keyboard macros there. */
   m_LocalInput.setUseMaps(true);
-  m_LocalInput.setKeyboardPort(0);
 }
 
 void DrNetplay::attachCore(QRetro *core)
@@ -428,6 +426,10 @@ void DrNetplay::onFrameBegin(int context)
 
 void DrNetplay::sampleLocal()
 {
+  const bool hasPad =
+    m_LocalSource && m_LocalSource->assignedDeviceId(0) != QRETRO_NO_DEVICE;
+  m_LocalInput.setKeyboardPort(hasPad ? -1 : 0);
+
   /* Full pipeline (backend + keyboard macros + turbo/forced/analog-to-digital),
    * so what we send is exactly what the player produced. */
   m_LocalInput.poll();
@@ -587,6 +589,7 @@ void DrNetplay::handleMessage(QTcpSocket *sock, quint8 type, const QByteArray &p
       m_PeerCount = static_cast<quint8>(payload.at(1));
       emit logMessage(DR_LOG_INFO,
         QString("netplay: client assigned peer %1 of %2").arg(m_PeerIndex).arg(m_PeerCount));
+      emit lobbyJoined(m_PeerIndex, m_PeerCount);
 
       /* Report our build so the server can warn about a version mismatch. The
        * hash is fixed-width and null-padded to match the wire framing. */

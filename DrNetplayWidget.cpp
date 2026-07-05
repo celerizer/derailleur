@@ -129,6 +129,10 @@ DrNetplayWidget::DrNetplayWidget(DrNetplay *netplay, QWidget *parent)
     connect(m_netplay, &DrNetplay::peerCountChanged, this, [this](int connected, int total) {
       setStatus(tr("%1 of %2 peers connected").arg(connected).arg(total));
     });
+    connect(m_netplay, &DrNetplay::lobbyJoined, this, [this](int index, int count) {
+      setStatus(tr("Connected as peer %1 of %2, waiting for host to start...")
+                  .arg(index + 1).arg(count));
+    });
     connect(m_netplay, &DrNetplay::sessionError, this, [this](const QString &reason) {
       setStatus(tr("Error: %1").arg(reason));
       lockControls(false);

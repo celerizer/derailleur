@@ -169,6 +169,7 @@ signals:
   void sessionStarted(int peerIndex, int peerCount);
   void sessionError(const QString &reason);
   void peerCountChanged(int connected, int total);
+  void lobbyJoined(int peerIndex, int peerCount);
   /// Emitted on a client when the server selects a game (a dr_game value).
   void startGameRequested(int gameId);
   /// Emitted on a client with the server's chosen candidate (guest, minigame)
