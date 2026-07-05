@@ -118,8 +118,10 @@ dr_error MarioPartyN64::doSetPlayerDifficulty(unsigned index, dr_difficulty diff
     mp_difficulty = 0x01;
     break;
   case DR_DIFFICULTY_HARD:
-  case DR_DIFFICULTY_VERY_HARD:
     mp_difficulty = 0x02;
+    break;
+  case DR_DIFFICULTY_VERY_HARD:
+    mp_difficulty = 0x03;
     break;
   default:
     mp_difficulty = 0x01;

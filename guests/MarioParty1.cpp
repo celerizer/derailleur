@@ -84,7 +84,6 @@ static MpN64Config buildConfig()
   config.scene_miniexplain = 0x6f;
   config.scene_miniresults = 0x7c;
 
-  // Hardware addresses (accessed wordflipped via DrRetroN64).
   config.scene_addr = 0x800C596C;    // u16
   config.minigame_addr = 0x800ED5DE; // u16
 
