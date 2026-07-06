@@ -38,6 +38,7 @@
 #include "guests/MarioPartyE.h"
 #include "guests/SmashRemix.h"
 #include "guests/MarioTennis.h"
+#include "guests/PokemonStadium2.h"
 
 #define SHOW_LOGGER 1
 #define SHOW_OVERLAY 1
@@ -92,6 +93,22 @@ MainWindow::MainWindow(QWidget *parent)
     downloader.runBlocking(s, dr_save_directory(), dr_state_directory());
   }
 
+  /* Wipe the Mupen64Plus texture cache each boot so freshly laid-down hires
+   * textures (e.g. PokemonStadium2's per-character icons) aren't masked by a
+   * stale cache. */
+  {
+    QDir cache("system/Mupen64plus/cache");
+    if (cache.exists())
+    {
+      const bool ok = cache.removeRecursively();
+#if SHOW_LOGGER
+      m_Logger->message(ok ? DR_LOG_INFO : DR_LOG_WARN,
+        ok ? QString("cleared %1").arg(cache.path())
+           : QString("failed to clear %1").arg(cache.path()));
+#endif
+    }
+  }
+
   m_Guests = new DrGuestList(this);
 #if SHOW_LOGGER
   connect(m_Guests, &DrGuestList::logMessage, m_Logger, &DrLogger::message, Qt::QueuedConnection);
@@ -128,6 +145,7 @@ MainWindow::MainWindow(QWidget *parent)
   addGuest(new MarioParty3());
   addGuest(new SmashRemix());
   addGuest(new MarioTennis());
+  addGuest(new PokemonStadium2());
   addGuest(new MarioPartyAdvance());
   addGuest(new MarioPartyE());
 
@@ -242,7 +260,7 @@ void MainWindow::startWithHost(DrHost *host)
    * so every peer loads the same set. */
   m_warmupQueue.clear();
   for (DrGuest *guest : m_Guests->guests())
-    if (m_Guests->guestHasCandidate(guest))
+    if (m_Guests->guestHasCandidate(guest) && guest->usesWarmup())
     {
       guest->startCore();
       m_warmupQueue.append(guest);
@@ -362,17 +380,24 @@ void MainWindow::launchMinigame(
       for (DrGuest *g : m_Guests->guests())
         g->pause();
 
-      guest->core()->audio()->setVolume(0);
+      /* audio() is null until a core has booted; a deferred-boot guest (PS2)
+       * hasn't started yet on its first launch, so guard these. */
+      if (auto *a = guest->core()->audio())
+        a->setVolume(0);
       guest->setMinigame(minigame);
       for (unsigned i = 0; i < 4; i++)
         guest->setPlayer(i, players[i]);
+      /* Now the full player set is known; let the guest finalize (e.g. PS2 loads
+       * its content/boots so GLideN64 picks up the character-keyed textures). */
+      guest->commitMinigame();
 
       /* A minigame state was just loaded; make this guest the foreground netplay
        * context so it resynchronizes from this sync point. Done before unpause
        * so its frame counter is reset while the core is still stopped. */
       m_Netplay->setActiveContext(guest->core());
 
-      guest->core()->audio()->setVolume(100);
+      if (auto *a = guest->core()->audio())
+        a->setVolume(100);
       guest->unpause();
 
 #if SHOW_OVERLAY

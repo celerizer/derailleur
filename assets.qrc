@@ -3,5 +3,21 @@
         <file>assets/loading.png</file>
         <file>assets/char/0.png</file>
         <file>assets/char/1.png</file>
+        <file>assets/player-32px/1.png</file>
+        <file>assets/player-32px/2.png</file>
+        <file>assets/player-32px/3.png</file>
+        <file>assets/player-32px/4.png</file>
+        <file>assets/player-32px/5.png</file>
+        <file>assets/player-32px/6.png</file>
+        <file>assets/player-32px/7.png</file>
+        <file>assets/player-32px/8.png</file>
+        <file>assets/player-50px/1.png</file>
+        <file>assets/player-50px/2.png</file>
+        <file>assets/player-50px/3.png</file>
+        <file>assets/player-50px/4.png</file>
+        <file>assets/player-50px/5.png</file>
+        <file>assets/player-50px/6.png</file>
+        <file>assets/player-50px/7.png</file>
+        <file>assets/player-50px/8.png</file>
     </qresource>
 </RCC>

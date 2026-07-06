@@ -57,6 +57,7 @@ SOURCES += \
     guests/MarioParty7.cpp \
     guests/MarioPartyGcn.cpp \
     guests/MarioTennis.cpp \
+    guests/PokemonStadium2.cpp \
     guests/SmashRemix.cpp \
     main.cpp \
     mainwindow.cpp
@@ -97,6 +98,7 @@ HEADERS += \
     guests/MarioParty7.h \
     guests/MarioPartyGcn.h \
     guests/MarioTennis.h \
+    guests/PokemonStadium2.h \
     guests/SmashRemix.h \
     mainwindow.h
 

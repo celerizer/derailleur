@@ -423,6 +423,11 @@ void DrHost::startMinigame(unsigned index)
 {
   if (index >= 5 || !m_candidates[index].guest || !m_candidates[index].minigame)
     return;
+  const dr_mp_minigame_t *mg = m_candidates[index].minigame;
+  emit logMessage(DR_LOG_INFO,
+    QString("chosen mini-game: %1 (0x%2)")
+      .arg(mg->name ? mg->name : "(unnamed)")
+      .arg(mg->minigame_id, 2, 16, QChar('0')));
   emit minigameRequested(m_candidates[index], m_pendingPlayers);
 }
 

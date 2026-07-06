@@ -28,6 +28,11 @@ public:
   virtual bool isValid() const { return m_valid; }
   virtual unsigned warmupFrames() const { return 30; }
 
+  /// Whether this guest is booted and warmed up at startup. Guests that defer
+  /// loading their content until launch (e.g. PokemonStadium2) return false so
+  /// they are neither started nor added to the warmup queue.
+  virtual bool usesWarmup() const { return true; }
+
   virtual void startCore() {}
   virtual void pause() {}
   virtual void unpause() {}
@@ -58,6 +63,12 @@ public:
   virtual QList<DrMinigameGroup> minigameGroups() const;
   void setMinigame(const dr_mp_minigame_t *minigame);
   void cancelMinigame() { m_minigameActive = false; }
+
+  /// Called once per launch after setMinigame() and all setPlayer() calls, i.e.
+  /// when the full player set is known. Default no-op; guests that must react to
+  /// the finalized configuration (e.g. reopening the core to reload a texture
+  /// pack keyed on the assigned characters) override this.
+  virtual void commitMinigame() {}
 
   dr_error setPlayer(unsigned index, const dr_player_t &player);
   dr_error setPlayerCharacter(unsigned index, dr_character character);

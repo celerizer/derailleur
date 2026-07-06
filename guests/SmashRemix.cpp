@@ -12,7 +12,7 @@ static const dr_mp_minigame_t SR_MINIGAMES[] = {
   { "Remix Tiny Battle",  DR_MINIGAME_1V3, 0x03, 0xFF, DR_NO_QUIRKS },
   { "Remix Golden Gun",   DR_MINIGAME_1V3, 0x04, 0xFF, DR_NO_QUIRKS },
 
-  { "Remix Pokemon", DR_MINIGAME_4P, 0x05, 0xFF, DR_NO_QUIRKS },
+  { "Remix PKMN", DR_MINIGAME_4P, 0x05, 0xFF, DR_NO_QUIRKS },
 
   { "Remix Duel", DR_MINIGAME_DUEL, 0x00, 0xFF, DR_NO_QUIRKS },
 
@@ -85,9 +85,12 @@ typedef struct
 } sr_character_t;
 
 static const sr_character_t SR_CHARACTER_ID[] = {
-  { DR_CHARACTER_MARIO, 0x00, 0x00 }, { DR_CHARACTER_LUIGI, 0x04, 0x00 },
-  { DR_CHARACTER_PEACH, 0x49, 0x00 }, { DR_CHARACTER_YOSHI, 0x06, 0x00 },
-  { DR_CHARACTER_WARIO, 0x21, 0x00 }, { DR_CHARACTER_DONKEY_KONG, 0x02, 0x00 },
+  { DR_CHARACTER_MARIO, 0x00, 0x00 },
+  { DR_CHARACTER_LUIGI, 0x04, 0x00 },
+  { DR_CHARACTER_PEACH, 0x49, 0x00 },
+  { DR_CHARACTER_YOSHI, 0x06, 0x00 },
+  { DR_CHARACTER_WARIO, 0x21, 0x00 },
+  { DR_CHARACTER_DONKEY_KONG, 0x02, 0x00 },
 
   { DR_CHARACTER_WALUIGI, 0x04, 0x04 }, // Luigi (purple)
   { DR_CHARACTER_DAISY, 0x49, 0x01 }, // Peach (yellow)
@@ -335,11 +338,11 @@ void SmashRemix::applyPlayers()
   for (unsigned i = 0; i < 4; i++)
   {
     const dr_player_t &p = m_players[i];
+
     if (p.control_port == DR_CONTROL_PORT_INVALID || p.control_port >= DR_CONTROL_PORT_SIZE)
       continue;
-    /* Non-participants (e.g. the two board players sitting out a duel) are marked
-     * INVALID by the host; skip them so their slot stays empty and gets
-     * eliminated below, leaving only the two real participants spawned. */
+
+    /** @todo this needs to get changed if we change how duel teams are set */
     if (p.team_type == DR_TEAM_TYPE_INVALID)
       continue;
 

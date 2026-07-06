@@ -164,13 +164,13 @@ static const dr_scene_name_t MP3_SCENE_NAMES[] =
   { 0x4c, "Creepy Cavern" },
   { 0x4d, "Waluigi's Island" },
   { 0x4e, "Battle Royal Rule Map" },
-  { 0x4f, "Board result" },
+  { 0x4f, "Board result" }, // result cutscene
   { 0x50, "Bowser Event" },
   { 0x51, "Last 5 Turns" },
   { 0x52, "Mushroom Genie" },
   { 0x53, "Board intro" },
   { 0x54, "Battle Royal Rule Map intro" },
-  { 0x55, "Board result" }, // ?
+  { 0x55, "Board result" }, // result screen
   { 0x56, "mchar" },
   { 0x57, "mchar2" }, // unused
   { 0x58, "Booting up" }, // Nintendo/Hudson logos
