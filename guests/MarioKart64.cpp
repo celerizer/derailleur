@@ -77,6 +77,7 @@ MarioKart64::MarioKart64(QObject *parent)
   QString corePath = dr_core_path(DR_CORE_MUPEN64PLUSNEXT);
   QString gamePath = dr_roms_directory() + "/Mario Kart 64 (USA).z64";
   QRetro *c = new QRetro();
+  c->setSavingEnabled(false);
   if (!c->loadCore(corePath.toUtf8().constData()))
   {
     log(DR_LOG_ERROR, qPrintable(QString("failed to load core: %1").arg(corePath)));

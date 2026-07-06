@@ -238,6 +238,7 @@ SmashRemix::SmashRemix(QObject *parent)
   QString corePath = dr_core_path(DR_CORE_MUPEN64PLUSNEXT);
   QString gamePath = dr_roms_directory() + "/smashremix.z64";
   QRetro *core = new QRetro();
+  core->setSavingEnabled(false);
   if (!core->loadCore(corePath.toUtf8().constData()))
   {
     log(DR_LOG_ERROR, qPrintable(QString("failed to load core: %1").arg(corePath)));

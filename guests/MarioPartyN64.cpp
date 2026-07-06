@@ -12,6 +12,7 @@ MarioPartyN64::MarioPartyN64(const MpN64Config &config, QObject *parent)
 {
   m_retro = new DrRetroN64(this);
   QRetro *core = new QRetro();
+  core->setSavingEnabled(false);
   if (!core->loadCore(m_config.core.c_str()))
   {
     log(DR_LOG_ERROR, qPrintable(QString("failed to load core: %1").arg(m_config.core.c_str())));
