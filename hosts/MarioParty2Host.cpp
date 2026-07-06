@@ -141,8 +141,9 @@ static DrHostConfig makeConfig()
   // scene_miniresults_duel: not available in mp2
   config.scene_addr = 0x800FA63E; // u16
 
-  config.scene_board_ranges[0] = { 0x3E, 0x43 };
-  config.scene_board_range_count = 1;
+  static const uint8_t mp2_boards[] = { 0x3E, 0x41, 0x43, 0x45, 0x47, 0x49, 0x4B };
+  memcpy(config.scene_board_ids, mp2_boards, sizeof(mp2_boards));
+  config.scene_board_id_count = sizeof(mp2_boards) / sizeof(*mp2_boards);
 
   config.character_addr[0] = 0x800fd2c4;
   config.character_addr[1] = 0x800fd2f8;

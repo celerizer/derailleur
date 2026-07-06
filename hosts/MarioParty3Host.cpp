@@ -193,10 +193,13 @@ static DrHostConfig makeConfig()
   config.scene_miniresults_duel = 0x73;
   config.scene_addr = 0x800ce202; // u16
 
-  config.scene_board_ranges[0] = { 0x48, 0x4D };
-  config.scene_board_ranges[1] = { 0x5B, 0x60 };
-  config.scene_board_range_count = 2;
-  config.scene_duel_board_range = { 0x5B, 0x60 };
+  static const uint8_t mp3_boards[] = { 0x48, 0x49, 0x4A, 0x4B, 0x4C, 0x4D };
+  memcpy(config.scene_board_ids, mp3_boards, sizeof(mp3_boards));
+  config.scene_board_id_count = sizeof(mp3_boards) / sizeof(*mp3_boards);
+
+  static const uint8_t mp3_duel_boards[] = { 0x5B, 0x5C, 0x5D, 0x5E, 0x5F, 0x60 };
+  memcpy(config.scene_duel_board_ids, mp3_duel_boards, sizeof(mp3_duel_boards));
+  config.scene_duel_board_id_count = sizeof(mp3_duel_boards) / sizeof(*mp3_duel_boards);
 
   config.character_addr[0] = 0x800d110b;
   config.character_addr[1] = 0x800d1143;

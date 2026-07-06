@@ -79,9 +79,10 @@ struct DrHostConfig
   uint8_t scene_miniresults_battle;
   uint8_t scene_miniresults_duel;
   size_t scene_addr;
-  dr_scene_range_t scene_board_ranges[4];
-  unsigned scene_board_range_count;
-  dr_scene_range_t scene_duel_board_range;
+  uint8_t scene_board_ids[16];
+  unsigned scene_board_id_count;
+  uint8_t scene_duel_board_ids[16];
+  unsigned scene_duel_board_id_count;
   size_t character_addr[4];
   size_t controller_addr[4];
   size_t difficulty_addr[4];

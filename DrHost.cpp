@@ -52,15 +52,18 @@ void DrHost::run(void)
 
     writeForFrames(m_config.minigame_type_addr, &ff, 1, 180);
 
-    for (unsigned r = 0; r < m_config.scene_board_range_count; r++)
+    for (unsigned r = 0; r < m_config.scene_board_id_count; r++)
     {
-      if ((uint8_t)scene_id >= m_config.scene_board_ranges[r].min &&
-          (uint8_t)scene_id <= m_config.scene_board_ranges[r].max)
+      if ((uint8_t)scene_id == m_config.scene_board_ids[r])
       {
         m_lastBoardScene = (uint8_t)scene_id;
-        m_isDuelBoard = m_config.scene_duel_board_range.max &&
-          m_lastBoardScene >= m_config.scene_duel_board_range.min &&
-          m_lastBoardScene <= m_config.scene_duel_board_range.max;
+        m_isDuelBoard = false;
+        for (unsigned d = 0; d < m_config.scene_duel_board_id_count; d++)
+          if (m_lastBoardScene == m_config.scene_duel_board_ids[d])
+          {
+            m_isDuelBoard = true;
+            break;
+          }
         if (m_config.cheat_regular_board)
           m_core->cheatSet(1, !m_isDuelBoard, m_config.cheat_regular_board);
         if (m_config.cheat_duel_board)
@@ -280,7 +283,7 @@ void DrHost::run(void)
       uint8_t totalTurns = 0, currentTurns = 0;
       readu8(&totalTurns,   m_config.turn_total_addr);
       readu8(&currentTurns, m_config.turn_current_addr);
-      if (currentTurns > totalTurns)
+      if (currentTurns > totalTurns || totalTurns - currentTurns == 5)
       {
         writeu32(0, m_config.scene_trampoline_addr);
         setState(DR_HOST_STATE_INVALID);
