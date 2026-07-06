@@ -42,7 +42,7 @@ static const dr_mp_minigame_t MP2_MINIGAMES[] = {
 
   // 2v2
   { "Toad Bandstand", DR_MINIGAME_2V2, 0x1A, 0x18, DR_NO_QUIRKS },
-  // 1B unused
+  { "Bobsled Run", DR_MINIGAME_2V2, 0x1B, 0x19, DR_NO_QUIRKS },
   { "Handcar Havoc", DR_MINIGAME_2V2, 0x1C, 0x1A, DR_NO_QUIRKS },
   // 1D unused
   { "Balloon Burst", DR_MINIGAME_2V2, 0x1E, 0x1B, DR_NO_QUIRKS },
@@ -51,7 +51,7 @@ static const dr_mp_minigame_t MP2_MINIGAMES[] = {
   { "Cake Factory", DR_MINIGAME_2V2, 0x21, 0x1E, DR_NO_QUIRKS },
   // 22 unused
   { "Dungeon Dash", DR_MINIGAME_2V2, 0x23, 0x1F, DR_NO_QUIRKS },
-  // 24 unused
+  { "Magnet Carta", DR_MINIGAME_2V2, 0x24, 0x20, DR_NO_QUIRKS },
 
   // 4p
   { "Lava Tile Isle", DR_MINIGAME_4P, 0x25, 0x08, DR_NO_QUIRKS },
