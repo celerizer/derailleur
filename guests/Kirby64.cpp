@@ -544,7 +544,11 @@ void Kirby64::writePlayerIcons(const DrGameData &data)
       p.drawImage((chaseMirrorW - mirrorIcon.width()) / 2, (chaseMirrorH - mirrorIcon.height()) / 2,
         mirrorIcon);
     }
+#if QT_VERSION >= QT_VERSION_CHECK(6, 9, 0)
     mirrorChase = mirrorChase.flipped(Qt::Vertical);
+#else
+    mirrorChase = mirrorChase.mirrored(false, true);
+#endif
     saveImage(mirrorChase, QString::fromUtf8(K64_CHASE_MIRROR_FILES[i]));
   }
 }
