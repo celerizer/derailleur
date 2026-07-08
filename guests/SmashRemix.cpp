@@ -98,6 +98,10 @@ static const sr_character_t SR_CHARACTER_ID[] = {
 
 void SmashRemix::run(void)
 {
+  /* After the ~3s hold, start the minigame — which fades the overlay and unmutes. */
+  if (m_startDelay > 0 && --m_startDelay == 0)
+    startMinigame();
+
   if (!m_minigame || !m_minigameActive)
     return;
 
@@ -282,13 +286,15 @@ const dr_mp_minigame_t *SmashRemix::minigames() const
   return SR_MINIGAMES;
 }
 
-void SmashRemix::doSetMinigame(const dr_mp_minigame_t *minigame)
+void SmashRemix::doApplyGameData(const DrGameData &data)
 {
+  const dr_mp_minigame_t *minigame = data.minigame;
+
   m_winners = 0;
   m_finishCountdown = 0;
   m_eliminationCount = 0;
   for (unsigned i = 0; i < 4; i++)
-    m_players[i] = {};
+    m_players[i] = data.players[i];
   for (unsigned i = 0; i < 4; i++)
   {
     m_slotToIndex[i] = -1;
@@ -309,7 +315,11 @@ void SmashRemix::doSetMinigame(const dr_mp_minigame_t *minigame)
 
   log(DR_LOG_INFO, qPrintable(QString("Smash Remix starting!")));
 
-  startMinigame();
+  applyPlayers();
+
+  /* Hold the loading overlay up ~48 frames before starting (see run()), giving the
+   * match time to spin up behind it. The core stays muted until then. */
+  m_startDelay = 48;
 }
 
 dr_minigame_result_t SmashRemix::minigameResult(unsigned index)
@@ -465,38 +475,4 @@ void SmashRemix::applyPlayers()
         m_retro->writes8(-1, SR_STOCKS_ADDR[slot]);
       }
   }
-}
-
-dr_error SmashRemix::doSetPlayerCharacter(unsigned index, dr_character character)
-{
-  m_players[index].character = character;
-  return DR_OK;
-}
-
-dr_error SmashRemix::doSetPlayerControlPort(unsigned index, dr_control_port control_port)
-{
-  m_players[index].control_port = control_port;
-  return DR_OK;
-}
-
-dr_error SmashRemix::doSetPlayerControlType(unsigned index, dr_control_type control_type)
-{
-  m_players[index].control_type = control_type;
-  return DR_OK;
-}
-
-dr_error SmashRemix::doSetPlayerDifficulty(unsigned index, dr_difficulty difficulty)
-{
-  m_players[index].difficulty = difficulty;
-  return DR_OK;
-}
-
-dr_error SmashRemix::doSetPlayerTeam(
-  unsigned index, dr_team_color color, dr_team_type type, unsigned team_id)
-{
-  m_players[index].team_color = color;
-  m_players[index].team_type = type;
-  m_players[index].team_id = team_id;
-  applyPlayers();
-  return DR_OK;
 }

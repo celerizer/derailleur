@@ -40,6 +40,43 @@ typedef enum
 #define MKDD_CONTROL_CPU   1
 #define MKDD_CONTROL_NONE  2
 
+static mkdd_char mkddCharFor(dr_character character)
+{
+  switch (character)
+  {
+  case DR_CHARACTER_MARIO:
+    return MKDD_CHAR_MARIO;
+  case DR_CHARACTER_LUIGI:
+    return MKDD_CHAR_LUIGI;
+  case DR_CHARACTER_PEACH:
+    return MKDD_CHAR_PEACH;
+  case DR_CHARACTER_YOSHI:
+    return MKDD_CHAR_YOSHI;
+  case DR_CHARACTER_WARIO:
+    return MKDD_CHAR_WARIO;
+  case DR_CHARACTER_DONKEY_KONG:
+    return MKDD_CHAR_DONKEY_KONG;
+  case DR_CHARACTER_WALUIGI:
+    return MKDD_CHAR_WALUIGI;
+  case DR_CHARACTER_DAISY:
+    return MKDD_CHAR_DAISY;
+  case DR_CHARACTER_TOAD:
+    return MKDD_CHAR_TOAD;
+  case DR_CHARACTER_BOO:
+    return MKDD_CHAR_KING_BOO;
+  case DR_CHARACTER_KOOPA_KID:
+    return MKDD_CHAR_BOWSER_JR;
+  case DR_CHARACTER_TOADETTE:
+    return MKDD_CHAR_TOADETTE;
+  case DR_CHARACTER_BIRDO:
+    return MKDD_CHAR_BIRDO;
+  case DR_CHARACTER_DRY_BONES:
+    return MKDD_CHAR_KOOPA;
+  default:
+    return MKDD_CHAR_MARIO;
+  }
+}
+
 // Courses — TODO: verify course IDs
 #define MKDD_COURSE_LUIGI_CIRCUIT     0
 #define MKDD_COURSE_PEACH_BEACH       1
@@ -98,15 +135,24 @@ const dr_mp_minigame_t *MarioKartDoubleDash::minigames() const
   return MKDD_MINIGAMES;
 }
 
-void MarioKartDoubleDash::doSetMinigame(const dr_mp_minigame_t *minigame)
+void MarioKartDoubleDash::doApplyGameData(const DrGameData &data)
 {
   m_minigameFrames = 0;
   m_finishPending = false;
 
-  // TODO: write the chosen course (minigame->minigame_id) into MKDD_COURSE_ADDR,
+  // TODO: write the chosen course (data.minigame->minigame_id) into MKDD_COURSE_ADDR,
   //       e.g. with m_retro->writeForFrames(...).
-  (void)minigame;
 
+  for (unsigned i = 0; i < 4; i++)
+  {
+    m_players[i] = data.players[i];
+
+    // The player rides up front as their character; the partner is always Toad.
+    m_retro->writes32(mkddCharFor(m_players[i].character), MKDD_CHAR1_ADDR[i]);
+    m_retro->writes32(MKDD_CHAR_TOAD, MKDD_CHAR2_ADDR[i]);
+  }
+
+  applyPlayers();
   startMinigame();
 }
 
@@ -130,80 +176,4 @@ void MarioKartDoubleDash::applyPlayers()
     // TODO: map p.character -> kart/driver, p.control_type -> human/CPU slot,
     //       and p.difficulty -> CPU level, writing each to memory.
   }
-}
-
-static mkdd_char mkddCharFor(dr_character character)
-{
-  switch (character)
-  {
-  case DR_CHARACTER_MARIO:
-    return MKDD_CHAR_MARIO;
-  case DR_CHARACTER_LUIGI:
-    return MKDD_CHAR_LUIGI;
-  case DR_CHARACTER_PEACH:
-    return MKDD_CHAR_PEACH;
-  case DR_CHARACTER_YOSHI:
-    return MKDD_CHAR_YOSHI;
-  case DR_CHARACTER_WARIO:
-    return MKDD_CHAR_WARIO;
-  case DR_CHARACTER_DONKEY_KONG:
-    return MKDD_CHAR_DONKEY_KONG;
-  case DR_CHARACTER_WALUIGI:
-    return MKDD_CHAR_WALUIGI;
-  case DR_CHARACTER_DAISY:
-    return MKDD_CHAR_DAISY;
-  case DR_CHARACTER_TOAD:
-    return MKDD_CHAR_TOAD;
-  case DR_CHARACTER_BOO:
-    return MKDD_CHAR_KING_BOO;
-  case DR_CHARACTER_KOOPA_KID:
-    return MKDD_CHAR_BOWSER_JR;
-  case DR_CHARACTER_TOADETTE:
-    return MKDD_CHAR_TOADETTE;
-  case DR_CHARACTER_BIRDO:
-    return MKDD_CHAR_BIRDO;
-  case DR_CHARACTER_DRY_BONES:
-    return MKDD_CHAR_KOOPA;
-  default:
-    return MKDD_CHAR_MARIO;
-  }
-}
-
-dr_error MarioKartDoubleDash::doSetPlayerCharacter(unsigned index, dr_character character)
-{
-  m_players[index].character = character;
-
-  // The player rides up front as their character; the partner is always Toad.
-  m_retro->writes32(mkddCharFor(character), MKDD_CHAR1_ADDR[index]);
-  m_retro->writes32(MKDD_CHAR_TOAD, MKDD_CHAR2_ADDR[index]);
-  return DR_OK;
-}
-
-dr_error MarioKartDoubleDash::doSetPlayerControlPort(unsigned index, dr_control_port control_port)
-{
-  m_players[index].control_port = control_port;
-  return DR_OK;
-}
-
-dr_error MarioKartDoubleDash::doSetPlayerControlType(unsigned index, dr_control_type control_type)
-{
-  m_players[index].control_type = control_type;
-  return DR_OK;
-}
-
-dr_error MarioKartDoubleDash::doSetPlayerDifficulty(unsigned index, dr_difficulty difficulty)
-{
-  m_players[index].difficulty = difficulty;
-  return DR_OK;
-}
-
-dr_error MarioKartDoubleDash::doSetPlayerTeam(
-  unsigned index, dr_team_color color, dr_team_type type, unsigned team_id)
-{
-  // Last setter called per player; flush everything to memory here.
-  m_players[index].team_color = color;
-  m_players[index].team_type = type;
-  m_players[index].team_id = team_id;
-  applyPlayers();
-  return DR_OK;
 }

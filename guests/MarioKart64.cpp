@@ -133,9 +133,9 @@ const dr_mp_minigame_t *MarioKart64::minigames() const
   return MK64_MINIGAMES;
 }
 
-void MarioKart64::doSetMinigame(const dr_mp_minigame_t *minigame)
+void MarioKart64::doApplyGameData(const DrGameData &data)
 {
-  signed id = minigame->minigame_id;
+  signed id = data.minigame->minigame_id;
   startMinigame();
   core()->unserializeFromFile(dr_state_directory() + "/mk64.state.zip");
   m_retro->writeu8(id % 4, MK64_COURSE_ADDR);
@@ -149,6 +149,40 @@ void MarioKart64::doSetMinigame(const dr_mp_minigame_t *minigame)
   m_winnerIndex = -1;
   for (unsigned i = 0; i < 4; i++)
     m_slotToIndex[i] = -1;
+
+  /* Assign ports first so each player's character lands in the right slot. */
+  unsigned humans = 0;
+  for (unsigned i = 0; i < 4; i++)
+  {
+    const dr_player_t &p = data.players[i];
+    m_characters[i] = p.character;
+    m_ports[i] = p.control_port;
+    m_controlTypes[i] = p.control_type;
+    unsigned slot = static_cast<unsigned>(p.control_port - DR_CONTROL_PORT_P1);
+    if (slot < 4)
+      m_slotToIndex[slot] = static_cast<int>(i);
+    if (p.control_type == DR_CONTROL_TYPE_HUMAN)
+      humans++;
+  }
+
+  for (unsigned i = 0; i < 4; i++)
+  {
+    unsigned slot = static_cast<unsigned>(m_ports[i] - DR_CONTROL_PORT_P1);
+    if (slot >= 4)
+      continue;
+    for (const mk64_character_t *c = MK64_CHARACTER_ID;
+         c < MK64_CHARACTER_ID + sizeof(MK64_CHARACTER_ID) / sizeof(*MK64_CHARACTER_ID); c++)
+    {
+      if (c->character == m_characters[i])
+      {
+        m_retro->writeu8(c->menu_value, MK64_MENU_CHAR_ADDR[slot]);
+        m_retro->writeu8(c->real_value, MK64_REAL_CHAR_ADDR[slot]);
+        break;
+      }
+    }
+  }
+
+  m_retro->writeu8(static_cast<uint8_t>(humans), MK64_NUMBER_PLAYERS_ADDR);
 }
 
 dr_minigame_result_t MarioKart64::minigameResult(unsigned index)
@@ -161,60 +195,5 @@ dr_minigame_result_t MarioKart64::minigameResult(unsigned index)
   return result;
 }
 
-dr_error MarioKart64::doSetPlayerCharacter(unsigned index, dr_character character)
-{
-  m_characters[index] = character;
-
-  for (const auto &entry : MK64_CHARACTER_ID)
-  {
-    if (entry.character == character)
-    {
-      unsigned slot = m_ports[index] - DR_CONTROL_PORT_P1;
-      m_retro->writeu8(entry.menu_value, MK64_MENU_CHAR_ADDR[slot]);
-      m_retro->writeu8(entry.real_value, MK64_REAL_CHAR_ADDR[slot]);
-      break;
-    }
-  }
-
-  return DR_OK;
-}
-
-dr_error MarioKart64::doSetPlayerControlPort(unsigned index, dr_control_port control_port)
-{
-  m_ports[index] = control_port;
-  m_slotToIndex[control_port - DR_CONTROL_PORT_P1] = (int)index;
-  doSetPlayerCharacter(index, m_characters[index]);
-  return DR_OK;
-}
-
-dr_error MarioKart64::doSetPlayerControlType(unsigned index, dr_control_type control_type)
-{
-  m_controlTypes[index] = control_type;
-
-  unsigned humanCount = 0;
-  for (unsigned i = 0; i < 4; i++)
-    if (m_controlTypes[i] == DR_CONTROL_TYPE_HUMAN)
-      humanCount++;
-  m_retro->writeu8(static_cast<uint8_t>(humanCount), MK64_NUMBER_PLAYERS_ADDR);
-
-  return DR_OK;
-}
-
 /* No difficulty settings */
-dr_error MarioKart64::doSetPlayerDifficulty(unsigned index, dr_difficulty difficulty)
-{
-  (void)index;
-  (void)difficulty;
-  return DR_OK;
-}
-
 /* All minigames are 4P, so no teams */
-dr_error MarioKart64::doSetPlayerTeam(
-  unsigned index, dr_team_color color, dr_team_type type, unsigned team_id)
-{
-  (void)index;
-  (void)color;
-  (void)type;
-  (void)team_id;
-  return DR_OK;
-}

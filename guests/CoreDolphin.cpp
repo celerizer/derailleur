@@ -139,8 +139,10 @@ dr_minigame_result_t CoreDolphin::minigameResult(unsigned index)
   return { 0, 0 };
 }
 
-void CoreDolphin::doSetMinigame(const dr_mp_minigame_t *minigame)
+void CoreDolphin::doApplyGameData(const DrGameData &data)
 {
+  const dr_mp_minigame_t *minigame = data.minigame;
+
   // Find which child game owns this minigame entry
   DolphinGuest *owner = nullptr;
   for (int i = 0; i < m_entries.size(); i++)
@@ -184,8 +186,8 @@ void CoreDolphin::doSetMinigame(const dr_mp_minigame_t *minigame)
   core()->unserializeFromFile(QString::fromStdString(owner->statePath()));
   QApplication::processEvents();
 
-  // Delegate game-specific setup (writes minigame_id etc.)
-  owner->setMinigame(minigame);
+  // Delegate game-specific setup (writes minigame_id, players, etc.)
+  owner->applyGameData(data);
   QApplication::processEvents();
 
   // Spin again (this was the time needed for MP6 to draw a new frame)
@@ -197,34 +199,4 @@ void CoreDolphin::doSetMinigame(const dr_mp_minigame_t *minigame)
   }
   core()->pause();
   startMinigame();
-}
-
-dr_error CoreDolphin::doSetPlayerCharacter(unsigned index, dr_character character)
-{
-  return m_delegate ? m_delegate->setPlayerCharacter(index, character) : DR_ERR_INVALID_PARAMETER;
-}
-
-dr_error CoreDolphin::doSetPlayerControlPort(unsigned index, dr_control_port control_port)
-{
-  return m_delegate ? m_delegate->setPlayerControlPort(index, control_port)
-                    : DR_ERR_INVALID_PARAMETER;
-}
-
-dr_error CoreDolphin::doSetPlayerControlType(unsigned index, dr_control_type control_type)
-{
-  return m_delegate ? m_delegate->setPlayerControlType(index, control_type)
-                    : DR_ERR_INVALID_PARAMETER;
-}
-
-dr_error CoreDolphin::doSetPlayerDifficulty(unsigned index, dr_difficulty difficulty)
-{
-  return m_delegate ? m_delegate->setPlayerDifficulty(index, difficulty)
-                    : DR_ERR_INVALID_PARAMETER;
-}
-
-dr_error CoreDolphin::doSetPlayerTeam(
-  unsigned index, dr_team_color color, dr_team_type type, unsigned team_id)
-{
-  return m_delegate ? m_delegate->setPlayerTeam(index, color, type, team_id)
-                    : DR_ERR_INVALID_PARAMETER;
 }

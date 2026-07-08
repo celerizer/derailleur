@@ -19,7 +19,6 @@ public:
   DrGuest *currentGuest() const { return m_guests.value(currentIndex()); }
 
   DrGuest *pickMinigame(dr_minigame_type type, const dr_mp_minigame_t *&outMinigame);
-  DrGuest *startMinigame(dr_minigame_type type);
   bool activateGuest(DrGuest *guest);
   void logSummary();
 

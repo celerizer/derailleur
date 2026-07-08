@@ -19,22 +19,18 @@ public:
   QWidget *createWidget(QWidget *parent) override;
 
   /// Content/boot are deferred to the first minigame launch (see
-  /// commitMinigame), so this guest opts out of the startup warmup entirely.
+  /// doApplyGameData), so this guest opts out of the startup warmup entirely.
   bool usesWarmup() const override { return false; }
 
   dr_minigame_result_t minigameResult(unsigned index) override;
   const dr_mp_minigame_t *minigames() const override;
-  void doSetMinigame(const dr_mp_minigame_t *minigame) override;
-  void commitMinigame() override;
-
-  dr_error doSetPlayerCharacter(unsigned index, dr_character character) override;
-  dr_error doSetPlayerControlType(unsigned index, dr_control_type control_type) override;
-  dr_error doSetPlayerDifficulty(unsigned index, dr_difficulty difficulty) override;
-  dr_error doSetPlayerTeam(
-    unsigned index, dr_team_color color, dr_team_type type, unsigned team_id) override;
 
 private:
   void run() override;
+  void doApplyGameData(const DrGameData &data) override;
+
+  /// Writes the assigned character's icon into this player's hires textures.
+  void writePlayerIcon(unsigned index, dr_character character);
 
   /// Reads the current minigame's per-player scores and returns a bitmask of the
   /// winning player(s) (most points, except Topsy-Turvy = reaches 5, Pichu's
@@ -49,11 +45,15 @@ private:
   QWidget *m_container = nullptr; // window-container QWidget, for post-boot resize
   QString m_gamePath;
   dr_player_t m_players[4] = {};
+  int m_slotToIndex[4] = { 0, 1, 2, 3 }; // in-game slot -> board player index
   bool m_started = false;      // content loaded + core booted (first launch)
   bool m_pendingResize = false; // nudge the window's size once the deferred core boots
   int m_stateLoadCountdown = 0; // frames until the state loads (0 = idle); a fresh
                                 // boot needs a few frames of init first
   int m_tempoWatchDelay = 0;    // frames to wait after launch before watching tempo
+  int m_aPressDelay = 0;        // frames after load before forcing a P1 A press (0 = idle)
+  int m_aReleaseDelay = 0;      // frames to hold the forced A before releasing it
+  int m_muteFrames = 0;         // frames to keep the core muted after a launch
 
   // Rampage Rollout finish tracking (see trackRampage).
   bool m_rampageRecording = false;

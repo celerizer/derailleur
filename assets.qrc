@@ -19,5 +19,7 @@
         <file>assets/player-50px/6.png</file>
         <file>assets/player-50px/7.png</file>
         <file>assets/player-50px/8.png</file>
+        <file>assets/ui/hop_base.png</file>
+        <file>assets/ui/bumper_base.png</file>
     </qresource>
 </RCC>

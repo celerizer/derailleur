@@ -58,19 +58,55 @@ const dr_mp_minigame_t *MarioPartyN64::minigames() const
   return m_config.minigames;
 }
 
-void MarioPartyN64::doSetMinigame(const dr_mp_minigame_t *minigame)
+static uint8_t mpN64Difficulty(dr_difficulty difficulty)
 {
+  switch (difficulty)
+  {
+  case DR_DIFFICULTY_VERY_EASY:
+  case DR_DIFFICULTY_EASY:
+    return 0x00;
+  case DR_DIFFICULTY_NORMAL:
+    return 0x01;
+  case DR_DIFFICULTY_HARD:
+    return 0x02;
+  case DR_DIFFICULTY_VERY_HARD:
+    return 0x03;
+  default:
+    return 0x01;
+  }
+}
+
+void MarioPartyN64::doApplyGameData(const DrGameData &data)
+{
+  /* Load the state first, then write the players on top of it. */
   core()->unserializeFromFile(m_config.state.c_str());
   m_lastScene = -1;
   m_minigameFrames = 0;
-  int16_t id = static_cast<int16_t>(minigame->minigame_id);
+  int16_t id = static_cast<int16_t>(data.minigame->minigame_id);
   m_retro->writeForFrames(m_config.minigame_addr, &id, sizeof(id), 120);
+
+  for (unsigned i = 0; i < 4; i++)
+  {
+    const dr_player_t &p = data.players[i];
+    m_retro->writeu8(m_config.character_ids[p.character], m_config.character_addr[i]);
+    m_retro->writeu8(static_cast<uint8_t>(p.control_port - 1), m_config.controller_addr[i]);
+
+    uint8_t bot = 0;
+    if (m_retro->readu8(&bot, m_config.bot_addr[i]) == DR_OK)
+      m_retro->writeu8((bot & ~0x01) | (p.control_type == DR_CONTROL_TYPE_CPU ? 1 : 0),
+        m_config.bot_addr[i]);
+
+    m_retro->writeu8(mpN64Difficulty(p.difficulty), m_config.difficulty_addr[i]);
+    m_retro->writeu8(static_cast<uint8_t>(p.team_id), m_config.team_addr[i]);
+  }
+
   startMinigame();
 }
 
 dr_minigame_result_t MarioPartyN64::minigameResult(unsigned index)
 {
   dr_minigame_result_t result = { 0, 0 };
+
   if (index < 4)
   {
     int16_t coins, bonus;
@@ -80,61 +116,7 @@ dr_minigame_result_t MarioPartyN64::minigameResult(unsigned index)
     if (m_retro->reads16(&bonus, m_config.bonus_result_addr[index]) == DR_OK)
       result.bonus_coins = bonus;
   }
+
   return result;
 }
 
-dr_error MarioPartyN64::doSetPlayerCharacter(unsigned index, dr_character character)
-{
-  return m_retro->writeu8(m_config.character_ids[character], m_config.character_addr[index]);
-}
-
-dr_error MarioPartyN64::doSetPlayerControlPort(unsigned index, dr_control_port control_port)
-{
-  return m_retro->writeu8(static_cast<uint8_t>(control_port - 1), m_config.controller_addr[index]);
-}
-
-dr_error MarioPartyN64::doSetPlayerControlType(unsigned index, dr_control_type control_type)
-{
-  uint8_t current, is_bot;
-
-  is_bot = (control_type == DR_CONTROL_TYPE_CPU) ? 1 : 0;
-
-  if (m_retro->readu8(&current, m_config.bot_addr[index]) != DR_OK)
-    return DR_ERR_MEMORY_ACCESS_CORE;
-  else
-    return m_retro->writeu8((current & ~0x01) | is_bot, m_config.bot_addr[index]);
-}
-
-dr_error MarioPartyN64::doSetPlayerDifficulty(unsigned index, dr_difficulty difficulty)
-{
-  uint8_t mp_difficulty;
-
-  switch (difficulty)
-  {
-  case DR_DIFFICULTY_VERY_EASY:
-  case DR_DIFFICULTY_EASY:
-    mp_difficulty = 0x00;
-    break;
-  case DR_DIFFICULTY_NORMAL:
-    mp_difficulty = 0x01;
-    break;
-  case DR_DIFFICULTY_HARD:
-    mp_difficulty = 0x02;
-    break;
-  case DR_DIFFICULTY_VERY_HARD:
-    mp_difficulty = 0x03;
-    break;
-  default:
-    mp_difficulty = 0x01;
-  }
-
-  return m_retro->writeu8(mp_difficulty, m_config.difficulty_addr[index]);
-}
-
-dr_error MarioPartyN64::doSetPlayerTeam(
-  unsigned index, dr_team_color color, dr_team_type type, unsigned team_id)
-{
-  (void)color;
-  (void)type;
-  return m_retro->writeu8(static_cast<uint8_t>(team_id), m_config.team_addr[index]);
-}

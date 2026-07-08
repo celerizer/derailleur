@@ -10,69 +10,14 @@ QList<DrMinigameGroup> DrGuest::minigameGroups() const
   return { group };
 }
 
-dr_error DrGuest::setPlayer(unsigned index, const dr_player_t &player)
-{
-  if (index >= 4)
-    return DR_ERR_INVALID_PARAMETER;
-  else
-  {
-    setPlayerCharacter(index, player.character);
-    setPlayerControlPort(index, player.control_port);
-    setPlayerControlType(index, player.control_type);
-    setPlayerDifficulty(index, player.difficulty);
-    setPlayerTeam(index, player.team_color, player.team_type, player.team_id);
-
-    return DR_OK;
-  }
-}
-
-dr_error DrGuest::setPlayerCharacter(unsigned index, dr_character character)
-{
-  if (index >= 4 || character >= DR_CHARACTER_SIZE)
-    return DR_ERR_INVALID_PARAMETER;
-  else
-    return doSetPlayerCharacter(index, character);
-}
-
-dr_error DrGuest::setPlayerControlPort(unsigned index, dr_control_port control_port)
-{
-  if (index >= 4 || control_port == DR_CONTROL_PORT_INVALID || control_port >= DR_CONTROL_PORT_SIZE)
-    return DR_ERR_INVALID_PARAMETER;
-  else
-    return doSetPlayerControlPort(index, control_port);
-}
-
-dr_error DrGuest::setPlayerControlType(unsigned index, dr_control_type control_type)
-{
-  if (index >= 4 || control_type == DR_CONTROL_TYPE_INVALID || control_type >= DR_CONTROL_TYPE_SIZE)
-    return DR_ERR_INVALID_PARAMETER;
-  else
-    return doSetPlayerControlType(index, control_type);
-}
-
-dr_error DrGuest::setPlayerDifficulty(unsigned index, dr_difficulty difficulty)
-{
-  if (index >= 4 || difficulty >= DR_DIFFICULTY_SIZE)
-    return DR_ERR_INVALID_PARAMETER;
-  else
-    return doSetPlayerDifficulty(index, difficulty);
-}
-
-dr_error DrGuest::setPlayerTeam(
-  unsigned index, dr_team_color color, dr_team_type type, unsigned team_id)
-{
-  if (index >= 4 || color >= DR_TEAM_COLOR_SIZE || type >= DR_TEAM_TYPE_SIZE)
-    return DR_ERR_INVALID_PARAMETER;
-  return doSetPlayerTeam(index, color, type, team_id);
-}
-
-void DrGuest::setMinigame(const dr_mp_minigame_t *minigame)
+void DrGuest::applyGameData(const DrGameData &data)
 {
   if (!core())
     return;
-  m_minigame = minigame;
+  m_minigame = data.minigame;
 
   /* Apply emulation quirks for the minigame */
+  const dr_mp_minigame_t *minigame = data.minigame;
   if (minigame)
   {
     const char *option_value = nullptr;
@@ -111,13 +56,14 @@ void DrGuest::setMinigame(const dr_mp_minigame_t *minigame)
     core()->options()->setOptionValue("dolphin_efb_scale", option_value);
   }
 
-  doSetMinigame(minigame);
+  doApplyGameData(data);
 }
 
 void DrGuest::startMinigame()
 {
   m_finishCountdown = 0;
   m_minigameActive = true;
+  emit minigameStarted();
 }
 
 void DrGuest::finishMinigame()

@@ -1,6 +1,7 @@
 #include "mainwindow.h"
 
 #include <array>
+#include <memory>
 #include <QDir>
 #include <QFile>
 #include <QGuiApplication>
@@ -28,6 +29,7 @@
 #include "guests/MarioParty2.h"
 #include "guests/MarioParty3.h"
 #include "guests/CoreDolphin.h"
+#include "guests/Kirby64.h"
 #include "guests/KirbyAirRide.h"
 #include "guests/MarioKartDoubleDash.h"
 #include "guests/MarioParty4.h"
@@ -127,8 +129,8 @@ MainWindow::MainWindow(QWidget *parent)
   dolphin->addGame(new MarioParty5(dolphin->core(), dolphin));
   dolphin->addGame(new MarioParty6(dolphin->core(), dolphin));
   dolphin->addGame(new MarioParty7(dolphin->core(), dolphin));
-  dolphin->addGame(new KirbyAirRide(dolphin->core(), dolphin));
-  dolphin->addGame(new MarioKartDoubleDash(dolphin->core(), dolphin));
+  //dolphin->addGame(new KirbyAirRide(dolphin->core(), dolphin));
+  //dolphin->addGame(new MarioKartDoubleDash(dolphin->core(), dolphin));
   dolphin->finalizeGames();
   if (dolphin->isValid())
     m_Guests->add(dolphin);
@@ -139,15 +141,16 @@ MainWindow::MainWindow(QWidget *parent)
     else
       delete g;
   };
-  addGuest(new MarioKart64());
+  //addGuest(new MarioKart64());
   addGuest(new MarioParty1());
   addGuest(new MarioParty2());
   addGuest(new MarioParty3());
   addGuest(new SmashRemix());
   addGuest(new MarioTennis());
   addGuest(new PokemonStadium2());
-  addGuest(new MarioPartyAdvance());
-  addGuest(new MarioPartyE());
+  //addGuest(new MarioPartyAdvance());
+  //addGuest(new MarioPartyE());
+  addGuest(new Kirby64());
 
 #if SHOW_LOGGER
   for (DrGuest *guest : m_Guests->guests())
@@ -380,29 +383,41 @@ void MainWindow::launchMinigame(
       for (DrGuest *g : m_Guests->guests())
         g->pause();
 
-      /* audio() is null until a core has booted; a deferred-boot guest (PS2)
-       * hasn't started yet on its first launch, so guard these. */
+      /* audio() is null until a core has booted; a deferred-boot guest (PS2/Kirby)
+       * hasn't started yet on its first launch, so guard this. Keep the core muted
+       * until the minigame actually starts (unmuted in the connection below). */
       if (auto *a = guest->core()->audio())
         a->setVolume(0);
-      guest->setMinigame(minigame);
+
+      /* Once the guest actually starts its minigame, drop the loading overlay and
+       * unmute the core. A synchronous guest fires this during applyGameData below;
+       * a deferred guest (PS2/Kirby) that boots + presses A over several frames
+       * keeps the overlay up and the audio muted the whole time. Self-disconnects. */
+      auto conn = std::make_shared<QMetaObject::Connection>();
+      *conn = connect(guest, &DrGuest::minigameStarted, this, [this, guest, conn]() {
+#if SHOW_OVERLAY
+        m_Overlay->fadeOut();
+#endif
+        if (auto *a = guest->core()->audio())
+          a->setVolume(100);
+        disconnect(*conn);
+      });
+
+      /* Hand the guest the whole setup — minigame + all four players — in one
+       * call, so it can process everything at once. */
+      DrGameData data;
+      data.minigame = minigame;
+      data.type = minigame ? minigame->type : DR_MINIGAME_INVALID;
       for (unsigned i = 0; i < 4; i++)
-        guest->setPlayer(i, players[i]);
-      /* Now the full player set is known; let the guest finalize (e.g. PS2 loads
-       * its content/boots so GLideN64 picks up the character-keyed textures). */
-      guest->commitMinigame();
+        data.players[i] = players[i];
+      guest->applyGameData(data);
 
       /* A minigame state was just loaded; make this guest the foreground netplay
        * context so it resynchronizes from this sync point. Done before unpause
        * so its frame counter is reset while the core is still stopped. */
       m_Netplay->setActiveContext(guest->core());
 
-      if (auto *a = guest->core()->audio())
-        a->setVolume(100);
       guest->unpause();
-
-#if SHOW_OVERLAY
-      m_Overlay->fadeOut();
-#endif
     });
 }
 

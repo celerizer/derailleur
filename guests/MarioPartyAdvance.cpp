@@ -85,8 +85,10 @@ dr_minigame_result_t MarioPartyAdvance::minigameResult(unsigned index)
   return { (m_winners & (1u << index)) ? 10 : 0, 0 };
 }
 
-void MarioPartyAdvance::doSetMinigame(const dr_mp_minigame_t *minigame)
+void MarioPartyAdvance::doApplyGameData(const DrGameData &data)
 {
+  const dr_mp_minigame_t *minigame = data.minigame;
+
   m_gameStarted = false;
   m_winners = 0;
   m_EndWaitFrames = 0;
@@ -98,6 +100,35 @@ void MarioPartyAdvance::doSetMinigame(const dr_mp_minigame_t *minigame)
   }
   if (m_retro)
     m_retro->writeu8((uint8_t)minigame->minigame_id, MPA_MINIGAME_ID_ADDR);
+
+  /* Only the first two board players map onto Mario Party Advance's two slots. */
+  for (unsigned i = 0; i < 2; i++)
+  {
+    size_t address = i ? MPA_PLAYER_2_ADDR : MPA_PLAYER_1_ADDR;
+
+    switch (data.players[i].character)
+    {
+    case DR_CHARACTER_MARIO:
+    case DR_CHARACTER_WARIO:
+      m_retro->writeu8(0, address);
+      break;
+    case DR_CHARACTER_LUIGI:
+    case DR_CHARACTER_WALUIGI:
+      m_retro->writeu8(1, address);
+      break;
+    case DR_CHARACTER_PEACH:
+    case DR_CHARACTER_DAISY:
+      m_retro->writeu8(2, address);
+      break;
+    case DR_CHARACTER_YOSHI:
+    case DR_CHARACTER_DONKEY_KONG:
+      m_retro->writeu8(3, address);
+      break;
+    default:
+      m_retro->writeu8(i, address);
+    }
+  }
+
   startMinigame();
 }
 
@@ -157,63 +188,4 @@ void MarioPartyAdvance::run()
       break;
     }
   }
-}
-
-dr_error MarioPartyAdvance::doSetPlayerCharacter(unsigned index, dr_character character)
-{
-  if (index < 2)
-  {
-    size_t address = index ? MPA_PLAYER_2_ADDR : MPA_PLAYER_1_ADDR;
-
-    switch (character)
-    {
-    case DR_CHARACTER_MARIO:
-    case DR_CHARACTER_WARIO:
-      m_retro->writeu8(0, address);
-      break;
-    case DR_CHARACTER_LUIGI:
-    case DR_CHARACTER_WALUIGI:
-      m_retro->writeu8(1, address);
-      break;
-    case DR_CHARACTER_PEACH:
-    case DR_CHARACTER_DAISY:
-      m_retro->writeu8(2, address);
-      break;
-    case DR_CHARACTER_YOSHI:
-    case DR_CHARACTER_DONKEY_KONG:
-      m_retro->writeu8(3, address);
-      break;
-    default:
-      m_retro->writeu8(index, address);
-    }
-
-    return DR_OK;
-  }
-
-  return DR_OK;
-}
-
-dr_error MarioPartyAdvance::doSetPlayerControlPort(unsigned index, dr_control_port control_port)
-{
-  (void)index; (void)control_port;
-  return DR_OK;
-}
-
-dr_error MarioPartyAdvance::doSetPlayerControlType(unsigned index, dr_control_type control_type)
-{
-  (void)index; (void)control_type;
-  return DR_OK;
-}
-
-dr_error MarioPartyAdvance::doSetPlayerDifficulty(unsigned index, dr_difficulty difficulty)
-{
-  (void)index; (void)difficulty;
-  return DR_OK;
-}
-
-dr_error MarioPartyAdvance::doSetPlayerTeam(
-  unsigned index, dr_team_color color, dr_team_type type, unsigned team_id)
-{
-  (void)index; (void)color; (void)type; (void)team_id;
-  return DR_OK;
 }

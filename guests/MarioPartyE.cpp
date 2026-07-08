@@ -93,8 +93,10 @@ const dr_mp_minigame_t *MarioPartyE::minigames() const
   return MPE_MINIGAMES;
 }
 
-void MarioPartyE::doSetMinigame(const dr_mp_minigame_t *minigame)
+void MarioPartyE::doApplyGameData(const DrGameData &data)
 {
+  const dr_mp_minigame_t *minigame = data.minigame;
+
   m_winners = 0;
   QString stateFile = dr_state_directory()
     + QString("/mpe/mpe-%1.state.zip").arg(minigame->minigame_id, 2, 10, QChar('0'));
@@ -106,35 +108,4 @@ void MarioPartyE::doSetMinigame(const dr_mp_minigame_t *minigame)
 dr_minigame_result_t MarioPartyE::minigameResult(unsigned index)
 {
   return { (m_winners & (1u << index)) ? 10 : 0, 0 };
-}
-
-dr_error MarioPartyE::doSetPlayerCharacter(unsigned index, dr_character character)
-{
-  (void)index; (void)character;
-  return DR_OK;
-}
-
-dr_error MarioPartyE::doSetPlayerControlPort(unsigned index, dr_control_port control_port)
-{
-  (void)index; (void)control_port;
-  return DR_OK;
-}
-
-dr_error MarioPartyE::doSetPlayerControlType(unsigned index, dr_control_type control_type)
-{
-  (void)index; (void)control_type;
-  return DR_OK;
-}
-
-dr_error MarioPartyE::doSetPlayerDifficulty(unsigned index, dr_difficulty difficulty)
-{
-  (void)index; (void)difficulty;
-  return DR_OK;
-}
-
-dr_error MarioPartyE::doSetPlayerTeam(
-  unsigned index, dr_team_color color, dr_team_type type, unsigned team_id)
-{
-  (void)index; (void)color; (void)type; (void)team_id;
-  return DR_OK;
 }

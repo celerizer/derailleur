@@ -41,17 +41,18 @@ const dr_mp_minigame_t *MarioPartyGcn::minigames() const
   return m_config.minigames;
 }
 
-void MarioPartyGcn::doSetMinigame(const dr_mp_minigame_t *minigame)
+void MarioPartyGcn::doApplyGameData(const DrGameData &data)
 {
   m_lastScene = -1;
   m_minigameFrames = 0;
   for (unsigned i = 0; i < 4; i++)
   {
-    m_players[i] = {};
+    m_players[i] = data.players[i];
     m_slotOf[i] = static_cast<int>(i);
   }
-  int16_t id = static_cast<int16_t>(minigame->minigame_id);
+  int16_t id = static_cast<int16_t>(data.minigame->minigame_id);
   m_retro->writeForFrames(m_config.minigame_addr, &id, sizeof(id), 120);
+  applyPlayers();
   startMinigame();
 }
 
@@ -70,50 +71,8 @@ dr_minigame_result_t MarioPartyGcn::minigameResult(unsigned index)
   return result;
 }
 
-/* The per-field setters only buffer; doSetPlayerTeam (the last call DrGuest makes
- * per player) flushes everything through applyPlayers so the duel slot remap can
- * see all four players' team types at once. */
-dr_error MarioPartyGcn::doSetPlayerCharacter(unsigned index, dr_character character)
-{
-  if (index < 4)
-    m_players[index].character = character;
-  return DR_OK;
-}
-
-dr_error MarioPartyGcn::doSetPlayerControlPort(unsigned index, dr_control_port control_port)
-{
-  if (index < 4)
-    m_players[index].control_port = control_port;
-  return DR_OK;
-}
-
-dr_error MarioPartyGcn::doSetPlayerControlType(unsigned index, dr_control_type control_type)
-{
-  if (index < 4)
-    m_players[index].control_type = control_type;
-  return DR_OK;
-}
-
-dr_error MarioPartyGcn::doSetPlayerDifficulty(unsigned index, dr_difficulty difficulty)
-{
-  if (index < 4)
-    m_players[index].difficulty = difficulty;
-  return DR_OK;
-}
-
-dr_error MarioPartyGcn::doSetPlayerTeam(
-  unsigned index, dr_team_color color, dr_team_type type, unsigned team_id)
-{
-  if (index < 4)
-  {
-    m_players[index].team_color = color;
-    m_players[index].team_type = type;
-    m_players[index].team_id = team_id;
-  }
-  applyPlayers();
-  return DR_OK;
-}
-
+/* doApplyGameData records all four players at once, then calls this so the duel
+ * slot remap can see every player's team type together. */
 void MarioPartyGcn::applyPlayers()
 {
   for (unsigned i = 0; i < 4; i++)

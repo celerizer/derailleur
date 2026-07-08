@@ -61,6 +61,15 @@ static const size_t PS2_IS_HUMAN_ADDR = 0x8012B362;
 // s8 in the minigame-select menu holding the highlighted minigame
 static const size_t PS2_MINIGAME_ID_ADDR = 0x8012B363;
 
+/* In-game player slot for a board player, from their controller port. Mario Party
+ * assigns ports non-linearly, so we place each player into the slot matching their
+ * port (falling back to the board index if the port is out of range). */
+static unsigned ps2Slot(const dr_player_t &p, unsigned fallback)
+{
+  unsigned slot = static_cast<unsigned>(p.control_port - DR_CONTROL_PORT_P1);
+  return slot < 4 ? slot : fallback;
+}
+
 static uint8_t ps2Difficulty(dr_difficulty d)
 {
   switch (d)
@@ -184,6 +193,17 @@ void PokemonStadium2::run()
 {
   m_retro->tickFrameWrites();
 
+  /* Keep the core muted for the first 30 frames after a launch (suppresses the
+   * boot/transition blip), then restore full volume. */
+  if (m_muteFrames > 0)
+  {
+    if (auto *a = core()->audio())
+      a->setVolume(0);
+    if (--m_muteFrames == 0)
+      if (auto *a = core()->audio())
+        a->setVolume(100);
+  }
+
   /* Once the boot warmup elapses, load the state, force the minigame, and signal
    * the minigame is ready. */
   if (m_stateLoadCountdown > 0 && --m_stateLoadCountdown == 0)
@@ -197,8 +217,9 @@ void PokemonStadium2::run()
     uint8_t human = 0, difficulty = 0;
     for (unsigned i = 0; i < 4; i++)
     {
+      /* The human bitmask is indexed by in-game slot (controller port). */
       if (m_players[i].control_type == DR_CONTROL_TYPE_HUMAN)
-        human |= (1u << i);
+        human |= (1u << ps2Slot(m_players[i], i));
       difficulty = qMax(difficulty, ps2Difficulty(m_players[i].difficulty));
     }
     m_retro->writeForFrames(PS2_IS_HUMAN_ADDR, &human, 1, 120);
@@ -206,6 +227,7 @@ void PokemonStadium2::run()
 
     startMinigame();
     m_tempoWatchDelay = 120; // don't watch for the results tempo until settled
+    m_aPressDelay = 120;      // nudge past the post-load prompt with a P1 A press
 
     /* This core booted late (deferred load) and QRetro sizes its window to the
      * game's native resolution on boot, so resize it to the container now — the
@@ -221,13 +243,23 @@ void PokemonStadium2::run()
   if (!m_minigame || !m_minigameActive)
     return;
 
+  /* Force a P1 A press 60 frames after the minigame loads to clear the prompt,
+   * holding it briefly so it registers as a discrete press. */
+  if (m_aPressDelay > 0 && --m_aPressDelay == 0)
+  {
+    core()->input()->joypads()[0].setForcedButton(RETRO_DEVICE_ID_JOYPAD_A, true);
+    m_aReleaseDelay = 8;
+  }
+  else if (m_aReleaseDelay > 0 && --m_aReleaseDelay == 0)
+  {
+    core()->input()->joypads()[0].setForcedButton(RETRO_DEVICE_ID_JOYPAD_A, false);
+  }
+
   /* Rampage Rollout special-case */
   if (m_minigame->minigame_id == PS2_MINIGAME_RAMPAGE_ROLLOUT)
     trackRampage();
 
-  /* The minigame is over once the results music starts (tempo == 0x1EF0). Wait a
-   * bit after launch before watching so a transient tempo during load can't
-   * false-trigger. The host reads the winners via minigameResult(). */
+  /* Watch for the current music to be the results music. Wait a while because the savestate has it */
   if (m_tempoWatchDelay > 0)
   {
     m_tempoWatchDelay--;
@@ -284,16 +316,29 @@ const dr_mp_minigame_t *PokemonStadium2::minigames() const
   return PS2_MINIGAMES;
 }
 
-void PokemonStadium2::doSetMinigame(const dr_mp_minigame_t *minigame)
+void PokemonStadium2::doApplyGameData(const DrGameData &data)
 {
-  (void)minigame;
   m_stateLoadCountdown = 0;
   m_rampageRecording = false;
   m_rampageCount = 0;
-}
+  m_muteFrames = 60;
 
-void PokemonStadium2::commitMinigame()
-{
+  /* Record every player and lay down their icon textures now, before the boot,
+   * so GLideN64 reads them. The player values are applied to RAM later, in run()
+   * (after the state loads). Players are ordered in-game by controller port (Mario
+   * Party assigns ports non-linearly), so the icon for a player goes to their slot. */
+  for (unsigned i = 0; i < 4; i++)
+  {
+    m_players[i] = data.players[i];
+    m_slotToIndex[i] = i;
+  }
+  for (unsigned i = 0; i < 4; i++)
+  {
+    const unsigned slot = ps2Slot(m_players[i], i);
+    m_slotToIndex[slot] = i;
+    writePlayerIcon(slot, data.players[i].character);
+  }
+
   if (!m_started)
   {
     m_started = true;
@@ -357,7 +402,14 @@ unsigned PokemonStadium2::computeWinners()
     break;
   }
   }
-  return winners;
+
+  /* Scores/winners above are indexed by in-game slot; map back to board indices so
+   * minigameResult() awards the right players. */
+  unsigned boardWinners = 0;
+  for (unsigned slot = 0; slot < 4; slot++)
+    if (winners & (1u << slot))
+      boardWinners |= (1u << m_slotToIndex[slot]);
+  return boardWinners;
 }
 
 dr_minigame_result_t PokemonStadium2::minigameResult(unsigned index)
@@ -366,11 +418,10 @@ dr_minigame_result_t PokemonStadium2::minigameResult(unsigned index)
   return { (winners & (1u << index)) ? 10 : 0, 0 };
 }
 
-dr_error PokemonStadium2::doSetPlayerCharacter(unsigned index, dr_character character)
+void PokemonStadium2::writePlayerIcon(unsigned index, dr_character character)
 {
   if (index >= 4)
-    return DR_OK;
-  m_players[index].character = character;
+    return;
 
   /* Use the GlideN64 hi-res texture pack feature to implant character faces over
    * the player indicators. */
@@ -388,9 +439,6 @@ dr_error PokemonStadium2::doSetPlayerCharacter(unsigned index, dr_character char
         log(DR_LOG_WARN, qPrintable(QString("failed to write %1").arg(dest)));
     }
   };
-
-  /* Textures are rendered at 2x the original size — GLideN64 loads larger hires
-   * replacements fine and they look sharper. */
 
   /* Small single icon: the 32px art fitted to 2x of the original 36x28 texture. */
   const QImage icon = ps2FitIcon(QString(":/assets/player-32px/%1.png").arg(c), 72, 56);
@@ -410,33 +458,4 @@ dr_error PokemonStadium2::doSetPlayerCharacter(unsigned index, dr_character char
     saveTo(hq.copy(0, 40, 96, 40), PS2_PLAYER_ICON_BOTTOM_FILES[index][0],
       PS2_PLAYER_ICON_BOTTOM_FILES[index][1]);
   }
-  return DR_OK;
-}
-
-dr_error PokemonStadium2::doSetPlayerControlType(unsigned index, dr_control_type control_type)
-{
-  /* Recorded here; the human bitmask is written into the loaded state in run(). */
-  if (index < 4)
-    m_players[index].control_type = control_type;
-  return DR_OK;
-}
-
-dr_error PokemonStadium2::doSetPlayerDifficulty(unsigned index, dr_difficulty difficulty)
-{
-  /* Recorded here; the shared bot difficulty is written in run() (hardest used). */
-  if (index < 4)
-    m_players[index].difficulty = difficulty;
-  return DR_OK;
-}
-
-dr_error PokemonStadium2::doSetPlayerTeam(
-  unsigned index, dr_team_color color, dr_team_type type, unsigned team_id)
-{
-  if (index < 4)
-  {
-    m_players[index].team_color = color;
-    m_players[index].team_type = type;
-    m_players[index].team_id = team_id;
-  }
-  return DR_OK; // TODO: write team assignment
 }

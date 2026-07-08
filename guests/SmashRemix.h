@@ -19,14 +19,8 @@ public:
 
   dr_minigame_result_t minigameResult(unsigned index) override;
   const dr_mp_minigame_t *minigames() const override;
-  void doSetMinigame(const dr_mp_minigame_t *minigame) override;
+  void doApplyGameData(const DrGameData &data) override;
 
-  dr_error doSetPlayerCharacter(unsigned index, dr_character character) override;
-  dr_error doSetPlayerControlPort(unsigned index, dr_control_port control_port) override;
-  dr_error doSetPlayerControlType(unsigned index, dr_control_type control_type) override;
-  dr_error doSetPlayerDifficulty(unsigned index, dr_difficulty difficulty) override;
-  dr_error doSetPlayerTeam(
-    unsigned index, dr_team_color color, dr_team_type type, unsigned team_id) override;
 
 private:
   void applyPlayers();
@@ -41,6 +35,7 @@ private:
   int m_finishCountdown = 0;
   int m_placement[4] = { -1, -1, -1, -1 };
   unsigned m_eliminationCount = 0;
+  int m_startDelay = 0; // frames to hold the overlay before starting the minigame
 };
 
 #endif

@@ -148,11 +148,3 @@ bool DrGuestList::activateGuest(DrGuest *guest)
   return true;
 }
 
-DrGuest *DrGuestList::startMinigame(dr_minigame_type type)
-{
-  const dr_mp_minigame_t *minigame = nullptr;
-  DrGuest *guest = pickMinigame(type, minigame);
-  if (guest)
-    guest->setMinigame(minigame);
-  return guest;
-}

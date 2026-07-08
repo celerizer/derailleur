@@ -132,10 +132,14 @@ const dr_mp_minigame_t *KirbyAirRide::minigames() const
   return KAR_MINIGAMES;
 }
 
-void KirbyAirRide::doSetMinigame(const dr_mp_minigame_t *minigame)
+void KirbyAirRide::doApplyGameData(const DrGameData &data)
 {
+  const dr_mp_minigame_t *minigame = data.minigame;
+
   m_minigameFrames = 0;
   m_finishPending = false;
+  for (unsigned i = 0; i < 4; i++)
+    m_players[i] = data.players[i];
   uint8_t stadium;
 
   switch (minigame->minigame_id)
@@ -157,6 +161,7 @@ void KirbyAirRide::doSetMinigame(const dr_mp_minigame_t *minigame)
     break;
   }
   m_retro->writeForFrames(KAR_STADIUM_GAME_ADDR, &stadium, sizeof(stadium), 120);
+  applyPlayers();
   startMinigame();
 }
 
@@ -245,40 +250,4 @@ void KirbyAirRide::applyPlayers()
     }
     m_retro->writeForFrames(KAR_CPU_LEVEL_ADDR[i], &level, sizeof(level), 120);
   }
-}
-
-dr_error KirbyAirRide::doSetPlayerCharacter(unsigned index, dr_character character)
-{
-  m_players[index].character = character;
-  return DR_OK;
-}
-
-dr_error KirbyAirRide::doSetPlayerControlPort(unsigned index, dr_control_port control_port)
-{
-  m_players[index].control_port = control_port;
-  return DR_OK;
-}
-
-dr_error KirbyAirRide::doSetPlayerControlType(unsigned index, dr_control_type control_type)
-{
-  m_players[index].control_type = control_type;
-  return DR_OK;
-}
-
-dr_error KirbyAirRide::doSetPlayerDifficulty(unsigned index, dr_difficulty difficulty)
-{
-  m_players[index].difficulty = difficulty;
-  return DR_OK;
-}
-
-dr_error KirbyAirRide::doSetPlayerTeam(
-  unsigned index, dr_team_color color, dr_team_type type, unsigned team_id)
-{
-  // Stadium events are free-for-all; teams are unused, but this is the last
-  // setter called per player, so flush everything to memory here.
-  m_players[index].team_color = color;
-  m_players[index].team_type = type;
-  m_players[index].team_id = team_id;
-  applyPlayers();
-  return DR_OK;
 }

@@ -200,8 +200,28 @@ const dr_mp_minigame_t *MarioTennis::minigames() const
   return MT_MINIGAMES;
 }
 
-void MarioTennis::doSetMinigame(const dr_mp_minigame_t *minigame)
+static uint8_t mtDifficulty(dr_difficulty difficulty)
 {
+  switch (difficulty)
+  {
+  case DR_DIFFICULTY_VERY_EASY:
+  case DR_DIFFICULTY_EASY:
+    return 0x00;
+  case DR_DIFFICULTY_NORMAL:
+    return 0x01;
+  case DR_DIFFICULTY_HARD:
+    return 0x02;
+  case DR_DIFFICULTY_VERY_HARD:
+    return 0x03;
+  default:
+    return 0x01;
+  }
+}
+
+void MarioTennis::doApplyGameData(const DrGameData &data)
+{
+  const dr_mp_minigame_t *minigame = data.minigame;
+
   m_winners = 0;
   m_finishCountdown = 0;
   m_allCpuFrames = 0;
@@ -216,6 +236,20 @@ void MarioTennis::doSetMinigame(const dr_mp_minigame_t *minigame)
   m_retro->writeu8(0x01, MT_GAMES_ADDR);
   m_retro->writeu32(minigame->minigame_id, MT_GAME_TYPE_ADDR);
   m_retro->writeu8(doubles ? 0x01 : 0x00, MT_DOUBLES_ADDR);
+
+  /* Record all players and write each one's character/difficulty. */
+  for (unsigned i = 0; i < 4; i++)
+  {
+    const dr_player_t &p = data.players[i];
+    m_players[i] = p;
+    if (p.character < DR_CHARACTER_SIZE && MT_DR_TO_CHAR[p.character].id != 0xFF)
+    {
+      m_retro->writeu32(MT_DR_TO_CHAR[p.character].id, MT_CHARACTER_ADDR[i]);
+      m_retro->writeu32(MT_DR_TO_CHAR[p.character].color, MT_COLOR_ADDR[i]);
+    }
+    m_retro->writeu8(mtDifficulty(p.difficulty), MT_DIFFICULTY_ADDR[i]);
+  }
+  applyTeams();
 
   log(DR_LOG_INFO,
     qPrintable(
@@ -236,53 +270,6 @@ void MarioTennis::doSetMinigame(const dr_mp_minigame_t *minigame)
 dr_minigame_result_t MarioTennis::minigameResult(unsigned index)
 {
   return { (m_winners & (1u << index)) ? 10 : 0, 0 };
-}
-
-dr_error MarioTennis::doSetPlayerCharacter(unsigned index, dr_character character)
-{
-  if (character >= DR_CHARACTER_SIZE || MT_DR_TO_CHAR[character].id == 0xFF)
-    return DR_ERR_INVALID_PARAMETER;
-  m_players[index].character = character;
-  m_retro->writeu32(MT_DR_TO_CHAR[character].id, MT_CHARACTER_ADDR[index]);
-  m_retro->writeu32(MT_DR_TO_CHAR[character].color, MT_COLOR_ADDR[index]);
-  return DR_OK;
-}
-
-dr_error MarioTennis::doSetPlayerControlPort(unsigned index, dr_control_port control_port)
-{
-  m_players[index].control_port = control_port;
-  return DR_OK;
-}
-
-dr_error MarioTennis::doSetPlayerControlType(unsigned index, dr_control_type control_type)
-{
-  m_players[index].control_type = control_type;
-  return DR_OK;
-}
-
-dr_error MarioTennis::doSetPlayerDifficulty(unsigned index, dr_difficulty difficulty)
-{
-  uint8_t val;
-  switch (difficulty)
-  {
-  case DR_DIFFICULTY_VERY_EASY:
-  case DR_DIFFICULTY_EASY:
-    val = 0x00;
-    break;
-  case DR_DIFFICULTY_NORMAL:
-    val = 0x01;
-    break;
-  case DR_DIFFICULTY_HARD:
-    val = 0x02;
-    break;
-  case DR_DIFFICULTY_VERY_HARD:
-    val = 0x03;
-    break;
-  default:
-    val = 0x01;
-    break;
-  }
-  return m_retro->writeu8(val, MT_DIFFICULTY_ADDR[index]);
 }
 
 void MarioTennis::applyTeams()
@@ -325,14 +312,4 @@ void MarioTennis::applyTeams()
                      : static_cast<uint8_t>(m_players[pi].control_port - DR_CONTROL_PORT_P1);
     m_retro->writeu8(ctrl, MT_CONTROL_ADDR[s]);
   }
-}
-
-dr_error MarioTennis::doSetPlayerTeam(
-  unsigned index, dr_team_color color, dr_team_type type, unsigned team_id)
-{
-  m_players[index].team_color = color;
-  m_players[index].team_type = type;
-  m_players[index].team_id = team_id;
-  applyTeams();
-  return DR_OK;
 }

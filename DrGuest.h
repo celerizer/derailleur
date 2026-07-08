@@ -3,6 +3,7 @@
 
 #include "DrCommon.h"
 #include "DrRetro.h"
+#include <cstdio>
 #include <QList>
 #include <QObject>
 #include <QString>
@@ -12,6 +13,16 @@ struct DrMinigameGroup
 {
   const char *name;
   QList<const dr_mp_minigame_t *> minigames;
+};
+
+/// The full setup for one minigame launch, delivered to a guest in a single
+/// call: which minigame, its type, and all four players. Extend with board
+/// context as guests need it.
+struct DrGameData
+{
+  const dr_mp_minigame_t *minigame = nullptr;
+  dr_minigame_type type = DR_MINIGAME_INVALID;
+  dr_player_t players[4] = {};
 };
 
 class DrGuest : public QObject
@@ -61,35 +72,33 @@ public:
   virtual const char *name(void) const = 0;
   virtual dr_guest id(void) const { return DR_GUEST_INVALID; }
   virtual QList<DrMinigameGroup> minigameGroups() const;
-  void setMinigame(const dr_mp_minigame_t *minigame);
   void cancelMinigame() { m_minigameActive = false; }
 
-  /// Called once per launch after setMinigame() and all setPlayer() calls, i.e.
-  /// when the full player set is known. Default no-op; guests that must react to
-  /// the finalized configuration (e.g. reopening the core to reload a texture
-  /// pack keyed on the assigned characters) override this.
-  virtual void commitMinigame() {}
-
-  dr_error setPlayer(unsigned index, const dr_player_t &player);
-  dr_error setPlayerCharacter(unsigned index, dr_character character);
-  dr_error setPlayerControlPort(unsigned index, dr_control_port control_port);
-  dr_error setPlayerControlType(unsigned index, dr_control_type control_type);
-  dr_error setPlayerDifficulty(unsigned index, dr_difficulty difficulty);
-  dr_error setPlayerTeam(unsigned index, dr_team_color color, dr_team_type type, unsigned team_id);
+  /// Applies a whole minigame launch — the chosen minigame and all four players
+  /// — in one call. Sets m_minigame, applies emulation quirks, then dispatches to
+  /// the guest's doApplyGameData(). Replaces the old per-variable
+  /// setMinigame/setPlayer path.
+  void applyGameData(const DrGameData &data);
 
 protected:
-  void log(unsigned level, const char *message) { emit logMessage(level, QString::fromUtf8(message)); }
+  void log(unsigned level, const char *message)
+  {
+    /* Also echo to stderr: the logger isn't connected to guests until after they
+     * are constructed, so construction-time messages (failed to load core / rom
+     * not found / failed to load content) would otherwise be lost. */
+    fprintf(stderr, "[guest] %s\n", message);
+    emit logMessage(level, QString::fromUtf8(message));
+  }
   void startMinigame();
   void finishMinigame();
   void finishMinigameInFrames(int frames) { m_finishCountdown = frames; }
 
   virtual void run() {}
-  virtual void doSetMinigame(const dr_mp_minigame_t *minigame) { (void)minigame; }
-  virtual dr_error doSetPlayerCharacter(unsigned index, dr_character character) { (void)index; (void)character; return DR_OK; }
-  virtual dr_error doSetPlayerControlPort(unsigned index, dr_control_port control_port) { (void)index; (void)control_port; return DR_OK; }
-  virtual dr_error doSetPlayerControlType(unsigned index, dr_control_type control_type) { (void)index; (void)control_type; return DR_OK; }
-  virtual dr_error doSetPlayerDifficulty(unsigned index, dr_difficulty difficulty) { (void)index; (void)difficulty; return DR_OK; }
-  virtual dr_error doSetPlayerTeam(unsigned index, dr_team_color color, dr_team_type type, unsigned team_id) { (void)index; (void)color; (void)type; (void)team_id; return DR_OK; }
+
+  /// Guest hook: apply `data` (minigame + 4 players) to the core in whatever way
+  /// it needs — write player memory, load a savestate, start the minigame, etc.
+  /// Called by applyGameData() after m_minigame and quirks are set.
+  virtual void doApplyGameData(const DrGameData &data) = 0;
 
   bool m_valid = true;
   bool m_minigameActive = false;
@@ -98,6 +107,7 @@ protected:
 
 signals:
   void logMessage(unsigned level, const QString &message);
+  void minigameStarted();
   void minigameFinished();
 };
 
