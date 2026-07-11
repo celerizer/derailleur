@@ -142,7 +142,7 @@ bool DrDownloader::fetchAndExtract(QNetworkAccessManager &nam, const QString &ur
   {
     reply->abort();
     reply->deleteLater();
-    emit logMessage(DR_LOG_WARN, QString("downloads: timed out fetching %1").arg(url));
+    emit logMessage(DR_LOG_WARN, QString("downloads: timed out fetching %1").arg(u.toString()));
     return false;
   }
 
@@ -160,7 +160,7 @@ bool DrDownloader::fetchAndExtract(QNetworkAccessManager &nam, const QString &ur
   {
     notModified = true;
     reply->deleteLater();
-    emit logMessage(DR_LOG_INFO, QString("downloads: %1 unchanged (304)").arg(url));
+    emit logMessage(DR_LOG_INFO, QString("downloads: %1 unchanged (304)").arg(u.toString()));
     return true;
   }
 
@@ -173,17 +173,17 @@ bool DrDownloader::fetchAndExtract(QNetworkAccessManager &nam, const QString &ur
   if (data.size() < 4 || static_cast<unsigned char>(data[0]) != 0x50 ||
     static_cast<unsigned char>(data[1]) != 0x4B)
   {
-    emit logMessage(DR_LOG_WARN, QString("downloads: %1 was not a zip archive").arg(url));
+    emit logMessage(DR_LOG_WARN, QString("downloads: %1 was not a zip archive").arg(u.toString()));
     return false;
   }
 
   if (!extractZip(data, saveDir, stateDir))
   {
-    emit logMessage(DR_LOG_WARN, QString("downloads: failed to extract %1").arg(url));
+    emit logMessage(DR_LOG_WARN, QString("downloads: failed to extract %1").arg(u.toString()));
     return false;
   }
 
-  emit logMessage(DR_LOG_INFO, QString("downloads: applied %1").arg(url));
+  emit logMessage(DR_LOG_INFO, QString("downloads: applied %1").arg(u.toString()));
   return true;
 }
 
