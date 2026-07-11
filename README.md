@@ -8,16 +8,20 @@ A Mario Party randomizer *(working title)*.
 
 This program was created as a novel use of my [QRetro](https://github.com/classicslive/QRetro) emulation library, a libretro frontend (think RetroArch) that can load and manage multiple cores simulataneously. Like a derailleur on a bicycle, this functionality allows a master program to "shift gears" between different games at a point in the emulation cycle where it is safe to do so.
 
+<img width="1363" height="1015" alt="image" src="https://github.com/user-attachments/assets/a0ce2dc4-aaf6-4d0a-a5a5-b7d84f4537dc" />
+
 ## Licensing
 
 derailleur is built using open-source software and technology:
 
+| Component | License |
+| --- | --- |
 | [libretro-common](https://github.com/libretro/libretro-common) | MIT |
 | [QRetro](https://github.com/classicslive/QRetro) | MIT |
 | [SDL3](https://github.com/libsdl-org/SDL) | zlib |
 | [Qt 6](https://www.qt.io/) | LGPL-3.0 |
 
-The following emulator binaries are distributed with the program with no edits to source code:
+The following emulator binaries are distributed with the program with either no edits, or with edits commited upstream:
 
 | Emulator | License |
 | --- | --- |
