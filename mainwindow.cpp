@@ -92,6 +92,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(&downloader, &DrDownloader::logMessage, m_Logger, &DrLogger::message);
     connect(&downloader, &DrDownloader::progressStarted, m_Logger, &DrLogger::showProgress);
     connect(&downloader, &DrDownloader::progressFinished, m_Logger, &DrLogger::hideProgress);
+    connect(&downloader, &DrDownloader::progressUpdated, m_Logger, &DrLogger::setProgress);
 #endif
     downloader.runBlocking(s, dr_save_directory(), dr_state_directory());
   }
