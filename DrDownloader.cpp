@@ -2,6 +2,7 @@
 
 #include <QBuffer>
 #include <QCoreApplication>
+#include <QDateTime>
 #include <QDir>
 #include <QEventLoop>
 #include <QFile>
@@ -15,6 +16,7 @@
 #include <QStringList>
 #include <QTimer>
 #include <QUrl>
+#include <QUrlQuery>
 
 #include <private/qzipreader_p.h>
 
@@ -96,7 +98,12 @@ bool DrDownloader::fetchAndExtract(QNetworkAccessManager &nam, const QString &ur
 {
   notModified = false;
 
-  QNetworkRequest req{ QUrl(url) };
+  QUrl u(url);
+  QUrlQuery q(u);
+  q.addQueryItem("cb", QString::number(QDateTime::currentMSecsSinceEpoch()));
+  u.setQuery(q);
+
+  QNetworkRequest req{ u };
   req.setAttribute(
     QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
   if (!have.etag.isEmpty())
