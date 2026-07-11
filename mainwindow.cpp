@@ -28,6 +28,7 @@
 #include "guests/MarioParty1.h"
 #include "guests/MarioParty2.h"
 #include "guests/MarioParty3.h"
+#include "guests/BanjoTooie.h"
 #include "guests/CoreDolphin.h"
 #include "guests/Kirby64.h"
 #include "guests/KirbyAirRide.h"
@@ -151,6 +152,7 @@ MainWindow::MainWindow(QWidget *parent)
   //addGuest(new MarioPartyAdvance());
   //addGuest(new MarioPartyE());
   addGuest(new Kirby64());
+  addGuest(new BanjoTooie());
 
 #if SHOW_LOGGER
   for (DrGuest *guest : m_Guests->guests())
