@@ -63,10 +63,15 @@ void DrLogger::setProgress(qint64 received, qint64 total)
 void DrLogger::message(unsigned level, const QString &message)
 {
   static const char *prefixes[] = { "INFO", "WARN", "ERROR" };
+  static const char *colors[] = { "#4a90d9", "#e0a000", "#e05252" };
   const char *prefix = level < 3 ? prefixes[level] : "LOG";
+  const char *color = level < 3 ? colors[level] : "#9aa0a6";
 
   QString line = QString("[%1] %2").arg(prefix).arg(message);
-  m_text->appendPlainText(line);
+
+  /* Color the line by level in the view; the file stays plain text. */
+  m_text->appendHtml(
+    QString("<span style=\"color:%1;\">%2</span>").arg(color, line.toHtmlEscaped()));
 
   if (m_file.isOpen())
   {

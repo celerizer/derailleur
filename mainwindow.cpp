@@ -157,7 +157,10 @@ MainWindow::MainWindow(QWidget *parent)
 
 #if SHOW_LOGGER
   for (DrGuest *guest : m_Guests->guests())
+  {
     connect(guest, &DrGuest::logMessage, m_Logger, &DrLogger::message, Qt::QueuedConnection);
+    connectCoreLog(guest->core());
+  }
   m_Guests->logSummary();
 #endif
 
@@ -237,6 +240,35 @@ MainWindow::MainWindow(QWidget *parent)
   resize(704, 528);
 }
 
+void MainWindow::connectCoreLog(QRetro *core)
+{
+  if (!core || !m_Logger)
+    return;
+
+  qRegisterMetaType<QRetroMessageEntry>();
+
+  /* onCoreLog fires on the emulation thread; a queued connection marshals it to
+   * the logger's (GUI) thread. Map the libretro level onto ours and tag it. */
+  connect(core, &QRetro::onCoreLog, m_Logger,
+    [logger = m_Logger](int level, const QString &msg) {
+      const unsigned lvl = level >= RETRO_LOG_ERROR ? DR_LOG_ERROR
+                         : level == RETRO_LOG_WARN  ? DR_LOG_WARN
+                                                    : DR_LOG_INFO;
+      logger->message(lvl, QStringLiteral("[core] ") + msg);
+    },
+    Qt::QueuedConnection);
+
+  /* On-screen core messages (SET_MESSAGE / SET_MESSAGE_EXT) surface in the log too. */
+  connect(core, &QRetro::onCoreMessage, m_Logger,
+    [logger = m_Logger](const QRetroMessageEntry &entry) {
+      const unsigned lvl = entry.level >= RETRO_LOG_ERROR ? DR_LOG_ERROR
+                         : entry.level == RETRO_LOG_WARN  ? DR_LOG_WARN
+                                                          : DR_LOG_INFO;
+      logger->message(lvl, QStringLiteral("[msg] ") + entry.message);
+    },
+    Qt::QueuedConnection);
+}
+
 void MainWindow::startWithHost(DrHost *host)
 {
   m_Host = host;
@@ -250,6 +282,7 @@ void MainWindow::startWithHost(DrHost *host)
 
 #if SHOW_LOGGER
   connect(m_Host, &DrRetro::logMessage, m_Logger, &DrLogger::message, Qt::QueuedConnection);
+  connectCoreLog(m_Host->core());
 #endif
 
   attachNetplay();

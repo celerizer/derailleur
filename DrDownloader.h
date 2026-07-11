@@ -29,6 +29,8 @@ signals:
   void progressStarted(const QString &label);
   void progressFinished();
 
+  void progressUpdated(qint64 received, qint64 total);
+
 private:
   /// One HTTP validator pair; either field may be empty if the server omits it.
   struct Validator
