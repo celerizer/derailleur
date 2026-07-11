@@ -283,11 +283,36 @@ void DrHost::run(void)
       uint8_t totalTurns = 0, currentTurns = 0;
       readu8(&totalTurns,   m_config.turn_total_addr);
       readu8(&currentTurns, m_config.turn_current_addr);
-      if (currentTurns > totalTurns || totalTurns - currentTurns == 5)
+      if (currentTurns > totalTurns)
       {
-        writeu32(0, m_config.scene_trampoline_addr);
+        /* Game over - force the board's results scene next instead of a new turn */
+        emit logMessage(DR_LOG_INFO,
+          QString("entering board results (turn %1/%2)").arg(currentTurns).arg(totalTurns));
+        writeu32(m_config.scene_board_results
+                   ? (((uint32_t)m_config.scene_board_results << 16) | 1) : 0,
+          m_config.scene_trampoline_addr);
         setState(DR_HOST_STATE_INVALID);
         break;
+      }
+      if (totalTurns - currentTurns == 4)
+      {
+        /* Last 5 turns - force that event scene once with modifier 1 */
+        if (!m_lastFiveTriggered)
+        {
+          m_lastFiveTriggered = true;
+          emit logMessage(DR_LOG_INFO,
+            QString("entering last 5 turns (turn %1/%2)").arg(currentTurns).arg(totalTurns));
+          writeu32(m_config.scene_last_five_turns
+                     ? (((uint32_t)m_config.scene_last_five_turns << 16) | 1) : 0,
+            m_config.scene_trampoline_addr);
+          setState(DR_HOST_STATE_INVALID);
+          break;
+        }
+      }
+      else
+      {
+        /* Off the trigger turn - re-arm so a later game (or wrap) fires again. */
+        m_lastFiveTriggered = false;
       }
     }
     writeu32(((uint32_t)m_lastBoardScene << 16) | 1, m_config.scene_trampoline_addr);

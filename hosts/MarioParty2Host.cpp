@@ -131,11 +131,11 @@ static const dr_scene_name_t MP2_SCENE_NAMES[] =
   { 0x4c, "Rules Land" },
   { 0x4d, "Rules Land intro" },
   { 0x4e, "Battle Mode / Duel Mode" },
-  // { 0x4f, "" },
+  { 0x4f, "Board ending" },
   { 0x50, "Board ending" },
   { 0x51, "Board results" },
   { 0x52, "The Adventure Ends" },
-  // { 0x53, "" },
+  { 0x53, "Bowser Event" },
   // { 0x54, "" },
   { 0x55, "Board intro" },
   // { 0x56, "" },
@@ -184,6 +184,8 @@ static DrHostConfig makeConfig()
   config.scene_miniresults = 0x70;
   config.scene_miniresults_battle = 0x6f;
   // scene_miniresults_duel: not available in mp2
+  config.scene_board_results = 0x52;
+  config.scene_last_five_turns = 0x40;
   config.scene_addr = 0x800FA63E; // u16
 
   static const uint8_t mp2_boards[] = { 0x3E, 0x41, 0x43, 0x45, 0x47, 0x49, 0x4B };

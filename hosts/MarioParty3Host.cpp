@@ -273,6 +273,9 @@ static DrHostConfig makeConfig()
   config.panel_color_addr[2] = 0x800d1194;
   config.panel_color_addr[3] = 0x800d11cc;
 
+  config.scene_board_results = 0x4f;
+  config.scene_last_five_turns = 0x51;
+
   config.char_to_dr = MP3_CHAR_TO_DR;
   config.char_to_dr_size = sizeof(MP3_CHAR_TO_DR) / sizeof(*MP3_CHAR_TO_DR);
   config.diff_to_dr = MP3_DIFF_TO_DR;

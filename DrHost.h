@@ -117,6 +117,8 @@ struct DrHostConfig
   size_t scene_trampoline_addr;          // packed word: upper half = scene, lower half = modifier; 0 = passthrough
   size_t turn_total_addr;               // byte: total turn count; 0 = skip end-of-game check
   size_t turn_current_addr;             // byte: current turn count
+  uint8_t scene_board_results;          // scene forced when the game is over; 0 = passthrough
+  uint8_t scene_last_five_turns;        // scene forced entering the last 5 turns; 0 = passthrough
   size_t scene_duel_slot0_addr;         // word-flipped RAM addr of duel board's first slot; 0 = use minigame_type_addr
   const char *cheat_regular_board;      // cheat code string for regular board roulette (nullptr = unused)
   const char *cheat_duel_board;         // cheat code string for duel board roulette (nullptr = unused)
@@ -202,6 +204,7 @@ private:
   bool m_itemSceneLeft = false;
   uint8_t m_itemChosenId = 0;
   bool m_afterRouletteSceneLeft = false;
+  bool m_lastFiveTriggered = false; // last-5-turns event already forced this game
 
   dr_host_state m_State = DR_HOST_STATE_INVALID;
 
