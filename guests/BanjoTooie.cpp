@@ -23,6 +23,29 @@ static const char *BT_PLAYER_ICON_FILES[4] = {
   "BANJO TOOIE#F3AC9DD5#2#1#10841D23_ciByRGBA.png",
 };
 
+/* Dodgems player-indicator icons (same per-slot icon, different textures). */
+static const char *BT_DODGEMS_ICON_FILES[4] = {
+  "BANJO TOOIE#1CC3185F#2#0#380D39B4_ciByRGBA.png",
+  "BANJO TOOIE#3E08CB4E#2#0#C9F51662_ciByRGBA.png",
+  "BANJO TOOIE#E772519A#2#0#2AD2E337_ciByRGBA.png",
+  "BANJO TOOIE#0803CDBC#2#0#4B7E736F_ciByRGBA.png",
+};
+
+/* Packing Room Challenge: the indicator is two textures per slot -- a 64x32 top
+ * and a 40x9 bottom that sits directly under it, offset right by 12px. */
+static const char *BT_PACKING_TOP_FILES[4] = {
+  "BANJO TOOIE#1E2DDE58#2#1#32E49D27_ciByRGBA.png",
+  "BANJO TOOIE#DF3F9E54#2#1#F9284F0F_ciByRGBA.png",
+  "BANJO TOOIE#F649DEC8#2#1#181BD64A_ciByRGBA.png",
+  "BANJO TOOIE#1DFDABB4#2#1#404435BD_ciByRGBA.png",
+};
+static const char *BT_PACKING_BOTTOM_FILES[4] = {
+  "BANJO TOOIE#FB25B668#2#1#81BA6FA3_ciByRGBA.png",
+  "BANJO TOOIE#4F9993BB#2#1#0CEB7241_ciByRGBA.png",
+  "BANJO TOOIE#37A72EAC#2#1#D5E5B93F_ciByRGBA.png",
+  "BANJO TOOIE#239E71D0#2#1#404435BD_ciByRGBA.png",
+};
+
 /* The native icon texture is 32x32; inject at an exact integer multiple of that
  * (2x here) so GLideN64 accepts the replacement. */
 static const int BT_ICON_W = 64;
@@ -34,6 +57,14 @@ static const QColor BT_SLOT_COLORS[4] = {
   QColor(0xE2, 0x2B, 0x2B),
   QColor(0xF2, 0xC5, 0x1D),
   QColor(0x9B, 0x51, 0xE0),
+};
+
+/* Packing Room uses its own per-slot colors: brown, blue, green, yellow. */
+static const QColor BT_PACKING_COLORS[4] = {
+  QColor(0x8B, 0x5A, 0x2B),
+  QColor(0x33, 0x66, 0xFF),
+  QColor(0x3A, 0xA8, 0x3A),
+  QColor(0xF2, 0xC5, 0x1D),
 };
 
 /* Thickness (in injected pixels) of the colored outline around the head. */
@@ -311,23 +342,35 @@ void BanjoTooie::writePlayerIcon(unsigned slot, dr_character character)
   if (slot >= 4)
     return;
 
-  /* Implant the character's face over the kickball player indicator via GLideN64's
-   * hi-res texture pack feature (replace the whole CI texture with our RGBA icon). */
+  /* Implant the character's face over each mini-game's player-indicator textures via
+   * GLideN64's hi-res texture pack (replacing the whole CI texture with our RGBA). */
   const int c = static_cast<int>(character);
   const QString destDir = QString::fromUtf8(BT_HIRES_DIR);
   QDir().mkpath(destDir);
+  const QString src = QString(":/assets/player-32px/%1.png").arg(c);
 
-  const QImage icon = btOutlinedIcon(
-    QString(":/assets/player-32px/%1.png").arg(c), BT_ICON_W, BT_ICON_H, BT_SLOT_COLORS[slot]);
+  auto saveTo = [&](const QImage &img, const char *file) {
+    if (img.isNull())
+      return;
+    const QString dest = destDir + "/" + QString::fromUtf8(file);
+    if (!img.save(dest, "PNG"))
+      log(DR_LOG_WARN, qPrintable(QString("failed to write %1").arg(dest)));
+  };
+
+  /* Kickball + dodgems: one outlined icon (blue/red/yellow/purple). */
+  const QImage icon = btOutlinedIcon(src, BT_ICON_W, BT_ICON_H, BT_SLOT_COLORS[slot]);
   if (icon.isNull())
-  {
     log(DR_LOG_WARN, qPrintable(QString("no 32px player icon for character %1").arg(c)));
-    return;
-  }
+  saveTo(icon, BT_PLAYER_ICON_FILES[slot]);
+  saveTo(icon, BT_DODGEMS_ICON_FILES[slot]);
 
-  const QString dest = destDir + "/" + QString::fromUtf8(BT_PLAYER_ICON_FILES[slot]);
-  if (!icon.save(dest, "PNG"))
-    log(DR_LOG_WARN, qPrintable(QString("failed to write %1").arg(dest)));
+  /* Packing Room: render the outlined head (brown/blue/green/yellow) across the
+   * combined 64x32-over-40x9 shape, then slice it into the two textures. The 40x9
+   * sits directly under the 64x32, offset right by 12px. Injected at 2x native. */
+  const int S = 2;
+  const QImage packing = btOutlinedIcon(src, 64 * S, (32 + 9) * S, BT_PACKING_COLORS[slot]);
+  saveTo(packing.copy(0, 0, 64 * S, 32 * S), BT_PACKING_TOP_FILES[slot]);
+  saveTo(packing.copy(11 * S, 32 * S, 40 * S, 9 * S), BT_PACKING_BOTTOM_FILES[slot]);
 }
 
 void BanjoTooie::doApplyGameData(const DrGameData &data)
