@@ -224,7 +224,7 @@ void Kirby64::run()
    * minigameStarted when the overlay fades. */
   if (!m_minigameActive)
     if (auto *a = core()->audio())
-      a->setVolume(0);
+      a->setMute(true);
 
   /* Once the boot warmup elapses, load the state, force game variables, and signal
    * the minigame is ready. */

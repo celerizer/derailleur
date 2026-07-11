@@ -198,10 +198,10 @@ void PokemonStadium2::run()
   if (m_muteFrames > 0)
   {
     if (auto *a = core()->audio())
-      a->setVolume(0);
+      a->setMute(true);
     if (--m_muteFrames == 0)
       if (auto *a = core()->audio())
-        a->setVolume(100);
+        a->setMute(false);
   }
 
   /* Once the boot warmup elapses, load the state, force the minigame, and signal

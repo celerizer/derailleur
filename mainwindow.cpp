@@ -321,6 +321,11 @@ void MainWindow::startWithHost(DrHost *host)
       guest->cancelMinigame();
     showHost();
   });
+
+  connect(m_Debug, &DrDebug::setTurnRequested, this, [this](int turn) {
+    if (m_Host)
+      m_Host->setCurrentTurn(static_cast<uint8_t>(turn));
+  });
 #endif
 
   /* Every peer rolls its own candidates locally from the shared seeded PRNG
@@ -423,7 +428,7 @@ void MainWindow::launchMinigame(
        * hasn't started yet on its first launch, so guard this. Keep the core muted
        * until the minigame actually starts (unmuted in the connection below). */
       if (auto *a = guest->core()->audio())
-        a->setVolume(0);
+        a->setMute(true);
 
       /* Once the guest actually starts its minigame, drop the loading overlay and
        * unmute the core. A synchronous guest fires this during applyGameData below;
@@ -435,7 +440,7 @@ void MainWindow::launchMinigame(
         m_Overlay->fadeOut();
 #endif
         if (auto *a = guest->core()->audio())
-          a->setVolume(100);
+          a->setMute(false);
         disconnect(*conn);
       });
 
