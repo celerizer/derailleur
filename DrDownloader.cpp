@@ -123,6 +123,9 @@ bool DrDownloader::fetchAndExtract(QNetworkAccessManager &nam, const QString &ur
   QTimer timer;
   timer.setSingleShot(true);
   connect(&timer, &QTimer::timeout, &loop, &QEventLoop::quit);
+  connect(reply, &QNetworkReply::downloadProgress, &timer, [&timer, timeoutMs]() {
+    timer.start(timeoutMs);
+  });
   timer.start(timeoutMs);
   loop.exec();
 
