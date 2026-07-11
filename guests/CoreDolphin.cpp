@@ -49,13 +49,6 @@ void CoreDolphin::addGame(DolphinGuest *game)
 
   if (m_games.isEmpty())
   {
-    if (!core()->loadCore(game->corePath().c_str()))
-    {
-      log(DR_LOG_ERROR,
-        qPrintable(QString("failed to load core: %1").arg(game->corePath().c_str())));
-      m_valid = false;
-    }
-
     // Apply Dolphin settings we will need
     // See: https://github.com/classicslive/QRetro/blob/master/docs/Cores.md#Dolphin
 
@@ -66,6 +59,13 @@ void CoreDolphin::addGame(DolphinGuest *game)
     // Core > Fastmem
     // Needs to be disabled for multi-instancing to work.
     core()->options()->setOptionValue("dolphin_fastmem", "disabled");
+
+    if (!core()->loadCore(game->corePath().c_str()))
+    {
+      log(DR_LOG_ERROR,
+        qPrintable(QString("failed to load core: %1").arg(game->corePath().c_str())));
+      m_valid = false;
+    }
   }
 
   m_games.append(game);
