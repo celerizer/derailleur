@@ -321,11 +321,6 @@ void MainWindow::startWithHost(DrHost *host)
       guest->cancelMinigame();
     showHost();
   });
-
-  connect(m_Debug, &DrDebug::setTurnRequested, this, [this](int turn) {
-    if (m_Host)
-      m_Host->setCurrentTurn(static_cast<uint8_t>(turn));
-  });
 #endif
 
   /* Every peer rolls its own candidates locally from the shared seeded PRNG
