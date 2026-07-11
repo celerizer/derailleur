@@ -21,6 +21,8 @@
 #include "DrOverlay.h"
 #include "DrToolWindow.h"
 
+class QRetro;
+
 class MainWindow : public QMainWindow
 {
   Q_OBJECT
@@ -30,6 +32,10 @@ public:
   ~MainWindow();
 
 private:
+  /// Routes a core's libretro log output (onCoreLog) into m_Logger. No-op if there
+  /// is no logger or core.
+  void connectCoreLog(QRetro *core);
+
   void startWithHost(DrHost *host);
   void showHost();
   void showGuests();
