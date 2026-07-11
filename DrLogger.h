@@ -20,10 +20,9 @@ public:
 public slots:
   void message(unsigned level, const QString &message);
 
-  /// Show a busy progress row along the bottom of the log with `label`. Call
-  /// again to retitle it; hideProgress() removes it.
   void showProgress(const QString &label);
   void hideProgress();
+  void setProgress(qint64 received, qint64 total);
 
 private:
   QPlainTextEdit *m_text = nullptr;

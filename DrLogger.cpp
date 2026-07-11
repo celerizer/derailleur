@@ -39,12 +39,25 @@ DrLogger::DrLogger(QWidget *parent)
 void DrLogger::showProgress(const QString &label)
 {
   m_progressLabel->setText(label);
+  m_progress->setRange(0, 0); // busy until the first byte-progress arrives
   m_progressRow->show();
 }
 
 void DrLogger::hideProgress()
 {
   m_progressRow->hide();
+}
+
+void DrLogger::setProgress(qint64 received, qint64 total)
+{
+  if (total > 0)
+  {
+    /* Scale to a percentage so a huge file can't overflow the int range. */
+    m_progress->setRange(0, 100);
+    m_progress->setValue(static_cast<int>(received * 100 / total));
+  }
+  else
+    m_progress->setRange(0, 0); // unknown size -> keep it busy
 }
 
 void DrLogger::message(unsigned level, const QString &message)
