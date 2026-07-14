@@ -37,6 +37,7 @@
 #include "guests/MarioParty5.h"
 #include "guests/MarioParty6.h"
 #include "guests/MarioParty7.h"
+#include "guests/MarioParty9.h"
 #include "guests/MarioPartyAdvance.h"
 #include "guests/MarioPartyE.h"
 #include "guests/SmashRemix.h"
@@ -136,6 +137,12 @@ MainWindow::MainWindow(QWidget *parent)
   dolphin->finalizeGames();
   if (dolphin->isValid())
     m_Guests->add(dolphin);
+
+  auto *dolphinWii = new CoreDolphin(this);
+  dolphinWii->addGame(new MarioParty9(dolphinWii->core(), dolphinWii));
+  dolphinWii->finalizeGames();
+  if (dolphinWii->isValid())
+    m_Guests->add(dolphinWii);
 
   auto addGuest = [this](DrGuest *g) {
     if (g->isValid())

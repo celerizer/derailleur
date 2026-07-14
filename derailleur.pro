@@ -57,6 +57,7 @@ SOURCES += \
     guests/MarioParty5.cpp \
     guests/MarioParty6.cpp \
     guests/MarioParty7.cpp \
+    guests/MarioParty9.cpp \
     guests/MarioPartyGcn.cpp \
     guests/MarioTennis.cpp \
     guests/PokemonStadium2.cpp \
@@ -100,6 +101,7 @@ HEADERS += \
     guests/MarioParty5.h \
     guests/MarioParty6.h \
     guests/MarioParty7.h \
+    guests/MarioParty9.h \
     guests/MarioPartyGcn.h \
     guests/MarioTennis.h \
     guests/PokemonStadium2.h \

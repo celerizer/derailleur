@@ -18,9 +18,12 @@ static QString resolveDiscPath(const QString &base)
 CoreDolphin::CoreDolphin(QObject *parent)
   : DrGuest(parent)
 {
+  /* Unique per instance so a second CoreDolphin (e.g. a Wii core alongside the
+   * GameCube one) doesn't clobber the first's disc list. */
+  static int s_instance = 0;
   m_retro = new DrRetro(this);
   m_retro->setCore(new QRetro(), true);
-  m_m3uPath = QDir::temp().filePath("derailleur_dolphin.m3u");
+  m_m3uPath = QDir::temp().filePath(QString("derailleur_dolphin_%1.m3u").arg(s_instance++));
 }
 
 void CoreDolphin::startCore()

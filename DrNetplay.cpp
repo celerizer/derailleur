@@ -243,6 +243,9 @@ void DrNetplay::setActiveContext(QRetro *core)
 
 void DrNetplay::freezeActiveContext()
 {
+  if (!m_Active)
+    return;
+
   int ctx;
   quint64 frame;
   {
