@@ -50,7 +50,7 @@ void DrHost::run(void)
   {
     writeu32(0, m_config.scene_trampoline_addr);
 
-    writeForFrames(m_config.minigame_type_addr, &ff, 1, 180);
+    writeForFrames(m_config.minigame_type_addr, &ff, 1, 30);
 
     for (unsigned r = 0; r < m_config.scene_board_id_count; r++)
     {
@@ -98,7 +98,7 @@ void DrHost::run(void)
       {
         m_itemPending = false;
         m_itemSceneLeft = false;
-        writeForFrames(m_config.minigame_type_addr, &ff, 1, 120);
+        writeForFrames(m_config.minigame_type_addr, &ff, 1, 30);
       }
       break;
     }
@@ -226,9 +226,9 @@ void DrHost::run(void)
       break;
     case DR_MINIGAME_DUEL:
     {
-      if (m_isDuelBoard && m_config.scene_miniresults_duel)
+      if (m_isDuelBoard)
       {
-        m_resultsScene = m_config.scene_miniresults;
+        m_resultsScene = 0x5a;
         m_resultsModifier = 0;
       }
       else
@@ -328,7 +328,7 @@ void DrHost::run(void)
     {
       m_lastMinigameId = -1;
       writeu8(0xFF, m_config.minigame_id_addr);
-      writeForFrames(m_config.minigame_type_addr, &ff, 1, 120);
+      writeForFrames(m_config.minigame_type_addr, &ff, 1, 30);
       setState(DR_HOST_STATE_BOARD);
     }
     break;
