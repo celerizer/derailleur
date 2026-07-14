@@ -111,6 +111,7 @@ static const dr_mp_minigame_t MP9_MINIGAMES[] =
   { "Hole Hogs", DR_MINIGAME_1V3, 0x07, 0xFF, DR_NO_QUIRKS },
   { "Pix Fix", DR_MINIGAME_1V3, 0x08, 0xFF, DR_NO_QUIRKS },
   { "Mob Sleds", DR_MINIGAME_1V3, 0x09, 0xFF, DR_NO_QUIRKS },
+
   { "Mecha March", DR_MINIGAME_INVALID, 0x0A, 0xFF, DR_NO_QUIRKS },
   { "Bowser Pop", DR_MINIGAME_INVALID, 0x0B, 0xFF, DR_NO_QUIRKS },
   { "Double Pounder", DR_MINIGAME_INVALID, 0x0C, 0xFF, DR_NO_QUIRKS },
@@ -121,6 +122,7 @@ static const dr_mp_minigame_t MP9_MINIGAMES[] =
   { "Sand Trap", DR_MINIGAME_INVALID, 0x11, 0xFF, DR_NO_QUIRKS },
   { "Pair of Aces", DR_MINIGAME_INVALID, 0x12, 0xFF, DR_NO_QUIRKS },
   { "Pedal to the Paddle", DR_MINIGAME_INVALID, 0x13, 0xFF, DR_NO_QUIRKS },
+
   { "Urn It", DR_MINIGAME_4P, 0x14, 0xFF, DR_NO_QUIRKS },
   { "Billistics", DR_MINIGAME_4P, 0x15, 0xFF, DR_NO_QUIRKS },
   { "Snow Go", DR_MINIGAME_4P, 0x16, 0xFF, DR_NO_QUIRKS },
@@ -165,7 +167,9 @@ static const dr_mp_minigame_t MP9_MINIGAMES[] =
   { "Pier Pressure", DR_MINIGAME_4P, 0x3D, 0xFF, DR_NO_QUIRKS },
   { "10 to Win", DR_MINIGAME_4P, 0x3E, 0xFF, DR_NO_QUIRKS },
   { "Mecha Choice", DR_MINIGAME_4P, 0x3F, 0xFF, DR_NO_QUIRKS },
+
   { "Castle Clearout", DR_MINIGAME_DUEL, 0x40, 0xFF, DR_NO_QUIRKS },
+
   // 0x41 Bowser Jr. Breakdown -- duplicate id; use 0x47 instead
   { "Sock It to Lakitu", DR_MINIGAME_BATTLE, 0x42, 0xFF, DR_NO_QUIRKS },
   { "Whomp Stomp", DR_MINIGAME_BATTLE, 0x43, 0xFF, DR_NO_QUIRKS },
@@ -253,11 +257,9 @@ void MarioParty9::doApplyGameData(const DrGameData &data)
     uint8_t bot = m_players[i].control_type == DR_CONTROL_TYPE_CPU ? 1 : 0;
     m_retro->writeu8(bot, MP9_IS_BOT_ADDR[slot]);
 
-    /* Set "1-vs.-Rivals" teams */
-    if (m_players[i].team_type == DR_TEAM_TYPE_1V3_SOLO)
-      m_retro->writes32(0, MP9_TEAM_ADDR[slot]);
-    else if (m_players[i].team_type == DR_TEAM_TYPE_1V3_GROUP)
-      m_retro->writes32(1, MP9_TEAM_ADDR[slot]);
+    /* Set "1-vs.-Rivals" teams -- use a continuous write because free play overwrites it */
+    int32_t team = m_players[i].team_type == DR_TEAM_TYPE_1V3_GROUP ? 1 : 0;
+    m_retro->writeForFrames(MP9_TEAM_ADDR[slot], &team, sizeof(team), 60);
   }
 
   startMinigame();
