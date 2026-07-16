@@ -23,6 +23,10 @@ void DrGuestList::add(DrGuest *guest)
     if (guest == m_activeGuest)
       emit minigameFinished();
   });
+  connect(guest, &DrGuest::minigameCanceled, this, [this, guest]() {
+    if (guest == m_activeGuest)
+      emit minigameCanceled();
+  });
 }
 
 DrGuest *DrGuestList::pickMinigame(dr_minigame_type type, const dr_mp_minigame_t *&outMinigame)

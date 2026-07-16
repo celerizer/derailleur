@@ -244,6 +244,15 @@ MainWindow::MainWindow(QWidget *parent)
     },
     Qt::QueuedConnection);
 
+  /* Stuck-minigame timeout: zero the results (don't award anything) and return. */
+  connect(
+    m_Guests, &DrGuestList::minigameCanceled, this,
+    [this]() {
+      m_Host->clearResults();
+      showHost();
+    },
+    Qt::QueuedConnection);
+
   resize(704, 528);
 }
 
@@ -328,6 +337,9 @@ void MainWindow::startWithHost(DrHost *host)
       guest->cancelMinigame();
     showHost();
   });
+
+  connect(m_Debug, &DrDebug::setTurnRequested, this,
+    [this](int turn) { m_Host->setCurrentTurn(turn); });
 #endif
 
   /* Every peer rolls its own candidates locally from the shared seeded PRNG

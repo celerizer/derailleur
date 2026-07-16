@@ -570,6 +570,27 @@ void DrHost::writeBattleCoins()
       writes16(bonusCoins[i], m_config.bonus_result_addr[i]);
 }
 
+void DrHost::setCurrentTurn(unsigned turn)
+{
+  if (!m_config.turn_current_addr)
+  {
+    emit logMessage(DR_LOG_WARN, "set turn: this game has no turn counter configured");
+    return;
+  }
+  writeu8(static_cast<uint8_t>(turn), m_config.turn_current_addr);
+  emit logMessage(DR_LOG_INFO, QString("set current turn to %1").arg(turn));
+}
+
+void DrHost::clearResults()
+{
+  for (unsigned i = 0; i < 4; i++)
+  {
+    writes16(0, m_config.result_addr[i]);
+    if (m_config.bonus_result_addr[i])
+      writes16(0, m_config.bonus_result_addr[i]);
+  }
+}
+
 void DrHost::writeResults(DrGuest *guest)
 {
   for (unsigned i = 0; i < 4; i++)
@@ -595,7 +616,21 @@ void DrHost::writeResults(DrGuest *guest)
       writes16(static_cast<int16_t>(result.bonus_coins), m_config.bonus_result_addr[i]);
   }
   if (m_resultsScene == m_config.scene_miniresults_battle)
-    writeBattleCoins();
+  {
+    /* Read back the placements the loop just wrote (0 = 1st, 1 = 2nd, ...). A
+     * four-way tie has no meaningful pot split, so rather than the battle results
+     * scene, send the game to the current board scene with modifier 2. */
+    uint16_t places[4];
+    for (unsigned i = 0; i < 4; i++)
+      readu16(&places[i], m_config.result_addr[i]);
+    if (places[0] == places[1] && places[1] == places[2] && places[2] == places[3])
+    {
+      emit logMessage(DR_LOG_INFO, "battle: four-way tie, returning to board");
+      writeu32(((uint32_t)m_lastBoardScene << 16) | 2, m_config.scene_trampoline_addr);
+    }
+    else
+      writeBattleCoins();
+  }
   writeu8(0xFF, m_config.minigame_type_addr);
   m_writing = 30;
   m_lastScene = 0xFF;

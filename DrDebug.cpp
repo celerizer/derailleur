@@ -6,8 +6,11 @@
 #include <QFormLayout>
 #include <QGridLayout>
 #include <QGroupBox>
+#include <QHBoxLayout>
+#include <QLabel>
 #include <QPushButton>
 #include <QRandomGenerator>
+#include <QSpinBox>
 #include <QVBoxLayout>
 
 namespace
@@ -177,6 +180,20 @@ DrDebug::DrDebug(QWidget *parent)
   QPushButton *cancelBtn = new QPushButton("Cancel Minigame", this);
   connect(cancelBtn, &QPushButton::clicked, this, [this]() { emit cancelRequested(); });
   layout->addWidget(cancelBtn);
+
+  /* Turn selector: jump the board's current-turn counter (useful for testing the
+   * last-5-turns event and end-of-game handling). */
+  QHBoxLayout *turnRow = new QHBoxLayout;
+  turnRow->addWidget(new QLabel(tr("Turn:"), this));
+  QSpinBox *turnSpin = new QSpinBox(this);
+  turnSpin->setRange(1, 99);
+  turnRow->addWidget(turnSpin);
+  QPushButton *turnBtn = new QPushButton("Set Turn", this);
+  connect(turnBtn, &QPushButton::clicked, this,
+    [this, turnSpin]() { emit setTurnRequested(turnSpin->value()); });
+  turnRow->addWidget(turnBtn);
+  turnRow->addStretch();
+  layout->addLayout(turnRow);
 
   layout->addStretch();
   setLayout(layout);

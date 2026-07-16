@@ -133,6 +133,11 @@ public:
   explicit DrHost(const DrHostConfig &config, QObject *parent = nullptr);
 
   void writeResults(DrGuest *guest);
+  /// Zero every player's result (used when a minigame is canceled rather than
+  /// completed, so the board doesn't read stale coins from the previous one).
+  void clearResults();
+  /// Debug helper: overwrite the board's current-turn counter.
+  void setCurrentTurn(unsigned turn);
   void setCandidates(std::array<DrMinigameCandidate, 5> candidates);
   void startMinigame(unsigned index);
 

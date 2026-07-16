@@ -103,12 +103,17 @@ protected:
   bool m_valid = true;
   bool m_minigameActive = false;
   int m_finishCountdown = 0;
+  int m_minigameFrameCount = 0;    // frames elapsed in the current minigame
+  bool m_frameHookInstalled = false;
   const dr_mp_minigame_t *m_minigame = nullptr;
 
 signals:
   void logMessage(unsigned level, const QString &message);
   void minigameStarted();
   void minigameFinished();
+  /// A minigame was aborted (e.g. the global stuck-minigame timeout) rather than
+  /// completing normally. Return to the board without writing results.
+  void minigameCanceled();
 };
 
 #endif

@@ -1,5 +1,10 @@
 #include "DrGuest.h"
 
+#include <QRetro.h>
+
+/* Global safety net: a minigame that runs this many frames without finishing is
+ * almost certainly stuck, so cancel it and return to the board (~5 min @ 60fps). */
+static constexpr int DR_MINIGAME_TIMEOUT_FRAMES = 60 * 60 * 5;
 
 QList<DrMinigameGroup> DrGuest::minigameGroups() const
 {
@@ -62,7 +67,28 @@ void DrGuest::applyGameData(const DrGameData &data)
 void DrGuest::startMinigame()
 {
   m_finishCountdown = 0;
+  m_minigameFrameCount = 0;
   m_minigameActive = true;
+
+  /* Install the stuck-minigame timeout once, on this guest's core. It fires every
+   * frame but only counts while a minigame is active, so it's harmless otherwise.
+   * Receiver is `this`, so it auto-disconnects when the guest is destroyed. */
+  if (!m_frameHookInstalled && core())
+  {
+    m_frameHookInstalled = true;
+    connect(core(), &QRetro::frameBegin, this, [this]() {
+      if (m_minigameActive && ++m_minigameFrameCount >= DR_MINIGAME_TIMEOUT_FRAMES)
+      {
+        const char *mg = (m_minigame && m_minigame->name) ? m_minigame->name : "minigame";
+        log(DR_LOG_WARN,
+          qPrintable(QString("%1: \"%2\" ran %3 frames without finishing; aborting")
+                       .arg(name()).arg(mg).arg(DR_MINIGAME_TIMEOUT_FRAMES)));
+        cancelMinigame();
+        emit minigameCanceled();
+      }
+    }, Qt::DirectConnection);
+  }
+
   emit minigameStarted();
 }
 

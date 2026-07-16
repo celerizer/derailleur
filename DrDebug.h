@@ -21,6 +21,7 @@ signals:
   void minigameRequested(
     DrGuest *guest, const dr_mp_minigame_t *minigame, std::array<dr_player_t, 4> players);
   void cancelRequested();
+  void setTurnRequested(int turn);
 
 private:
   void refreshMinis(int guestIdx);
