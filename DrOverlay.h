@@ -33,6 +33,7 @@ private:
   QPixmap m_sprite;
   int m_spriteY = 0;
   QTimer *m_bounceTimer = nullptr;
+  QTimer *m_spriteDelay = nullptr;
 };
 
 #endif

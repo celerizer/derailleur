@@ -7,6 +7,10 @@
 
 #include "DrCommon.h"
 
+/* Delay before the loading icon appears, so loads that finish quickly don't flash
+ * it on screen. The frozen-frame background still shows immediately. */
+#define DR_OVERLAY_ICON_DELAY_MS 400
+
 DrOverlay::DrOverlay(QWidget *parent)
   : QWidget(parent)
 {
@@ -39,6 +43,8 @@ void DrOverlay::setImage(const QImage &image)
 
 void DrOverlay::flash(const QPixmap &pixmap, int durationMs)
 {
+  if (m_spriteDelay)
+    m_spriteDelay->stop();
   if (m_bounceTimer)
     m_bounceTimer->stop();
 
@@ -76,16 +82,37 @@ void DrOverlay::hold(const QPixmap &pixmap)
     m_anim->deleteLater();
     m_anim = nullptr;
   }
-  pickRandomSprite();
+
+  /* Show the frozen frame right away to cover the core swap, but hold the loading
+   * icon back for a moment: a load that finishes before the delay fires never
+   * flashes an icon (fadeOut() cancels the pending reveal). */
+  m_sprite = QPixmap();
   if (m_bounceTimer)
-    m_bounceTimer->start();
+    m_bounceTimer->stop();
   setActive(true);
   setWindowOpacity(1.0);
   repaint();
+
+  if (!m_spriteDelay)
+  {
+    m_spriteDelay = new QTimer(this);
+    m_spriteDelay->setSingleShot(true);
+    connect(m_spriteDelay, &QTimer::timeout, this, [this]() {
+      pickRandomSprite();
+      if (m_bounceTimer)
+        m_bounceTimer->start();
+      repaint();
+    });
+  }
+  m_spriteDelay->start(DR_OVERLAY_ICON_DELAY_MS);
 }
 
 void DrOverlay::fadeOut(int durationMs)
 {
+  /* Cancel a not-yet-revealed icon so a quick load never flashes one. */
+  if (m_spriteDelay)
+    m_spriteDelay->stop();
+
   if (m_bounceTimer)
     m_bounceTimer->stop();
 
@@ -106,8 +133,7 @@ void DrOverlay::fadeOut(int durationMs)
   m_anim = nullptr;
 }
 
-#define DR_OVERLAY_SPRITE_COUNT 14
-#define DR_OVERLAY_SPRITE_COUNT 25
+#define DR_OVERLAY_SPRITE_COUNT 26
 
 void DrOverlay::pickRandomSprite()
 {
