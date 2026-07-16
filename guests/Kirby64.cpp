@@ -347,7 +347,7 @@ void Kirby64::run()
     }
 
     if (m_winnerIndex >= 0)
-      m_finishCountdown = 120;
+      m_finishCountdown = 150;
   }
 
   if (m_finishCountdown > 0)
