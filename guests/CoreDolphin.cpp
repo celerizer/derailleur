@@ -4,6 +4,7 @@
 #include <QTextStream>
 #include <QDir>
 #include <QApplication>
+#include <QRetroDirectories.h>
 
 static QString resolveDiscPath(const QString &base)
 {
@@ -15,7 +16,7 @@ static QString resolveDiscPath(const QString &base)
     return QString();
 }
 
-CoreDolphin::CoreDolphin(QObject *parent)
+CoreDolphin::CoreDolphin(const QString &subdir, QObject *parent)
   : DrGuest(parent)
 {
   /* Unique per instance so a second CoreDolphin (e.g. a Wii core alongside the
@@ -24,6 +25,15 @@ CoreDolphin::CoreDolphin(QObject *parent)
   m_retro = new DrRetro(this);
   m_retro->setCore(new QRetro(), true);
   m_m3uPath = QDir::temp().filePath(QString("derailleur_dolphin_%1.m3u").arg(s_instance++));
+  m_name = ("Dolphin " + subdir).toUtf8();
+
+  QRetroDirectories *dirs = core()->directories();
+  const QString system = QString::fromUtf8(dirs->get(QRetroDirectories::System)) + "/" + subdir;
+  const QString save = QString::fromUtf8(dirs->get(QRetroDirectories::Save)) + "/" + subdir;
+  QDir().mkpath(system);
+  QDir().mkpath(save);
+  dirs->set(QRetroDirectories::System, system);
+  dirs->set(QRetroDirectories::Save, save);
 }
 
 void CoreDolphin::startCore()

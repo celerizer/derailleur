@@ -13,13 +13,13 @@ class CoreDolphin : public DrGuest
   Q_OBJECT
 
 public:
-  CoreDolphin(QObject *parent = nullptr);
+  CoreDolphin(const QString &subdir, QObject *parent = nullptr);
   ~CoreDolphin();
 
   void addGame(DolphinGuest *game);
   void finalizeGames();
 
-  const char *name() const override { return "Dolphin"; }
+  const char *name() const override { return m_name.constData(); }
   dr_guest id() const override { return DR_GUEST_DOLPHIN; }
   unsigned warmupFrames() const override { return 5 * 60; }
 
@@ -46,6 +46,7 @@ private:
   DolphinGuest *m_delegate = nullptr;
   dr_mp_minigame_t *m_flatList = nullptr;
   QString m_m3uPath;
+  QByteArray m_name;
   int m_discIndex = -1;
 };
 

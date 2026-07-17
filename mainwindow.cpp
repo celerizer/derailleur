@@ -127,7 +127,7 @@ MainWindow::MainWindow(QWidget *parent)
   m_Netplay = new DrNetplay(m_InputStore, this);
   setupNetplay();
 
-  auto *dolphin = new CoreDolphin(this);
+  auto *dolphin = new CoreDolphin("gcn", this);
   dolphin->addGame(new MarioParty4(dolphin->core(), dolphin));
   dolphin->addGame(new MarioParty5(dolphin->core(), dolphin));
   dolphin->addGame(new MarioParty6(dolphin->core(), dolphin));
@@ -138,7 +138,7 @@ MainWindow::MainWindow(QWidget *parent)
   if (dolphin->isValid())
     m_Guests->add(dolphin);
 
-  auto *dolphinWii = new CoreDolphin(this);
+  auto *dolphinWii = new CoreDolphin("wii", this);
   dolphinWii->addGame(new MarioParty9(dolphinWii->core(), dolphinWii));
   dolphinWii->finalizeGames();
   if (dolphinWii->isValid())
