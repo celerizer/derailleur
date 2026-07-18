@@ -262,8 +262,6 @@ void MarioParty9::doApplyGameData(const DrGameData &data)
     m_retro->writeForFrames(MP9_TEAM_ADDR[slot], &team, sizeof(team), 60);
   }
 
-  /* Remap controls to match the Wii Remote layout this mini-game expects, stored
-   * in its (otherwise unused) scene_id slot. */
   applyRemap(data.minigame->scene_id);
 
   startMinigame();
