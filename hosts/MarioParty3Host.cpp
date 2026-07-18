@@ -192,7 +192,7 @@ static const dr_scene_name_t MP3_SCENE_NAMES[] =
   // { 0x67, "" },
   // { 0x68, "" },
   { 0x69, "Mini-Game Room" },
-  // { 0x6a, "" },
+  { 0x6a, "Chance Time" },
   // { 0x6b, "" },
   // { 0x6c, "" },
   // { 0x6d, "" },
@@ -272,6 +272,14 @@ static DrHostConfig makeConfig()
   config.panel_color_addr[1] = 0x800d115c;
   config.panel_color_addr[2] = 0x800d1194;
   config.panel_color_addr[3] = 0x800d11cc;
+  config.coins_addr[0] = 0x800d1112;
+  config.coins_addr[1] = 0x800d114a;
+  config.coins_addr[2] = 0x800d1182;
+  config.coins_addr[3] = 0x800d11ba;
+  config.mg_star_addr[0] = 0x800d1130;
+  config.mg_star_addr[1] = 0x800d1168;
+  config.mg_star_addr[2] = 0x800d11a0;
+  config.mg_star_addr[3] = 0x800d11d8;
 
   config.scene_board_results = 0x4f;
   config.scene_last_five_turns = 0x51;
