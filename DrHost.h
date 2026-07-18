@@ -91,6 +91,9 @@ struct DrHostConfig
   size_t result_addr[4];
   size_t bonus_result_addr[4];
   size_t panel_color_addr[4];
+  size_t coins_addr[4]; /* u16 current coins; 0 = not available */
+  size_t stars_addr[4]; /* u8 current stars; 0 = not available */
+  size_t mg_star_addr[4]; /* s16 mini-game star; 0 = not available */
   const dr_character *char_to_dr;
   unsigned char_to_dr_size;
   const dr_difficulty *diff_to_dr;

@@ -482,6 +482,19 @@ void DrHost::readPlayers(dr_minigame_type type)
     p.team_color  = (panelColors[i] < m_config.panel_color_to_dr_size)
                       ? m_config.panel_color_to_dr[panelColors[i]] : DR_TEAM_COLOR_INVALID;
     p.team_id = team;
+
+    if (m_config.coins_addr[i])
+    {
+      uint16_t coins = 0;
+      readu16(&coins, m_config.coins_addr[i]);
+      p.coins = coins;
+    }
+    if (m_config.stars_addr[i])
+    {
+      uint8_t stars = 0;
+      readu8(&stars, m_config.stars_addr[i]);
+      p.stars = stars;
+    }
   }
 
   for (unsigned i = 0; i < 4; i++)

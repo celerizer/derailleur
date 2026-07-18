@@ -192,6 +192,8 @@ typedef struct
   dr_team_color team_color;
   dr_team_type team_type;
   unsigned team_id;
+  signed coins; /* current board coins */
+  signed stars; /* current board stars */
 } dr_player_t;
 
 typedef struct
