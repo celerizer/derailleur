@@ -43,6 +43,7 @@
 #include "guests/SmashRemix.h"
 #include "guests/MarioTennis.h"
 #include "guests/PokemonStadium2.h"
+#include "guests/SonicShuffle.h"
 
 #define SHOW_LOGGER 1
 #define SHOW_OVERLAY 1
@@ -161,6 +162,7 @@ MainWindow::MainWindow(QWidget *parent)
   //addGuest(new MarioPartyE());
   addGuest(new Kirby64());
   addGuest(new BanjoTooie());
+  addGuest(new SonicShuffle());
 
 #if SHOW_LOGGER
   for (DrGuest *guest : m_Guests->guests())

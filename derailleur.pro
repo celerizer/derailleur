@@ -62,6 +62,7 @@ SOURCES += \
     guests/MarioTennis.cpp \
     guests/PokemonStadium2.cpp \
     guests/SmashRemix.cpp \
+    guests/SonicShuffle.cpp \
     main.cpp \
     mainwindow.cpp
 
@@ -106,6 +107,7 @@ HEADERS += \
     guests/MarioTennis.h \
     guests/PokemonStadium2.h \
     guests/SmashRemix.h \
+    guests/SonicShuffle.h \
     mainwindow.h
 
 RESOURCES += assets.qrc

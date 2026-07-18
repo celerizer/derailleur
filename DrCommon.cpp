@@ -66,6 +66,8 @@ QString dr_core_path(dr_core core)
     return cores_dir + "/dolphin_libretro" + dr_os_extension();
   case DR_CORE_MGBA:
     return cores_dir + "/mgba_libretro" + dr_os_extension();
+  case DR_CORE_FLYCAST:
+    return cores_dir + "/flycast_libretro" + dr_os_extension();
   default:
     return {};
   }

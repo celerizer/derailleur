@@ -67,6 +67,9 @@ typedef enum
   /// mGBA, Game Boy Advance emulator
   DR_CORE_MGBA,
 
+  /// Flycast, Sega Dreamcast emulator
+  DR_CORE_FLYCAST,
+
   DR_CORE_SIZE
 } dr_core;
 
@@ -152,6 +155,7 @@ typedef enum
   DR_GUEST_KIRBY64,
   DR_GUEST_BANJOTOOIE,
   DR_GUEST_MARIOPARTY9,
+  DR_GUEST_SONICSHUFFLE,
 
   DR_GUEST_SIZE
 } dr_guest;
