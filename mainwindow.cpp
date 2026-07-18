@@ -134,13 +134,11 @@ MainWindow::MainWindow(QWidget *parent)
   dolphin->addGame(new MarioParty7(dolphin->core(), dolphin));
   //dolphin->addGame(new KirbyAirRide(dolphin->core(), dolphin));
   //dolphin->addGame(new MarioKartDoubleDash(dolphin->core(), dolphin));
-  dolphin->finalizeGames();
   if (dolphin->isValid())
     m_Guests->add(dolphin);
 
   auto *dolphinWii = new CoreDolphin("wii", this);
   dolphinWii->addGame(new MarioParty9(dolphinWii->core(), dolphinWii));
-  dolphinWii->finalizeGames();
   if (dolphinWii->isValid())
     m_Guests->add(dolphinWii);
 
@@ -317,7 +315,8 @@ void MainWindow::startWithHost(DrHost *host)
   for (DrGuest *guest : m_Guests->guests())
     if (m_Guests->guestHasCandidate(guest) && guest->usesWarmup())
     {
-      guest->startCore();
+      if (!dynamic_cast<CoreDolphin *>(guest))
+        guest->startCore();
       m_warmupQueue.append(guest);
     }
   m_Host->startCore();
@@ -392,6 +391,18 @@ void MainWindow::warmupStep()
     return;
   }
 
+  if (auto *dolphin = dynamic_cast<CoreDolphin *>(guest))
+  {
+    dolphin->finalizeGames();
+    dolphin->startCore();
+    if (!dolphin->isValid())
+    {
+      m_warmupIndex++;
+      warmupStep();
+      return;
+    }
+  }
+
   // Show and run this guest while it warms up.
   m_Guests->setCurrentIndex(m_Guests->guests().indexOf(guest));
   guest->unpause();
@@ -420,7 +431,7 @@ void MainWindow::warmupStep()
       if (dynamic_cast<CoreDolphin *>(guest))
       {
         guest->core()->hide();
-        QTimer::singleShot(3000, this, [this]() { warmupStep(); });
+        QTimer::singleShot(1000, this, [this]() { warmupStep(); });
       }
       else
         warmupStep();
