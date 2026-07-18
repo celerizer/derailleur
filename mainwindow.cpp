@@ -410,10 +410,20 @@ void MainWindow::warmupStep()
 #endif
       guest->pause();
       m_warmupIndex++;
-      if (m_warmupIndex < m_warmupQueue.size())
-        warmupStep();
-      else
+
+      if (m_warmupIndex >= m_warmupQueue.size())
+      {
         showHost();
+        return;
+      }
+
+      if (dynamic_cast<CoreDolphin *>(guest))
+      {
+        guest->core()->hide();
+        QTimer::singleShot(3000, this, [this]() { warmupStep(); });
+      }
+      else
+        warmupStep();
     }, Qt::QueuedConnection);
 }
 
