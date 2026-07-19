@@ -4,6 +4,7 @@
 #include "DrCommon.h"
 #include "DrRetro.h"
 #include <cstdio>
+#include <string>
 #include <QList>
 #include <QObject>
 #include <QString>
@@ -40,21 +41,37 @@ public:
   virtual unsigned warmupFrames() const { return 30; }
 
   /// Whether this guest is booted and warmed up at startup. Guests that defer
-  /// loading their content until launch (e.g. PokemonStadium2) return false so
-  /// they are neither started nor added to the warmup queue.
+  /// loading their content until launch (the common case) return false so they
+  /// are neither started nor added to the warmup queue; the base then boots them
+  /// on first launch (see applyGameData). Only cores that must be set up ahead of
+  /// time (e.g. the shared Dolphin core, for state/disc swaps) keep this true.
   virtual bool usesWarmup() const { return true; }
+
+  /// Content path a deferred guest loads on its first launch. Ignored by warmed
+  /// guests (usesWarmup() == true).
+  virtual std::string gamePath() const { return {}; }
+
+  /// Frames to let the core boot after the deferred loadContent before the base
+  /// invokes doApplyGameData(). Override per core as needed.
+  virtual unsigned bootFrames() const { return 30; }
+
+  /// Whether the deferred doApplyGameData() must run on the GUI thread rather than
+  /// the core's timing thread. Most guests apply on the timing thread (safe for
+  /// state loads + memory writes); return true only if doApplyGameData does GUI
+  /// work like show()/waitFrames()/processEvents() (e.g. CoreDolphin's disc swap).
+  virtual bool applyOnGuiThread() const { return false; }
 
   virtual void startCore() {}
   virtual void pause() {}
   virtual void unpause() {}
   virtual QWidget *createWidget(QWidget *parent)
   {
-    QWidget *container = QWidget::createWindowContainer(core(), parent);
+    m_container = QWidget::createWindowContainer(core(), parent);
 
     /* Accept keyboard focus without needing to click */
-    container->setFocusPolicy(Qt::StrongFocus);
+    m_container->setFocusPolicy(Qt::StrongFocus);
 
-    return container;
+    return m_container;
   }
 
   void tick()
@@ -97,8 +114,16 @@ protected:
 
   /// Guest hook: apply `data` (minigame + 4 players) to the core in whatever way
   /// it needs — write player memory, load a savestate, start the minigame, etc.
-  /// Called by applyGameData() after m_minigame and quirks are set.
+  /// For deferred guests this runs once the core has booted (bootFrames after the
+  /// first launch); for warmed guests it runs immediately. See applyGameData().
   virtual void doApplyGameData(const DrGameData &data) = 0;
+
+  /// Deferred-guest hook run at launch time, *before* loadContent/startCore on the
+  /// first launch (and before the re-apply countdown on later launches). Use it for
+  /// anything that must precede the core booting — e.g. laying down hires-texture
+  /// data the core reads at content load. No-op by default; never called for warmed
+  /// guests (they are already booted).
+  virtual void onBeforeBoot(const DrGameData &data) { (void)data; }
 
   bool m_valid = true;
   bool m_minigameActive = false;
@@ -106,6 +131,19 @@ protected:
   int m_minigameFrameCount = 0;    // frames elapsed in the current minigame
   bool m_frameHookInstalled = false;
   const dr_mp_minigame_t *m_minigame = nullptr;
+
+  /// Resize the core's window to fill its container. Must run on the GUI thread;
+  /// the base queues it after a deferred boot (the core sizes itself to the game's
+  /// native resolution when it boots, so this makes the widget fill the area).
+  void resizeToContainer();
+
+  /* Deferred-boot state (see applyGameData). Protected so guests' run() can react
+   * to the boot window (e.g. mute while m_stateLoadCountdown > 0). */
+  bool m_started = false;           // content loaded + core booted
+  int m_stateLoadCountdown = 0;     // frames until doApplyGameData() is invoked
+  DrGameData m_pendingData;         // launch data awaiting the boot countdown
+  bool m_deferHookInstalled = false;
+  QWidget *m_container = nullptr;    // window container from createWidget()
 
 signals:
   void logMessage(unsigned level, const QString &message);

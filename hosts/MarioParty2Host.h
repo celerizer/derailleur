@@ -1,9 +1,9 @@
 #ifndef DR_HOST_MARIO_PARTY_2_HOST_H
 #define DR_HOST_MARIO_PARTY_2_HOST_H
 
-#include "../DrHost.h"
+#include "../MarioPartyN64Host.h"
 
-class MarioParty2Host : public DrHost
+class MarioParty2Host : public MarioPartyN64Host
 {
   Q_OBJECT
 

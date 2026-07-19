@@ -1,5 +1,6 @@
 #include "MarioPartyAdvance.h"
 
+#include <QFile>
 #include <QRetro.h>
 #include <QRetroDirectories.h>
 
@@ -53,16 +54,17 @@ MarioPartyAdvance::MarioPartyAdvance(QObject *parent)
   : DrGuest(parent)
 {
   m_retro = new DrRetro(this);
+  m_gamePath = (dr_roms_directory() + "/Mario Party Advance (USA).gba").toStdString();
   QRetro *c = new QRetro();
   if (!c->loadCore(dr_core_path(DR_CORE_MGBA).toStdString().c_str()))
   {
     log(DR_LOG_ERROR, "failed to load core: mgba_libretro.so");
     m_valid = false;
   }
-  if (!c->loadContent(
-        (dr_roms_directory() + "/Mario Party Advance (USA).gba").toStdString().c_str()))
+  /* Content is loaded lazily on the first launch (see DrGuest::applyGameData). */
+  if (!QFile::exists(QString::fromStdString(m_gamePath)))
   {
-    log(DR_LOG_ERROR, "failed to load content: Mario Party Advance (USA).gba");
+    log(DR_LOG_ERROR, "rom not found: Mario Party Advance (USA).gba");
     m_valid = false;
   }
   m_retro->setCore(c, true);

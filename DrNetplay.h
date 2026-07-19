@@ -234,7 +234,7 @@ private:
   int m_PeerIndex = 0;
   int m_PeerCount = 1;
   std::atomic<int> m_InputDelay{ 2 };
-  int m_TimeoutMs = 10000;
+  int m_TimeoutMs = 30000; /* stall this long before requesting a hard resync */
 
   bool m_Active = false;
   bool m_Abort = false;

@@ -255,7 +255,7 @@ static DrHostConfig makeConfig()
 }
 
 MarioParty1Host::MarioParty1Host(QObject *parent)
-  : DrHost(makeConfig(), parent)
+  : MarioPartyN64Host(makeConfig(), parent)
 {
   connect(
     m_core, &QRetro::frameEnd, this,

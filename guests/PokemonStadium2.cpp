@@ -48,10 +48,6 @@ static QImage ps2FitIcon(const QString &srcPath, int w, int h)
 static const char *PS2_HIRES_DIR =
   "system/Mupen64plus/hires_texture/POKEMON STADIUM 2/GLideNHQ";
 
-/* A freshly booted core can't be unserialized on its first frame; let it run its
- * init for a bit first, then load the state. */
-static const int PS2_BOOT_WARMUP_FRAMES = 16;
-
 // u8: single shared bot difficulty (0/1/2 = easy/normal/hard); use the hardest
 static const size_t PS2_BOT_DIFFICULTY_ADDR = 0x8012B361;
 
@@ -174,14 +170,6 @@ PokemonStadium2::PokemonStadium2(QObject *parent)
   }
 }
 
-QWidget *PokemonStadium2::createWidget(QWidget *parent)
-{
-  /* Capture the window container so we can resize the core to it once the
-   * deferred core boots (see run()). */
-  m_container = DrGuest::createWidget(parent);
-  return m_container;
-}
-
 void PokemonStadium2::startCore()
 {
   if (auto *c = core())
@@ -202,42 +190,6 @@ void PokemonStadium2::run()
     if (--m_muteFrames == 0)
       if (auto *a = core()->audio())
         a->setMute(false);
-  }
-
-  /* Once the boot warmup elapses, load the state, force the minigame, and signal
-   * the minigame is ready. */
-  if (m_stateLoadCountdown > 0 && --m_stateLoadCountdown == 0)
-  {
-    core()->unserializeFromFile(dr_state_directory() + "/pokemonstadium2.state.zip");
-    int8_t id = static_cast<int8_t>(m_minigame ? m_minigame->minigame_id : -1);
-    m_retro->writeForFrames(PS2_MINIGAME_ID_ADDR, &id, 1, 120);
-
-    /* Player setup: a human bitmask (bit i = player i human) and a single shared
-     * bot difficulty set to the hardest requested. */
-    uint8_t human = 0, difficulty = 0;
-    for (unsigned i = 0; i < 4; i++)
-    {
-      /* The human bitmask is indexed by in-game slot (controller port). */
-      if (m_players[i].control_type == DR_CONTROL_TYPE_HUMAN)
-        human |= (1u << ps2Slot(m_players[i], i));
-      difficulty = qMax(difficulty, ps2Difficulty(m_players[i].difficulty));
-    }
-    m_retro->writeForFrames(PS2_IS_HUMAN_ADDR, &human, 1, 120);
-    m_retro->writeForFrames(PS2_BOT_DIFFICULTY_ADDR, &difficulty, 1, 120);
-
-    startMinigame();
-    m_tempoWatchDelay = 120; // don't watch for the results tempo until settled
-    m_aPressDelay = 120;      // nudge past the post-load prompt with a P1 A press
-
-    /* This core booted late (deferred load) and QRetro sizes its window to the
-     * game's native resolution on boot, so resize it to the container now — the
-     * same fix the stack's currentChanged handler applies to warmed guests. */
-    if (m_pendingResize)
-    {
-      m_pendingResize = false;
-      if (m_container)
-        core()->resize(m_container->width(), m_container->height());
-    }
   }
 
   if (!m_minigame || !m_minigameActive)
@@ -316,17 +268,16 @@ const dr_mp_minigame_t *PokemonStadium2::minigames() const
   return PS2_MINIGAMES;
 }
 
-void PokemonStadium2::doApplyGameData(const DrGameData &data)
+/* Pre-boot (every launch): reset per-game state and lay down icon textures before
+ * the core (re)reads them. The player RAM is written later, in doApplyGameData. */
+void PokemonStadium2::onBeforeBoot(const DrGameData &data)
 {
-  m_stateLoadCountdown = 0;
   m_rampageRecording = false;
   m_rampageCount = 0;
   m_muteFrames = 60;
 
-  /* Record every player and lay down their icon textures now, before the boot,
-   * so GLideN64 reads them. The player values are applied to RAM later, in run()
-   * (after the state loads). Players are ordered in-game by controller port (Mario
-   * Party assigns ports non-linearly), so the icon for a player goes to their slot. */
+  /* Players are ordered in-game by controller port (Mario Party assigns ports
+   * non-linearly), so the icon for a player goes to their slot. */
   for (unsigned i = 0; i < 4; i++)
   {
     m_players[i] = data.players[i];
@@ -338,19 +289,34 @@ void PokemonStadium2::doApplyGameData(const DrGameData &data)
     m_slotToIndex[slot] = i;
     writePlayerIcon(slot, data.players[i].character);
   }
+}
 
-  if (!m_started)
+/* Post-boot (bootFrames after the first launch, next frame afterwards): load the
+ * state, force the minigame, write players, and start it. */
+void PokemonStadium2::doApplyGameData(const DrGameData &data)
+{
+  (void)data; /* players already recorded in onBeforeBoot; m_minigame set by base */
+
+  core()->unserializeFromFile(dr_state_directory() + "/pokemonstadium2.state.zip");
+  int8_t id = static_cast<int8_t>(m_minigame ? m_minigame->minigame_id : -1);
+  m_retro->writeForFrames(PS2_MINIGAME_ID_ADDR, &id, 1, 120);
+
+  /* Player setup: a human bitmask (bit i = player i human) and a single shared
+   * bot difficulty set to the hardest requested. */
+  uint8_t human = 0, difficulty = 0;
+  for (unsigned i = 0; i < 4; i++)
   {
-    m_started = true;
-    core()->loadContent(m_gamePath.toUtf8().constData());
-    startCore(); // connects frameBegin -> run() and boots
-    m_stateLoadCountdown = PS2_BOOT_WARMUP_FRAMES;
-    m_pendingResize = true; // resize the window once it's actually up (see run)
+    /* The human bitmask is indexed by in-game slot (controller port). */
+    if (m_players[i].control_type == DR_CONTROL_TYPE_HUMAN)
+      human |= (1u << ps2Slot(m_players[i], i));
+    difficulty = qMax(difficulty, ps2Difficulty(m_players[i].difficulty));
   }
-  else
-  {
-    m_stateLoadCountdown = 1; // already booted; load on the next frame
-  }
+  m_retro->writeForFrames(PS2_IS_HUMAN_ADDR, &human, 1, 120);
+  m_retro->writeForFrames(PS2_BOT_DIFFICULTY_ADDR, &difficulty, 1, 120);
+
+  startMinigame();
+  m_tempoWatchDelay = 120; // don't watch for the results tempo until settled
+  m_aPressDelay = 120;      // nudge past the post-load prompt with a P1 A press
 }
 
 unsigned PokemonStadium2::computeWinners()

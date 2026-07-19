@@ -1,6 +1,7 @@
 #include "SmashRemix.h"
 
 #include <QApplication>
+#include <QFile>
 
 static const dr_mp_minigame_t SR_MINIGAMES[] = {
   { "Remix Free-for-all", DR_MINIGAME_4P,     0x00, 0xFF, DR_NO_QUIRKS },
@@ -244,6 +245,7 @@ SmashRemix::SmashRemix(QObject *parent)
   m_retro = new DrRetroN64(this);
   QString corePath = dr_core_path(DR_CORE_MUPEN64PLUSNEXT);
   QString gamePath = dr_roms_directory() + "/smashremix.z64";
+  m_gamePath = gamePath.toStdString();
   QRetro *core = new QRetro();
   core->setSavingEnabled(false);
   if (!core->loadCore(corePath.toUtf8().constData()))
@@ -251,9 +253,10 @@ SmashRemix::SmashRemix(QObject *parent)
     log(DR_LOG_ERROR, qPrintable(QString("failed to load core: %1").arg(corePath)));
     m_valid = false;
   }
-  if (!core->loadContent(gamePath.toUtf8().constData()))
+  /* Content is loaded lazily on the first launch (see DrGuest::applyGameData). */
+  if (!QFile::exists(gamePath))
   {
-    log(DR_LOG_ERROR, qPrintable(QString("failed to load content: %1").arg(gamePath)));
+    log(DR_LOG_ERROR, qPrintable(QString("rom not found: %1").arg(gamePath)));
     m_valid = false;
   }
   m_retro->setCore(core, true);

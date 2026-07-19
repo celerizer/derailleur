@@ -37,6 +37,8 @@ public:
   ~MarioPartyN64() override;
 
   QRetro *core() const override { return m_retro ? m_retro->core() : nullptr; }
+  bool usesWarmup() const override { return false; }
+  std::string gamePath() const override { return m_config.game; }
   void startCore() override;
   void pause() override { if (m_retro) m_retro->pause(); }
   void unpause() override { if (m_retro) m_retro->unpause(); }

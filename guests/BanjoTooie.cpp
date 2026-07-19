@@ -7,10 +7,6 @@
 #include <QPainter>
 #include <QRetro.h>
 
-/* A freshly booted core can't be unserialized on its first frame; let it run its
- * init for a bit first, then load the state. */
-static const int BT_BOOT_WARMUP_FRAMES = 16;
-
 static const char *BT_HIRES_DIR =
   "system/Mupen64plus/hires_texture/BANJO TOOIE/GLideNHQ";
 
@@ -199,14 +195,6 @@ BanjoTooie::BanjoTooie(QObject *parent)
   m_retro->applyN64Remaps();
 }
 
-QWidget *BanjoTooie::createWidget(QWidget *parent)
-{
-  /* Capture the window container so we can resize the core to it once the deferred
-   * core boots (see run()). */
-  m_container = DrGuest::createWidget(parent);
-  return m_container;
-}
-
 void BanjoTooie::startCore()
 {
   if (auto *c = core())
@@ -224,25 +212,6 @@ void BanjoTooie::run()
   if (!m_minigameActive)
     if (auto *a = core()->audio())
       a->setMute(true);
-
-  /* Once the boot warmup elapses, load the state, poke the selected mini-game, and
-   * arm the confirming A press. */
-  if (m_stateLoadCountdown > 0 && --m_stateLoadCountdown == 0)
-  {
-    core()->unserializeFromFile(dr_state_directory() + "/banjotooie.state.zip");
-
-    uint16_t id = static_cast<uint16_t>(m_minigame ? m_minigame->minigame_id : 0);
-    m_retro->writeForFrames(BT_MINIGAME_ID_ADDR, &id, sizeof(id), 60);
-    m_aPressDelay = 60;
-    m_stateLoaded = true;
-
-    if (m_pendingResize)
-    {
-      m_pendingResize = false;
-      if (m_container)
-        core()->resize(m_container->width(), m_container->height());
-    }
-  }
 
   /* A few frames after the write, force a P1 A press to confirm the menu, then
    * release it shortly after so it reads as a discrete press. */
@@ -373,45 +342,42 @@ void BanjoTooie::writePlayerIcon(unsigned slot, dr_character character)
   saveTo(packing.copy(11 * S, 32 * S, 40 * S, 9 * S), BT_PACKING_BOTTOM_FILES[slot]);
 }
 
-void BanjoTooie::doApplyGameData(const DrGameData &data)
+/* Pre-boot (every launch): reset per-game state, cache players, and lay down each
+ * slot's kickball icon texture before the core (re)scans it. */
+void BanjoTooie::onBeforeBoot(const DrGameData &data)
 {
   m_minigameFrames = 0;
   m_pointersSeen = false;
   m_stateLoaded = false;
   m_aPressDelay = 0;
   m_aReleaseDelay = 0;
-  m_stateLoadCountdown = 0;
 
   for (unsigned i = 0; i < 4; i++)
   {
     m_players[i] = data.players[i];
     m_slotToIndex[i] = i;
   }
-  /* Map each in-game slot (controller port) back to its board player index, and lay
-   * down that slot's kickball icon texture now, before the boot, so GLideN64 reads
-   * them. State load + mini-game setup happen in run() after the boot warmup. */
   for (unsigned i = 0; i < 4; i++)
   {
     const unsigned slot = btSlot(m_players[i], i);
     m_slotToIndex[slot] = i;
     writePlayerIcon(slot, data.players[i].character);
   }
+}
 
-  if (!m_started)
-  {
-    m_started = true;
-    core()->loadContent(m_gamePath.toUtf8().constData());
-    startCore(); // connects frameBegin -> run() and boots
-    m_stateLoadCountdown = BT_BOOT_WARMUP_FRAMES;
-    m_pendingResize = true; // resize the window once it's actually up (see run)
-  }
-  else
-  {
-    m_stateLoadCountdown = 1; // already booted; load on the next frame
-  }
+/* Post-boot (bootFrames after the first launch): load the state and poke the
+ * selected mini-game; startMinigame() is deferred to run() once the mini-game's
+ * heap objects are populated (keeps the overlay up and the audio muted until then). */
+void BanjoTooie::doApplyGameData(const DrGameData &data)
+{
+  (void)data; /* players cached in onBeforeBoot; m_minigame set by base */
 
-  /* startMinigame() is deferred to run(), once the mini-game's heap objects are
-   * populated -- keeps the loading overlay up and the audio muted until then. */
+  core()->unserializeFromFile(dr_state_directory() + "/banjotooie.state.zip");
+
+  uint16_t id = static_cast<uint16_t>(m_minigame ? m_minigame->minigame_id : 0);
+  m_retro->writeForFrames(BT_MINIGAME_ID_ADDR, &id, sizeof(id), 60);
+  m_aPressDelay = 60;
+  m_stateLoaded = true;
 }
 
 dr_minigame_result_t BanjoTooie::minigameResult(unsigned index)

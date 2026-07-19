@@ -61,7 +61,67 @@ void DrGuest::applyGameData(const DrGameData &data)
     core()->options()->setOptionValue("dolphin_efb_scale", option_value);
   }
 
-  doApplyGameData(data);
+  /* Warmed guests (booted at startup, e.g. the Dolphin core) apply immediately.
+   * Deferred guests load their content and boot on the first launch, then apply
+   * once the core has run bootFrames() frames; subsequent launches re-apply on
+   * the next frame. The boot countdown is driven off the core's own frames. */
+  if (usesWarmup())
+  {
+    doApplyGameData(data);
+    return;
+  }
+
+  m_pendingData = data;
+  onBeforeBoot(data); /* pre-boot / pre-reload work (e.g. hires textures) */
+
+  if (m_started)
+  {
+    m_stateLoadCountdown = 1; /* already booted; apply on the next frame */
+    return;
+  }
+
+  m_started = true;
+  if (!gamePath().empty())
+    core()->loadContent(gamePath().c_str());
+  startCore();
+
+  if (!m_deferHookInstalled)
+  {
+    m_deferHookInstalled = true;
+    connect(core(), &QRetro::frameBegin, this, [this]() {
+      if (m_stateLoadCountdown <= 0)
+        return;
+      /* Mute through the boot window. On the first lazy launch mainwindow's mute
+       * ran before the core booted (audio() was still null), so re-assert it here
+       * each frame; the minigameStarted handler unmutes once the game starts. */
+      if (auto *a = core()->audio())
+        a->setMute(true);
+      if (--m_stateLoadCountdown != 0)
+        return;
+      /* The hook runs on the timing thread. Guests that do GUI work in
+       * doApplyGameData (show/waitFrames/processEvents) must be marshaled to the
+       * GUI thread; the rest apply directly (safe for state loads + memory). The
+       * container nudge always runs on the GUI thread, after the apply. */
+      if (applyOnGuiThread())
+        QMetaObject::invokeMethod(this, [this]() {
+          doApplyGameData(m_pendingData);
+          resizeToContainer();
+        }, Qt::QueuedConnection);
+      else
+      {
+        doApplyGameData(m_pendingData);
+        QMetaObject::invokeMethod(this, [this]() { resizeToContainer(); },
+          Qt::QueuedConnection);
+      }
+    }, Qt::DirectConnection);
+  }
+  m_stateLoadCountdown = bootFrames();
+}
+
+void DrGuest::resizeToContainer()
+{
+  if (m_container && core())
+    core()->resize(m_container->width(), m_container->height());
 }
 
 void DrGuest::startMinigame()

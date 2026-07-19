@@ -13,6 +13,8 @@ public:
   dr_guest id() const override { return DR_GUEST_MARIOTENNIS; }
 
   QRetro *core() const override { return m_retro ? m_retro->core() : nullptr; }
+  bool usesWarmup() const override { return false; }
+  std::string gamePath() const override { return m_gamePath; }
   void startCore() override;
   void pause() override { if (m_retro) m_retro->pause(); }
   void unpause() override { if (m_retro) m_retro->unpause(); }
@@ -27,6 +29,7 @@ private:
   void run();
 
   DrRetro *m_retro = nullptr;
+  std::string m_gamePath;
   dr_player_t m_players[4] = {};
   unsigned m_winners = 0;
   int m_finishCountdown = 0;

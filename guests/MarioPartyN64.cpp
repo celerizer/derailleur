@@ -1,5 +1,7 @@
 #include "MarioPartyN64.h"
 
+#include <QFile>
+
 MarioPartyN64::~MarioPartyN64()
 {
   delete m_retro;
@@ -18,9 +20,11 @@ MarioPartyN64::MarioPartyN64(const MpN64Config &config, QObject *parent)
     log(DR_LOG_ERROR, qPrintable(QString("failed to load core: %1").arg(m_config.core.c_str())));
     m_valid = false;
   }
-  if (!core->loadContent(m_config.game.c_str()))
+  /* Content is loaded lazily on the first launch (see DrGuest::applyGameData);
+   * just verify the ROM exists here so an absent one drops the guest at startup. */
+  if (!QFile::exists(QString::fromStdString(m_config.game)))
   {
-    log(DR_LOG_ERROR, qPrintable(QString("failed to load content: %1").arg(m_config.game.c_str())));
+    log(DR_LOG_ERROR, qPrintable(QString("rom not found: %1").arg(m_config.game.c_str())));
     m_valid = false;
   }
   m_retro->setCore(core, true);

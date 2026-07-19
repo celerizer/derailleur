@@ -142,10 +142,6 @@ static const char *K64_HIRES_DIR =
  * elements legible. */
 static const int K64_HIRES_SCALE = 4;
 
-/* A freshly booted core can't be unserialized on its first frame; let it run its
- * init for a bit first, then load the state. */
-static const int K64_BOOT_WARMUP_FRAMES = 16;
-
 /* 288x18 status bar which has every player's face icon */
 static const char *K64_HOP_FILE = "Kirby64#BDA2812C#2#0#02D5828F_ciByRGBA.png";
 
@@ -201,12 +197,6 @@ Kirby64::Kirby64(QObject *parent)
     core->input()->joypads()[port].setAnalogStickToDigitalPad(true);
 }
 
-QWidget *Kirby64::createWidget(QWidget *parent)
-{
-  m_container = DrGuest::createWidget(parent);
-  return m_container;
-}
-
 void Kirby64::startCore()
 {
   if (auto *c = core())
@@ -225,87 +215,6 @@ void Kirby64::run()
   if (!m_minigameActive)
     if (auto *a = core()->audio())
       a->setMute(true);
-
-  /* Once the boot warmup elapses, load the state, force game variables, and signal
-   * the minigame is ready. */
-  if (m_stateLoadCountdown > 0 && --m_stateLoadCountdown == 0)
-  {
-    core()->unserializeFromFile(dr_state_directory() + "/kirby64.state.zip");
-
-    int32_t id = static_cast<int32_t>(m_minigame ? m_minigame->minigame_id : -1);
-    m_retro->writeForFrames(K64_MINIGAME_ID_ADDR, &id, sizeof(id), 120);
-
-    uint32_t difficulty = 0;
-    for (unsigned i = 0; i < 4; i++)
-    {
-      difficulty = qMax(difficulty, k64Difficulty(m_players[i].difficulty));
-
-      /* Write each player into the in-game slot matching their controller port. */
-      const unsigned slot = k64Slot(m_players[i], i);
-
-      uint32_t character = 0;
-      uint32_t color = 0;
-
-      switch (m_players[i].character)
-      {
-      case DR_CHARACTER_MARIO:
-        character = K64_CHARACTER_KIRBY;
-        color = 0;
-        break;
-      case DR_CHARACTER_LUIGI:
-        character = K64_CHARACTER_KIRBY;
-        color = 2;
-        break;
-      case DR_CHARACTER_PEACH:
-        character = K64_CHARACTER_ADO;
-        color = 1;
-        break;
-      case DR_CHARACTER_YOSHI:
-        character = K64_CHARACTER_WADDLEDEE;
-        color = 2;
-        break;
-      case DR_CHARACTER_WARIO:
-        character = K64_CHARACTER_KIRBY;
-        color = 1;
-        break;
-      case DR_CHARACTER_DONKEY_KONG:
-        character = K64_CHARACTER_DEDEDE;
-        color = 2;
-        break;
-      case DR_CHARACTER_WALUIGI:
-        character = K64_CHARACTER_KIRBY;
-        color = 3;
-        break;
-      case DR_CHARACTER_DAISY:
-        character = K64_CHARACTER_ADO;
-        color = 2;
-        break;
-      default:
-        character = K64_CHARACTER_WADDLEDEE;
-        color = 0;
-        break;
-      }
-
-      m_retro->writeForFrames(K64_CHARACTER_ADDRS[slot], &character, sizeof(character), 120);
-      m_retro->writeForFrames(K64_COLOR_ADDRS[slot], &color, sizeof(color), 120);
-
-      uint8_t bot = (m_players[i].control_type == DR_CONTROL_TYPE_CPU) ? 1 : 0;
-      m_retro->writeForFrames(K64_IS_BOT_ADDRS[slot], &bot, sizeof(bot), 120);
-    }
-
-    m_retro->writeForFrames(K64_CPU_DIFFICULTY_ADDR, &difficulty, sizeof(difficulty), 120);
-
-    /* Press A shortly after loading to advance past the ready prompt. The overlay
-     * stays up (we don't startMinigame yet) until the press completes. */
-    m_aPressDelay = 16;
-
-    if (m_pendingResize)
-    {
-      m_pendingResize = false;
-      if (m_container)
-        core()->resize(m_container->width(), m_container->height());
-    }
-  }
 
   /* Forced P1 A press: hold briefly so it registers as a press, then release and
    * start the minigame (which drops the loading overlay). */
@@ -362,16 +271,16 @@ const dr_mp_minigame_t *Kirby64::minigames() const
   return K64_MINIGAMES;
 }
 
-void Kirby64::doApplyGameData(const DrGameData &data)
+/* Pre-boot (every launch): reset per-game state, cache players, and lay down the
+ * dynamic hires icon textures before the core (re)scans them. */
+void Kirby64::onBeforeBoot(const DrGameData &data)
 {
-  m_stateLoadCountdown = 0;
   m_minigameFrames = 0;
   m_winnerIndex = -1;
   m_finishCountdown = -1;
   m_aPressDelay = 0;
   m_aReleaseDelay = 0;
 
-  /* Cache players data and process all dynamic custom texture injections */
   for (unsigned i = 0; i < 4; i++)
   {
     m_players[i] = data.players[i];
@@ -381,19 +290,82 @@ void Kirby64::doApplyGameData(const DrGameData &data)
   for (unsigned i = 0; i < 4; i++)
     m_slotToIndex[k64Slot(m_players[i], i)] = i;
   writePlayerIcons(data);
+}
 
-  if (!m_started)
+/* Post-boot (bootFrames after the first launch): load the state and force game
+ * variables; startMinigame() fires later in run() after the P1 A-press nudge. */
+void Kirby64::doApplyGameData(const DrGameData &data)
+{
+  (void)data; /* players cached in onBeforeBoot; m_minigame set by base */
+
+  core()->unserializeFromFile(dr_state_directory() + "/kirby64.state.zip");
+
+  int32_t id = static_cast<int32_t>(m_minigame ? m_minigame->minigame_id : -1);
+  m_retro->writeForFrames(K64_MINIGAME_ID_ADDR, &id, sizeof(id), 120);
+
+  uint32_t difficulty = 0;
+  for (unsigned i = 0; i < 4; i++)
   {
-    m_started = true;
-    core()->loadContent(m_gamePath.toUtf8().constData());
-    startCore();
-    m_stateLoadCountdown = K64_BOOT_WARMUP_FRAMES;
-    m_pendingResize = true;
+    difficulty = qMax(difficulty, k64Difficulty(m_players[i].difficulty));
+
+    /* Write each player into the in-game slot matching their controller port. */
+    const unsigned slot = k64Slot(m_players[i], i);
+
+    uint32_t character = 0;
+    uint32_t color = 0;
+
+    switch (m_players[i].character)
+    {
+    case DR_CHARACTER_MARIO:
+      character = K64_CHARACTER_KIRBY;
+      color = 0;
+      break;
+    case DR_CHARACTER_LUIGI:
+      character = K64_CHARACTER_KIRBY;
+      color = 2;
+      break;
+    case DR_CHARACTER_PEACH:
+      character = K64_CHARACTER_ADO;
+      color = 1;
+      break;
+    case DR_CHARACTER_YOSHI:
+      character = K64_CHARACTER_WADDLEDEE;
+      color = 2;
+      break;
+    case DR_CHARACTER_WARIO:
+      character = K64_CHARACTER_KIRBY;
+      color = 1;
+      break;
+    case DR_CHARACTER_DONKEY_KONG:
+      character = K64_CHARACTER_DEDEDE;
+      color = 2;
+      break;
+    case DR_CHARACTER_WALUIGI:
+      character = K64_CHARACTER_KIRBY;
+      color = 3;
+      break;
+    case DR_CHARACTER_DAISY:
+      character = K64_CHARACTER_ADO;
+      color = 2;
+      break;
+    default:
+      character = K64_CHARACTER_WADDLEDEE;
+      color = 0;
+      break;
+    }
+
+    m_retro->writeForFrames(K64_CHARACTER_ADDRS[slot], &character, sizeof(character), 120);
+    m_retro->writeForFrames(K64_COLOR_ADDRS[slot], &color, sizeof(color), 120);
+
+    uint8_t bot = (m_players[i].control_type == DR_CONTROL_TYPE_CPU) ? 1 : 0;
+    m_retro->writeForFrames(K64_IS_BOT_ADDRS[slot], &bot, sizeof(bot), 120);
   }
-  else
-  {
-    m_stateLoadCountdown = 1;
-  }
+
+  m_retro->writeForFrames(K64_CPU_DIFFICULTY_ADDR, &difficulty, sizeof(difficulty), 120);
+
+  /* Press A shortly after loading to advance past the ready prompt. The overlay
+   * stays up (we don't startMinigame yet) until the press completes. */
+  m_aPressDelay = 16;
 }
 
 dr_minigame_result_t Kirby64::minigameResult(unsigned index)

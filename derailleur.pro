@@ -28,6 +28,7 @@ SOURCES += \
     DrDownloader.cpp \
     DrGuest.cpp \
     DrHost.cpp \
+    MarioPartyN64Host.cpp \
     DrInputStore.cpp \
     DrMinigameFilter.cpp \
     DrNetplay.cpp \
@@ -73,6 +74,7 @@ HEADERS += \
     DrGuest.h \
     DrGuestList.h \
     DrHost.h \
+    MarioPartyN64Host.h \
     DrInputStore.h \
     DrMinigameFilter.h \
     DrNetplay.h \

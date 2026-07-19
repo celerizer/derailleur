@@ -19,12 +19,8 @@ static QString resolveDiscPath(const QString &base)
 CoreDolphin::CoreDolphin(const QString &subdir, QObject *parent)
   : DrGuest(parent)
 {
-  /* Unique per instance so a second CoreDolphin (e.g. a Wii core alongside the
-   * GameCube one) doesn't clobber the first's disc list. */
-  static int s_instance = 0;
   m_retro = new DrRetro(this);
   m_retro->setCore(new QRetro(), true);
-  m_m3uPath = QDir::temp().filePath(QString("derailleur_dolphin_%1.m3u").arg(s_instance++));
   m_name = ("Dolphin " + subdir).toUtf8();
 
   QRetroDirectories *dirs = core()->directories();
@@ -34,6 +30,10 @@ CoreDolphin::CoreDolphin(const QString &subdir, QObject *parent)
   QDir().mkpath(save);
   dirs->set(QRetroDirectories::System, system);
   dirs->set(QRetroDirectories::Save, save);
+
+  /* Keep the disc list inside this instance's own system subdir so a second
+   * CoreDolphin (e.g. a Wii core alongside the GameCube one) can't clobber it. */
+  m_m3uPath = system + "/discs.m3u";
 }
 
 void CoreDolphin::startCore()
@@ -96,6 +96,9 @@ void CoreDolphin::addGame(DolphinGuest *game)
 
 void CoreDolphin::finalizeGames()
 {
+  /* Only write the disc-list m3u here; the base loads it lazily on the first
+   * launch (gamePath() returns m_m3uPath) so the two Dolphin cores don't both
+   * boot at startup. */
   QFile m3u(m_m3uPath);
   if (m3u.open(QIODevice::WriteOnly | QIODevice::Text))
   {
@@ -103,10 +106,9 @@ void CoreDolphin::finalizeGames()
     for (const QString &path : m_discPaths)
       out << path << "\n";
   }
-
-  if (!core()->loadContent(m_m3uPath.toStdString().c_str()))
+  else
   {
-    log(DR_LOG_ERROR, qPrintable(QString("failed to load content: %1").arg(m_m3uPath)));
+    log(DR_LOG_ERROR, qPrintable(QString("failed to write disc list: %1").arg(m_m3uPath)));
     m_valid = false;
   }
 }
@@ -210,6 +212,6 @@ void CoreDolphin::doApplyGameData(const DrGameData &data)
     core()->waitFrames(1);
     QApplication::processEvents();
   }
-  core()->pause();
+  
   startMinigame();
 }

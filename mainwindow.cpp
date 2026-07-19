@@ -265,16 +265,39 @@ void MainWindow::connectCoreLog(QRetro *core)
 
   qRegisterMetaType<QRetroMessageEntry>();
 
-  /* onCoreLog fires on the emulation thread; a queued connection marshals it to
-   * the logger's (GUI) thread. Map the libretro level onto ours and tag it. */
-  connect(core, &QRetro::onCoreLog, m_Logger,
-    [logger = m_Logger](int level, const QString &msg) {
+  /* onCoreLog fires on the emulation thread. Some cores (e.g. Flycast) log the
+   * same line every frame; marshaling each straight to the GUI-thread logger via a
+   * queued connection floods the event queue and freezes the UI. So dedupe
+   * consecutive identical lines here on the emu thread (a direct connection) and
+   * only forward distinct ones, collapsing runs into a "repeated Nx" note. The
+   * dedupe state is per-core, captured per connection. */
+  auto lastMsg = std::make_shared<QString>();
+  auto repeats = std::make_shared<int>(0);
+  DrLogger *logger = m_Logger;
+  connect(core, &QRetro::onCoreLog, this,
+    [logger, lastMsg, repeats](int level, const QString &msg) {
+      if (msg == *lastMsg)
+      {
+        ++*repeats;
+        return;
+      }
+      const int skipped = *repeats;
+      *repeats = 0;
+      *lastMsg = msg;
+
       const unsigned lvl = level >= RETRO_LOG_ERROR ? DR_LOG_ERROR
                          : level == RETRO_LOG_WARN  ? DR_LOG_WARN
                                                     : DR_LOG_INFO;
-      logger->message(lvl, QStringLiteral("[core] ") + msg);
+      QMetaObject::invokeMethod(logger,
+        [logger, lvl, msg, skipped]() {
+          if (skipped > 0)
+            logger->message(DR_LOG_INFO,
+              QStringLiteral("[core] (previous line repeated %1x)").arg(skipped));
+          logger->message(lvl, QStringLiteral("[core] ") + msg);
+        },
+        Qt::QueuedConnection);
     },
-    Qt::QueuedConnection);
+    Qt::DirectConnection);
 
   /* On-screen core messages (SET_MESSAGE / SET_MESSAGE_EXT) surface in the log too. */
   connect(core, &QRetro::onCoreMessage, m_Logger,
@@ -327,6 +350,23 @@ void MainWindow::startWithHost(DrHost *host)
   m_HostContainer = QWidget::createWindowContainer(m_Host->core(), m_Stack);
   m_HostContainer->setFocusPolicy(Qt::StrongFocus);
   m_Stack->addWidget(m_HostContainer);
+
+  /* The host core is paused until showHost() unpauses it, and it sizes itself to
+   * the game's native resolution once it starts running. Nudge it to fill its
+   * container once it has actually booted a few frames (mirrors the deferred-guest
+   * nudge). One-shot: disconnects itself after the first resize. */
+  {
+    auto conn = std::make_shared<QMetaObject::Connection>();
+    *conn = connect(m_Host->core(), &QRetro::frameBegin, this, [this, conn]() {
+      if (!m_Host || !m_Host->core() || m_Host->core()->frames() < 10)
+        return;
+      QObject::disconnect(*conn);
+      QMetaObject::invokeMethod(this, [this]() {
+        if (m_HostContainer && m_Host && m_Host->core())
+          m_Host->core()->resize(m_HostContainer->width(), m_HostContainer->height());
+      }, Qt::QueuedConnection);
+    }, Qt::DirectConnection);
+  }
 
 #if SHOW_DEBUG
   connect(m_Debug, &DrDebug::minigameRequested, this,

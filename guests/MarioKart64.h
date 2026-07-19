@@ -13,6 +13,8 @@ public:
   dr_guest id() const override { return DR_GUEST_MARIOKART64; }
 
   QRetro *core() const override { return m_retro ? m_retro->core() : nullptr; }
+  bool usesWarmup() const override { return false; }
+  std::string gamePath() const override { return m_gamePath; }
   void startCore() override;
   void pause() override { if (m_retro) m_retro->pause(); }
   void unpause() override { if (m_retro) m_retro->unpause(); }
@@ -25,6 +27,7 @@ public:
 private:
   void run() override;
   DrRetro *m_retro = nullptr;
+  std::string m_gamePath;
   dr_character m_characters[4] = {};
   dr_control_port m_ports[4] = { DR_CONTROL_PORT_P1, DR_CONTROL_PORT_P2, DR_CONTROL_PORT_P3,
     DR_CONTROL_PORT_P4 };

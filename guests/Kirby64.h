@@ -29,18 +29,19 @@ public:
   void unpause() override { if (m_retro) m_retro->unpause(); }
 
   bool usesWarmup() const override { return false; }
+  std::string gamePath() const override { return m_gamePath.toStdString(); }
+  unsigned bootFrames() const override { return 16; }
 
   dr_minigame_result_t minigameResult(unsigned index) override;
   const dr_mp_minigame_t *minigames() const override;
 
 private:
-  QWidget *createWidget(QWidget *parent) override;
   void run() override;
   void doApplyGameData(const DrGameData &data) override;
+  void onBeforeBoot(const DrGameData &data) override;
   void writePlayerIcons(const DrGameData &data);
 
   DrRetro *m_retro = nullptr;
-  QWidget *m_container = nullptr;
   dr_player_t m_players[4] = {};
   int m_slotToIndex[4] = { 0, 1, 2, 3 }; // in-game slot -> board player index
   int m_minigameFrames = 0;
@@ -48,9 +49,6 @@ private:
   int m_finishCountdown = -1;
 
   QString m_gamePath;
-  bool m_started = false;
-  bool m_pendingResize = false;
-  int m_stateLoadCountdown = 0;
   int m_aPressDelay = 0;   // frames after load before forcing a P1 A press (0 = idle)
   int m_aReleaseDelay = 0; // frames to hold the forced A before releasing + starting
 };

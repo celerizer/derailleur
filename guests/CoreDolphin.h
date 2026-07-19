@@ -21,7 +21,15 @@ public:
 
   const char *name() const override { return m_name.constData(); }
   dr_guest id() const override { return DR_GUEST_DOLPHIN; }
-  unsigned warmupFrames() const override { return 5 * 60; }
+
+  /* Deferred like the other guests, but the disc/state swap in doApplyGameData
+   * needs the core fully booted, so warm up for bootFrames() after the lazy
+   * loadContent, and run doApplyGameData on the GUI thread (it does show(),
+   * waitFrames() and processEvents()). finalizeGames writes the m3u the base loads. */
+  bool usesWarmup() const override { return false; }
+  std::string gamePath() const override { return m_m3uPath.toStdString(); }
+  unsigned bootFrames() const override { return 5 * 60; }
+  bool applyOnGuiThread() const override { return true; }
 
   QRetro *core() const override { return m_retro ? m_retro->core() : nullptr; }
   void startCore() override;

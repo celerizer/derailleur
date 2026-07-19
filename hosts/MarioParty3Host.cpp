@@ -58,7 +58,7 @@ static const char MP3_CHEAT_DUEL_BOARD[] =
   "+810DFEC4 2400"
   "+810DE2AC 2400";
 
-// Hardware addresses (accessed wordflipped via DrHost). u8 fields unflip ^3.
+// Hardware addresses (accessed wordflipped via MarioPartyN64Host). u8 fields unflip ^3.
 static const size_t MP3_SLOT_ADDRS[5] = {
   0x80102C08, // slot 0
   0x80102C09, // slot 1
@@ -324,7 +324,7 @@ static DrHostConfig makeConfig()
 }
 
 MarioParty3Host::MarioParty3Host(QObject *parent)
-  : DrHost(makeConfig(), parent)
+  : MarioPartyN64Host(makeConfig(), parent)
 {
   connect(
     m_core, &QRetro::frameEnd, this,

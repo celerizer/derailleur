@@ -1,5 +1,6 @@
 #include "MarioKart64.h"
 
+#include <QFile>
 #include <QRetro.h>
 
 // Hardware addresses (accessed wordflipped via DrRetroN64). u8 fields unflip ^3;
@@ -76,6 +77,7 @@ MarioKart64::MarioKart64(QObject *parent)
   m_retro = new DrRetroN64(this);
   QString corePath = dr_core_path(DR_CORE_MUPEN64PLUSNEXT);
   QString gamePath = dr_roms_directory() + "/Mario Kart 64 (USA).z64";
+  m_gamePath = gamePath.toStdString();
   QRetro *c = new QRetro();
   c->setSavingEnabled(false);
   if (!c->loadCore(corePath.toUtf8().constData()))
@@ -83,9 +85,10 @@ MarioKart64::MarioKart64(QObject *parent)
     log(DR_LOG_ERROR, qPrintable(QString("failed to load core: %1").arg(corePath)));
     m_valid = false;
   }
-  if (!c->loadContent(gamePath.toUtf8().constData()))
+  /* Content is loaded lazily on the first launch (see DrGuest::applyGameData). */
+  if (!QFile::exists(gamePath))
   {
-    log(DR_LOG_ERROR, qPrintable(QString("failed to load content: %1").arg(gamePath)));
+    log(DR_LOG_ERROR, qPrintable(QString("rom not found: %1").arg(gamePath)));
     m_valid = false;
   }
   m_retro->setCore(c, true);
