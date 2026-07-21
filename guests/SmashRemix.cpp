@@ -12,6 +12,7 @@ static const dr_mp_minigame_t SR_MINIGAMES[] = {
   { "Remix Giant Battle", DR_MINIGAME_1V3, 0x02, 0xFF, DR_NO_QUIRKS },
   { "Remix Tiny Battle",  DR_MINIGAME_1V3, 0x03, 0xFF, DR_NO_QUIRKS },
   { "Remix Golden Gun",   DR_MINIGAME_1V3, 0x04, 0xFF, DR_NO_QUIRKS },
+  { "Remix Hammer",  DR_MINIGAME_1V3, 0x06, 0xFF, DR_NO_QUIRKS },
 
   { "Remix PKMN", DR_MINIGAME_4P, 0x05, 0xFF, DR_NO_QUIRKS },
 
@@ -455,6 +456,11 @@ void SmashRemix::applyPlayers()
     {
       /* Remix Pokemon: everyone starts with a pokeball (no taunt item). */
       startItem = SR_ITEM_POKEBALL;
+    }
+    else if (m_minigame->minigame_id == 0x06 && p.team_type == DR_TEAM_TYPE_1V3_SOLO)
+    {
+      startItem = SR_ITEM_HAMMER;
+      tauntItem = SR_ITEM_HAMMER;
     }
     m_retro->writeu32(startItem, SR_START_ITEM_ADDR[slot]);
     m_retro->writeu32(tauntItem, SR_TAUNT_ITEM_ADDR[slot]);
