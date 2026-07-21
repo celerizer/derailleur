@@ -41,6 +41,7 @@
 #include "guests/MarioPartyAdvance.h"
 #include "guests/MarioPartyE.h"
 #include "guests/SmashRemix.h"
+#include "guests/SuperMarioBros3.h"
 #include "guests/MarioTennis.h"
 #include "guests/PokemonStadium2.h"
 #include "guests/SonicShuffle.h"
@@ -156,6 +157,7 @@ MainWindow::MainWindow(QWidget *parent)
   addGuest(new MarioParty2());
   addGuest(new MarioParty3());
   addGuest(new SmashRemix());
+  addGuest(new SuperMarioBros3());
   addGuest(new MarioTennis());
   addGuest(new PokemonStadium2());
   //addGuest(new MarioPartyAdvance());
