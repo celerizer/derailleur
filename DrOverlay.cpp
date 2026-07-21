@@ -133,7 +133,7 @@ void DrOverlay::fadeOut(int durationMs)
   m_anim = nullptr;
 }
 
-#define DR_OVERLAY_SPRITE_COUNT 34
+#define DR_OVERLAY_SPRITE_COUNT 36
 
 void DrOverlay::pickRandomSprite()
 {
