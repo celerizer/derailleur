@@ -23,6 +23,10 @@ CoreDolphin::CoreDolphin(const QString &subdir, QObject *parent)
   m_retro->setCore(new QRetro(), true);
   m_name = ("Dolphin " + subdir).toUtf8();
 
+  /* Pretend to not support gyro/accel so we can use the sticks */
+  core()->setEnvironmentCallbackSupported(RETRO_ENVIRONMENT_GET_SENSOR_INTERFACE, false);
+
+  /* Give each Dolphin its own system and save directories */
   QRetroDirectories *dirs = core()->directories();
   const QString system = QString::fromUtf8(dirs->get(QRetroDirectories::System)) + "/" + subdir;
   const QString save = QString::fromUtf8(dirs->get(QRetroDirectories::Save)) + "/" + subdir;
@@ -31,8 +35,7 @@ CoreDolphin::CoreDolphin(const QString &subdir, QObject *parent)
   dirs->set(QRetroDirectories::System, system);
   dirs->set(QRetroDirectories::Save, save);
 
-  /* Keep the disc list inside this instance's own system subdir so a second
-   * CoreDolphin (e.g. a Wii core alongside the GameCube one) can't clobber it. */
+  /* Make the playlist in, for example, /system/gcn/discs.m3u */
   m_m3uPath = system + "/discs.m3u";
 }
 
