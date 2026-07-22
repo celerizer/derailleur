@@ -23,6 +23,7 @@ CONFIG += QRETRO_CONFIG_NO_SYSTEMINFO
 include(QRetro/QRetro.pri)
 
 SOURCES += \
+    DrChallenge.cpp \
     DrCommon.cpp \
     DrDebug.cpp \
     DrDownloader.cpp \
@@ -44,6 +45,7 @@ SOURCES += \
     hosts/MarioParty3Host.cpp \
     guests/BanjoTooie.cpp \
     guests/CoreDolphin.cpp \
+    guests/DolphinGuest.cpp \
     guests/Kirby64.cpp \
     guests/KirbyAirRide.cpp \
     guests/MarioKart64.cpp \
@@ -58,6 +60,7 @@ SOURCES += \
     guests/MarioParty5.cpp \
     guests/MarioParty6.cpp \
     guests/MarioParty7.cpp \
+    guests/MarioParty8.cpp \
     guests/MarioParty9.cpp \
     guests/MarioPartyGcn.cpp \
     guests/MarioTennis.cpp \
@@ -65,10 +68,12 @@ SOURCES += \
     guests/SmashRemix.cpp \
     guests/SonicShuffle.cpp \
     guests/SuperMarioBros3.cpp \
+    guests/YoshisIsland.cpp \
     main.cpp \
     mainwindow.cpp
 
 HEADERS += \
+    DrChallenge.h \
     DrCommon.h \
     DrDebug.h \
     DrDownloader.h \
@@ -105,6 +110,7 @@ HEADERS += \
     guests/MarioParty5.h \
     guests/MarioParty6.h \
     guests/MarioParty7.h \
+    guests/MarioParty8.h \
     guests/MarioParty9.h \
     guests/MarioPartyGcn.h \
     guests/MarioTennis.h \
@@ -112,6 +118,7 @@ HEADERS += \
     guests/SmashRemix.h \
     guests/SonicShuffle.h \
     guests/SuperMarioBros3.h \
+    guests/YoshisIsland.h \
     mainwindow.h
 
 RESOURCES += assets.qrc

@@ -8,6 +8,8 @@
 #include "DrGuest.h"
 
 class QComboBox;
+class QMenu;
+class QToolButton;
 
 class DrDebug : public QWidget
 {
@@ -25,6 +27,7 @@ signals:
 
 private:
   void refreshMinis(int guestIdx);
+  void selectEntry(int idx);
 
   /* Per-player dropdowns. Port is fixed by player index and the team fields are
    * inferred from the minigame type, so only these are user-selectable. */
@@ -36,7 +39,11 @@ private:
   };
 
   QComboBox *m_guestCombo = nullptr;
-  QComboBox *m_combo = nullptr;
+  /* Mini-game picker: a button whose pop-up menu groups mini-games into a
+   * submenu per type, so you hover a type then pick a mini-game. */
+  QToolButton *m_miniButton = nullptr;
+  QMenu *m_miniMenu = nullptr;
+  int m_selectedEntry = -1; /* index into m_entries, or -1 */
   std::array<PlayerControls, 4> m_players{};
   QList<QPair<DrGuest *, DrMinigameGroup>> m_groups;
   QList<QPair<DrGuest *, const dr_mp_minigame_t *>> m_entries;

@@ -2,15 +2,19 @@
 
 #include <functional>
 
+#include <QAction>
 #include <QComboBox>
 #include <QFormLayout>
 #include <QGridLayout>
 #include <QGroupBox>
 #include <QHBoxLayout>
+#include <QHash>
 #include <QLabel>
+#include <QMenu>
 #include <QPushButton>
 #include <QRandomGenerator>
 #include <QSpinBox>
+#include <QToolButton>
 #include <QVBoxLayout>
 
 namespace
@@ -61,9 +65,23 @@ DrDebug::DrDebug(QWidget *parent)
   m_guestCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
   layout->addWidget(m_guestCombo);
 
-  m_combo = new QComboBox(this);
-  m_combo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
-  layout->addWidget(m_combo);
+  m_miniMenu = new QMenu(this);
+  m_miniButton = new QToolButton(this);
+  m_miniButton->setPopupMode(QToolButton::InstantPopup);
+  m_miniButton->setToolButtonStyle(Qt::ToolButtonTextOnly);
+  m_miniButton->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
+  m_miniButton->setMenu(m_miniMenu);
+  m_miniButton->setText(tr("(no mini-game)"));
+  layout->addWidget(m_miniButton);
+
+  /* QMenu::triggered fires for actions in submenus too; each action stores its
+   * index into m_entries. */
+  connect(m_miniMenu, &QMenu::triggered, this, [this](QAction *act) {
+    bool ok = false;
+    const int idx = act->data().toInt(&ok);
+    if (ok)
+      selectEntry(idx);
+  });
 
   connect(m_guestCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
     [this](int idx) { refreshMinis(idx); });
@@ -105,7 +123,7 @@ DrDebug::DrDebug(QWidget *parent)
 
   QPushButton *btn = new QPushButton("Request Minigame", this);
   connect(btn, &QPushButton::clicked, this, [this]() {
-    int idx = m_combo->currentIndex();
+    int idx = m_selectedEntry;
     if (idx < 0 || idx >= m_entries.size())
       return;
 
@@ -214,14 +232,41 @@ void DrDebug::populate(const QList<DrGuest *> &guests)
 
 void DrDebug::refreshMinis(int groupIdx)
 {
-  m_combo->clear();
+  m_miniMenu->clear();
   m_entries.clear();
+  m_selectedEntry = -1;
+  m_miniButton->setText(tr("(no mini-game)"));
   if (groupIdx < 0 || groupIdx >= m_groups.size())
     return;
   const auto &[guest, group] = m_groups[groupIdx];
+
+  /* One submenu per mini-game type, created on first use so only the types
+   * present in this group appear. */
+  QHash<int, QMenu *> typeMenus;
   for (const dr_mp_minigame_t *mg : group.minigames)
   {
-    m_combo->addItem(QString::fromUtf8(mg->name));
+    const int entryIdx = m_entries.size();
     m_entries.append({ guest, mg });
+
+    QMenu *sub = typeMenus.value(mg->type, nullptr);
+    if (!sub)
+    {
+      sub = m_miniMenu->addMenu(QString::fromUtf8(dr_minigame_type_name(mg->type)));
+      typeMenus.insert(mg->type, sub);
+    }
+    QAction *act = sub->addAction(QString::fromUtf8(mg->name));
+    act->setData(entryIdx);
   }
+
+  /* Default to the first entry so the picker isn't empty. */
+  if (!m_entries.isEmpty())
+    selectEntry(0);
+}
+
+void DrDebug::selectEntry(int idx)
+{
+  if (idx < 0 || idx >= m_entries.size())
+    return;
+  m_selectedEntry = idx;
+  m_miniButton->setText(QString::fromUtf8(m_entries[idx].second->name));
 }

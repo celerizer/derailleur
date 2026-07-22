@@ -70,6 +70,8 @@ QString dr_core_path(dr_core core)
     return cores_dir + "/flycast_libretro" + dr_os_extension();
   case DR_CORE_FCEUMM:
     return cores_dir + "/fceumm_libretro" + dr_os_extension();
+  case DR_CORE_SNES9X:
+    return cores_dir + "/snes9x_libretro" + dr_os_extension();
   default:
     return {};
   }

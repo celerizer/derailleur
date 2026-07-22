@@ -114,6 +114,12 @@ void CoreDolphin::finalizeGames()
     log(DR_LOG_ERROR, qPrintable(QString("failed to write disc list: %1").arg(m_m3uPath)));
     m_valid = false;
   }
+
+  /* With a single disc there is nothing to swap to -- the lazy m3u boot lands on
+   * it directly. Record it as current so doApplyGameData skips the disc change,
+   * which the Wii core does not survive. */
+  if (m_games.size() == 1)
+    m_discIndex = 0;
 }
 
 void CoreDolphin::rebuildFlatList()

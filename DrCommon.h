@@ -29,6 +29,9 @@ typedef enum
   DR_CHARACTER_BIRDO,
   DR_CHARACTER_DRY_BONES,
 
+  DR_CHARACTER_BLOOPER,
+  DR_CHARACTER_HAMMER_BRO,
+
   DR_CHARACTER_SIZE
 } dr_character;
 
@@ -73,6 +76,9 @@ typedef enum
   /// FCEUmm, Nintendo Entertainment System emulator
   DR_CORE_FCEUMM,
 
+  /// Snes9x, Super Nintendo Entertainment System emulator
+  DR_CORE_SNES9X,
+
   DR_CORE_SIZE
 } dr_core;
 
@@ -89,6 +95,20 @@ typedef enum
   DR_DIFFICULTY_SIZE
 } dr_difficulty;
 
+/* Wii Remote control layout a mini-game expects (MP8/MP9), packed into the
+ * dolphin quirks below. Up to 8 profiles fit in the 3-bit fields. */
+typedef enum
+{
+  DR_WII_CONTROL_INVALID = 0,      /* no remap (default / upright) */
+  DR_WII_CONTROL_UPRIGHT,          /* held vertically; stick drives d-pad */
+  DR_WII_CONTROL_SIDEWAYS_BUTTONS, /* held horizontally (NES-style) */
+  DR_WII_CONTROL_SIDEWAYS_MOTION,  /* held horizontally with motion */
+  DR_WII_CONTROL_POINTER,          /* IR pointer aiming */
+  DR_WII_CONTROL_WAGGLE,           /* shake: A acts as the shake (R2) input */
+
+  DR_WII_CONTROL_SIZE
+} dr_wii_control;
+
 typedef union
 {
   /* The bits as a raw integer */
@@ -99,6 +119,11 @@ typedef union
     unsigned needs_efb_to_texture : 1;
     unsigned needs_safe_texture_cache : 1;
     unsigned needs_native_resolution : 1;
+    /* Wii Remote control layout(s); values are dr_wii_control. `control` is the
+     * primary (and solo) layout; `control_team` is the 1v3 trio layout, or 0 to
+     * inherit `control`. 3 bits each -- enough for DR_WII_CONTROL_SIZE profiles. */
+    unsigned control : 3;
+    unsigned control_team : 3;
   } dolphin;
 
   struct
@@ -107,11 +132,28 @@ typedef union
   } mupen64plus;
 } dr_emulation_quirk_t;
 
+/* Bare raw-bit values, for composing several quirks into one initializer, e.g.
+ *   { DR_QUIRK_BITS_EFB_TO_TEXTURE | DR_WII_CONTROL_BITS(DR_WII_CONTROL_POINTER) }
+ */
+#define DR_QUIRK_BITS_EFB_TO_TEXTURE 0x1u     // dolphin.needs_efb_to_texture
+#define DR_QUIRK_BITS_SAFE_TEXTURE_CACHE 0x2u // dolphin.needs_safe_texture_cache
+#define DR_QUIRK_BITS_NATIVE_RESOLUTION 0x4u  // dolphin.needs_native_resolution
+#define DR_QUIRK_BITS_NATIVE_BOUNDARIES 0x1u  // mupen64plus.needs_native_boundaries
+/* Wii control layout: `control` occupies bits 3-5, `control_team` bits 6-8. */
+#define DR_WII_CONTROL_BITS(primary) ((unsigned)(primary) << 3)
+#define DR_WII_CONTROL_SPLIT_BITS(primary, team) \
+  (((unsigned)(primary) << 3) | ((unsigned)(team) << 6))
+
+/* Ready-made single-quirk initializers. Combine two by OR-ing the *_BITS forms
+ * inside your own braces (see the example above). */
 #define DR_NO_QUIRKS { 0u }
-#define DR_QUIRK_EFB_TO_TEXTURE { 0x1u }     // dolphin.needs_efb_to_texture
-#define DR_QUIRK_SAFE_TEXTURE_CACHE { 0x2u } // dolphin.needs_safe_texture_cache
-#define DR_QUIRK_NATIVE_RESOLUTION { 0x4u }  // dolphin.needs_native_resolution
-#define DR_QUIRK_NATIVE_BOUNDARIES { 0x1u }  // mupen64plus.needs_native_boundaries
+#define DR_QUIRK_EFB_TO_TEXTURE { DR_QUIRK_BITS_EFB_TO_TEXTURE }
+#define DR_QUIRK_SAFE_TEXTURE_CACHE { DR_QUIRK_BITS_SAFE_TEXTURE_CACHE }
+#define DR_QUIRK_NATIVE_RESOLUTION { DR_QUIRK_BITS_NATIVE_RESOLUTION }
+#define DR_QUIRK_NATIVE_BOUNDARIES { DR_QUIRK_BITS_NATIVE_BOUNDARIES }
+#define DR_WII_CONTROL(primary) { DR_WII_CONTROL_BITS(primary) }
+#define DR_WII_CONTROL_SPLIT(primary, team) { DR_WII_CONTROL_SPLIT_BITS(primary, team) }
+
 /* NES PPU palette colors. High nibble = luma (dark/medium/light/pale), low nibble
  * = chroma (hue); the $x0 column is gray and $xD-$xF are black. */
 typedef enum
@@ -226,7 +268,9 @@ typedef enum
   DR_GUEST_BANJOTOOIE,
   DR_GUEST_MARIOPARTY9,
   DR_GUEST_SONICSHUFFLE,
+  DR_GUEST_MARIOPARTY8,
   DR_GUEST_SUPERMARIOBROS3,
+  DR_GUEST_YOSHISISLAND,
 
   DR_GUEST_SIZE
 } dr_guest;
@@ -425,6 +469,10 @@ static inline const char *dr_character_name(dr_character c)
     return "Birdo";
   case DR_CHARACTER_DRY_BONES:
     return "Dry Bones";
+  case DR_CHARACTER_BLOOPER:
+    return "Blooper";
+  case DR_CHARACTER_HAMMER_BRO:
+    return "Hammer Bro";
   default:
     return "Unknown";
   }
@@ -444,6 +492,27 @@ static inline const char *dr_difficulty_name(dr_difficulty d)
     return "Hard";
   case DR_DIFFICULTY_VERY_HARD:
     return "Very Hard";
+  default:
+    return "Unknown";
+  }
+}
+
+static inline const char *dr_wii_control_name(dr_wii_control c)
+{
+  switch (c)
+  {
+  case DR_WII_CONTROL_INVALID:
+    return "Default";
+  case DR_WII_CONTROL_UPRIGHT:
+    return "Upright";
+  case DR_WII_CONTROL_SIDEWAYS_BUTTONS:
+    return "Sideways Buttons";
+  case DR_WII_CONTROL_SIDEWAYS_MOTION:
+    return "Sideways Motion";
+  case DR_WII_CONTROL_POINTER:
+    return "Pointer";
+  case DR_WII_CONTROL_WAGGLE:
+    return "Waggle";
   default:
     return "Unknown";
   }

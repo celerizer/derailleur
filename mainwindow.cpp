@@ -19,6 +19,7 @@
 #include <QVBoxLayout>
 #include <QWidget>
 
+#include "DrChallenge.h"
 #include "DrDebug.h"
 #include "DrDownloader.h"
 #include "hosts/MarioParty1Host.h"
@@ -37,11 +38,13 @@
 #include "guests/MarioParty5.h"
 #include "guests/MarioParty6.h"
 #include "guests/MarioParty7.h"
+#include "guests/MarioParty8.h"
 #include "guests/MarioParty9.h"
 #include "guests/MarioPartyAdvance.h"
 #include "guests/MarioPartyE.h"
 #include "guests/SmashRemix.h"
 #include "guests/SuperMarioBros3.h"
+#include "guests/YoshisIsland.h"
 #include "guests/MarioTennis.h"
 #include "guests/PokemonStadium2.h"
 #include "guests/SonicShuffle.h"
@@ -140,11 +143,20 @@ MainWindow::MainWindow(QWidget *parent)
   if (dolphin->isValid())
     m_Guests->add(dolphin);
 
-  auto *dolphinWii = new CoreDolphin("wii", this);
-  dolphinWii->addGame(new MarioParty9(dolphinWii->core(), dolphinWii));
-  dolphinWii->finalizeGames();
-  if (dolphinWii->isValid())
-    m_Guests->add(dolphinWii);
+  /* The Wii core cannot survive a disc swap, so give each Wii game its own
+   * Dolphin instance with a single disc. They still load lazily, so only the
+   * ones actually launched ever boot. */
+  auto *dolphinMp8 = new CoreDolphin("wii-mp8", this);
+  dolphinMp8->addGame(new MarioParty8(dolphinMp8->core(), dolphinMp8));
+  dolphinMp8->finalizeGames();
+  if (dolphinMp8->isValid())
+    m_Guests->add(dolphinMp8);
+
+  auto *dolphinMp9 = new CoreDolphin("wii-mp9", this);
+  dolphinMp9->addGame(new MarioParty9(dolphinMp9->core(), dolphinMp9));
+  dolphinMp9->finalizeGames();
+  if (dolphinMp9->isValid())
+    m_Guests->add(dolphinMp9);
 
   auto addGuest = [this](DrGuest *g) {
     if (g->isValid())
@@ -158,6 +170,7 @@ MainWindow::MainWindow(QWidget *parent)
   addGuest(new MarioParty3());
   addGuest(new SmashRemix());
   addGuest(new SuperMarioBros3());
+  addGuest(new YoshisIsland());
   addGuest(new MarioTennis());
   addGuest(new PokemonStadium2());
   //addGuest(new MarioPartyAdvance());
@@ -225,7 +238,24 @@ MainWindow::MainWindow(QWidget *parent)
   m_Debug = new DrDebug(nullptr);
   m_Debug->populate(m_Guests->guests());
   m_Tools->addTool(tr("Debug"), m_Debug);
+
+  /* Connected here rather than in startWithHost so mini-games can be requested
+   * before a host has been chosen (launchMinigame tolerates a null host). */
+  connect(m_Debug, &DrDebug::minigameRequested, this,
+    [this](DrGuest *guest, const dr_mp_minigame_t *minigame, std::array<dr_player_t, 4> players) {
+      launchMinigame(guest, minigame, players.data());
+    });
 #endif
+
+  /* Challenge mode: beat a mini-game solo against CPUs, tracked per difficulty.
+   * Like the debug picker it runs without a host. */
+  m_Challenge = new DrChallenge(nullptr);
+  m_Challenge->populate(m_Guests->guests());
+  m_Tools->addTool(tr("Challenge"), m_Challenge);
+  connect(m_Challenge, &DrChallenge::minigameRequested, this,
+    [this](DrGuest *guest, const dr_mp_minigame_t *minigame, std::array<dr_player_t, 4> players) {
+      launchMinigame(guest, minigame, players.data());
+    });
 
   connect(m_Stack, &QStackedWidget::currentChanged, this, [this](int index) {
     if (QWidget *page = m_Stack->widget(index))
@@ -243,6 +273,25 @@ MainWindow::MainWindow(QWidget *parent)
   connect(
     m_Guests, &DrGuestList::minigameFinished, this,
     [this]() {
+      /* A challenge run scores itself and must never pay out onto the board. */
+      if (m_Challenge && m_Challenge->isPending())
+      {
+        m_Challenge->recordResult(m_Guests->currentGuest());
+        /* Continuous play may have chained straight into the next mini-game,
+         * which already switched the view -- don't yank it back. */
+        if (m_Challenge->isPending())
+          return;
+        if (m_Host)
+          showHost();
+        else
+          showChooser();
+        return;
+      }
+      if (!m_Host) /* debug launch with no host chosen yet */
+      {
+        showChooser();
+        return;
+      }
       m_Host->writeResults(m_Guests->currentGuest());
       showHost();
     },
@@ -252,12 +301,19 @@ MainWindow::MainWindow(QWidget *parent)
   connect(
     m_Guests, &DrGuestList::minigameCanceled, this,
     [this]() {
+      if (m_Challenge)
+        m_Challenge->clearPending();
+      if (!m_Host)
+      {
+        showChooser();
+        return;
+      }
       m_Host->clearResults();
       showHost();
     },
     Qt::QueuedConnection);
 
-  resize(704, 528);
+  resize(960, 540);
 }
 
 void MainWindow::connectCoreLog(QRetro *core)
@@ -371,11 +427,6 @@ void MainWindow::startWithHost(DrHost *host)
   }
 
 #if SHOW_DEBUG
-  connect(m_Debug, &DrDebug::minigameRequested, this,
-    [this](DrGuest *guest, const dr_mp_minigame_t *minigame, std::array<dr_player_t, 4> players) {
-      launchMinigame(guest, minigame, players.data());
-    });
-
   connect(m_Debug, &DrDebug::cancelRequested, this, [this]() {
     if (DrGuest *guest = m_Guests->currentGuest())
       guest->cancelMinigame();
@@ -469,15 +520,39 @@ void MainWindow::launchMinigame(
 
 #if SHOW_OVERLAY
   {
-    QScreen *screen = windowHandle() ? windowHandle()->screen() : QGuiApplication::primaryScreen();
-    m_Overlay->hold(screen->grabWindow(m_Host->core()->winId()));
+    /* Between continuous-play challenge mini-games, show the loading card with the
+     * last result and what is coming up instead of the frozen frame. */
+    const QString result =
+      (m_Challenge && m_Challenge->isPending()) ? m_Challenge->takeContinuousResult() : QString();
+    if (!result.isEmpty())
+    {
+      /* A guest can host several games (e.g. the shared Dolphin core), so the
+       * game name is the mini-game's owning group, not the guest's own name. */
+      QString game = QString::fromUtf8(guest->name());
+      for (const DrMinigameGroup &group : guest->minigameGroups())
+        for (const dr_mp_minigame_t *mg : group.minigames)
+          if (mg == minigame)
+            game = QString::fromUtf8(group.name);
+      m_Overlay->showLoadingCard(
+        result, game, minigame ? QString::fromUtf8(minigame->name) : QString());
+    }
+    else
+    {
+      QScreen *screen =
+        windowHandle() ? windowHandle()->screen() : QGuiApplication::primaryScreen();
+      /* Freeze what is on screen to cover the core swap. With no host chosen
+       * (challenge mode, or a debug launch) grab this window instead. */
+      const WId source = (m_Host && m_Host->core()) ? m_Host->core()->winId() : winId();
+      m_Overlay->hold(screen->grabWindow(source));
+    }
   }
 #endif
 
   QTimer::singleShot(32, this,
     [this, guest, minigame,
       players = std::array<dr_player_t, 4>{ players[0], players[1], players[2], players[3] }]() {
-      m_Host->pause();
+      if (m_Host)
+        m_Host->pause();
       m_Stack->setCurrentWidget(m_Guests);
       for (DrGuest *g : m_Guests->guests())
         g->pause();
@@ -597,6 +672,28 @@ void MainWindow::attachNetplay()
       seen.insert(core);
     }
   }
+}
+
+void MainWindow::showChooser()
+{
+#if SHOW_OVERLAY
+  if (DrGuest *guest = m_Guests->currentGuest())
+  {
+    QScreen *screen = windowHandle() ? windowHandle()->screen() : QGuiApplication::primaryScreen();
+    if (guest->core())
+      m_Overlay->hold(screen->grabWindow(guest->core()->winId()));
+  }
+#endif
+
+  /* Deferred like showHost() so the finishing frame settles before we swap. */
+  QTimer::singleShot(32, this, [this]() {
+    for (DrGuest *guest : m_Guests->guests())
+      guest->pause();
+    m_Stack->setCurrentIndex(0);
+#if SHOW_OVERLAY
+    m_Overlay->fadeOut();
+#endif
+  });
 }
 
 void MainWindow::showHost()

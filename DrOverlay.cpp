@@ -1,6 +1,8 @@
 #include "DrOverlay.h"
 
 #include <cmath>
+#include <QFont>
+#include <QFontMetrics>
 #include <QPainter>
 #include <QRandomGenerator>
 #include <QTimer>
@@ -29,6 +31,7 @@ void DrOverlay::setActive(bool active)
   else
   {
     m_image = QImage();
+    m_cardMode = false;
     setWindowFlags(Qt::Widget);
     setAttribute(Qt::WA_TranslucentBackground, false);
     setAttribute(Qt::WA_TransparentForMouseEvents, false);
@@ -48,6 +51,7 @@ void DrOverlay::flash(const QPixmap &pixmap, int durationMs)
   if (m_bounceTimer)
     m_bounceTimer->stop();
 
+  m_cardMode = false;
   m_image = pixmap.toImage();
   setActive(true);
   setWindowOpacity(1.0);
@@ -75,6 +79,7 @@ void DrOverlay::flash(const QPixmap &pixmap, int durationMs)
 
 void DrOverlay::hold(const QPixmap &pixmap)
 {
+  m_cardMode = false;
   m_image = pixmap.toImage();
   if (m_anim)
   {
@@ -86,6 +91,45 @@ void DrOverlay::hold(const QPixmap &pixmap)
   /* Show the frozen frame right away to cover the core swap, but hold the loading
    * icon back for a moment: a load that finishes before the delay fires never
    * flashes an icon (fadeOut() cancels the pending reveal). */
+  m_sprite = QPixmap();
+  if (m_bounceTimer)
+    m_bounceTimer->stop();
+  setActive(true);
+  setWindowOpacity(1.0);
+  repaint();
+
+  if (!m_spriteDelay)
+  {
+    m_spriteDelay = new QTimer(this);
+    m_spriteDelay->setSingleShot(true);
+    connect(m_spriteDelay, &QTimer::timeout, this, [this]() {
+      pickRandomSprite();
+      if (m_bounceTimer)
+        m_bounceTimer->start();
+      repaint();
+    });
+  }
+  m_spriteDelay->start(DR_OVERLAY_ICON_DELAY_MS);
+}
+
+void DrOverlay::showLoadingCard(
+  const QString &result, const QString &game, const QString &minigame)
+{
+  if (m_anim)
+  {
+    m_anim->stop();
+    m_anim->deleteLater();
+    m_anim = nullptr;
+  }
+
+  m_image = QImage(":/assets/loading.png");
+  m_cardMode = true;
+  m_cardResult = result;
+  m_cardGame = game;
+  m_cardMinigame = minigame;
+
+  /* Same bouncing loading sprite as hold(): cleared now, revealed after the delay
+   * and drawn on top of the card (see paintEvent). */
   m_sprite = QPixmap();
   if (m_bounceTimer)
     m_bounceTimer->stop();
@@ -181,6 +225,55 @@ void DrOverlay::paintEvent(QPaintEvent *)
     return;
   QPainter p(this);
   p.drawImage(rect(), m_image);
+
+  if (m_cardMode)
+  {
+    p.setRenderHint(QPainter::TextAntialiasing, true);
+
+    QFont big = p.font();
+    big.setPixelSize(qMax(28, height() / 9));
+    big.setBold(true);
+    QFont mid = p.font();
+    mid.setPixelSize(qMax(18, height() / 18));
+    QFont small = p.font();
+    small.setPixelSize(qMax(15, height() / 24));
+
+    /* result / "Up next..." / game / mini-game, stacked and centered. Each line
+     * is drawn with a soft shadow so white stays legible over any background. */
+    struct Line
+    {
+      QString text;
+      QFont font;
+      int gapAbove;
+    };
+    const Line lines[] = {
+      { m_cardResult, big, 0 },
+      { QStringLiteral("Up next..."), mid, height() / 12 },
+      { m_cardGame, mid, height() / 40 },
+      { m_cardMinigame, small, height() / 80 },
+    };
+    const int count = static_cast<int>(sizeof(lines) / sizeof(lines[0]));
+
+    int total = 0;
+    for (int i = 0; i < count; i++)
+      total += lines[i].gapAbove + QFontMetrics(lines[i].font).height();
+
+    int y = (height() - total) / 2;
+    for (int i = 0; i < count; i++)
+    {
+      y += lines[i].gapAbove;
+      const int lh = QFontMetrics(lines[i].font).height();
+      const QRect r(0, y, width(), lh);
+      p.setFont(lines[i].font);
+      p.setPen(QColor(0, 0, 0, 160));
+      p.drawText(r.translated(2, 2), Qt::AlignHCenter | Qt::AlignVCenter, lines[i].text);
+      p.setPen(Qt::white);
+      p.drawText(r, Qt::AlignHCenter | Qt::AlignVCenter, lines[i].text);
+      y += lh;
+    }
+  }
+
+  /* Drawn last so the bouncing loading sprite sits on top of the card. */
   if (!m_sprite.isNull())
   {
     p.setRenderHint(QPainter::SmoothPixmapTransform, false);

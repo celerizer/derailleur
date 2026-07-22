@@ -17,6 +17,18 @@ public:
   virtual std::string corePath() const = 0;
   virtual std::string discPath() const = 0;
   virtual std::string statePath() const = 0;
+
+protected:
+  /// Applies a mini-game's Wii control layout (from its quirks: dolphin.control /
+  /// control_team) to all four players' joypads. `players` supplies the 1v3
+  /// solo/trio split and the controller-port -> slot mapping. Call from a guest's
+  /// doApplyGameData.
+  void applyControlRemap(dr_emulation_quirk_t quirks, const dr_player_t players[4]);
+
+  /// Applies a single Wii control layout to all four joypads, ignoring the 1v3
+  /// split. Used e.g. to force the pointer layout on a mini-game's explanation
+  /// screen before switching to the actual layout for play.
+  void applyControlProfile(dr_wii_control control);
 };
 
 #endif

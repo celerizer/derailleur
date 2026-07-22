@@ -10,6 +10,7 @@
 #include <QTimer>
 
 #include "DrCommon.h"
+#include "DrChallenge.h"
 #include "DrDebug.h"
 #include "DrGuestList.h"
 #include "DrHost.h"
@@ -38,6 +39,9 @@ private:
 
   void startWithHost(DrHost *host);
   void showHost();
+  /// Returns to the host select screen, for runs with no host to go back to
+  /// (challenge mode, or a debug launch before a host was chosen).
+  void showChooser();
   void showGuests();
   void warmupStep();
   void launchMinigame(
@@ -57,6 +61,7 @@ private:
   DrLogger *m_Logger = nullptr;
   DrOverlay *m_Overlay = nullptr;
   DrDebug *m_Debug = nullptr;
+  DrChallenge *m_Challenge = nullptr;
   DrMinigameFilter *m_Filter = nullptr;
   DrInputStore *m_InputStore = nullptr;
   DrNetplay *m_Netplay = nullptr;

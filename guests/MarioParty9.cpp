@@ -30,6 +30,10 @@ static const size_t MP9_MINI_STARS_ADDR[4] = { 0x81752568, 0x81752590, 0x817525B
 /// u32 - total party points; when this increases the mini-game has finished
 static const size_t MP9_PARTY_POINTS_ADDR = 0x81752240;
 
+/// s32 - -1 until the mini-game actually starts. Controls stay on the pointer
+/// while this reads -1, then switch to the mini-game's own layout.
+static const size_t MP9_MINIGAME_STARTED_ADDR = 0x81752520;
+
 /// u32 - partner index in Bowser Jr. mini-games. Unused for now; noted here in case we ever support those.
 static const size_t MP9_BOWSER_JR_PARTNER_ADDR = 0x8175261C;
 
@@ -101,92 +105,92 @@ static unsigned mp9Slot(const dr_player_t &p, unsigned fallback)
 
 static const dr_mp_minigame_t MP9_MINIGAMES[] =
 {
-  { "Ruins Rumble", DR_MINIGAME_1V3, 0x00, MP9_CONTROL_SPLIT(MP9_CONTROL_SIDEWAYS_MOTION, MP9_CONTROL_SIDEWAYS), DR_NO_QUIRKS },
-  { "Hazard Hold", DR_MINIGAME_1V3, 0x01, MP9_CONTROL_SIDEWAYS, DR_NO_QUIRKS },
-  // { "Line in the Sand", DR_MINIGAME_1V3, 0x02, MP9_CONTROL_SPLIT(MP9_CONTROL_POINTER, MP9_CONTROL_SIDEWAYS), DR_NO_QUIRKS }, // non-functional. needs something
-  { "Block and Roll", DR_MINIGAME_1V3, 0x03, MP9_CONTROL_SIDEWAYS, DR_NO_QUIRKS },
-  { "Tackle Takedown", DR_MINIGAME_1V3, 0x04, MP9_CONTROL_SIDEWAYS, DR_NO_QUIRKS },
-  { "Weird Wheels", DR_MINIGAME_1V3, 0x05, MP9_CONTROL_SIDEWAYS, DR_NO_QUIRKS },
-  { "Spike-n-Span", DR_MINIGAME_1V3, 0x06, MP9_CONTROL_SIDEWAYS, DR_NO_QUIRKS },
-  // { "Hole Hogs", DR_MINIGAME_1V3, 0x07, MP9_CONTROL_SPLIT(MP9_CONTROL_POINTER, MP9_CONTROL_SIDEWAYS), DR_NO_QUIRKS },
-  { "Pix Fix", DR_MINIGAME_1V3, 0x08, MP9_CONTROL_POINTER, DR_NO_QUIRKS },
-  { "Mob Sleds", DR_MINIGAME_1V3, 0x09, MP9_CONTROL_SIDEWAYS, DR_NO_QUIRKS },
+  { "Ruins Rumble", DR_MINIGAME_1V3, 0x00, 0, DR_WII_CONTROL_SPLIT(DR_WII_CONTROL_SIDEWAYS_MOTION, DR_WII_CONTROL_SIDEWAYS_BUTTONS) },
+  { "Hazard Hold", DR_MINIGAME_1V3, 0x01, 0, DR_WII_CONTROL(DR_WII_CONTROL_SIDEWAYS_BUTTONS) },
+  { "Line in the Sand", DR_MINIGAME_1V3, 0x02, 0, { DR_QUIRK_BITS_EFB_TO_TEXTURE | DR_WII_CONTROL_SPLIT_BITS(DR_WII_CONTROL_POINTER, DR_WII_CONTROL_SIDEWAYS_BUTTONS) } },
+  { "Block and Roll", DR_MINIGAME_1V3, 0x03, 0, DR_WII_CONTROL(DR_WII_CONTROL_SIDEWAYS_BUTTONS) },
+  { "Tackle Takedown", DR_MINIGAME_1V3, 0x04, 0, DR_WII_CONTROL(DR_WII_CONTROL_SIDEWAYS_BUTTONS) },
+  { "Weird Wheels", DR_MINIGAME_1V3, 0x05, 0, DR_WII_CONTROL(DR_WII_CONTROL_SIDEWAYS_BUTTONS) },
+  { "Spike-n-Span", DR_MINIGAME_1V3, 0x06, 0, DR_WII_CONTROL(DR_WII_CONTROL_SIDEWAYS_BUTTONS) },
+  { "Hole Hogs", DR_MINIGAME_1V3, 0x07, 0, { DR_QUIRK_BITS_SAFE_TEXTURE_CACHE | DR_WII_CONTROL_SPLIT_BITS(DR_WII_CONTROL_POINTER, DR_WII_CONTROL_SIDEWAYS_BUTTONS) } },
+  { "Pix Fix", DR_MINIGAME_1V3, 0x08, 0, DR_WII_CONTROL(DR_WII_CONTROL_POINTER) },
+  { "Mob Sleds", DR_MINIGAME_1V3, 0x09, 0, DR_WII_CONTROL(DR_WII_CONTROL_SIDEWAYS_BUTTONS) },
 
-  { "Mecha March", DR_MINIGAME_INVALID, 0x0A, MP9_CONTROL_INVALID, DR_NO_QUIRKS },
-  { "Bowser Pop", DR_MINIGAME_INVALID, 0x0B, MP9_CONTROL_INVALID, DR_NO_QUIRKS },
-  { "Double Pounder", DR_MINIGAME_INVALID, 0x0C, MP9_CONTROL_INVALID, DR_NO_QUIRKS },
-  { "Zoom Room", DR_MINIGAME_INVALID, 0x0D, MP9_CONTROL_INVALID, DR_NO_QUIRKS },
-  { "Cage Match", DR_MINIGAME_INVALID, 0x0E, MP9_CONTROL_INVALID, DR_NO_QUIRKS },
-  { "Crossfire Caverns", DR_MINIGAME_INVALID, 0x0F, MP9_CONTROL_INVALID, DR_NO_QUIRKS },
-  { "Bumper Sparks", DR_MINIGAME_INVALID, 0x10, MP9_CONTROL_INVALID, DR_NO_QUIRKS },
-  { "Sand Trap", DR_MINIGAME_INVALID, 0x11, MP9_CONTROL_INVALID, DR_NO_QUIRKS },
-  { "Pair of Aces", DR_MINIGAME_INVALID, 0x12, MP9_CONTROL_INVALID, DR_NO_QUIRKS },
-  { "Pedal to the Paddle", DR_MINIGAME_INVALID, 0x13, MP9_CONTROL_INVALID, DR_NO_QUIRKS },
+  { "Mecha March", DR_MINIGAME_SPECIAL, 0x0A, 0, DR_NO_QUIRKS },
+  { "Bowser Pop", DR_MINIGAME_SPECIAL, 0x0B, 0, DR_NO_QUIRKS },
+  { "Double Pounder", DR_MINIGAME_SPECIAL, 0x0C, 0, DR_NO_QUIRKS },
+  { "Zoom Room", DR_MINIGAME_SPECIAL, 0x0D, 0, DR_NO_QUIRKS },
+  { "Cage Match", DR_MINIGAME_SPECIAL, 0x0E, 0, DR_NO_QUIRKS },
+  { "Crossfire Caverns", DR_MINIGAME_SPECIAL, 0x0F, 0, DR_NO_QUIRKS },
+  { "Bumper Sparks", DR_MINIGAME_SPECIAL, 0x10, 0, DR_NO_QUIRKS },
+  { "Sand Trap", DR_MINIGAME_SPECIAL, 0x11, 0, DR_NO_QUIRKS },
+  { "Pair of Aces", DR_MINIGAME_SPECIAL, 0x12, 0, DR_NO_QUIRKS },
+  { "Pedal to the Paddle", DR_MINIGAME_SPECIAL, 0x13, 0, DR_NO_QUIRKS },
 
-  { "Urn It", DR_MINIGAME_4P, 0x14, MP9_CONTROL_POINTER, DR_NO_QUIRKS },
-  { "Billistics", DR_MINIGAME_4P, 0x15, MP9_CONTROL_SIDEWAYS, DR_NO_QUIRKS },
-  { "Snow Go", DR_MINIGAME_4P, 0x16, MP9_CONTROL_SIDEWAYS, DR_NO_QUIRKS },
-  { "Skyjinks", DR_MINIGAME_4P, 0x17, MP9_CONTROL_SIDEWAYS, DR_NO_QUIRKS },
-  { "Player Conveyor", DR_MINIGAME_4P, 0x18, MP9_CONTROL_SIDEWAYS, DR_NO_QUIRKS },
-  { "Fungi Frenzy", DR_MINIGAME_4P, 0x19, MP9_CONTROL_SIDEWAYS, DR_NO_QUIRKS },
-  { "Jigsaw Jumble", DR_MINIGAME_4P, 0x1A, MP9_CONTROL_POINTER, DR_NO_QUIRKS },
-  // { "Twist Ending", DR_MINIGAME_4P, 0x1B, MP9_CONTROL_UPRIGHT, DR_NO_QUIRKS }, /// @todo requires rotation, nearly unplayable
-  { "Peak Precision", DR_MINIGAME_4P, 0x1C, MP9_CONTROL_SIDEWAYS, DR_NO_QUIRKS },
-  // { "Speeding Bullets", DR_MINIGAME_4P, 0x1D, MP9_CONTROL_SIDEWAYS_MOTION, DR_NO_QUIRKS }, /// @todo sideways motion
-  { "Launch Break", DR_MINIGAME_4P, 0x1E, MP9_CONTROL_SIDEWAYS, DR_NO_QUIRKS },
-  { "Polar Extreme", DR_MINIGAME_4P, 0x1F, MP9_CONTROL_SIDEWAYS, DR_NO_QUIRKS },
-  { "Logger Heads", DR_MINIGAME_4P, 0x20, MP9_CONTROL_UPRIGHT, DR_NO_QUIRKS },
-  { "Smash Compactor", DR_MINIGAME_4P, 0x21, MP9_CONTROL_SIDEWAYS, DR_NO_QUIRKS },
-  // { "Goomba Bowling", DR_MINIGAME_4P, 0x22, MP9_CONTROL_UPRIGHT, DR_NO_QUIRKS }, /// @todo swing
-  // { "Pianta Pool", DR_MINIGAME_4P, 0x23, MP9_CONTROL_SIDEWAYS_MOTION, DR_NO_QUIRKS }, /// @todo sideways motion
-  { "Bumper Bubbles", DR_MINIGAME_4P, 0x24, MP9_CONTROL_SIDEWAYS, DR_NO_QUIRKS },
-  { "Buddy Bounce", DR_MINIGAME_4P, 0x25, MP9_CONTROL_SIDEWAYS, DR_NO_QUIRKS },
-  { "Pizza Me, Mario", DR_MINIGAME_4P, 0x26, MP9_CONTROL_UPRIGHT, DR_NO_QUIRKS },
-  { "Chain Event", DR_MINIGAME_4P, 0x27, MP9_CONTROL_UPRIGHT, DR_NO_QUIRKS },
-  // { "Pit or Platter", DR_MINIGAME_4P, 0x28, MP9_CONTROL_SIDEWAYS_MOTION, DR_NO_QUIRKS }, /// @todo sideways motion
-  { "Skipping Class", DR_MINIGAME_4P, 0x29, MP9_CONTROL_SIDEWAYS, DR_NO_QUIRKS },
-  { "Flinger Painting", DR_MINIGAME_4P, 0x2A, MP9_CONTROL_POINTER, DR_NO_QUIRKS },
-  { "Goomba Spotting", DR_MINIGAME_4P, 0x2B, MP9_CONTROL_UPRIGHT, DR_NO_QUIRKS },
-  { "Thwomper Room", DR_MINIGAME_4P, 0x2C, MP9_CONTROL_SIDEWAYS, DR_NO_QUIRKS },
-  { "Ballistic Beach", DR_MINIGAME_4P, 0x2D, MP9_CONTROL_SIDEWAYS, DR_NO_QUIRKS },
-  { "Plunder Ground", DR_MINIGAME_4P, 0x2E, MP9_CONTROL_SIDEWAYS, DR_NO_QUIRKS },
-  { "Tumble Temple", DR_MINIGAME_4P, 0x2F, MP9_CONTROL_SIDEWAYS, DR_NO_QUIRKS },
-  // { "Tuber Tug", DR_MINIGAME_4P, 0x30, MP9_CONTROL_UPRIGHT, DR_NO_QUIRKS }, /// sucks
-  { "Piranha Patch", DR_MINIGAME_4P, 0x31, MP9_CONTROL_SIDEWAYS, DR_NO_QUIRKS },
-  { "Upward Mobility", DR_MINIGAME_4P, 0x32, MP9_CONTROL_SIDEWAYS, DR_NO_QUIRKS },
-  { "Manor of Escape", DR_MINIGAME_4P, 0x33, MP9_CONTROL_SIDEWAYS, DR_NO_QUIRKS },
-  { "Toad and Go Seek", DR_MINIGAME_4P, 0x34, MP9_CONTROL_SIDEWAYS, DR_NO_QUIRKS },
-  { "Goomba Village", DR_MINIGAME_4P, 0x35, MP9_CONTROL_POINTER, DR_NO_QUIRKS },
-  { "Growing Up", DR_MINIGAME_4P, 0x36, MP9_CONTROL_SIDEWAYS, DR_NO_QUIRKS },
-  { "Card Smarts", DR_MINIGAME_4P, 0x37, MP9_CONTROL_SIDEWAYS, DR_NO_QUIRKS },
-  { "Bomb Barge", DR_MINIGAME_4P, 0x38, MP9_CONTROL_SIDEWAYS, DR_NO_QUIRKS },
-  // { "Ring Leader", DR_MINIGAME_4P, 0x39, MP9_CONTROL_UPRIGHT, DR_NO_QUIRKS }, /// swing?
-  { "Magma Mayhem", DR_MINIGAME_4P, 0x3A, MP9_CONTROL_SIDEWAYS, DR_NO_QUIRKS },
-  // { "Don't Look", DR_MINIGAME_4P, 0x3B, MP9_CONTROL_UPRIGHT, DR_NO_QUIRKS }, /// swing
-  { "Pinball Fall", DR_MINIGAME_4P, 0x3C, MP9_CONTROL_POINTER, DR_NO_QUIRKS },
-  { "Pier Pressure", DR_MINIGAME_4P, 0x3D, MP9_CONTROL_SIDEWAYS, DR_NO_QUIRKS },
-  { "10 to Win", DR_MINIGAME_4P, 0x3E, MP9_CONTROL_POINTER, DR_NO_QUIRKS },
-  { "Mecha Choice", DR_MINIGAME_4P, 0x3F, MP9_CONTROL_SIDEWAYS, DR_NO_QUIRKS },
+  { "Urn It", DR_MINIGAME_4P, 0x14, 0, DR_WII_CONTROL(DR_WII_CONTROL_POINTER) },
+  { "Billistics", DR_MINIGAME_4P, 0x15, 0, DR_WII_CONTROL(DR_WII_CONTROL_SIDEWAYS_BUTTONS) },
+  { "Snow Go", DR_MINIGAME_4P, 0x16, 0, DR_WII_CONTROL(DR_WII_CONTROL_SIDEWAYS_BUTTONS) },
+  { "Skyjinks", DR_MINIGAME_4P, 0x17, 0, DR_WII_CONTROL(DR_WII_CONTROL_SIDEWAYS_BUTTONS) },
+  { "Player Conveyor", DR_MINIGAME_4P, 0x18, 0, DR_WII_CONTROL(DR_WII_CONTROL_SIDEWAYS_BUTTONS) },
+  { "Fungi Frenzy", DR_MINIGAME_4P, 0x19, 0, DR_WII_CONTROL(DR_WII_CONTROL_SIDEWAYS_BUTTONS) },
+  { "Jigsaw Jumble", DR_MINIGAME_4P, 0x1A, 0, DR_WII_CONTROL(DR_WII_CONTROL_POINTER) },
+  { "Twist Ending", DR_MINIGAME_4P, 0x1B, 0, DR_WII_CONTROL(DR_WII_CONTROL_UPRIGHT) },
+  { "Peak Precision", DR_MINIGAME_4P, 0x1C, 0, DR_WII_CONTROL(DR_WII_CONTROL_SIDEWAYS_BUTTONS) },
+  { "Speeding Bullets", DR_MINIGAME_4P, 0x1D, 0, DR_WII_CONTROL(DR_WII_CONTROL_SIDEWAYS_MOTION) },
+  { "Launch Break", DR_MINIGAME_4P, 0x1E, 0, DR_WII_CONTROL(DR_WII_CONTROL_SIDEWAYS_BUTTONS) },
+  { "Polar Extreme", DR_MINIGAME_4P, 0x1F, 0, DR_WII_CONTROL(DR_WII_CONTROL_SIDEWAYS_BUTTONS) },
+  { "Logger Heads", DR_MINIGAME_4P, 0x20, 0, DR_WII_CONTROL(DR_WII_CONTROL_UPRIGHT) },
+  { "Smash Compactor", DR_MINIGAME_4P, 0x21, 0, DR_WII_CONTROL(DR_WII_CONTROL_SIDEWAYS_BUTTONS) },
+  { "Goomba Bowling", DR_MINIGAME_4P, 0x22, 0, DR_WII_CONTROL(DR_WII_CONTROL_UPRIGHT) },
+  { "Pianta Pool", DR_MINIGAME_4P, 0x23, 0, DR_WII_CONTROL(DR_WII_CONTROL_SIDEWAYS_MOTION) },
+  { "Bumper Bubbles", DR_MINIGAME_4P, 0x24, 0, DR_WII_CONTROL(DR_WII_CONTROL_SIDEWAYS_MOTION) },
+  { "Buddy Bounce", DR_MINIGAME_4P, 0x25, 0, DR_WII_CONTROL(DR_WII_CONTROL_SIDEWAYS_BUTTONS) },
+  { "Pizza Me, Mario", DR_MINIGAME_4P, 0x26, 0, DR_WII_CONTROL(DR_WII_CONTROL_UPRIGHT) },
+  { "Chain Event", DR_MINIGAME_4P, 0x27, 0, DR_WII_CONTROL(DR_WII_CONTROL_UPRIGHT) },
+  { "Pit or Platter", DR_MINIGAME_4P, 0x28, 0, DR_WII_CONTROL(DR_WII_CONTROL_SIDEWAYS_MOTION) },
+  { "Skipping Class", DR_MINIGAME_4P, 0x29, 0, DR_WII_CONTROL(DR_WII_CONTROL_SIDEWAYS_BUTTONS) },
+  { "Flinger Painting", DR_MINIGAME_4P, 0x2A, 0, DR_WII_CONTROL(DR_WII_CONTROL_POINTER) },
+  { "Goomba Spotting", DR_MINIGAME_4P, 0x2B, 0, DR_WII_CONTROL(DR_WII_CONTROL_UPRIGHT) },
+  { "Thwomper Room", DR_MINIGAME_4P, 0x2C, 0, DR_WII_CONTROL(DR_WII_CONTROL_SIDEWAYS_BUTTONS) },
+  { "Ballistic Beach", DR_MINIGAME_4P, 0x2D, 0, DR_WII_CONTROL(DR_WII_CONTROL_SIDEWAYS_BUTTONS) },
+  { "Plunder Ground", DR_MINIGAME_4P, 0x2E, 0, DR_WII_CONTROL(DR_WII_CONTROL_SIDEWAYS_BUTTONS) },
+  { "Tumble Temple", DR_MINIGAME_4P, 0x2F, 0, DR_WII_CONTROL(DR_WII_CONTROL_SIDEWAYS_BUTTONS) },
+  { "Tuber Tug", DR_MINIGAME_4P, 0x30, 0, DR_WII_CONTROL(DR_WII_CONTROL_UPRIGHT) }, /// sucks
+  { "Piranha Patch", DR_MINIGAME_4P, 0x31, 0, DR_WII_CONTROL(DR_WII_CONTROL_SIDEWAYS_BUTTONS) },
+  { "Upward Mobility", DR_MINIGAME_4P, 0x32, 0, DR_WII_CONTROL(DR_WII_CONTROL_SIDEWAYS_BUTTONS) },
+  { "Manor of Escape", DR_MINIGAME_4P, 0x33, 0, DR_WII_CONTROL(DR_WII_CONTROL_SIDEWAYS_BUTTONS) },
+  { "Toad and Go Seek", DR_MINIGAME_4P, 0x34, 0, DR_WII_CONTROL(DR_WII_CONTROL_SIDEWAYS_BUTTONS) },
+  { "Goomba Village", DR_MINIGAME_4P, 0x35, 0, DR_WII_CONTROL(DR_WII_CONTROL_POINTER) },
+  { "Growing Up", DR_MINIGAME_4P, 0x36, 0, DR_WII_CONTROL(DR_WII_CONTROL_SIDEWAYS_BUTTONS) },
+  { "Card Smarts", DR_MINIGAME_4P, 0x37, 0, DR_WII_CONTROL(DR_WII_CONTROL_SIDEWAYS_BUTTONS) },
+  { "Bomb Barge", DR_MINIGAME_4P, 0x38, 0, DR_WII_CONTROL(DR_WII_CONTROL_SIDEWAYS_BUTTONS) },
+  { "Ring Leader", DR_MINIGAME_4P, 0x39, 0, DR_WII_CONTROL(DR_WII_CONTROL_UPRIGHT) },
+  { "Magma Mayhem", DR_MINIGAME_4P, 0x3A, 0, DR_WII_CONTROL(DR_WII_CONTROL_SIDEWAYS_BUTTONS) },
+  { "Don't Look - todo controls", DR_MINIGAME_INVALID, 0x3B, 0, DR_WII_CONTROL(DR_WII_CONTROL_UPRIGHT) },
+  { "Pinball Fall", DR_MINIGAME_4P, 0x3C, 0, DR_WII_CONTROL(DR_WII_CONTROL_POINTER) },
+  { "Pier Pressure", DR_MINIGAME_4P, 0x3D, 0, DR_WII_CONTROL(DR_WII_CONTROL_SIDEWAYS_BUTTONS) },
+  { "10 to Win", DR_MINIGAME_4P, 0x3E, 0, DR_WII_CONTROL(DR_WII_CONTROL_POINTER) },
+  { "Mecha Choice", DR_MINIGAME_4P, 0x3F, 0, DR_WII_CONTROL(DR_WII_CONTROL_SIDEWAYS_BUTTONS) },
 
-  { "Castle Clearout", DR_MINIGAME_DUEL, 0x40, MP9_CONTROL_SIDEWAYS, DR_NO_QUIRKS },
+  { "Castle Clearout", DR_MINIGAME_SPECIAL, 0x40, 0, DR_WII_CONTROL(DR_WII_CONTROL_SIDEWAYS_BUTTONS) },
 
   // 0x41 Bowser Jr. Breakdown -- duplicate id; use 0x47 instead
-  { "Sock It to Lakitu", DR_MINIGAME_BATTLE, 0x42, MP9_CONTROL_SIDEWAYS, DR_NO_QUIRKS },
-  { "Whomp Stomp", DR_MINIGAME_BATTLE, 0x43, MP9_CONTROL_UPRIGHT, DR_NO_QUIRKS },
-  { "Deck Dry Bones", DR_MINIGAME_BATTLE, 0x44, MP9_CONTROL_POINTER, DR_NO_QUIRKS },
-  // { "Cheep Cheep Shot", DR_MINIGAME_BATTLE, 0x45, MP9_CONTROL_SIDEWAYS_MOTION, DR_NO_QUIRKS }, /// @todo 
-  { "Spike Strike", DR_MINIGAME_BATTLE, 0x46, MP9_CONTROL_POINTER, DR_NO_QUIRKS },
-  { "Bowser Jr. Breakdown", DR_MINIGAME_BATTLE, 0x47, MP9_CONTROL_UPRIGHT, DR_NO_QUIRKS },
-  { "Diddy's Banana Blast", DR_MINIGAME_4P, 0x48, MP9_CONTROL_SIDEWAYS, DR_NO_QUIRKS },
-  { "Wiggler Bounce", DR_MINIGAME_BATTLE, 0x49, MP9_CONTROL_SIDEWAYS, DR_NO_QUIRKS },
-  { "Bombard King Bob-omb", DR_MINIGAME_BATTLE, 0x4A, MP9_CONTROL_SIDEWAYS, DR_NO_QUIRKS },
-  { "King Boo's Puzzle Attack", DR_MINIGAME_BATTLE, 0x4B, MP9_CONTROL_SIDEWAYS, DR_NO_QUIRKS },
-  { "Blooper Barrage", DR_MINIGAME_BATTLE, 0x4C, MP9_CONTROL_POINTER, DR_NO_QUIRKS },
-  { "Chain Chomp Romp", DR_MINIGAME_BATTLE, 0x4D, MP9_CONTROL_SIDEWAYS, DR_NO_QUIRKS },
-  { "Bowser's Block Battle", DR_MINIGAME_BATTLE, 0x4E, MP9_CONTROL_SIDEWAYS, DR_NO_QUIRKS },
-  { "DK's Banana Bonus", DR_MINIGAME_4P, 0x4F, MP9_CONTROL_SIDEWAYS, DR_NO_QUIRKS },
+  { "Sock It to Lakitu", DR_MINIGAME_BATTLE, 0x42, 0, DR_WII_CONTROL(DR_WII_CONTROL_SIDEWAYS_BUTTONS) },
+  { "Whomp Stomp", DR_MINIGAME_BATTLE, 0x43, 0, DR_WII_CONTROL(DR_WII_CONTROL_UPRIGHT) },
+  { "Deck Dry Bones", DR_MINIGAME_BATTLE, 0x44, 0, DR_WII_CONTROL(DR_WII_CONTROL_POINTER) },
+  { "Cheep Cheep Shot", DR_MINIGAME_BATTLE, 0x45, 0, DR_WII_CONTROL(DR_WII_CONTROL_SIDEWAYS_MOTION) },
+  { "Spike Strike", DR_MINIGAME_BATTLE, 0x46, 0, DR_WII_CONTROL(DR_WII_CONTROL_POINTER) },
+  { "Bowser Jr. Breakdown", DR_MINIGAME_BATTLE, 0x47, 0, DR_WII_CONTROL(DR_WII_CONTROL_UPRIGHT) },
+  { "Diddy's Banana Blast", DR_MINIGAME_4P, 0x48, 0, DR_WII_CONTROL(DR_WII_CONTROL_SIDEWAYS_BUTTONS) },
+  { "Wiggler Bounce", DR_MINIGAME_BATTLE, 0x49, 0, DR_WII_CONTROL(DR_WII_CONTROL_SIDEWAYS_BUTTONS) },
+  { "Bombard King Bob-omb", DR_MINIGAME_BATTLE, 0x4A, 0, DR_WII_CONTROL(DR_WII_CONTROL_SIDEWAYS_BUTTONS) },
+  { "King Boo's Puzzle Attack", DR_MINIGAME_BATTLE, 0x4B, 0, DR_WII_CONTROL(DR_WII_CONTROL_SIDEWAYS_BUTTONS) },
+  { "Blooper Barrage", DR_MINIGAME_BATTLE, 0x4C, 0, DR_WII_CONTROL(DR_WII_CONTROL_POINTER) },
+  { "Chain Chomp Romp", DR_MINIGAME_BATTLE, 0x4D, 0, DR_WII_CONTROL(DR_WII_CONTROL_SIDEWAYS_BUTTONS) },
+  { "Bowser's Block Battle", DR_MINIGAME_BATTLE, 0x4E, 0, DR_WII_CONTROL(DR_WII_CONTROL_SIDEWAYS_BUTTONS) },
+  { "DK's Banana Bonus", DR_MINIGAME_4P, 0x4F, 0, DR_WII_CONTROL(DR_WII_CONTROL_SIDEWAYS_BUTTONS) },
 
-  { nullptr, DR_MINIGAME_INVALID, 0xFF, MP9_CONTROL_INVALID, DR_NO_QUIRKS },
+  { nullptr, DR_MINIGAME_INVALID, 0xFF, 0, DR_NO_QUIRKS },
 };
 
 MarioParty9::MarioParty9(QRetro *sharedCore, QObject *parent)
@@ -213,6 +217,19 @@ void MarioParty9::run()
     return;
 
   m_minigameFrames++;
+
+  /* Hold the pointer layout until the mini-game starts, then swap to its
+   * preferred controls. Ignore the value for the first frames so one carried in
+   * by the savestate can't swap us immediately. */
+  if (!m_controlsApplied && m_minigame && m_minigameFrames >= 60)
+  {
+    int32_t started = -1;
+    if (m_retro->reads32(&started, MP9_MINIGAME_STARTED_ADDR) == DR_OK && started != -1)
+    {
+      applyControlRemap(m_minigame->quirks, m_players);
+      m_controlsApplied = true;
+    }
+  }
 
   if (!m_finishScheduled)
   {
@@ -262,78 +279,12 @@ void MarioParty9::doApplyGameData(const DrGameData &data)
     m_retro->writeForFrames(MP9_TEAM_ADDR[slot], &team, sizeof(team), 60);
   }
 
-  applyRemap(data.minigame->scene_id);
+  /* The start button is clicked with the pointer; run() swaps to the mini-game's
+   * own layout once MP9_MINIGAME_STARTED_ADDR leaves -1. */
+  m_controlsApplied = false;
+  applyControlProfile(DR_WII_CONTROL_POINTER);
 
   startMinigame();
-}
-
-/* Applies one control layout to a single player's joypad. */
-static void mp9ApplyControl(QRetroInputJoypad &jp, Mp9Control control)
-{
-  /* Remove existing remaps */
-  jp.clearButtonRemaps();
-  jp.clearAnalogStickRemaps();
-
-  switch (control)
-  {
-  case MP9_CONTROL_INVALID:
-  case MP9_CONTROL_UPRIGHT:
-    /* Held Wii Remote: the stick drives the d-pad. (Invalid falls back here.) */
-    jp.setAnalogStickToDigitalPad(true);
-    break;
-  case MP9_CONTROL_SIDEWAYS:
-    /* 2 = A, 1 = B, flip dpad 90 degrees left */
-    jp.setAnalogStickToDigitalPad(true);
-    jp.setButtonRemap(RETRO_DEVICE_ID_JOYPAD_A, RETRO_DEVICE_ID_JOYPAD_Y);
-    jp.setButtonRemap(RETRO_DEVICE_ID_JOYPAD_B, RETRO_DEVICE_ID_JOYPAD_X);
-    jp.setButtonRemap(RETRO_DEVICE_ID_JOYPAD_Y, RETRO_DEVICE_ID_JOYPAD_A);
-    jp.setButtonRemap(RETRO_DEVICE_ID_JOYPAD_X, RETRO_DEVICE_ID_JOYPAD_B);
-    jp.setButtonRemap(RETRO_DEVICE_ID_JOYPAD_LEFT, RETRO_DEVICE_ID_JOYPAD_UP);
-    jp.setButtonRemap(RETRO_DEVICE_ID_JOYPAD_DOWN, RETRO_DEVICE_ID_JOYPAD_LEFT);
-    jp.setButtonRemap(RETRO_DEVICE_ID_JOYPAD_RIGHT, RETRO_DEVICE_ID_JOYPAD_DOWN);
-    jp.setButtonRemap(RETRO_DEVICE_ID_JOYPAD_UP, RETRO_DEVICE_ID_JOYPAD_RIGHT);
-    break;
-  case MP9_CONTROL_SIDEWAYS_MOTION:
-    jp.setAnalogStickToDigitalPad(false);
-    jp.setButtonRemap(RETRO_DEVICE_ID_JOYPAD_A, RETRO_DEVICE_ID_JOYPAD_Y);
-    jp.setButtonRemap(RETRO_DEVICE_ID_JOYPAD_B, RETRO_DEVICE_ID_JOYPAD_X);
-    jp.setButtonRemap(RETRO_DEVICE_ID_JOYPAD_Y, RETRO_DEVICE_ID_JOYPAD_A);
-    jp.setButtonRemap(RETRO_DEVICE_ID_JOYPAD_X, RETRO_DEVICE_ID_JOYPAD_B);
-    jp.setButtonRemap(RETRO_DEVICE_ID_JOYPAD_LEFT, RETRO_DEVICE_ID_JOYPAD_UP);
-    jp.setButtonRemap(RETRO_DEVICE_ID_JOYPAD_DOWN, RETRO_DEVICE_ID_JOYPAD_LEFT);
-    jp.setButtonRemap(RETRO_DEVICE_ID_JOYPAD_RIGHT, RETRO_DEVICE_ID_JOYPAD_DOWN);
-    jp.setButtonRemap(RETRO_DEVICE_ID_JOYPAD_UP, RETRO_DEVICE_ID_JOYPAD_RIGHT);
-    break;
-  case MP9_CONTROL_POINTER:
-    /* Pointer aiming: keep the stick analog, and feed the core's left stick
-     * (the pointer) from the physical right stick. */
-    jp.setAnalogStickToDigitalPad(false);
-    jp.setAnalogStickRemap(RETRO_DEVICE_INDEX_ANALOG_RIGHT, RETRO_DEVICE_INDEX_ANALOG_LEFT);
-    break;
-  }
-}
-
-void MarioParty9::applyRemap(int control)
-{
-  QRetro *retro = m_retro ? m_retro->core() : nullptr;
-  if (!retro || !retro->input())
-    return;
-
-  /* The control slot packs two layouts: the solo player uses the low byte, the
-   * trio uses the high byte. A zero high byte means everyone shares the low
-   * byte's control (all non-split mini-games). */
-  const Mp9Control solo = static_cast<Mp9Control>(control & 0xFF);
-  Mp9Control team = static_cast<Mp9Control>((control >> 8) & 0xFF);
-  if (team == MP9_CONTROL_INVALID)
-    team = solo;
-
-  QRetroInputJoypad *joypads = retro->input()->joypads();
-  for (unsigned i = 0; i < 4; i++)
-  {
-    const unsigned slot = mp9Slot(m_players[i], i);
-    const bool isSolo = m_players[i].team_type == DR_TEAM_TYPE_1V3_SOLO;
-    mp9ApplyControl(joypads[slot], isSolo ? solo : team);
-  }
 }
 
 dr_minigame_result_t MarioParty9::minigameResult(unsigned index)

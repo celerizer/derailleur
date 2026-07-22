@@ -1,18 +1,18 @@
-#ifndef DR_GUEST_MARIO_PARTY_9_H
-#define DR_GUEST_MARIO_PARTY_9_H
+#ifndef DR_GUEST_MARIO_PARTY_8_H
+#define DR_GUEST_MARIO_PARTY_8_H
 
 #include "DolphinGuest.h"
 #include <string>
 
-class MarioParty9 : public DolphinGuest
+class MarioParty8 : public DolphinGuest
 {
   Q_OBJECT
 
 public:
-  MarioParty9(QRetro *sharedCore, QObject *parent = nullptr);
+  MarioParty8(QRetro *sharedCore, QObject *parent = nullptr);
 
-  const char *name() const override { return "Mario Party 9"; }
-  dr_guest id() const override { return DR_GUEST_MARIOPARTY9; }
+  const char *name() const override { return "Mario Party 8"; }
+  dr_guest id() const override { return DR_GUEST_MARIOPARTY8; }
 
   std::string corePath() const override { return m_corePath; }
   std::string discPath() const override { return m_discPath; }
@@ -38,10 +38,7 @@ private:
 
   dr_player_t m_players[4] = {};
   int m_minigameFrames = 0;
-  bool m_finishScheduled = false;
-  /// False until the start button is clicked and we swap off the pointer layout.
-  bool m_controlsApplied = false;
-  uint32_t m_partyPointsStart = 0;
+  int32_t m_lastScene = -1;
 };
 
 #endif

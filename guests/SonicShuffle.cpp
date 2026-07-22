@@ -119,6 +119,24 @@ static unsigned ss_slot(const dr_player_t &p, unsigned fallback)
   return slot < 4 ? slot : fallback;
 }
 
+/* dr_difficulty -> Sonic Shuffle CPU difficulty. It only has three levels, so the
+ * outer two of ours collapse inward. */
+static uint8_t ss_difficulty(dr_difficulty d)
+{
+  switch (d)
+  {
+  case DR_DIFFICULTY_VERY_EASY:
+  case DR_DIFFICULTY_EASY:
+    return 1; /* Easy */
+  case DR_DIFFICULTY_HARD:
+  case DR_DIFFICULTY_VERY_HARD:
+    return 3; /* Hard */
+  case DR_DIFFICULTY_NORMAL:
+  default:
+    return 2; /* Normal */
+  }
+}
+
 /* Arrangement value for a desired loading-screen `order`. Prefers the exact order,
  * but the 12 arrangements can't express every ordering (the 2nd/4th slots are always
  * ascending), so it falls back to any arrangement with the same (1st,3rd) pairing --
@@ -339,13 +357,18 @@ void SonicShuffle::doApplyGameData(const DrGameData &data)
     m_retro->writeForFrames(SS_MINIGAME_TYPE_ADDR, &mgtype, 1, 120);
   }
 
-  /* Board coins -> rings + rings to lose; board stars -> Precioustones. */
+  /* Board coins -> rings + rings to lose; board stars -> Precioustones. Also push
+   * who is a CPU and how strong they are. @todo character, once we have a
+   * dr_character -> Sonic Shuffle roster mapping. */
   for (i = 0; i < 4; i++)
   {
     slot = ss_slot(m_players[i], i);
     m_retro->writeu16(static_cast<uint16_t>(m_players[i].coins), SS_PLAYER_ADDR(slot, rings));
     //m_retro->writes16(static_cast<int16_t>(m_players[i].coins), SS_PLAYER_ADDR(slot, rings_to_lose));
     m_retro->writeu8(static_cast<uint8_t>(m_players[i].stars), SS_PLAYER_ADDR(slot, precioustones));
+    m_retro->writeu8(m_players[i].control_type == DR_CONTROL_TYPE_CPU ? 1 : 0,
+      SS_PLAYER_ADDR(slot, is_bot));
+    m_retro->writeu8(ss_difficulty(m_players[i].difficulty), SS_CPU_DIFFICULTY_ADDR[slot]);
   }
 
   /* For 1v3, the "1" is the host's solo player; determined here and reused below

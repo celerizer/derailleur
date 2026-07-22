@@ -161,6 +161,8 @@ void SuperMarioBros3::doApplyGameData(const DrGameData &data)
     slot++;
   }
 
+  m_retro->core()->audio()->setMute(true);
+
   startMinigame();
 }
 
@@ -172,6 +174,10 @@ void SuperMarioBros3::run()
     return;
 
   m_minigameFrames++;
+
+  /* Mute for first 30 frames of execution to ignore a beep */
+  if (m_minigameFrames > 30)
+    m_retro->core()->audio()->setMute(false);
 
   /* The game-over flag is set once the match ends. Guard with a few frames so a
    * stale flag from the loaded state can't finish us instantly. */

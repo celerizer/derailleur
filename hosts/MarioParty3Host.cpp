@@ -189,7 +189,7 @@ static const dr_scene_name_t MP3_SCENE_NAMES[] =
   // { 0x64, "" },
   // { 0x65, "" },
   // { 0x66, "" },
-  // { 0x67, "" },
+  { 0x67, "Initializing save file" },
   // { 0x68, "" },
   { 0x69, "Mini-Game Room" },
   { 0x6a, "Chance Time" },
