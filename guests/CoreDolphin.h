@@ -55,6 +55,7 @@ private:
   dr_mp_minigame_t *m_flatList = nullptr;
   QString m_m3uPath;
   QByteArray m_name;
+  QString m_subdir;
   int m_discIndex = -1;
 };
 

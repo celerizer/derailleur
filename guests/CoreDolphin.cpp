@@ -1,8 +1,11 @@
 #include "CoreDolphin.h"
 
+#include <QDateTime>
 #include <QFile>
+#include <QFileInfo>
 #include <QTextStream>
 #include <QDir>
+#include <QUuid>
 #include <QApplication>
 #include <QRetroDirectories.h>
 
@@ -16,9 +19,72 @@ static QString resolveDiscPath(const QString &base)
     return QString();
 }
 
+/* Generate a unique name for the Dolphin instance */
+static QByteArray dolphinArenaTag(const QString &subdir)
+{
+  QByteArray base = subdir.toUtf8().left(8);
+  while (base.size() < 8)
+    base.append('-');
+  const uint hash = qHash(subdir) & 0xFFF;
+  return base + QByteArray::number(hash, 16).rightJustified(3, '0').right(3);
+}
+
+/**
+ * ABSOLUTELY DERANGED WINDOWS HACK!!
+ * Scan the binary for the text "dolphin-emu\0" and replace it with a unique
+ * marker.
+ *
+ * See https://github.com/dolphin-emu/dolphin/blob/master/Source/Core/Common/MemArenaWin.cpp#L121
+ *
+ * The problem comes from this function on Windows creating a uniquely named
+ * handle based on the process ID... but since the GCN and Wii Dolphins both
+ * belong to derailleur they both try to take the same name, which is allowed
+ * on Linux but not on Windows.
+ */
+static QString writePatchedDolphinCore(const QString &originalPath, const QString &subdir)
+{
+  QFile origFile(originalPath);
+  if (!origFile.open(QIODevice::ReadOnly))
+    return QString();
+  QByteArray data = origFile.readAll();
+  origFile.close();
+
+  const QByteArray needle("dolphin-emu", 12);
+  const QByteArray marker("Memory::Init()");
+  int firstIdx = -1;
+  for (int from = 0; (from = data.indexOf(needle, from)) >= 0; from++)
+  {
+    const int windowStart = from + needle.size();
+    const int windowEnd = qMin(windowStart + 64, data.size());
+    if (data.mid(windowStart, windowEnd - windowStart).contains(marker))
+    {
+      firstIdx = from;
+      break;
+    }
+  }
+  if (firstIdx < 0)
+    return QString();
+
+  const QByteArray tag = dolphinArenaTag(subdir);
+  data.replace(firstIdx, tag.size(), tag);
+
+  QFileInfo origInfo(originalPath);
+  const QString destPath = QString("%1/dolphin_libretro_%2_%3.%4")
+    .arg(QDir::tempPath(), subdir, QUuid::createUuid().toString(QUuid::Id128), origInfo.suffix());
+
+  QFile destFile(destPath);
+  if (!destFile.open(QIODevice::WriteOnly | QIODevice::Truncate))
+    return QString();
+  destFile.write(data);
+  destFile.close();
+
+  return destPath;
+}
+
 CoreDolphin::CoreDolphin(const QString &subdir, QObject *parent)
   : DrGuest(parent)
 {
+  m_subdir = subdir;
   m_retro = new DrRetro(this);
   m_retro->setCore(new QRetro(), true);
   m_name = ("Dolphin " + subdir).toUtf8();
@@ -76,12 +142,19 @@ void CoreDolphin::addGame(DolphinGuest *game)
     // Needs to be disabled for multi-instancing to work.
     core()->options()->setOptionValue("dolphin_fastmem", "disabled");
 
-    if (!core()->loadCore(game->corePath().c_str()))
+    QString basePath = QString::fromStdString(game->corePath());
+    QString patchedPath = writePatchedDolphinCore(basePath, m_subdir);
+    QString loadPath = patchedPath.isEmpty() ? basePath : patchedPath;
+
+    if (!core()->loadCore(loadPath.toUtf8().constData()))
     {
       log(DR_LOG_ERROR,
-        qPrintable(QString("failed to load core: %1").arg(game->corePath().c_str())));
+        qPrintable(QString("failed to load core: %1").arg(loadPath)));
       m_valid = false;
     }
+
+    if (!patchedPath.isEmpty())
+      QFile::remove(patchedPath);
   }
 
   m_games.append(game);
@@ -115,9 +188,7 @@ void CoreDolphin::finalizeGames()
     m_valid = false;
   }
 
-  /* With a single disc there is nothing to swap to -- the lazy m3u boot lands on
-   * it directly. Record it as current so doApplyGameData skips the disc change,
-   * which the Wii core does not survive. */
+  /* With a single disc there is nothing to swap to -- assume the one disc */
   if (m_games.size() == 1)
     m_discIndex = 0;
 }
