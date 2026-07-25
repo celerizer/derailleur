@@ -405,6 +405,49 @@ MarioParty3Host::MarioParty3Host(QObject *parent)
           "+D110AE18 1040"
           "+8011B761 0047");
 
+        // Recommended Codes
+        m_core->cheatSet(4, true,
+          "810A12D6 0000"
+          
+          "+81009C10 080F"
+          "+81009C12 FC00"
+          "+81009C14 27BD"
+          "+81009C16 FFE8"
+
+          "+813FF000 3C05"
+          "+813FF002 0013"
+          "+813FF004 24A5"
+          "+813FF006 0046"
+          "+813FF008 1485"
+          "+813FF00A 000B"
+          "+813FF00C 2400"
+          "+813FF010 3C04"
+          "+813FF012 0013"
+          "+813FF014 2484"
+          "+813FF016 001C"
+          "+813FF018 3C1B"
+          "+813FF01A 800D"
+          "+813FF01C 8365"
+          "+813FF01E D058"
+          "+813FF020 8366"
+          "+813FF022 D059"
+          "+813FF024 30A5"
+          "+813FF026 0001"
+          "+813FF028 1405"
+          "+813FF02A 0002"
+          "+813FF02C 2400"
+          "+813FF030 2484"
+          "+813FF032 000C"
+          "+813FF034 0086"
+          "+813FF036 2021"
+          "+813FF038 0800"
+          "+813FF03A 2706"
+          "+813FF03C AFBF"
+          "+813FF03E 0014"
+
+          "+D11095AA 2484"
+          "+81109348 2400");
+
         m_core->cheatSet(1, false, MP3_CHEAT_REGULAR_BOARD);
         m_core->cheatSet(2, false, MP3_CHEAT_DUEL_BOARD);
 

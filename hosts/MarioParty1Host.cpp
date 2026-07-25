@@ -164,14 +164,16 @@ static const dr_scene_name_t MP1_SCENE_NAMES[] =
   { 0x77, "Mini-Game Island ending" },
   { 0x78, "Mini-Game Island intro" },
   { 0x79, "Mini-Game Island save space" },
-  // { 0x7a, "" },
-  // { 0x7b, "" },
+  { 0x7a, "Random Play" }, // unused
+  { 0x7b, "Mini-Game results" }, // stadium
   { 0x7c, "Mini-Game results" },
   { 0x7d, "Mini-Game Island results" },
   { 0x7e, "Sequential Play" }, // unused
-  // { 0x7f, "" },
-  // { 0x80, "" },
+  { 0x7f, "Mini-Game Stadium intro" },
+  { 0x80, "Mini-Game Stadium results" },
   { 0x81, "Title Screen" },
+  { 0x82, "Mini-Game Stadium intro" }, // again?
+  { 0x83, "Debug menu" }, // unused
 
   { -1, nullptr },
 };
@@ -312,6 +314,30 @@ MarioParty1Host::MarioParty1Host(QObject *parent)
           "+81043ABA 0001"
           "+81043B08 2400" // NOP
           "+81043B74 2400"  // NOP
+        );
+
+        // Recommended Codes
+        m_core->cheatSet(2, true,
+          /* Board speed? */
+          "81057852 4218"
+
+          /* Force always save... */
+          "+800ED5E2 0002"
+          "+800ED5E4 0002"
+          /* ...except for Mini-Game Stadium */
+          "+D10F09F6 007F"
+          "+800ED5E2 0000"
+
+          /* Don't proceed on results? */
+          "+D10F09F6 0064"
+          "+810FB1AC 2400"
+
+          /* Don't proceed on results */
+          "+D10F09F6 0040"
+          "+810FB1AC 2400"
+
+          /* Advance "START" prompt */
+          "+81046DDC 2400"
         );
       }
     },

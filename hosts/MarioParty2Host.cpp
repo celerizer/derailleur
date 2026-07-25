@@ -317,19 +317,38 @@ MarioParty2Host::MarioParty2Host(QObject *parent)
           "+8104B020 2400"  // NOP                 — suppress downstream overwrite of injected ID
         );
 
-        // Increased Board Speed
+        // Recommended Codes
         m_core->cheatSet(1, true,
-          "810657EE 0005"
-          "+D110724A CC90"
-          "+811071D6 4080"
-          "+D110724A CC90"
-          "+811071B6 4080"
-          "+D1106A6A 38B0"
-          "+81106A5A 0006"
-          "+D1110166 4020"
-          "+81110166 40A0"
-          "+D111019E 4040"
-          "+8111019E 40C0");
+          /* Force always save on... */
+          "800F93CC 0000"
+          "+800F93CE 0000"
+          /* ...except for Mini-Game Trial. */
+          "+D10FA63E 004B"
+          "+800F93CC 0002"
+
+          /* Advance "START" prompt */
+          "+8104F0FC 2400"
+
+          /* Save check -- no longer needed
+          "+D10D8BE8 2E03"
+          "+800C3C92 00CE"
+          "+D30D8BE8 2E03"
+          "+800C3C92 0000"
+          "+D10FA63E 005B"
+          "+800C3C93 001E"
+          "+D10C3C92 CE1E"
+          "+81113068 0008"
+          "+D10C3C92 CE1E"
+          "+8111306A 0031"
+          */
+
+          /* Honestly don't remember. These may both be speed */
+          "+810657EE 0005"
+          "+81062D8C 1000"
+
+          /* Disable proceed on board results */
+          "+D10FA63E 0051"
+          "+811072A0 2400");
       }
     },
     Qt::DirectConnection);
