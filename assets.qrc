@@ -55,5 +55,24 @@
         <file>assets/player-50px/8.png</file>
         <file>assets/ui/hop_base.png</file>
         <file>assets/ui/bumper_base.png</file>
+        <file>assets/sonicshuffle/char/0.png</file>
+        <file>assets/sonicshuffle/char/1.png</file>
+        <file>assets/sonicshuffle/char/2.png</file>
+        <file>assets/sonicshuffle/char/3.png</file>
+        <file>assets/sonicshuffle/char/4.png</file>
+        <file>assets/sonicshuffle/char/5.png</file>
+        <file>assets/sonicshuffle/char/6.png</file>
+        <file>assets/sonicshuffle/char/7.png</file>
+        <file>assets/sonicshuffle/char/8.png</file>
+        <file>assets/sonicshuffle/card/0.png</file>
+        <file>assets/sonicshuffle/card/1.png</file>
+        <file>assets/sonicshuffle/card/2.png</file>
+        <file>assets/sonicshuffle/card/3.png</file>
+        <file>assets/sonicshuffle/card/4.png</file>
+        <file>assets/sonicshuffle/card/5.png</file>
+        <file>assets/sonicshuffle/card/6.png</file>
+        <file>assets/sonicshuffle/card/7.png</file>
+        <file>assets/sonicshuffle/card/8.png</file>
+        <file>assets/sonicshuffle/card/flip.png</file>
     </qresource>
 </RCC>
