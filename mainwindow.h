@@ -3,6 +3,10 @@
 
 #include <cstdlib>
 
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
 #include <QCloseEvent>
 #include <QMainWindow>
 #include <QMetaObject>
@@ -94,7 +98,11 @@ protected:
     // DirectConnection signals into our objects. Unwinding all of that during
     // normal teardown races with object destruction and crashes (notably under
     // Wine). There is no exit-time state to flush, so terminate immediately.
+#ifdef _WIN32
+    TerminateProcess(GetCurrentProcess(), 0);
+#else
     std::_Exit(0);
+#endif
   }
 };
 
