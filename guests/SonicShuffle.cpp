@@ -308,16 +308,21 @@ void SonicShuffle::run(void)
     return;
   }
 
-  /* Player 0's flags byte flashes 0x89 two times as the mini-game ends; on the
-   * 2nd edge-detected change into 0x89, arm the 30-frame wait above. */
+  /* Player 0's flags byte flashes 0x89 as the mini-game ends. Normal games flash
+   * twice; Accident and Stage Clear games flash only once. On the last expected
+   * edge-detected change into 0x89, arm the 30-frame wait above. */
   {
+    const uint8_t supertype =
+      m_minigame ? static_cast<uint8_t>(m_minigame->scene_id) : SS_SUPERTYPE_NORMAL;
+    const int needed = (supertype == SS_SUPERTYPE_NORMAL) ? 2 : 1;
+
     uint8_t flag = 0;
     m_retro->readu8(&flag, SS_PLAYER_ADDR(0, flags));
     if (flag == 0x89 && m_lastEndFlag != 0x89)
     {
       m_endFlashes++;
-      log(DR_LOG_INFO, qPrintable(QString("end flash %1/2").arg(m_endFlashes)));
-      if (m_endFlashes >= 2)
+      log(DR_LOG_INFO, qPrintable(QString("end flash %1/%2").arg(m_endFlashes).arg(needed)));
+      if (m_endFlashes >= needed)
         m_endDelay = 5;
     }
     m_lastEndFlag = flag;
@@ -375,28 +380,43 @@ void SonicShuffle::doApplyGameData(const DrGameData &data)
    * for both SS_MINIGAME_SOLO_ADDR and the loading-screen arrangement. */
   uint8_t solo = 0;
 
-  /* 2v2: randomize each team's roles so it holds one 0 and one 1. */
+  /* Per-slot team (0/1) and role (0/1) for a 2v2, assigned locally from the host's
+   * team data. Indexed by in-game slot, matching SS_MINIGAME_TEAM/ROLE_ADDR. */
+  uint8_t team_of[4] = { 0, 0, 0, 0 };
+  uint8_t role_of[4] = { 0, 0, 0, 0 };
+
+  /* 2v2: set the teams ourselves from the host assignment (player 0's team is 0,
+   * the other team is 1), then give each team one role 0 and one role 1. This is
+   * all known locally, so nothing is read back from the game. */
   if (type == DR_MINIGAME_2V2)
   {
-    unsigned team, m, count, members[4], zero;
-    uint8_t t;
+    const unsigned ref_team = m_players[0].team_id;
+    unsigned team, count, members[4], zero;
+
+    for (i = 0; i < 4; i++)
+    {
+      slot = ss_slot(m_players[i], i);
+      team_of[slot] = (m_players[i].team_id == ref_team) ? 0 : 1;
+    }
 
     for (team = 0; team < 2; team++)
     {
       count = 0;
-      for (m = 0; m < 4; m++)
-      {
-        t = 0;
-        m_retro->readu8(&t, SS_MINIGAME_TEAM_ADDR[m]);
-        if (t == team)
-          members[count++] = m;
-      }
+      for (slot = 0; slot < 4; slot++)
+        if (team_of[slot] == team)
+          members[count++] = slot;
       if (count == 2)
       {
         zero = dr_rand() % 2;
-        m_retro->writeu8(0, SS_MINIGAME_ROLE_ADDR[members[zero]]);
-        m_retro->writeu8(1, SS_MINIGAME_ROLE_ADDR[members[!zero]]);
+        role_of[members[zero]] = 0;
+        role_of[members[!zero]] = 1;
       }
+    }
+
+    for (i = 0; i < 4; i++)
+    {
+      m_retro->writeForFrames(SS_MINIGAME_TEAM_ADDR[i], &team_of[i], 1, 120);
+      m_retro->writeForFrames(SS_MINIGAME_ROLE_ADDR[i], &role_of[i], 1, 120);
     }
   }
   else if (type == DR_MINIGAME_1V3)
@@ -417,24 +437,19 @@ void SonicShuffle::doApplyGameData(const DrGameData &data)
 
     if (type == DR_MINIGAME_2V2)
     {
-      uint8_t order[4] = { 0, 0, 0, 0 }, team, role;
+      uint8_t order[4] = { 0, 0, 0, 0 };
       unsigned pos = 0, r, tm, sl;
 
-      /* team 0 role 0, team 1 role 0, team 0 role 1, team 1 role 1 */
+      /* team 0 role 0, team 1 role 0, team 0 role 1, team 1 role 1 -- read from
+       * the teams/roles we just assigned locally, not the game's memory. */
       for (r = 0; r < 2; r++)
         for (tm = 0; tm < 2; tm++)
           for (sl = 0; sl < 4; sl++)
-          {
-            team = 0;
-            role = 0;
-            m_retro->readu8(&team, SS_MINIGAME_TEAM_ADDR[sl]);
-            m_retro->readu8(&role, SS_MINIGAME_ROLE_ADDR[sl]);
-            if (team == tm && role == r)
+            if (team_of[sl] == tm && role_of[sl] == r)
             {
               order[pos++] = (uint8_t)sl;
               break;
             }
-          }
       arrangement = (pos == 4) ? ss_arrangement_value(order) : (uint8_t)(dr_rand() % 12);
     }
     else if (type == DR_MINIGAME_1V3)
