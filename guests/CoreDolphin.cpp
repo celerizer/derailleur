@@ -256,42 +256,68 @@ void CoreDolphin::doApplyGameData(const DrGameData &data)
 
   // Swap to the disc for this game (index matches order in the .m3u)
   int discIndex = m_games.indexOf(owner);
-  if (discIndex != m_discIndex)
+  log(DR_LOG_INFO, qPrintable(QString("disc change: %1 -> disc %2 (was %3, %4 disc(s))")
+                                .arg(owner->name())
+                                .arg(discIndex)
+                                .arg(m_discIndex)
+                                .arg(m_games.size())));
+
+  // Always (re)insert on a multi-disc core; single-disc cores never hot-swap
+  if (m_games.size() > 1)
   {
     /* Expose the core so it will run frames */
     core()->show();
 
     /* Use the disk interface to change games */
+    log(DR_LOG_INFO, "disc change: ejecting");
     core()->diskControl()->setEjectState(true);
+    log(DR_LOG_INFO, qPrintable(QString("disc change: setting image index %1").arg(discIndex)));
     core()->diskControl()->setImageIndex(discIndex);
+    log(DR_LOG_INFO, "disc change: inserting");
     core()->diskControl()->setEjectState(false);
     m_discIndex = discIndex;
 
     /* Spin frames while the disc takes (MPGC needed about this much) */
+    static const int discMountFrames = 120;
+    log(DR_LOG_INFO, qPrintable(QString("disc change: spinning %1 frames for the disc to mount")
+                                  .arg(discMountFrames)));
     core()->unpause();
-    for (int i = 0; i < 120; i++)
+    for (int i = 0; i < discMountFrames; i++)
     {
       core()->waitFrames(1);
       QApplication::processEvents();
     }
     core()->pause();
+    log(DR_LOG_INFO, "disc change: disc settled");
+  }
+  else
+  {
+    log(DR_LOG_INFO, "disc change: single-disc core, keeping the booted disc");
   }
 
   // Load the per-game savestate
+  log(DR_LOG_INFO, qPrintable(QString("disc change: loading savestate %1")
+                                .arg(QString::fromStdString(owner->statePath()))));
   core()->unserializeFromFile(QString::fromStdString(owner->statePath()));
   QApplication::processEvents();
+  log(DR_LOG_INFO, "disc change: savestate loaded");
 
   // Delegate game-specific setup (writes minigame_id, players, etc.)
+  log(DR_LOG_INFO, "disc change: applying game-specific setup");
   owner->applyGameData(data);
   QApplication::processEvents();
 
   // Spin again (this was the time needed for MP6 to draw a new frame)
+  static const int minigameDrawFrames = 48;
+  log(DR_LOG_INFO, qPrintable(
+                     QString("disc change: spinning %1 frames to draw a frame").arg(minigameDrawFrames)));
   core()->unpause();
-  for (int i = 0; i < 48; i++)
+  for (int i = 0; i < minigameDrawFrames; i++)
   {
     core()->waitFrames(1);
     QApplication::processEvents();
   }
-  
+
+  log(DR_LOG_INFO, "disc change: starting minigame");
   startMinigame();
 }
