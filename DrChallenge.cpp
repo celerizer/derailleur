@@ -302,7 +302,7 @@ void DrChallenge::updateTotals()
 }
 
 std::array<dr_player_t, 4> DrChallenge::buildPlayers(
-  const dr_mp_minigame_t *minigame, int tier) const
+  const DrGuest *guest, const dr_mp_minigame_t *minigame, int tier) const
 {
   std::array<dr_player_t, 4> players{};
   const bool unfair = (tier == k_TierUnfair);
@@ -310,11 +310,30 @@ std::array<dr_player_t, 4> DrChallenge::buildPlayers(
   const dr_character chosen = static_cast<dr_character>(m_character->currentData().toInt());
   auto *rng = QRandomGenerator::global();
 
+  /* Bandaid: MP1 and MP2 have no Waluigi or Daisy -- their character tables stop
+   * at Donkey Kong, so both fall through to Mario. Keep the pair out of the CPU
+   * pool, and drop Mario too when the challenger is one of them, since they are
+   * already showing up in-game as Mario. */
+  const dr_guest id = guest ? guest->id() : DR_GUEST_INVALID;
+  const bool noWaluigiDaisy = (id == DR_GUEST_MARIOPARTY1 || id == DR_GUEST_MARIOPARTY2);
+  const bool playerIsSubbed =
+    (chosen == DR_CHARACTER_WALUIGI || chosen == DR_CHARACTER_DAISY);
+
   /* The CPUs draw random characters from the roster, minus the player's pick. */
   QList<int> pool;
   for (int c = k_FirstCharacter; c < k_FirstCharacter + k_CharacterCount; c++)
-    if (c != static_cast<int>(chosen))
-      pool.append(c);
+  {
+    if (c == static_cast<int>(chosen))
+      continue;
+    if (noWaluigiDaisy)
+    {
+      if (c == DR_CHARACTER_WALUIGI || c == DR_CHARACTER_DAISY)
+        continue;
+      if (playerIsSubbed && c == DR_CHARACTER_MARIO)
+        continue;
+    }
+    pool.append(c);
+  }
   for (int i = pool.size() - 1; i > 0; i--)
     pool.swapItemsAt(i, static_cast<int>(rng->bounded(i + 1)));
 
@@ -438,7 +457,7 @@ void DrChallenge::launchEntry(int idx, int playTier)
   m_pending.tier = playTier;
   m_pending.character = currentCharacter();
 
-  emit minigameRequested(guest, minigame, buildPlayers(minigame, playTier));
+  emit minigameRequested(guest, minigame, buildPlayers(guest, minigame, playTier));
 }
 
 void DrChallenge::launchNext(int excludeIdx)

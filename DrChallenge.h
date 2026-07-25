@@ -85,7 +85,8 @@ private:
   void updateTotals();
   void updateDifficultyChoices();
   const dr_mp_minigame_t *selectedMinigame(DrGuest **guestOut = nullptr) const;
-  std::array<dr_player_t, 4> buildPlayers(const dr_mp_minigame_t *minigame, int tier) const;
+  std::array<dr_player_t, 4> buildPlayers(
+    const DrGuest *guest, const dr_mp_minigame_t *minigame, int tier) const;
 
   /// Loads the selected character's records and refreshes the view.
   void reload();
