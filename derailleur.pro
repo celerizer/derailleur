@@ -43,6 +43,8 @@ SOURCES += \
     hosts/MarioParty1Host.cpp \
     hosts/MarioParty2Host.cpp \
     hosts/MarioParty3Host.cpp \
+    hosts/SonicShuffleHand.cpp \
+    hosts/SonicShuffleHost.cpp \
     guests/BanjoTooie.cpp \
     guests/CoreDolphin.cpp \
     guests/DolphinGuest.cpp \
@@ -93,6 +95,8 @@ HEADERS += \
     hosts/MarioParty1Host.h \
     hosts/MarioParty2Host.h \
     hosts/MarioParty3Host.h \
+    hosts/SonicShuffleHand.h \
+    hosts/SonicShuffleHost.h \
     guests/BanjoTooie.h \
     guests/CoreDolphin.h \
     guests/DolphinGuest.h \

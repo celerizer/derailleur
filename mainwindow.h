@@ -53,6 +53,10 @@ private:
   void setupNetplay();
   void attachNetplay();
 
+  /// Our seat/peer index in a netplay session (0 solo). Pushed into a host at
+  /// start so it can show our private per-player state.
+  int m_NetplayPeerIndex = 0;
+
   QMetaObject::Connection m_warmupConnection;
   unsigned m_warmupFrameCount = 0;
   QList<DrGuest *> m_warmupQueue; // guests with an allowed mini-game, warmed in order

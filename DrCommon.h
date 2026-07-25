@@ -241,6 +241,8 @@ typedef enum
   DR_GAME_MARIOPARTY2,
   DR_GAME_MARIOPARTY3,
 
+  DR_GAME_SONICSHUFFLE,
+
   DR_GAME_SIZE
 } dr_game;
 

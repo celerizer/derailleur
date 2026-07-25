@@ -43,6 +43,15 @@ public:
   /// has no turn counter.
   virtual void setCurrentTurn(unsigned turn) { (void)turn; }
 
+  /// Which of the four board players is the local human (0-3). In a netplay
+  /// session this is our peer index; solo it stays 0. Used by hosts that show
+  /// per-player private state (e.g. Sonic Shuffle's VMU hand).
+  void setLocalPlayer(int index) { m_LocalPlayer = index; }
+  int localPlayer(void) const { return m_LocalPlayer; }
+
+protected:
+  int m_LocalPlayer = 0;
+
 signals:
   /// The host is about to open its roulette and needs candidates of `type`.
   void candidatesNeeded(dr_minigame_type type);

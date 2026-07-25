@@ -49,7 +49,7 @@ public:
     if (m_core)
       m_core->unpause();
   }
-  void startCore()
+  virtual void startCore()
   {
     if (m_core)
       m_core->startCore();

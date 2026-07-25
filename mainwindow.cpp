@@ -25,6 +25,7 @@
 #include "hosts/MarioParty1Host.h"
 #include "hosts/MarioParty2Host.h"
 #include "hosts/MarioParty3Host.h"
+#include "hosts/SonicShuffleHost.h"
 #include "guests/MarioKart64.h"
 #include "guests/MarioParty1.h"
 #include "guests/MarioParty2.h"
@@ -177,7 +178,9 @@ MainWindow::MainWindow(QWidget *parent)
   //addGuest(new MarioPartyE());
   addGuest(new Kirby64());
   addGuest(new BanjoTooie());
-  addGuest(new SonicShuffle());
+  /* TEST: disabled to check whether a second Flycast instance (Sonic Shuffle
+   * host + guest) is what crashes the host. */
+  //addGuest(new SonicShuffle());
 
 #if SHOW_LOGGER
   for (DrGuest *guest : m_Guests->guests())
@@ -220,6 +223,7 @@ MainWindow::MainWindow(QWidget *parent)
   addHostButton("Mario Party 1", [this]() -> DrHost * { return new MarioParty1Host(this); });
   addHostButton("Mario Party 2", [this]() -> DrHost * { return new MarioParty2Host(this); });
   addHostButton("Mario Party 3", [this]() -> DrHost * { return new MarioParty3Host(this); });
+  addHostButton("Sonic Shuffle", [this]() -> DrHost * { return new SonicShuffleHost(this); });
   chooserLayout->addStretch();
 
   m_Stack->addWidget(chooser); // index 0 — chooser
@@ -372,6 +376,10 @@ void MainWindow::startWithHost(DrHost *host)
 {
   m_Host = host;
 
+  /* Tell the host which board seat is us, so it can surface our private state
+   * (solo this is 0; in a session it is our netplay peer index). */
+  m_Host->setLocalPlayer(m_NetplayPeerIndex);
+
 #if SHOW_OVERLAY
   {
     QPixmap loading(":/assets/loading.png");
@@ -403,11 +411,15 @@ void MainWindow::startWithHost(DrHost *host)
       guest->startCore();
       m_warmupQueue.append(guest);
     }
-  m_Host->startCore();
 
+  /* Create the host's window container before starting the core: a GL core
+   * (Flycast/Sonic Shuffle) needs a native surface in place before it loads its
+   * content, which some hosts defer into startCore(). */
   m_HostContainer = QWidget::createWindowContainer(m_Host->core(), m_Stack);
   m_HostContainer->setFocusPolicy(Qt::StrongFocus);
   m_Stack->addWidget(m_HostContainer);
+
+  m_Host->startCore();
 
   /* The host core is paused until showHost() unpauses it, and it sizes itself to
    * the game's native resolution once it starts running. Nudge it to fill its
@@ -569,6 +581,13 @@ void MainWindow::launchMinigame(
        * keeps the overlay up and the audio muted the whole time. Self-disconnects. */
       auto conn = std::make_shared<QMetaObject::Connection>();
       *conn = connect(guest, &DrGuest::minigameStarted, this, [this, guest, conn]() {
+        /* Only now — once the guest has finished booting/loading — make it the
+         * foreground netplay context. Gating it any earlier deadlocks a deferred
+         * guest whose load blocks the GUI thread in waitFrames() (e.g. Dolphin's
+         * disc swap): the gated frame waits for peer input the blocked GUI thread
+         * can't read. See launchMinigame's comment where setActiveContext used to
+         * live. */
+        m_Netplay->setActiveContext(guest->core());
 #if SHOW_OVERLAY
         m_Overlay->fadeOut();
 #endif
@@ -586,11 +605,10 @@ void MainWindow::launchMinigame(
         data.players[i] = players[i];
       guest->applyGameData(data);
 
-      /* A minigame state was just loaded; make this guest the foreground netplay
-       * context so it resynchronizes from this sync point. Done before unpause
-       * so its frame counter is reset while the core is still stopped. */
-      m_Netplay->setActiveContext(guest->core());
-
+      /* The guest becomes the foreground netplay context from its minigameStarted
+       * handler above — once it has actually booted/loaded — not here. A deferred
+       * guest (e.g. Dolphin) hasn't loaded yet at this point, and gating it while
+       * its GUI-thread load blocks in waitFrames() deadlocks the session. */
       guest->unpause();
     });
 }
@@ -605,6 +623,10 @@ void MainWindow::setupNetplay()
     m_Logger->message(DR_LOG_INFO,
       QString("netplay started: peer %1 of %2").arg(index).arg(count));
 #endif
+    /* Remember our seat, and update a running host if it already started. */
+    m_NetplayPeerIndex = index;
+    if (m_Host)
+      m_Host->setLocalPlayer(index);
   });
   connect(m_Netplay, &DrNetplay::peerCountChanged, this, [this](int connected, int total) {
 #if SHOW_LOGGER
@@ -638,6 +660,9 @@ void MainWindow::setupNetplay()
       break;
     case DR_GAME_MARIOPARTY3:
       host = new MarioParty3Host(this);
+      break;
+    case DR_GAME_SONICSHUFFLE:
+      host = new SonicShuffleHost(this);
       break;
     default:
       break;
