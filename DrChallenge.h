@@ -14,15 +14,27 @@ class QComboBox;
 class QLabel;
 class QTreeWidget;
 
+/// Per-mini-game completion for one character. The Unfair challenge (a 2v2/1v3
+/// with very-easy team-mates against very-hard opponents) is tracked separately
+/// from the five normal difficulties, not as a sixth tier.
+struct DrClearStatus
+{
+  int tier = 0;         ///< highest normal difficulty cleared (1-5, 0 = none)
+  bool unfair = false;  ///< whether the Unfair challenge was beaten
+};
+
 /**
  * Challenge mode: pick one of the first eight characters, a difficulty, and any
  * loaded mini-game, then try to win it single-handedly. The other three players
- * are CPUs with random characters. A win is persisted as the highest tier
- * cleared for that mini-game and shown back as a star rating.
+ * are CPUs with random characters. A win is persisted per mini-game and shown
+ * back as a star rating (see DrClearStatus).
  *
- * Tiers are 1-5 for Very Easy..Very Hard, plus 6 ("Unfair") for team mini-games,
- * where your team-mates are Very Easy and your opponents Very Hard. In a 1v3 the
- * player is normally the solo "1"; under Unfair they join the trio instead.
+ * Tiers 1-5 are Very Easy..Very Hard. "Unfair" (tier value 6) is a separate
+ * challenge available only for team mini-games, where your team-mates are Very
+ * Easy and your opponents Very Hard; in a 1v3 the player is normally the solo
+ * "1", but under Unfair they join the trio instead. An Unfair run picks only
+ * 2v2/1v3 mini-games and its clears are recorded apart from the five tiers,
+ * showing as an extra sixth star rather than raising the tier.
  */
 class DrChallenge : public QWidget
 {
@@ -60,6 +72,9 @@ signals:
   void minigameRequested(
     DrGuest *guest, const dr_mp_minigame_t *minigame, std::array<dr_player_t, 4> players);
 
+  /// Diagnostic log (level matches DrLogger::message / DR_LOG_*).
+  void logMessage(unsigned level, const QString &message);
+
 private:
   struct Pending
   {
@@ -69,6 +84,9 @@ private:
     /* Records go to the character that actually played, even if the combo is
      * changed while the mini-game is running. */
     dr_character character = DR_CHARACTER_INVALID;
+    /* The launched line-up, so scoring knows the team split (needed to tell who
+     * won a 2v2/1v3). */
+    std::array<dr_player_t, 4> players{};
   };
 
   void start();
@@ -94,8 +112,8 @@ private:
 
   /* Completion is tracked per character, one file each. */
   static QString filePathFor(dr_character character);
-  static QHash<QString, int> loadFor(dr_character character);
-  static void saveFor(dr_character character, const QHash<QString, int> &records);
+  static QHash<QString, DrClearStatus> loadFor(dr_character character);
+  static void saveFor(dr_character character, const QHash<QString, DrClearStatus> &records);
   static QString recordKey(const DrGuest *guest, const dr_mp_minigame_t *minigame);
 
   QComboBox *m_character = nullptr;
@@ -112,8 +130,8 @@ private:
 
   /// Flat list behind the tree; items carry an index into this.
   QList<QPair<DrGuest *, const dr_mp_minigame_t *>> m_entries;
-  /// recordKey() -> highest tier cleared, for the selected character only.
-  QHash<QString, int> m_cleared;
+  /// recordKey() -> clear status, for the selected character only.
+  QHash<QString, DrClearStatus> m_cleared;
   Pending m_pending;
 };
 

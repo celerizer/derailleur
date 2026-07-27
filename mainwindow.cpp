@@ -260,6 +260,9 @@ MainWindow::MainWindow(QWidget *parent)
     [this](DrGuest *guest, const dr_mp_minigame_t *minigame, std::array<dr_player_t, 4> players) {
       launchMinigame(guest, minigame, players.data());
     });
+#if SHOW_LOGGER
+  connect(m_Challenge, &DrChallenge::logMessage, m_Logger, &DrLogger::message, Qt::QueuedConnection);
+#endif
 
   connect(m_Stack, &QStackedWidget::currentChanged, this, [this](int index) {
     if (QWidget *page = m_Stack->widget(index))

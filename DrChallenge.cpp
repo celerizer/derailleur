@@ -247,20 +247,22 @@ void DrChallenge::refreshStars()
 
       const DrGuest *guest = m_entries[idx].first;
       const dr_mp_minigame_t *minigame = m_entries[idx].second;
-      const int cleared = m_cleared.value(recordKey(guest, minigame), 0);
+      const DrClearStatus st = m_cleared.value(recordKey(guest, minigame));
 
-      QString text = starText(qMin(cleared, 5));
-      if (cleared >= k_TierUnfair)
-        text += QString::fromUtf8("\xe2\x98\x85"); /* only appears once earned */
+      /* Five base stars for the normal tier, plus a separate sixth star only when
+       * the Unfair challenge was beaten (never shown as an empty slot). */
+      QString text = starText(qMin(st.tier, 5));
+      if (st.unfair)
+        text += QString::fromUtf8("\xe2\x98\x85");
       item->setText(1, text);
 
-      /* A 1P clear has no tier to name. */
-      if (cleared <= 0)
-        item->setToolTip(1, tr("Not cleared"));
-      else if (minigame->type == DR_MINIGAME_1P)
-        item->setToolTip(1, tr("Cleared"));
-      else
-        item->setToolTip(1, tr("Cleared on %1").arg(tierName(cleared)));
+      QStringList tips;
+      if (st.tier > 0)
+        tips << (minigame->type == DR_MINIGAME_1P ? tr("Cleared")
+                                                  : tr("Cleared on %1").arg(tierName(st.tier)));
+      if (st.unfair)
+        tips << tr("Unfair cleared");
+      item->setToolTip(1, tips.isEmpty() ? tr("Not cleared") : tips.join(tr(", ")));
     }
   }
 
@@ -277,8 +279,8 @@ void DrChallenge::updateTotals()
     const int type = entry.second->type;
     if (type <= DR_MINIGAME_INVALID || type >= DR_MINIGAME_SIZE)
       continue;
-    /* Cap at the five base tiers so an Unfair clear does not inflate the count. */
-    earned[type] += qMin(m_cleared.value(recordKey(entry.first, entry.second), 0), 5);
+    /* Only the five base tiers count; Unfair is tracked separately. */
+    earned[type] += qMin(m_cleared.value(recordKey(entry.first, entry.second)).tier, 5);
     total[type] += 5;
   }
 
@@ -452,26 +454,34 @@ void DrChallenge::launchEntry(int idx, int playTier)
     }
   }
 
+  const std::array<dr_player_t, 4> players = buildPlayers(guest, minigame, playTier);
   m_pending.guest = guest;
   m_pending.minigame = minigame;
   m_pending.tier = playTier;
   m_pending.character = currentCharacter();
+  m_pending.players = players;
 
-  emit minigameRequested(guest, minigame, buildPlayers(guest, minigame, playTier));
+  emit minigameRequested(guest, minigame, players);
 }
 
 void DrChallenge::launchNext(int excludeIdx)
 {
-  /* Every entry not yet cleared at its effective tier is a candidate. */
+  /* Whether an entry is still an uncleared candidate at the run's tier. An Unfair
+   * run only ever picks team mini-games (2v2/1v3), tracked by the separate unfair
+   * flag; a normal run compares the highest normal tier cleared. */
+  auto uncleared = [this](const DrGuest *guest, const dr_mp_minigame_t *minigame) -> bool {
+    const DrClearStatus st = m_cleared.value(recordKey(guest, minigame));
+    if (m_continuousTier == k_TierUnfair)
+      return isTeamType(minigame->type) && !st.unfair;
+    return st.tier < effectiveTier(minigame, m_continuousTier);
+  };
+
   QList<int> pool;
   for (int i = 0; i < m_entries.size(); i++)
   {
     if (i == excludeIdx)
       continue;
-    const DrGuest *guest = m_entries[i].first;
-    const dr_mp_minigame_t *minigame = m_entries[i].second;
-    if (m_cleared.value(recordKey(guest, minigame), 0) <
-        effectiveTier(minigame, m_continuousTier))
+    if (uncleared(m_entries[i].first, m_entries[i].second))
       pool.append(i);
   }
 
@@ -479,10 +489,7 @@ void DrChallenge::launchNext(int excludeIdx)
    * than ending early. */
   if (pool.isEmpty() && excludeIdx >= 0 && excludeIdx < m_entries.size())
   {
-    const DrGuest *guest = m_entries[excludeIdx].first;
-    const dr_mp_minigame_t *minigame = m_entries[excludeIdx].second;
-    if (m_cleared.value(recordKey(guest, minigame), 0) <
-        effectiveTier(minigame, m_continuousTier))
+    if (uncleared(m_entries[excludeIdx].first, m_entries[excludeIdx].second))
       pool.append(excludeIdx);
   }
 
@@ -530,17 +537,75 @@ void DrChallenge::recordResult(DrGuest *guest)
     }
     won = won && anyScored;
   }
+  else if (pending.minigame->type == DR_MINIGAME_2V2 ||
+           pending.minigame->type == DR_MINIGAME_1V3)
+  {
+    /* Team game: the challenger's team wins if it is at least tied with the best
+     * opposing team. Team-mates share a payout, so the challenger's own coins
+     * represent their team. (Fixes a 1v3 where the solo out-scores the trio the
+     * challenger is on -- getting some coins is not the same as winning.) */
+    const unsigned myTeam = pending.players[0].team_id;
+    signed bestOpponent = 0;
+    bool haveOpponent = false;
+    bool anyScored = result.coins != 0;
+    for (unsigned i = 1; i < 4; i++)
+    {
+      const signed coins = guest->minigameResult(i).coins;
+      if (coins != 0)
+        anyScored = true;
+      if (pending.players[i].team_id != myTeam)
+      {
+        if (!haveOpponent || coins > bestOpponent)
+          bestOpponent = coins;
+        haveOpponent = true;
+      }
+    }
+    won = anyScored && (!haveOpponent || result.coins >= bestOpponent);
+  }
   else
     won = result.coins > 0;
 
+  /* Log the raw per-player results and the verdict. */
+  emit logMessage(DR_LOG_INFO,
+    QString("challenge: %1 [%2] as %3, %4 -> %5")
+      .arg(QString::fromUtf8(pending.minigame->name))
+      .arg(QString::fromUtf8(dr_minigame_type_name(pending.minigame->type)))
+      .arg(QString::fromUtf8(dr_character_name(pending.character)))
+      .arg(tierName(pending.tier))
+      .arg(won ? QStringLiteral("SUCCESS") : QStringLiteral("FAILURE")));
+  for (unsigned i = 0; i < 4; i++)
+  {
+    const dr_minigame_result_t r = guest->minigameResult(i);
+    emit logMessage(DR_LOG_INFO,
+      QString("  p%1%2: coins=%3 bonus=%4")
+        .arg(i)
+        .arg(i == 0 ? QStringLiteral(" (you)") : QString())
+        .arg(r.coins)
+        .arg(r.bonus_coins));
+  }
+
   if (won)
   {
-    /* Credit the character that played, which may no longer be the selected one. */
-    QHash<QString, int> records = loadFor(pending.character);
+    /* Credit the character that played, which may no longer be the selected one.
+     * Unfair is stored separately from the five normal tiers. */
+    QHash<QString, DrClearStatus> records = loadFor(pending.character);
     const QString key = recordKey(pending.guest, pending.minigame);
-    if (pending.tier > records.value(key, 0))
+    DrClearStatus st = records.value(key);
+    bool changed = false;
+
+    if (pending.tier == k_TierUnfair)
     {
-      records.insert(key, pending.tier);
+      if (!st.unfair) { st.unfair = true; changed = true; }
+    }
+    else if (pending.tier > st.tier)
+    {
+      st.tier = pending.tier;
+      changed = true;
+    }
+
+    if (changed)
+    {
+      records.insert(key, st);
       saveFor(pending.character, records);
     }
   }
@@ -585,9 +650,9 @@ QString DrChallenge::recordKey(const DrGuest *guest, const dr_mp_minigame_t *min
     .arg(QString::fromUtf8(guest->name()), QString::fromUtf8(minigame->name));
 }
 
-QHash<QString, int> DrChallenge::loadFor(dr_character character)
+QHash<QString, DrClearStatus> DrChallenge::loadFor(dr_character character)
 {
-  QHash<QString, int> records;
+  QHash<QString, DrClearStatus> records;
 
   QFile file(filePathFor(character));
   if (!file.open(QIODevice::ReadOnly))
@@ -595,16 +660,37 @@ QHash<QString, int> DrChallenge::loadFor(dr_character character)
 
   const QJsonObject obj = QJsonDocument::fromJson(file.readAll()).object();
   for (auto it = obj.constBegin(); it != obj.constEnd(); ++it)
-    records.insert(it.key(), it.value().toInt());
+  {
+    DrClearStatus st;
+    if (it.value().isObject())
+    {
+      const QJsonObject entry = it.value().toObject();
+      st.tier = entry.value("tier").toInt();
+      st.unfair = entry.value("unfair").toBool();
+    }
+    else
+    {
+      /* Legacy format: a single int where 6 meant an Unfair clear. */
+      const int v = it.value().toInt();
+      st.unfair = (v >= k_TierUnfair);
+      st.tier = qMin(v, 5);
+    }
+    records.insert(it.key(), st);
+  }
 
   return records;
 }
 
-void DrChallenge::saveFor(dr_character character, const QHash<QString, int> &records)
+void DrChallenge::saveFor(dr_character character, const QHash<QString, DrClearStatus> &records)
 {
   QJsonObject obj;
   for (auto it = records.constBegin(); it != records.constEnd(); ++it)
-    obj.insert(it.key(), it.value());
+  {
+    QJsonObject entry;
+    entry.insert("tier", it.value().tier);
+    entry.insert("unfair", it.value().unfair);
+    obj.insert(it.key(), entry);
+  }
 
   QDir().mkpath(dr_save_directory());
   QFile file(filePathFor(character));
