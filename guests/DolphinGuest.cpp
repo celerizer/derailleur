@@ -11,6 +11,8 @@ static void applyWiiControl(QRetroInputJoypad &jp, dr_wii_control control)
   jp.clearAnalogAxisRemaps();
   jp.setAnalogSensitivity(1.0f);
 
+  jp.setButtonRemap(RETRO_DEVICE_ID_JOYPAD_R3, RETRO_DEVICE_ID_JOYPAD_NONE);
+
   switch (control)
   {
   case DR_WII_CONTROL_INVALID:
