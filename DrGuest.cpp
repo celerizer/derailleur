@@ -1,5 +1,6 @@
 #include "DrGuest.h"
 
+#include <QFile>
 #include <QRetro.h>
 
 /* Global safety net: a minigame that runs this many frames without finishing is
@@ -15,11 +16,45 @@ QList<DrMinigameGroup> DrGuest::minigameGroups() const
   return { group };
 }
 
+bool DrGuest::loadState(const char *name)
+{
+  if (!core())
+    return false;
+  const QString path = dr_state_directory() + "/" + name + ".state.zip";
+  const bool ok = core()->unserializeFromFile(path);
+  log(ok ? DR_LOG_INFO : DR_LOG_WARN,
+    qPrintable(QString("load state %1: %2").arg(path, ok ? "ok" : "failed")));
+  return ok;
+}
+
+void DrGuest::startCore()
+{
+  if (QRetro *c = core())
+    connect(c, &QRetro::frameBegin, this, [this]() { run(); }, Qt::DirectConnection);
+  if (m_retro)
+    m_retro->startCore();
+}
+
+bool DrGuest::loadCore()
+{
+  const std::string path = corePath();
+  if (path.empty())
+    return true; /* no own core (shared, or nothing to load) */
+  if (!core())
+    return false;
+  return core()->loadCore(path.c_str());
+}
+
 void DrGuest::applyGameData(const DrGameData &data)
 {
   if (!core())
     return;
   m_minigame = data.minigame;
+
+  /* Cache the launch's players so guests (and their onBeforeBoot/doApplyGameData)
+   * can read m_players without copying data.players themselves. */
+  for (unsigned i = 0; i < 4; i++)
+    m_players[i] = data.players[i];
 
   /* Apply emulation quirks for the minigame */
   const dr_mp_minigame_t *minigame = data.minigame;
@@ -81,6 +116,15 @@ void DrGuest::applyGameData(const DrGameData &data)
   }
 
   m_started = true;
+
+  /* Open the core now, on the first launch, rather than at construction. */
+  if (!loadCore())
+  {
+    log(DR_LOG_ERROR, "failed to load core");
+    m_started = false;
+    return;
+  }
+
   if (!gamePath().empty())
     core()->loadContent(gamePath().c_str());
   startCore();

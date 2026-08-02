@@ -36,8 +36,8 @@ public:
   {
   }
 
-  virtual QRetro *core() const { return nullptr; }
-  virtual bool isValid() const { return m_valid; }
+  virtual QRetro *core() const { return m_retro ? m_retro->core() : nullptr; }
+  virtual bool isValid() const { return m_valid && (!m_retro || m_retro->isValid()); }
   virtual unsigned warmupFrames() const { return 30; }
 
   /// Whether this guest is booted and warmed up at startup. Guests that defer
@@ -48,8 +48,20 @@ public:
   virtual bool usesWarmup() const { return true; }
 
   /// Content path a deferred guest loads on its first launch. Ignored by warmed
-  /// guests (usesWarmup() == true).
-  virtual std::string gamePath() const { return {}; }
+  /// guests (usesWarmup() == true). Defaults to the core's own game path (set via
+  /// DrRetro::init()).
+  virtual std::string gamePath() const { return m_retro ? m_retro->gamePath() : std::string{}; }
+
+  /// Path to the guest's core library. When set, the base dlopens it lazily on the
+  /// first launch (see loadCore / applyGameData) instead of at construction, so
+  /// cores are only opened once actually booted into. Empty = no own core (e.g. a
+  /// Dolphin sub-game that shares CoreDolphin's core). Defaults to DrRetro::init()'s.
+  virtual std::string corePath() const { return m_retro ? m_retro->corePath() : std::string{}; }
+
+  /// Loads the guest's core, once, before its first content load. The default
+  /// dlopens corePath(); override for cores that need custom loading (e.g.
+  /// CoreDolphin patches its library first). Returns false if the core can't load.
+  virtual bool loadCore();
 
   /// Frames to let the core boot after the deferred loadContent before the base
   /// invokes doApplyGameData(). Override per core as needed.
@@ -61,9 +73,11 @@ public:
   /// work like show()/waitFrames()/processEvents() (e.g. CoreDolphin's disc swap).
   virtual bool applyOnGuiThread() const { return false; }
 
-  virtual void startCore() {}
-  virtual void pause() {}
-  virtual void unpause() {}
+  /// Default: connect run() to the core's frameBegin and start it. Guests that own
+  /// a core (via DrRetro::init) need nothing more; override for special cases.
+  virtual void startCore();
+  virtual void pause() { if (m_retro) m_retro->pause(); }
+  virtual void unpause() { if (m_retro) m_retro->unpause(); }
   virtual QWidget *createWidget(QWidget *parent)
   {
     m_container = QWidget::createWindowContainer(core(), parent);
@@ -88,6 +102,15 @@ public:
   virtual const dr_mp_minigame_t *minigames() const = 0;
   virtual const char *name(void) const = 0;
   virtual dr_guest id(void) const { return DR_GUEST_INVALID; }
+
+  /// The core this guest runs on, its ROM filename (under the roms dir), and its
+  /// savestate base name (dr_state_directory()/<state>.state.zip). An owned-core
+  /// guest overrides these; the constructor feeds coreId()/rom() to DrRetro::init()
+  /// and doApplyGameData() feeds state() to loadState().
+  virtual dr_core coreId(void) const { return DR_CORE_INVALID; }
+  virtual const char *rom(void) const { return ""; }
+  virtual const char *state(void) const { return ""; }
+
   virtual QList<DrMinigameGroup> minigameGroups() const;
   void cancelMinigame() { m_minigameActive = false; }
 
@@ -110,6 +133,10 @@ protected:
   void finishMinigame();
   void finishMinigameInFrames(int frames) { m_finishCountdown = frames; }
 
+  /// Loads the guest's savestate from dr_state_directory()/<name>.state.zip, logs
+  /// the result, and returns whether it loaded. Called from doApplyGameData.
+  bool loadState(const char *name);
+
   virtual void run() {}
 
   /// Guest hook: apply `data` (minigame + 4 players) to the core in whatever way
@@ -131,6 +158,14 @@ protected:
   int m_minigameFrameCount = 0;    // frames elapsed in the current minigame
   bool m_frameHookInstalled = false;
   const dr_mp_minigame_t *m_minigame = nullptr;
+
+  /* Core wrapper, shared by every guest that owns a core (set up via
+   * DrRetro::init()). Dolphin sub-games leave it pointing at a shared core. */
+  DrRetro *m_retro = nullptr;
+
+  /* The four players for the current launch, copied from the launch data by
+   * applyGameData() before doApplyGameData()/onBeforeBoot() run. */
+  dr_player_t m_players[4] = {};
 
   /// Resize the core's window to fill its container. Must run on the GUI thread;
   /// the base queues it after a deferred boot (the core sizes itself to the game's
