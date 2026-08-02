@@ -26,9 +26,19 @@ public:
   /// Adds a non-selectable section header to the sidebar.
   void addDivider(const QString &text);
 
+  /// While enabled, tools/dividers added are hidden from the sidebar (their pages
+  /// still exist). Used to show only the Log during startup; revealTools() undoes
+  /// it. Does not affect tools already added.
+  void setDeferReveal(bool on) { m_DeferReveal = on; }
+
+  /// Shows every hidden sidebar row and selects the tool named `selectName` (if
+  /// present). Ends the startup deferral.
+  void revealTools(const QString &selectName);
+
 private:
   QListWidget *m_Sidebar = nullptr;
   QStackedWidget *m_Stack = nullptr;
+  bool m_DeferReveal = false;
 };
 
 #endif

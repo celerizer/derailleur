@@ -26,6 +26,7 @@ SOURCES += \
     DrChallenge.cpp \
     DrCommon.cpp \
     DrDebug.cpp \
+    DrSettings.cpp \
     DrDownloader.cpp \
     DrGuest.cpp \
     DrHost.cpp \
@@ -78,6 +79,7 @@ HEADERS += \
     DrChallenge.h \
     DrCommon.h \
     DrDebug.h \
+    DrSettings.h \
     DrDownloader.h \
     DrGuest.h \
     DrGuestList.h \

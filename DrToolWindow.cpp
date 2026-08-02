@@ -50,7 +50,10 @@ void DrToolWindow::addTool(const QString &name, QWidget *page)
   item->setData(Qt::UserRole, index);
   m_Sidebar->addItem(item);
 
-  if (!m_Sidebar->currentItem())
+  /* Hidden tools neither show in the sidebar nor grab the initial selection. */
+  if (m_DeferReveal)
+    item->setHidden(true);
+  else if (!m_Sidebar->currentItem())
     m_Sidebar->setCurrentItem(item);
 }
 
@@ -63,4 +66,24 @@ void DrToolWindow::addDivider(const QString &text)
   item->setFont(f);
   item->setForeground(m_Sidebar->palette().color(QPalette::Mid));
   m_Sidebar->addItem(item);
+  if (m_DeferReveal)
+    item->setHidden(true);
+}
+
+void DrToolWindow::revealTools(const QString &selectName)
+{
+  m_DeferReveal = false;
+
+  for (int i = 0; i < m_Sidebar->count(); i++)
+    m_Sidebar->item(i)->setHidden(false);
+
+  for (int i = 0; i < m_Sidebar->count(); i++)
+  {
+    QListWidgetItem *item = m_Sidebar->item(i);
+    if (item->text() == selectName && (item->flags() & Qt::ItemIsSelectable))
+    {
+      m_Sidebar->setCurrentItem(item);
+      break;
+    }
+  }
 }

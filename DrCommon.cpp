@@ -2,6 +2,35 @@
 
 #include <cstdint>
 
+#include <QDir>
+#include <QSettings>
+
+static dr_settings g_settings;
+
+static QString settings_ini_path(void)
+{
+  return QDir::current().filePath("derailleur.ini");
+}
+
+dr_settings &dr_settings_get(void)
+{
+  return g_settings;
+}
+
+void dr_settings_load(void)
+{
+  QSettings s(settings_ini_path(), QSettings::IniFormat);
+  g_settings.separate_gamecube_instances =
+    s.value("settings/separate_gamecube_instances", g_settings.separate_gamecube_instances).toBool();
+}
+
+void dr_settings_save(void)
+{
+  QSettings s(settings_ini_path(), QSettings::IniFormat);
+  s.setValue("settings/separate_gamecube_instances", g_settings.separate_gamecube_instances);
+  s.sync();
+}
+
 static QString roms_dir = "roms";
 static QString cores_dir = "cores";
 static QString state_dir = "state";
