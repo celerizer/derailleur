@@ -2,7 +2,11 @@
 
 #include <QApplication>
 #include <QDataStream>
+#include <QDir>
+#include <QDirIterator>
 #include <QElapsedTimer>
+#include <QFile>
+#include <QFileInfo>
 #include <QHostAddress>
 #include <QKeyEvent>
 #include <QRandomGenerator>
@@ -24,6 +28,54 @@
 #define DR_STRINGIZE_(x) #x
 #define DR_STRINGIZE(x) DR_STRINGIZE_(x)
 #define DR_NETPLAY_BUILD_HASH DR_STRINGIZE(DR_GIT_HASH)
+
+/* Serializes every file under `root` (recursively) into one compressed blob of
+ * [u32 count]{ QString relPath, QByteArray data }..., so the host's save
+ * directory can be shipped to clients. */
+static QByteArray dr_bundle_directory(const QString &root)
+{
+  QList<QPair<QString, QByteArray>> files;
+  QDir base(root);
+  QDirIterator it(root, QDir::Files, QDirIterator::Subdirectories);
+  while (it.hasNext())
+  {
+    it.next();
+    QFile f(it.filePath());
+    if (f.open(QIODevice::ReadOnly))
+      files.append({ base.relativeFilePath(it.filePath()), f.readAll() });
+  }
+
+  QByteArray out;
+  QDataStream s(&out, QIODevice::WriteOnly);
+  s.setByteOrder(QDataStream::LittleEndian);
+  s << static_cast<quint32>(files.size());
+  for (const auto &pr : files)
+    s << pr.first << pr.second;
+  return qCompress(out);
+}
+
+/* Writes a bundle produced by dr_bundle_directory() into `root`. */
+static void dr_extract_directory(const QByteArray &payload, const QString &root)
+{
+  const QByteArray raw = qUncompress(payload);
+  QDataStream s(raw);
+  s.setByteOrder(QDataStream::LittleEndian);
+
+  quint32 count = 0;
+  s >> count;
+  QDir().mkpath(root);
+  for (quint32 i = 0; i < count; i++)
+  {
+    QString rel;
+    QByteArray data;
+    s >> rel >> data;
+    const QString path = root + "/" + rel;
+    QFileInfo(path).dir().mkpath("."); /* ensure the subdirectory exists */
+    QFile f(path);
+    if (f.open(QIODevice::WriteOnly | QIODevice::Truncate))
+      f.write(data);
+  }
+}
 
 DrNetplay::DrNetplay(DrInputStore *store, QObject *parent)
   : QObject(parent)
@@ -97,6 +149,16 @@ void DrNetplay::startGame(int gameId)
    * load. TCP preserves order and onSocketReadyRead processes messages
    * front-to-back, so the filter is applied first. (Delivered at least once.) */
   broadcastVar(DR_NETPLAY_PACKET_MINIGAME_FILTER, m_MinigameFilter);
+
+  /* Ship our save directory so every client plays off the host's save (same
+   * unlocks / SRAM). Sent before START so clients redirect their save dir before
+   * building the host and loading content. */
+  {
+    const QByteArray bundle = dr_bundle_directory(dr_save_directory());
+    broadcastVar(DR_NETPLAY_PACKET_SAVE, bundle);
+    emit logMessage(DR_LOG_INFO,
+      QString("netplay: sent save (%1 KiB) from %2").arg(bundle.size() / 1024).arg(dr_save_directory()));
+  }
 
   broadcast(DR_NETPLAY_PACKET_START, payload);
 
@@ -548,7 +610,8 @@ void DrNetplay::onSocketReadyRead()
     const quint8 type = static_cast<quint8>(buf.at(0));
 
     /* Variable-length messages are framed [type][u32 len][payload]. */
-    if (type == DR_NETPLAY_PACKET_RESYNC_STATE || type == DR_NETPLAY_PACKET_MINIGAME_FILTER)
+    if (type == DR_NETPLAY_PACKET_RESYNC_STATE || type == DR_NETPLAY_PACKET_MINIGAME_FILTER ||
+        type == DR_NETPLAY_PACKET_SAVE)
     {
       if (buf.size() < 1 + 4)
         break;
@@ -614,6 +677,24 @@ void DrNetplay::handleMessage(QTcpSocket *sock, quint8 type, const QByteArray &p
     else
       emit logMessage(DR_LOG_INFO,
         QString("netplay: peer build %1 verified").arg(QString::fromLatin1(theirs.constData())));
+    break;
+  }
+
+  case DR_NETPLAY_PACKET_SAVE:
+  {
+    /* Extract the host's save into a dedicated netplay dir and point our save
+     * directory at it, so the host we build on START loads the host's save
+     * instead of ours (and never touches our real save). Computed from the base
+     * save dir so repeated joins don't nest netplay/netplay/... */
+    QString base = dr_save_directory();
+    if (base.endsWith("/netplay"))
+      base.chop(QStringLiteral("/netplay").size());
+    const QString netplayDir = base + "/netplay";
+
+    dr_extract_directory(payload, netplayDir);
+    dr_set_save_directory(netplayDir);
+    emit logMessage(DR_LOG_INFO,
+      QString("netplay: received save (%1 KiB), using %2").arg(payload.size() / 1024).arg(netplayDir));
     break;
   }
 

@@ -33,7 +33,8 @@ typedef enum
   DR_NETPLAY_PACKET_RESYNC_STATE = 0x07, /* server -> clients: [u32 len][u64 frame][zstate] */
   DR_NETPLAY_PACKET_VERSION      = 0x08, /* client -> server: build hash on connect */
   DR_NETPLAY_PACKET_MINIGAME_FILTER = 0x09, /* server -> clients: var-length disabled-set payload */
-  DR_NETPLAY_PACKET_RESYNC_REQUEST  = 0x0A  /* client -> server: I timed out, please hard-resync */
+  DR_NETPLAY_PACKET_RESYNC_REQUEST  = 0x0A, /* client -> server: I timed out, please hard-resync */
+  DR_NETPLAY_PACKET_SAVE            = 0x0B  /* server -> clients: var-length save-directory bundle */
 } dr_netplay_packet_type;
 
 /* Maximum peers in a session (also the per-frame input array width). */
