@@ -3,6 +3,7 @@
 
 #include <QRandomGenerator>
 #include <QRetro.h>
+#include <QRetroDirectories.h>
 #include <QString>
 #include <algorithm>
 #include <cctype>
@@ -13,6 +14,25 @@ void MarioPartyN64Host::run(void)
   static const uint8_t ff = 0xff;
 
   tickFrameWrites();
+
+  /* MP3 mini-game star bandaid: a second after the results, add the winnings to
+   * any player whose star total didn't move on its own (see fixup_mg_star). */
+  if (m_mgStarFixupCountdown > 0 && --m_mgStarFixupCountdown == 0)
+  {
+    for (unsigned i = 0; i < 4; i++)
+    {
+      if (!m_config.mg_star_addr[i] || m_mgStarAdd[i] == 0)
+        continue;
+      int16_t cur = 0;
+      reads16(&cur, m_config.mg_star_addr[i]);
+      if (cur == m_mgStarPrev[i])
+      {
+        writes16(static_cast<int16_t>(cur + m_mgStarAdd[i]), m_config.mg_star_addr[i]);
+        emit logMessage(DR_LOG_INFO,
+          QString("mg star fixup: player %1 += %2").arg(i).arg(m_mgStarAdd[i]));
+      }
+    }
+  }
 
   static const char *stateNames[] = {
     "INVALID", "BEFORE_BOARD", "BOARD", "BEFORE_ROULETTE", "ROULETTE", "AFTER_ROULETTE", "MINIGAME"
@@ -349,6 +369,13 @@ MarioPartyN64Host::MarioPartyN64Host(const DrHostConfig &config, QObject *parent
     log(DR_LOG_ERROR, qPrintable(QString("failed to load core: %1").arg(config.core.c_str())));
     m_valid = false;
   }
+
+  /* Read/write the save from the derailleur save dir (default cwd/save). A netplay
+   * client redirects dr_save_directory() to its per-session netplay dir before
+   * building us, so we load the host's save. Set before loadContent (SRAM read). */
+  m_core->directories()->set(
+    QRetroDirectories::Save, dr_save_directory().toUtf8().constData());
+
   if (!m_core->loadContent(config.game.c_str()))
   {
     log(DR_LOG_ERROR, qPrintable(QString("failed to load content: %1").arg(config.game.c_str())));
@@ -623,6 +650,22 @@ void MarioPartyN64Host::writeResults(DrGuest *guest)
     writes16(coins, m_config.result_addr[i]);
     if (m_config.bonus_result_addr[i])
       writes16(static_cast<int16_t>(result.bonus_coins), m_config.bonus_result_addr[i]);
+
+    m_mgStarAdd[i] = static_cast<int16_t>(result.coins + result.bonus_coins);
+  }
+
+  /* MP3 bandaid: for a normal (non-duel, non-battle) mini-game, snapshot each
+   * player's mini-game star and arm a check a second out -- MP3 sometimes doesn't
+   * add the winnings to it (see fixup_mg_star / run()). */
+  if (m_config.fixup_mg_star && m_resultsScene == m_config.scene_miniresults)
+  {
+    for (unsigned i = 0; i < 4; i++)
+    {
+      m_mgStarPrev[i] = 0;
+      if (m_config.mg_star_addr[i])
+        reads16(&m_mgStarPrev[i], m_config.mg_star_addr[i]);
+    }
+    m_mgStarFixupCountdown = 60;
   }
   if (m_resultsScene == m_config.scene_miniresults_battle)
   {

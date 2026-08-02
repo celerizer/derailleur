@@ -77,6 +77,10 @@ struct DrHostConfig
   size_t coins_addr[4]; /* u16 current coins; 0 = not available */
   size_t stars_addr[4]; /* u8 current stars; 0 = not available */
   size_t mg_star_addr[4]; /* s16 mini-game star; 0 = not available */
+  /* MP3 bandaid: MP3 sometimes fails to add mini-game winnings to the mini-game
+   * star total on a normal (non-duel, non-battle) mini-game. When set, the host
+   * checks a second after the results and adds the coins itself if it didn't. */
+  bool fixup_mg_star;
   const dr_character *char_to_dr;
   unsigned char_to_dr_size;
   const dr_difficulty *diff_to_dr;
@@ -190,6 +194,13 @@ private:
   uint8_t m_itemChosenId = 0;
   bool m_afterRouletteSceneLeft = false;
   bool m_lastFiveTriggered = false; // last-5-turns event already forced this game
+
+  /* MP3 mini-game star bandaid (see fixup_mg_star). Armed at writeResults; the
+   * countdown runs down in run(), then adds coins for any player whose star total
+   * did not move. */
+  int m_mgStarFixupCountdown = 0;
+  int16_t m_mgStarPrev[4] = {};
+  int16_t m_mgStarAdd[4] = {};
 
   dr_host_state m_State = DR_HOST_STATE_INVALID;
 
