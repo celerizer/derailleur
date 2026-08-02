@@ -8,6 +8,7 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QMessageBox>
+#include <QPalette>
 #include <QRandomGenerator>
 #include <QPushButton>
 #include <QRetro.h>
@@ -22,6 +23,7 @@
 #include "DrChallenge.h"
 #include "DrDebug.h"
 #include "DrDownloader.h"
+#include "DrSettings.h"
 #include "hosts/MarioParty1Host.h"
 #include "hosts/MarioParty2Host.h"
 #include "hosts/MarioParty3Host.h"
@@ -68,6 +70,36 @@ MainWindow::MainWindow(QWidget *parent)
   m_Tools->addTool(tr("Log"), m_Logger);
 #endif
 
+  /* Show only the Log while starting up (cores load, guests build). Everything
+   * added from here is hidden until revealTools() at the end of construction. */
+  m_Tools->setDeferReveal(true);
+
+  /* "Start Game" tab: the host picker. Made the default view once revealed; the
+   * main window stays black until a game is started. The button handlers only
+   * fire at runtime, so referencing members built further down (m_Guests,
+   * m_Netplay via startWithHost) is fine. */
+  {
+    QWidget *startGame = new QWidget(nullptr);
+    QVBoxLayout *layout = new QVBoxLayout(startGame);
+    QLabel *label = new QLabel(tr("Choose Host"), startGame);
+    label->setAlignment(Qt::AlignCenter);
+    layout->addStretch();
+    layout->addWidget(label);
+
+    auto addHostButton = [&](const QString &name, auto factory) {
+      QPushButton *btn = new QPushButton(name, startGame);
+      connect(btn, &QPushButton::clicked, this, [this, factory]() { startWithHost(factory()); });
+      layout->addWidget(btn);
+    };
+    addHostButton("Mario Party 1", [this]() -> DrHost * { return new MarioParty1Host(this); });
+    addHostButton("Mario Party 2", [this]() -> DrHost * { return new MarioParty2Host(this); });
+    addHostButton("Mario Party 3", [this]() -> DrHost * { return new MarioParty3Host(this); });
+    layout->addStretch();
+
+    m_StartGameTab = startGame;
+    m_Tools->addTool(tr("Start Game"), startGame);
+  }
+
   {
     QDir cwd = QDir::current();
     QString iniPath = cwd.filePath("derailleur.ini");
@@ -83,6 +115,9 @@ MainWindow::MainWindow(QWidget *parent)
     dr_set_state_directory(load("paths/state", cwd.filePath("state")));
     dr_set_save_directory(load("paths/save", cwd.filePath("save")));
     s.sync();
+
+    /* User settings (Settings tool page); read before the guests are built. */
+    dr_settings_load();
 #if SHOW_LOGGER
     if (!iniExisted)
       m_Logger->message(DR_LOG_INFO, QString("created %1").arg(iniPath));
@@ -133,16 +168,36 @@ MainWindow::MainWindow(QWidget *parent)
   m_Netplay = new DrNetplay(m_InputStore, this);
   setupNetplay();
 
-  auto *dolphin = new CoreDolphin("gcn", this);
-  dolphin->addGame(new MarioParty4(dolphin->core(), dolphin));
-  dolphin->addGame(new MarioParty5(dolphin->core(), dolphin));
-  dolphin->addGame(new MarioParty6(dolphin->core(), dolphin));
-  dolphin->addGame(new MarioParty7(dolphin->core(), dolphin));
-  //dolphin->addGame(new KirbyAirRide(dolphin->core(), dolphin));
-  //dolphin->addGame(new MarioKartDoubleDash(dolphin->core(), dolphin));
-  dolphin->finalizeGames();
-  if (dolphin->isValid())
-    m_Guests->add(dolphin);
+  if (dr_settings_get().separate_gamecube_instances)
+  {
+    /* One single-disc Dolphin per GameCube game (like the Wii ones), so no disc
+     * swapping happens at all. Each needs a unique subdir for its own system/save
+     * dir and arena tag. They still load lazily -- only games launched ever boot. */
+    auto addSoloGcn = [this](const QString &subdir, DolphinGuest *(*make)(QRetro *, QObject *)) {
+      auto *core = new CoreDolphin(subdir, this);
+      core->addGame(make(core->core(), core));
+      core->finalizeGames();
+      if (core->isValid())
+        m_Guests->add(core);
+    };
+    addSoloGcn("gcn-mp4", [](QRetro *c, QObject *p) -> DolphinGuest * { return new MarioParty4(c, p); });
+    addSoloGcn("gcn-mp5", [](QRetro *c, QObject *p) -> DolphinGuest * { return new MarioParty5(c, p); });
+    addSoloGcn("gcn-mp6", [](QRetro *c, QObject *p) -> DolphinGuest * { return new MarioParty6(c, p); });
+    addSoloGcn("gcn-mp7", [](QRetro *c, QObject *p) -> DolphinGuest * { return new MarioParty7(c, p); });
+  }
+  else
+  {
+    auto *dolphin = new CoreDolphin("gcn", this);
+    dolphin->addGame(new MarioParty4(dolphin->core(), dolphin));
+    dolphin->addGame(new MarioParty5(dolphin->core(), dolphin));
+    dolphin->addGame(new MarioParty6(dolphin->core(), dolphin));
+    dolphin->addGame(new MarioParty7(dolphin->core(), dolphin));
+    //dolphin->addGame(new KirbyAirRide(dolphin->core(), dolphin));
+    //dolphin->addGame(new MarioKartDoubleDash(dolphin->core(), dolphin));
+    dolphin->finalizeGames();
+    if (dolphin->isValid())
+      m_Guests->add(dolphin);
+  }
 
   /* The Wii core cannot survive a disc swap, so give each Wii game its own
    * Dolphin instance with a single disc. They still load lazily, so only the
@@ -178,9 +233,7 @@ MainWindow::MainWindow(QWidget *parent)
   //addGuest(new MarioPartyE());
   addGuest(new Kirby64());
   addGuest(new BanjoTooie());
-  /* TEST: disabled to check whether a second Flycast instance (Sonic Shuffle
-   * host + guest) is what crashes the host. */
-  //addGuest(new SonicShuffle());
+  addGuest(new SonicShuffle());
 
 #if SHOW_LOGGER
   for (DrGuest *guest : m_Guests->guests())
@@ -207,27 +260,18 @@ MainWindow::MainWindow(QWidget *parent)
 
   m_Stack = new QStackedWidget(this);
 
-  // Host chooser — shown once at boot, never again
-  QWidget *chooser = new QWidget(m_Stack);
-  QVBoxLayout *chooserLayout = new QVBoxLayout(chooser);
-  QLabel *chooserLabel = new QLabel("Choose Host", chooser);
-  chooserLabel->setAlignment(Qt::AlignCenter);
-  chooserLayout->addStretch();
-  chooserLayout->addWidget(chooserLabel);
+  /* The game view is black until a game is started; the host picker now lives in
+   * the "Start Game" tool tab. */
+  QWidget *blank = new QWidget(m_Stack);
+  blank->setAutoFillBackground(true);
+  {
+    QPalette pal = blank->palette();
+    pal.setColor(QPalette::Window, Qt::black);
+    blank->setPalette(pal);
+  }
 
-  auto addHostButton = [&](const QString &name, auto factory) {
-    QPushButton *btn = new QPushButton(name, chooser);
-    connect(btn, &QPushButton::clicked, this, [this, factory]() { startWithHost(factory()); });
-    chooserLayout->addWidget(btn);
-  };
-  addHostButton("Mario Party 1", [this]() -> DrHost * { return new MarioParty1Host(this); });
-  addHostButton("Mario Party 2", [this]() -> DrHost * { return new MarioParty2Host(this); });
-  addHostButton("Mario Party 3", [this]() -> DrHost * { return new MarioParty3Host(this); });
-  addHostButton("Sonic Shuffle", [this]() -> DrHost * { return new SonicShuffleHost(this); });
-  chooserLayout->addStretch();
-
-  m_Stack->addWidget(chooser); // index 0 — chooser
-  m_Stack->addWidget(m_Guests); // index 1 — guests
+  m_Stack->addWidget(blank);     // index 0 — black placeholder
+  m_Stack->addWidget(m_Guests);  // index 1 — guests
   // host container added in startWithHost (index 2)
 
   setCentralWidget(m_Stack);
@@ -263,6 +307,9 @@ MainWindow::MainWindow(QWidget *parent)
 #if SHOW_LOGGER
   connect(m_Challenge, &DrChallenge::logMessage, m_Logger, &DrLogger::message, Qt::QueuedConnection);
 #endif
+
+  /* Settings: user-facing options backed by the global dr_settings. */
+  m_Tools->addTool(tr("Settings"), new DrSettings());
 
   connect(m_Stack, &QStackedWidget::currentChanged, this, [this](int index) {
     if (QWidget *page = m_Stack->widget(index))
@@ -319,6 +366,9 @@ MainWindow::MainWindow(QWidget *parent)
       showHost();
     },
     Qt::QueuedConnection);
+
+  /* Startup finished: reveal the rest of the tools and jump to Start Game. */
+  m_Tools->revealTools(tr("Start Game"));
 
   resize(960, 540);
 }
@@ -378,6 +428,10 @@ void MainWindow::connectCoreLog(QRetro *core)
 void MainWindow::startWithHost(DrHost *host)
 {
   m_Host = host;
+
+  /* A game is running now; the host picker can't start a second one. */
+  if (m_StartGameTab)
+    m_StartGameTab->setEnabled(false);
 
   /* Tell the host which board seat is us, so it can surface our private state
    * (solo this is 0; in a session it is our netplay peer index). */

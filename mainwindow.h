@@ -65,6 +65,7 @@ private:
   DrGuestList *m_Guests = nullptr;
   DrHost *m_Host = nullptr;
   QWidget *m_HostContainer = nullptr;
+  QWidget *m_StartGameTab = nullptr; // host picker; disabled once a game starts
   QStackedWidget *m_Stack = nullptr;
   DrLogger *m_Logger = nullptr;
   DrOverlay *m_Overlay = nullptr;

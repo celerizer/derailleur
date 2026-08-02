@@ -2,6 +2,7 @@
 #include "SonicShuffleHand.h"
 
 #include <QRetro.h>
+#include <QRetroDirectories.h>
 #include <QString>
 
 /* ------------------------------------------------------------------------- *
@@ -78,6 +79,10 @@ void SonicShuffleHost::startCore(void)
   if (!m_contentLoaded && m_core)
   {
     m_contentLoaded = true;
+    /* Save from the derailleur save dir; a netplay client redirects it to the
+     * host's save (set before loadContent so the VMU read picks it up). */
+    m_core->directories()->set(
+      QRetroDirectories::Save, dr_save_directory().toUtf8().constData());
     if (!m_core->loadContent(m_gamePath.toUtf8().constData()))
     {
       log(DR_LOG_ERROR, qPrintable(QString("failed to load content: %1").arg(m_gamePath)));

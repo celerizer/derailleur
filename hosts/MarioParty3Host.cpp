@@ -280,6 +280,8 @@ static DrHostConfig makeConfig()
   config.mg_star_addr[1] = 0x800d1168;
   config.mg_star_addr[2] = 0x800d11a0;
   config.mg_star_addr[3] = 0x800d11d8;
+  /* MP3 sometimes doesn't credit the mini-game star; the host adds it (bandaid). */
+  config.fixup_mg_star = true;
 
   config.scene_board_results = 0x4f;
   config.scene_last_five_turns = 0x51;
