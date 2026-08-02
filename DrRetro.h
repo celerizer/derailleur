@@ -2,6 +2,7 @@
 #define DR_RETRO_H
 
 #include "DrCommon.h"
+#include <string>
 #include <QByteArray>
 #include <QList>
 #include <QObject>
@@ -38,6 +39,17 @@ public:
     m_core = core;
     m_ownCore = own;
   }
+
+  /// Standard setup for a guest that owns a core: creates the QRetro, records the
+  /// core (a dr_core) and ROM (a filename under the roms dir) so the base can load
+  /// them lazily on the first launch, verifies the ROM exists (dropping isValid()
+  /// if not), and installs the core. Plain DrRetro; DrRetroN64 also applies its
+  /// N64 button remaps. `saving` toggles the core's SRAM writes (off by default).
+  virtual void init(dr_core core, const QString &rom, bool saving = false);
+
+  /// Paths recorded by init(), consumed by DrGuest's lazy first-launch load.
+  std::string corePath() const { return m_corePath; }
+  std::string gamePath() const { return m_gamePath; }
 
   void pause()
   {
@@ -96,6 +108,8 @@ public:
   QRetro *m_core = nullptr;
   bool m_ownCore = false;
   bool m_valid = true;
+  std::string m_corePath; // core library path, for the lazy first-launch load
+  std::string m_gamePath; // content path, for the lazy first-launch load
 
 protected:
   /// Endianness used when an access doesn't pass one explicitly. Plain DrRetro is
@@ -139,6 +153,13 @@ public:
     : DrRetro(sharedCore, parent)
   {
     m_endianness = DR_ENDIANNESS_WORDFLIPPED;
+  }
+
+  /// Same as DrRetro::init() plus the N64 button remaps.
+  void init(dr_core core, const QString &rom, bool saving = false) override
+  {
+    DrRetro::init(core, rom, saving);
+    applyN64Remaps();
   }
 };
 

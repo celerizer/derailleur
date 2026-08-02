@@ -1,5 +1,27 @@
 #include "DrRetro.h"
 
+#include <QFile>
+
+void DrRetro::init(dr_core core, const QString &rom, bool saving)
+{
+  m_corePath = dr_core_path(core).toStdString();
+  m_gamePath = (dr_roms_directory() + "/" + rom).toStdString();
+
+  QRetro *c = new QRetro();
+  c->setSavingEnabled(saving);
+
+  /* Content loads lazily on the first launch (see DrGuest::applyGameData); just
+   * confirm the ROM is present so a missing one drops the guest at startup. */
+  if (!QFile::exists(QString::fromStdString(m_gamePath)))
+  {
+    log(DR_LOG_ERROR,
+      qPrintable(QString("rom not found: %1").arg(QString::fromStdString(m_gamePath))));
+    m_valid = false;
+  }
+
+  setCore(c, true);
+}
+
 dr_error DrRetro::readu8(uint8_t *out, size_t addr, dr_endianness endianness)
 {
   if (!m_core)
