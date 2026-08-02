@@ -317,6 +317,17 @@ typedef struct
   signed stars; /* current board stars */
 } dr_player_t;
 
+/// In-game slot for a player from their controller port (0 = P1). Mario Party
+/// assigns ports non-linearly, so callers place each player into the slot matching
+/// their port, falling back to `fallback` (usually the board index) when the port
+/// is out of range. Guests with different port rules (Mario Tennis, Smash Remix,
+/// Mario Kart) do NOT use this and keep their own mapping.
+static inline unsigned dr_player_slot(const dr_player_t &p, unsigned fallback)
+{
+  unsigned slot = static_cast<unsigned>(p.control_port - DR_CONTROL_PORT_P1);
+  return slot < 4 ? slot : fallback;
+}
+
 typedef struct
 {
   signed coins;
@@ -519,6 +530,19 @@ static inline const char *dr_wii_control_name(dr_wii_control c)
     return "Unknown";
   }
 }
+
+/// Global, user-facing settings (persisted to derailleur.ini). Access the single
+/// instance through dr_settings_get(); load once at startup and save on change.
+struct dr_settings
+{
+  /// Give each GameCube game its own Dolphin instance instead of sharing one and
+  /// hot-swapping discs. Takes effect at startup (instances are built then).
+  bool separate_gamecube_instances = false;
+};
+
+dr_settings &dr_settings_get(void);
+void dr_settings_load(void);
+void dr_settings_save(void);
 
 QString dr_roms_directory(void);
 void dr_set_roms_directory(const QString &path);
