@@ -19,13 +19,11 @@ public:
 
   const char *name() const override { return "Super Mario Bros. 3"; }
   dr_guest id() const override { return DR_GUEST_SUPERMARIOBROS3; }
+  dr_core coreId() const override { return DR_CORE_FCEUMM; }
+  const char *rom() const override { return "Super Mario Bros. 3 (USA) (Rev 1).nes"; }
+  const char *state() const override { return "supermariobros3"; }
 
-  QRetro *core() const override { return m_retro ? m_retro->core() : nullptr; }
   bool usesWarmup() const override { return false; }
-  std::string gamePath() const override { return m_gamePath; }
-  void startCore() override;
-  void pause() override { if (m_retro) m_retro->pause(); }
-  void unpause() override { if (m_retro) m_retro->unpause(); }
 
   const dr_mp_minigame_t *minigames() const override;
   dr_minigame_result_t minigameResult(unsigned index) override;
@@ -35,9 +33,6 @@ protected:
   void doApplyGameData(const DrGameData &data) override;
 
 private:
-  DrRetro *m_retro = nullptr;
-  std::string m_gamePath;
-  dr_player_t m_players[4] = {};
   int m_minigameFrames = 0;
   /* Which board player index fills each Vs. sprite slot (0 = Mario, 1 = Luigi),
    * so the winner byte can be mapped back to a player. */

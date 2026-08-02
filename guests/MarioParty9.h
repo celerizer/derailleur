@@ -36,7 +36,6 @@ private:
   std::string m_discPath;
   std::string m_statePath;
 
-  dr_player_t m_players[4] = {};
   int m_minigameFrames = 0;
   bool m_finishScheduled = false;
   /// False until the start button is clicked and we swap off the pointer layout.

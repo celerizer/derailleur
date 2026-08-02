@@ -145,8 +145,6 @@ void MarioKartDoubleDash::doApplyGameData(const DrGameData &data)
 
   for (unsigned i = 0; i < 4; i++)
   {
-    m_players[i] = data.players[i];
-
     // The player rides up front as their character; the partner is always Toad.
     m_retro->writes32(mkddCharFor(m_players[i].character), MKDD_CHAR1_ADDR[i]);
     m_retro->writes32(MKDD_CHAR_TOAD, MKDD_CHAR2_ADDR[i]);

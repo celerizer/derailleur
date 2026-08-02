@@ -57,15 +57,6 @@ static const size_t PS2_IS_HUMAN_ADDR = 0x8012B362;
 // s8 in the minigame-select menu holding the highlighted minigame
 static const size_t PS2_MINIGAME_ID_ADDR = 0x8012B363;
 
-/* In-game player slot for a board player, from their controller port. Mario Party
- * assigns ports non-linearly, so we place each player into the slot matching their
- * port (falling back to the board index if the port is out of range). */
-static unsigned ps2Slot(const dr_player_t &p, unsigned fallback)
-{
-  unsigned slot = static_cast<unsigned>(p.control_port - DR_CONTROL_PORT_P1);
-  return slot < 4 ? slot : fallback;
-}
-
 static uint8_t ps2Difficulty(dr_difficulty d)
 {
   switch (d)
@@ -139,43 +130,18 @@ static const size_t PS2_SCORES[][4] = {
 
 PokemonStadium2::PokemonStadium2(QObject *parent)
   : DrGuest(parent)
-  , m_gamePath(dr_roms_directory() + "/Pokemon Stadium 2 (USA).z64")
 {
   m_retro = new DrRetroN64(this);
-  QRetro *core = new QRetro();
-  core->setSavingEnabled(false);
-
-  QString corePath = dr_core_path(DR_CORE_MUPEN64PLUSNEXT);
-  if (!core->loadCore(corePath.toUtf8().constData()))
-  {
-    log(DR_LOG_ERROR, qPrintable(QString("failed to load core: %1").arg(corePath)));
-    m_valid = false;
-  }
-
-  /* Just make sure the ROM exists -- we aren't actually loading it yet */
-  if (!QFile::exists(m_gamePath))
-  {
-    log(DR_LOG_ERROR, qPrintable(QString("rom not found: %1").arg(m_gamePath)));
-    m_valid = false;
-  }
-
-  m_retro->setCore(core, true);
-  m_retro->applyN64Remaps();
+  m_retro->init(coreId(), rom());
 
   /* Let L = L because of Chansey's mini-game */
   for (unsigned port = 0; port < 4; port++)
   {
-    core->input()->remapButton(port, RETRO_DEVICE_ID_JOYPAD_L, RETRO_DEVICE_ID_JOYPAD_SELECT);
-    core->input()->remapButton(port, RETRO_DEVICE_ID_JOYPAD_L2, RETRO_DEVICE_ID_JOYPAD_SELECT);
+    core()->input()->remapButton(port, RETRO_DEVICE_ID_JOYPAD_L, RETRO_DEVICE_ID_JOYPAD_SELECT);
+    core()->input()->remapButton(port, RETRO_DEVICE_ID_JOYPAD_L2, RETRO_DEVICE_ID_JOYPAD_SELECT);
   }
 }
 
-void PokemonStadium2::startCore()
-{
-  if (auto *c = core())
-    connect(c, &QRetro::frameBegin, this, [this]() { run(); }, Qt::DirectConnection);
-  m_retro->startCore();
-}
 
 void PokemonStadium2::run()
 {
@@ -280,12 +246,11 @@ void PokemonStadium2::onBeforeBoot(const DrGameData &data)
    * non-linearly), so the icon for a player goes to their slot. */
   for (unsigned i = 0; i < 4; i++)
   {
-    m_players[i] = data.players[i];
     m_slotToIndex[i] = i;
   }
   for (unsigned i = 0; i < 4; i++)
   {
-    const unsigned slot = ps2Slot(m_players[i], i);
+    const unsigned slot = dr_player_slot(m_players[i], i);
     m_slotToIndex[slot] = i;
     writePlayerIcon(slot, data.players[i].character);
   }
@@ -297,7 +262,7 @@ void PokemonStadium2::doApplyGameData(const DrGameData &data)
 {
   (void)data; /* players already recorded in onBeforeBoot; m_minigame set by base */
 
-  core()->unserializeFromFile(dr_state_directory() + "/pokemonstadium2.state.zip");
+  loadState(state());
   int8_t id = static_cast<int8_t>(m_minigame ? m_minigame->minigame_id : -1);
   m_retro->writeForFrames(PS2_MINIGAME_ID_ADDR, &id, 1, 120);
 
@@ -308,7 +273,7 @@ void PokemonStadium2::doApplyGameData(const DrGameData &data)
   {
     /* The human bitmask is indexed by in-game slot (controller port). */
     if (m_players[i].control_type == DR_CONTROL_TYPE_HUMAN)
-      human |= (1u << ps2Slot(m_players[i], i));
+      human |= (1u << dr_player_slot(m_players[i], i));
     difficulty = qMax(difficulty, ps2Difficulty(m_players[i].difficulty));
   }
   m_retro->writeForFrames(PS2_IS_HUMAN_ADDR, &human, 1, 120);

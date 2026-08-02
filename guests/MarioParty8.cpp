@@ -277,14 +277,6 @@ static int32_t mp8Difficulty(dr_difficulty d)
   }
 }
 
-/* In-game player slot from a board player's controller port (Mario Party assigns
- * ports non-linearly), falling back to the board index if out of range. */
-static unsigned mp8Slot(const dr_player_t &p, unsigned fallback)
-{
-  unsigned slot = static_cast<unsigned>(p.control_port - DR_CONTROL_PORT_P1);
-  return slot < 4 ? slot : fallback;
-}
-
 static const dr_mp_minigame_t MP8_MINIGAMES[] =
 {
   { "Speedy Graffiti", DR_MINIGAME_4P, 0x00, 0x17, { DR_QUIRK_BITS_EFB_TO_TEXTURE | DR_WII_CONTROL_BITS(DR_WII_CONTROL_POINTER) } },
@@ -296,7 +288,7 @@ static const dr_mp_minigame_t MP8_MINIGAMES[] =
   { "Mosh-Pit Playroom", DR_MINIGAME_4P, 0x06, 0x1D, DR_WII_CONTROL(DR_WII_CONTROL_SIDEWAYS_BUTTONS) },
   { "Mario Matrix", DR_MINIGAME_4P, 0x07, 0x1E, DR_WII_CONTROL_BITS(DR_WII_CONTROL_POINTER) },
   { "??? - Hammer de Pokari", DR_MINIGAME_INVALID, 0x08, 0x1F, DR_WII_CONTROL(DR_WII_CONTROL_SIDEWAYS_BUTTONS) },
-  { "Grabby Giridion", DR_MINIGAME_2V2, 0x09, 0x20, DR_WII_CONTROL(DR_WII_CONTROL_SIDEWAYS_BUTTONS) },
+  { "Grabby Gridiron", DR_MINIGAME_2V2, 0x09, 0x20, DR_WII_CONTROL(DR_WII_CONTROL_SIDEWAYS_BUTTONS) },
   { "Lava or Leave 'Em", DR_MINIGAME_4P, 0x0A, 0x21, DR_WII_CONTROL(DR_WII_CONTROL_SIDEWAYS_BUTTONS) },
   { "Kartastrophe", DR_MINIGAME_4P, 0x0B, 0x22, DR_WII_CONTROL(DR_WII_CONTROL_SIDEWAYS_MOTION) },
   { "??? - Ribbon Game", DR_MINIGAME_INVALID, 0x0C, 0x23, DR_NO_QUIRKS },
@@ -441,15 +433,12 @@ void MarioParty8::doApplyGameData(const DrGameData &data)
   m_minigameFrames = 0;
   m_lastScene = -1;
 
-  for (unsigned i = 0; i < 4; i++)
-    m_players[i] = data.players[i];
-
   int16_t id = static_cast<int16_t>(data.minigame->minigame_id);
   m_retro->writes16(id, MP8_MINIGAME_TO_LOAD_ADDR);
 
   for (unsigned i = 0; i < 4; i++)
   {
-    const unsigned slot = mp8Slot(m_players[i], i);
+    const unsigned slot = dr_player_slot(m_players[i], i);
     m_retro->writeu16(static_cast<uint16_t>(mp8Character(m_players[i].character)),
       MP8_CHARACTER_ADDR[slot]);
     m_retro->writeu16(static_cast<uint16_t>(mp8Difficulty(m_players[i].difficulty)),
@@ -483,7 +472,7 @@ dr_minigame_result_t MarioParty8::minigameResult(unsigned index)
   if (index >= 4)
     return result;
 
-  const unsigned slot = mp8Slot(m_players[index], index);
+  const unsigned slot = dr_player_slot(m_players[index], index);
 
   /* MP8 stores each player's coin outcome in the result field; report it back to
    * the host as coins earned. Read signed -- Battle/Duel can be negative. @todo

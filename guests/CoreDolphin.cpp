@@ -92,17 +92,29 @@ CoreDolphin::CoreDolphin(const QString &subdir, QObject *parent)
   /* Pretend to not support gyro/accel so we can use the sticks */
   core()->setEnvironmentCallbackSupported(RETRO_ENVIRONMENT_GET_SENSOR_INTERFACE, false);
 
-  /* Give each Dolphin its own system and save directories */
-  QRetroDirectories *dirs = core()->directories();
-  const QString system = QString::fromUtf8(dirs->get(QRetroDirectories::System)) + "/" + subdir;
-  const QString save = QString::fromUtf8(dirs->get(QRetroDirectories::Save)) + "/" + subdir;
-  QDir().mkpath(system);
-  QDir().mkpath(save);
-  dirs->set(QRetroDirectories::System, system);
-  dirs->set(QRetroDirectories::Save, save);
+  /* All Dolphin instances share the default system/save dirs; only the disc-list
+   * needs to stay per-instance, e.g. system/discs-gcn.m3u. */
+  const QString system =
+    QString::fromUtf8(core()->directories()->get(QRetroDirectories::System));
+  m_m3uPath = system + "/discs-" + subdir + ".m3u";
+}
 
-  /* Make the playlist in, for example, /system/gcn/discs.m3u */
-  m_m3uPath = system + "/discs.m3u";
+bool CoreDolphin::loadCore()
+{
+  /* Patch the library so this instance gets a unique memory-arena name (see
+   * writePatchedDolphinCore), then dlopen it. QRetro copies the file into its own
+   * temp before loading, so the patched copy can be removed right after. */
+  const QString patchedPath = writePatchedDolphinCore(m_baseCorePath, m_subdir);
+  const QString loadPath = patchedPath.isEmpty() ? m_baseCorePath : patchedPath;
+
+  const bool ok = core() && core()->loadCore(loadPath.toUtf8().constData());
+  if (!ok)
+    log(DR_LOG_ERROR, qPrintable(QString("failed to load core: %1").arg(loadPath)));
+
+  if (!patchedPath.isEmpty())
+    QFile::remove(patchedPath);
+
+  return ok;
 }
 
 void CoreDolphin::startCore()
@@ -142,19 +154,8 @@ void CoreDolphin::addGame(DolphinGuest *game)
     // Needs to be disabled for multi-instancing to work.
     core()->options()->setOptionValue("dolphin_fastmem", "disabled");
 
-    QString basePath = QString::fromStdString(game->corePath());
-    QString patchedPath = writePatchedDolphinCore(basePath, m_subdir);
-    QString loadPath = patchedPath.isEmpty() ? basePath : patchedPath;
-
-    if (!core()->loadCore(loadPath.toUtf8().constData()))
-    {
-      log(DR_LOG_ERROR,
-        qPrintable(QString("failed to load core: %1").arg(loadPath)));
-      m_valid = false;
-    }
-
-    if (!patchedPath.isEmpty())
-      QFile::remove(patchedPath);
+    /* The library is dlopen'd lazily on the first launch; see loadCore(). */
+    m_baseCorePath = QString::fromStdString(game->corePath());
   }
 
   m_games.append(game);
@@ -265,35 +266,39 @@ void CoreDolphin::doApplyGameData(const DrGameData &data)
   // Always (re)insert on a multi-disc core; single-disc cores never hot-swap
   if (m_games.size() > 1)
   {
-    /* Expose the core so it will run frames */
     core()->show();
+    core()->unpause();
 
-    /* Use the disk interface to change games */
+    static const int stepFrames = 120;
+
+    /* Run each disc change step for two seconds */
+    auto spin = [this](int frames) {
+      for (int i = 0; i < frames; i++)
+      {
+        core()->waitFrames(1);
+        QApplication::processEvents();
+      }
+    };
+
+    /* Use the disk interface to change games, letting each step take */
     log(DR_LOG_INFO, "disc change: ejecting");
     core()->diskControl()->setEjectState(true);
+    spin(stepFrames);
+
     log(DR_LOG_INFO, qPrintable(QString("disc change: setting image index %1").arg(discIndex)));
     core()->diskControl()->setImageIndex(discIndex);
+    spin(stepFrames);
+
     log(DR_LOG_INFO, "disc change: inserting");
     core()->diskControl()->setEjectState(false);
     m_discIndex = discIndex;
+    spin(stepFrames);
 
-    /* Spin frames while the disc takes (MPGC needed about this much) */
-    static const int discMountFrames = 120;
-    log(DR_LOG_INFO, qPrintable(QString("disc change: spinning %1 frames for the disc to mount")
-                                  .arg(discMountFrames)));
-    core()->unpause();
-    for (int i = 0; i < discMountFrames; i++)
-    {
-      core()->waitFrames(1);
-      QApplication::processEvents();
-    }
     core()->pause();
     log(DR_LOG_INFO, "disc change: disc settled");
   }
   else
-  {
     log(DR_LOG_INFO, "disc change: single-disc core, keeping the booted disc");
-  }
 
   // Load the per-game savestate
   log(DR_LOG_INFO, qPrintable(QString("disc change: loading savestate %1")

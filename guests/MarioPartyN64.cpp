@@ -15,12 +15,8 @@ MarioPartyN64::MarioPartyN64(const MpN64Config &config, QObject *parent)
   m_retro = new DrRetroN64(this);
   QRetro *core = new QRetro();
   core->setSavingEnabled(false);
-  if (!core->loadCore(m_config.core.c_str()))
-  {
-    log(DR_LOG_ERROR, qPrintable(QString("failed to load core: %1").arg(m_config.core.c_str())));
-    m_valid = false;
-  }
-  /* Content is loaded lazily on the first launch (see DrGuest::applyGameData);
+  /* The core is dlopen'd lazily on the first launch (see corePath()).
+   * Content is loaded lazily on the first launch (see DrGuest::applyGameData);
    * just verify the ROM exists here so an absent one drops the guest at startup. */
   if (!QFile::exists(QString::fromStdString(m_config.game)))
   {

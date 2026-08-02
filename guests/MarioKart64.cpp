@@ -3,8 +3,6 @@
 #include <QFile>
 #include <QRetro.h>
 
-// Hardware addresses (accessed wordflipped via DrRetroN64). u8 fields unflip ^3;
-// the u32 lap counters are word-sized and need no flip.
 static const size_t MK64_MENU_CHAR_ADDR[4] = { 0x8018EDE4, 0x8018EDE5, 0x8018EDE6, 0x8018EDE7 };
 static const size_t MK64_REAL_CHAR_ADDR[4] = { 0x800e86a8, 0x800e86a9, 0x800e86aa, 0x800e86ab };
 
@@ -75,31 +73,7 @@ MarioKart64::MarioKart64(QObject *parent)
   : DrGuest(parent)
 {
   m_retro = new DrRetroN64(this);
-  QString corePath = dr_core_path(DR_CORE_MUPEN64PLUSNEXT);
-  QString gamePath = dr_roms_directory() + "/Mario Kart 64 (USA).z64";
-  m_gamePath = gamePath.toStdString();
-  QRetro *c = new QRetro();
-  c->setSavingEnabled(false);
-  if (!c->loadCore(corePath.toUtf8().constData()))
-  {
-    log(DR_LOG_ERROR, qPrintable(QString("failed to load core: %1").arg(corePath)));
-    m_valid = false;
-  }
-  /* Content is loaded lazily on the first launch (see DrGuest::applyGameData). */
-  if (!QFile::exists(gamePath))
-  {
-    log(DR_LOG_ERROR, qPrintable(QString("rom not found: %1").arg(gamePath)));
-    m_valid = false;
-  }
-  m_retro->setCore(c, true);
-  m_retro->applyN64Remaps();
-}
-
-void MarioKart64::startCore()
-{
-  if (auto *c = core())
-    connect(c, &QRetro::frameBegin, this, [this]() { run(); }, Qt::DirectConnection);
-  m_retro->startCore();
+  m_retro->init(coreId(), rom());
 }
 
 void MarioKart64::run()
@@ -140,7 +114,7 @@ void MarioKart64::doApplyGameData(const DrGameData &data)
 {
   signed id = data.minigame->minigame_id;
   startMinigame();
-  core()->unserializeFromFile(dr_state_directory() + "/mk64.state.zip");
+  loadState(state());
   m_retro->writeu8(id % 4, MK64_COURSE_ADDR);
   m_retro->writeu8(id / 4, MK64_CUP_ADDR);
 

@@ -118,15 +118,6 @@ static uint32_t k64Difficulty(dr_difficulty d)
   }
 }
 
-/* In-game player slot for a board player, from their controller port. Mario Party
- * assigns ports non-linearly, so we place each player into the slot matching their
- * port (falling back to the board index if the port is out of range). */
-static unsigned k64Slot(const dr_player_t &p, unsigned fallback)
-{
-  unsigned slot = static_cast<unsigned>(p.control_port - DR_CONTROL_PORT_P1);
-  return slot < 4 ? slot : fallback;
-}
-
 static const dr_mp_minigame_t K64_MINIGAMES[] = {
   { "100-Yard Hop", DR_MINIGAME_4P, K64_MINIGAME_100_YARD_HOP, 0xFF, DR_NO_QUIRKS },
   { "Bumper Crop Bump", DR_MINIGAME_4P, K64_MINIGAME_BUMPER_CROP_BUMP, 0xFF, DR_NO_QUIRKS },
@@ -169,39 +160,14 @@ static const char *K64_CHASE_MIRROR_FILES[4] = {
 
 Kirby64::Kirby64(QObject *parent)
   : DrGuest(parent)
-  , m_gamePath(dr_roms_directory() + "/Kirby 64 - The Crystal Shards (USA).z64")
 {
   m_retro = new DrRetroN64(this);
-  QRetro *core = new QRetro();
-  core->setSavingEnabled(false);
-
-  QString corePath = dr_core_path(DR_CORE_MUPEN64PLUSNEXT);
-  if (!core->loadCore(corePath.toUtf8().constData()))
-  {
-    log(DR_LOG_ERROR, qPrintable(QString("failed to load core: %1").arg(corePath)));
-    m_valid = false;
-  }
-
-  if (!QFile::exists(m_gamePath))
-  {
-    log(DR_LOG_ERROR, qPrintable(QString("rom not found: %1").arg(m_gamePath)));
-    m_valid = false;
-  }
-
-  m_retro->setCore(core, true);
-  m_retro->applyN64Remaps();
+  m_retro->init(coreId(), rom());
 
   /* Drive the d-pad from each player's analog stick, since the minigames read the
    * digital pad. */
   for (unsigned port = 0; port < 4; port++)
-    core->input()->joypads()[port].setAnalogStickToDigitalPad(true);
-}
-
-void Kirby64::startCore()
-{
-  if (auto *c = core())
-    connect(c, &QRetro::frameBegin, this, [this]() { run(); }, Qt::DirectConnection);
-  m_retro->startCore();
+    core()->input()->joypads()[port].setAnalogStickToDigitalPad(true);
 }
 
 void Kirby64::run()
@@ -283,12 +249,11 @@ void Kirby64::onBeforeBoot(const DrGameData &data)
 
   for (unsigned i = 0; i < 4; i++)
   {
-    m_players[i] = data.players[i];
     m_slotToIndex[i] = i;
   }
   /* Order players in-game by controller port (Mario Party ports vary). */
   for (unsigned i = 0; i < 4; i++)
-    m_slotToIndex[k64Slot(m_players[i], i)] = i;
+    m_slotToIndex[dr_player_slot(m_players[i], i)] = i;
   writePlayerIcons(data);
 }
 
@@ -298,7 +263,7 @@ void Kirby64::doApplyGameData(const DrGameData &data)
 {
   (void)data; /* players cached in onBeforeBoot; m_minigame set by base */
 
-  core()->unserializeFromFile(dr_state_directory() + "/kirby64.state.zip");
+  loadState(state());
 
   int32_t id = static_cast<int32_t>(m_minigame ? m_minigame->minigame_id : -1);
   m_retro->writeForFrames(K64_MINIGAME_ID_ADDR, &id, sizeof(id), 120);
@@ -309,7 +274,7 @@ void Kirby64::doApplyGameData(const DrGameData &data)
     difficulty = qMax(difficulty, k64Difficulty(m_players[i].difficulty));
 
     /* Write each player into the in-game slot matching their controller port. */
-    const unsigned slot = k64Slot(m_players[i], i);
+    const unsigned slot = dr_player_slot(m_players[i], i);
 
     uint32_t character = 0;
     uint32_t color = 0;
@@ -404,7 +369,7 @@ void Kirby64::writePlayerIcons(const DrGameData &data)
   QImage srcImages[4];
   for (unsigned i = 0; i < 4; i++)
   {
-    const unsigned slot = k64Slot(data.players[i], i);
+    const unsigned slot = dr_player_slot(data.players[i], i);
     int characterId = static_cast<int>(data.players[i].character);
     srcImages[slot] = QImage(QString(":/assets/player-32px/%1.png").arg(characterId));
     if (srcImages[slot].isNull())

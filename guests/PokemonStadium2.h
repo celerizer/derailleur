@@ -11,16 +11,13 @@ public:
   PokemonStadium2(QObject *parent = nullptr);
   const char *name() const override { return "Pokemon Stadium 2"; }
   dr_guest id() const override { return DR_GUEST_POKEMONSTADIUM2; }
-
-  QRetro *core() const override { return m_retro ? m_retro->core() : nullptr; }
-  void startCore() override;
-  void pause() override { if (m_retro) m_retro->pause(); }
-  void unpause() override { if (m_retro) m_retro->unpause(); }
+  dr_core coreId() const override { return DR_CORE_MUPEN64PLUSNEXT; }
+  const char *rom() const override { return "Pokemon Stadium 2 (USA).z64"; }
+  const char *state() const override { return "pokemonstadium2"; }
 
   /// Content/boot are deferred to the first minigame launch, so this guest opts
   /// out of the startup warmup; the base boots it on demand (see applyGameData).
   bool usesWarmup() const override { return false; }
-  std::string gamePath() const override { return m_gamePath.toStdString(); }
   unsigned bootFrames() const override { return 16; }
 
   dr_minigame_result_t minigameResult(unsigned index) override;
@@ -43,9 +40,6 @@ private:
   /// score down to 0 (recording starts once everyone is at the initial 9).
   void trackRampage();
 
-  DrRetro *m_retro = nullptr;
-  QString m_gamePath;
-  dr_player_t m_players[4] = {};
   int m_slotToIndex[4] = { 0, 1, 2, 3 }; // in-game slot -> board player index
   int m_tempoWatchDelay = 0;    // frames to wait after launch before watching tempo
   int m_aPressDelay = 0;        // frames after load before forcing a P1 A press (0 = idle)

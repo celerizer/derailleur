@@ -95,14 +95,6 @@ static int32_t mp9Difficulty(dr_difficulty d)
   }
 }
 
-/* In-game player slot from a board player's controller port (Mario Party assigns
- * ports non-linearly), falling back to the board index if out of range. */
-static unsigned mp9Slot(const dr_player_t &p, unsigned fallback)
-{
-  unsigned slot = static_cast<unsigned>(p.control_port - DR_CONTROL_PORT_P1);
-  return slot < 4 ? slot : fallback;
-}
-
 static const dr_mp_minigame_t MP9_MINIGAMES[] =
 {
   { "Ruins Rumble", DR_MINIGAME_1V3, 0x00, 0, DR_WII_CONTROL_SPLIT(DR_WII_CONTROL_SIDEWAYS_MOTION, DR_WII_CONTROL_SIDEWAYS_BUTTONS) },
@@ -255,15 +247,12 @@ void MarioParty9::doApplyGameData(const DrGameData &data)
   m_partyPointsStart = 0;
   m_retro->readu32(&m_partyPointsStart, MP9_PARTY_POINTS_ADDR);
 
-  for (unsigned i = 0; i < 4; i++)
-    m_players[i] = data.players[i];
-
   int32_t id = static_cast<int32_t>(data.minigame->minigame_id);
   m_retro->writes32(id, MP9_MINIGAME_TO_LOAD_ADDR);
 
   for (unsigned i = 0; i < 4; i++)
   {
-    const unsigned slot = mp9Slot(m_players[i], i);
+    const unsigned slot = dr_player_slot(m_players[i], i);
 
     int32_t chr = mp9Character(m_players[i].character);
     m_retro->writes32(chr, MP9_CHARACTER_ADDR[slot]);
@@ -293,7 +282,7 @@ dr_minigame_result_t MarioParty9::minigameResult(unsigned index)
   if (index >= 4)
     return result;
 
-  const unsigned slot = mp9Slot(m_players[index], index);
+  const unsigned slot = dr_player_slot(m_players[index], index);
 
   int32_t place = -1;
   if (m_retro->reads32(&place, MP9_RESULT_PLACEMENT_ADDR[slot]) != DR_OK)

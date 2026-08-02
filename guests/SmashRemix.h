@@ -11,13 +11,11 @@ public:
   SmashRemix(QObject *parent = nullptr);
   const char *name() const override { return "Smash Remix"; }
   dr_guest id() const override { return DR_GUEST_SMASHREMIX; }
+  dr_core coreId() const override { return DR_CORE_MUPEN64PLUSNEXT; }
+  const char *rom() const override { return "smashremix.z64"; }
+  const char *state() const override { return "smashremix"; }
 
-  QRetro *core() const override { return m_retro ? m_retro->core() : nullptr; }
   bool usesWarmup() const override { return false; }
-  std::string gamePath() const override { return m_gamePath; }
-  void startCore() override;
-  void pause() override { if (m_retro) m_retro->pause(); }
-  void unpause() override { if (m_retro) m_retro->unpause(); }
 
   dr_minigame_result_t minigameResult(unsigned index) override;
   const dr_mp_minigame_t *minigames() const override;
@@ -28,9 +26,6 @@ private:
   void applyPlayers();
   void run(void);
 
-  DrRetro *m_retro = nullptr;
-  std::string m_gamePath;
-  dr_player_t m_players[4] = {};
   dr_character m_slotCharacters[4] = {};
   int m_slotToIndex[4] = { -1, -1, -1, -1 };
   int8_t m_prevStocks[4] = { -1, -1, -1, -1 };

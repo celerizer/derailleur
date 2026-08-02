@@ -111,31 +111,7 @@ MarioTennis::MarioTennis(QObject *parent)
   : DrGuest(parent)
 {
   m_retro = new DrRetroN64(this);
-  QString corePath = dr_core_path(DR_CORE_MUPEN64PLUSNEXT);
-  QString gamePath = dr_roms_directory() + "/Mario Tennis (USA).z64";
-  m_gamePath = gamePath.toStdString();
-  QRetro *c = new QRetro();
-  c->setSavingEnabled(false);
-  if (!c->loadCore(corePath.toUtf8().constData()))
-  {
-    log(DR_LOG_ERROR, qPrintable(QString("failed to load core: %1").arg(corePath)));
-    m_valid = false;
-  }
-  /* Content is loaded lazily on the first launch (see DrGuest::applyGameData). */
-  if (!QFile::exists(gamePath))
-  {
-    log(DR_LOG_ERROR, qPrintable(QString("rom not found: %1").arg(gamePath)));
-    m_valid = false;
-  }
-  m_retro->setCore(c, true);
-  m_retro->applyN64Remaps();
-}
-
-void MarioTennis::startCore()
-{
-  if (auto *c = core())
-    connect(c, &QRetro::frameBegin, this, [this]() { run(); }, Qt::DirectConnection);
-  m_retro->startCore();
+  m_retro->init(coreId(), rom());
 }
 
 void MarioTennis::run()
@@ -228,7 +204,7 @@ void MarioTennis::doApplyGameData(const DrGameData &data)
   m_winners = 0;
   m_finishCountdown = 0;
   m_allCpuFrames = 0;
-  core()->unserializeFromFile(dr_state_directory() + "/mariotennis.state.zip");
+  loadState(state());
   bool doubles = (minigame->type == DR_MINIGAME_2V2);
   unsigned long rc = dr_rand_count();
   uint8_t court = (minigame->minigame_id == 0x06) ? 0x10 : (uint8_t)(dr_rand() % 16);
@@ -244,7 +220,6 @@ void MarioTennis::doApplyGameData(const DrGameData &data)
   for (unsigned i = 0; i < 4; i++)
   {
     const dr_player_t &p = data.players[i];
-    m_players[i] = p;
     if (p.character < DR_CHARACTER_SIZE && MT_DR_TO_CHAR[p.character].id != 0xFF)
     {
       m_retro->writeu32(MT_DR_TO_CHAR[p.character].id, MT_CHARACTER_ADDR[i]);

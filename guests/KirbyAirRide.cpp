@@ -138,8 +138,6 @@ void KirbyAirRide::doApplyGameData(const DrGameData &data)
 
   m_minigameFrames = 0;
   m_finishPending = false;
-  for (unsigned i = 0; i < 4; i++)
-    m_players[i] = data.players[i];
   uint8_t stadium;
 
   switch (minigame->minigame_id)
@@ -170,8 +168,6 @@ dr_minigame_result_t KirbyAirRide::minigameResult(unsigned index)
   dr_minigame_result_t result = { 0, 0 };
   if (index < 4)
   {
-    // Results are stored by framework index (KAR orders players by index).
-    // Memory stores a placing (0 = 1st, 1 = 2nd, ...); award the winner coins.
     uint8_t place;
     if (m_retro->readu8(&place, KAR_RESULT_ADDR[index]) == DR_OK && place == 0)
       result.coins = 10;
@@ -179,9 +175,6 @@ dr_minigame_result_t KirbyAirRide::minigameResult(unsigned index)
   return result;
 }
 
-// Kirby Air Ride orders players by index (unlike Mario Party, which orders by
-// control port), so each framework index maps directly to its game slot, and
-// the result placings come back in that same index order.
 void KirbyAirRide::applyPlayers()
 {
   for (unsigned i = 0; i < 4; i++)

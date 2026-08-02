@@ -11,13 +11,11 @@ public:
   MarioTennis(QObject *parent = nullptr);
   const char *name() const override { return "Mario Tennis"; }
   dr_guest id() const override { return DR_GUEST_MARIOTENNIS; }
+  dr_core coreId() const override { return DR_CORE_MUPEN64PLUSNEXT; }
+  const char *rom() const override { return "Mario Tennis (USA).z64"; }
+  const char *state() const override { return "mariotennis"; }
 
-  QRetro *core() const override { return m_retro ? m_retro->core() : nullptr; }
   bool usesWarmup() const override { return false; }
-  std::string gamePath() const override { return m_gamePath; }
-  void startCore() override;
-  void pause() override { if (m_retro) m_retro->pause(); }
-  void unpause() override { if (m_retro) m_retro->unpause(); }
 
   dr_minigame_result_t minigameResult(unsigned index) override;
   const dr_mp_minigame_t *minigames() const override;
@@ -28,9 +26,6 @@ private:
   void applyTeams();
   void run();
 
-  DrRetro *m_retro = nullptr;
-  std::string m_gamePath;
-  dr_player_t m_players[4] = {};
   unsigned m_winners = 0;
   int m_finishCountdown = 0;
   int m_allCpuFrames = 0;

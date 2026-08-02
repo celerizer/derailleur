@@ -40,7 +40,6 @@ private:
   std::string m_statePath;
   int m_minigameFrames = 0;
   bool m_finishPending = false;
-  dr_player_t m_players[4] = {};
 };
 
 #endif

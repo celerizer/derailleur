@@ -244,27 +244,9 @@ SmashRemix::SmashRemix(QObject *parent)
   : DrGuest(parent)
 {
   m_retro = new DrRetroN64(this);
-  QString corePath = dr_core_path(DR_CORE_MUPEN64PLUSNEXT);
-  QString gamePath = dr_roms_directory() + "/smashremix.z64";
-  m_gamePath = gamePath.toStdString();
-  QRetro *core = new QRetro();
-  core->setSavingEnabled(false);
-  if (!core->loadCore(corePath.toUtf8().constData()))
-  {
-    log(DR_LOG_ERROR, qPrintable(QString("failed to load core: %1").arg(corePath)));
-    m_valid = false;
-  }
-  /* Content is loaded lazily on the first launch (see DrGuest::applyGameData). */
-  if (!QFile::exists(gamePath))
-  {
-    log(DR_LOG_ERROR, qPrintable(QString("rom not found: %1").arg(gamePath)));
-    m_valid = false;
-  }
-  m_retro->setCore(core, true);
+  m_retro->init(coreId(), rom()); /* also applies N64 remaps */
 
-  /* Apply base N64 remaps. Additionally... */
-  m_retro->applyN64Remaps();
-
+  /* Additionally, per-port smash remaps on top of the base N64 layout: */
   for (unsigned i = 0; i < 4; i++)
   {
     /* ...map all D-pad directions to L (taunt) */
@@ -278,12 +260,6 @@ SmashRemix::SmashRemix(QObject *parent)
   }
 }
 
-void SmashRemix::startCore()
-{
-  if (auto *c = core())
-    connect(c, &QRetro::frameBegin, this, [this]() { run(); }, Qt::DirectConnection);
-  m_retro->startCore();
-}
 
 const dr_mp_minigame_t *SmashRemix::minigames() const
 {
@@ -298,14 +274,12 @@ void SmashRemix::doApplyGameData(const DrGameData &data)
   m_finishCountdown = 0;
   m_eliminationCount = 0;
   for (unsigned i = 0; i < 4; i++)
-    m_players[i] = data.players[i];
-  for (unsigned i = 0; i < 4; i++)
   {
     m_slotToIndex[i] = -1;
     m_prevStocks[i] = -2;
     m_placement[i] = -1;
   }
-  core()->unserializeFromFile(dr_state_directory() + "/smashremix.state.zip");
+  loadState(state());
 
   /* Use a random stage from the original stage list */
   unsigned long rc = dr_rand_count();

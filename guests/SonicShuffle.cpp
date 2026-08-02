@@ -112,13 +112,6 @@ static const size_t SS_PLAYER_BASE = 0x21D940;
 #define SS_PLAYER_ADDR(p, field) \
   (SS_PLAYER_BASE + (p) * sizeof(ss_player_t) + offsetof(ss_player_t, field))
 
-/* In-game slot from a player's controller port. @todo confirm SS orders by port */
-static unsigned ss_slot(const dr_player_t &p, unsigned fallback)
-{
-  unsigned slot = static_cast<unsigned>(p.control_port - DR_CONTROL_PORT_P1);
-  return slot < 4 ? slot : fallback;
-}
-
 /* dr_difficulty -> Sonic Shuffle CPU difficulty. It only has three levels, so the
  * outer two of ours collapse inward. */
 static uint8_t ss_difficulty(dr_difficulty d)
@@ -227,36 +220,11 @@ static const dr_mp_minigame_t SS_MINIGAMES[] =
 
 SonicShuffle::SonicShuffle(QObject *parent)
   : DrGuest(parent)
-  , m_gamePath(dr_roms_directory() + "/Sonic Shuffle (USA).chd")
 {
-  const QString corePath = dr_core_path(DR_CORE_FLYCAST);
-  QRetro *c = new QRetro();
-
-  m_retro = new DrRetro(this);
-  c->setSavingEnabled(false);
-  if (!c->loadCore(corePath.toUtf8().constData()))
-  {
-    log(DR_LOG_ERROR, qPrintable(QString("failed to load core: %1").arg(corePath)));
-    m_valid = false;
-  }
-
   /* Content is loaded lazily on the first launch (see doApplyGameData); Flycast
-   * is a heavy GL core and crashes when preloaded. Just verify the ROM here. */
-  if (!QFile::exists(m_gamePath))
-  {
-    log(DR_LOG_ERROR, qPrintable(QString("rom not found: %1").arg(m_gamePath)));
-    m_valid = false;
-  }
-
-  m_retro->setCore(c, true);
-}
-
-void SonicShuffle::startCore(void)
-{
-  QRetro *c = core();
-  if (c)
-    connect(c, &QRetro::frameBegin, this, [this]() { run(); }, Qt::DirectConnection);
-  m_retro->startCore();
+   * is a heavy GL core and crashes when preloaded. */
+  m_retro = new DrRetro(this);
+  m_retro->init(coreId(), rom());
 }
 
 void SonicShuffle::run(void)
@@ -341,10 +309,8 @@ void SonicShuffle::doApplyGameData(const DrGameData &data)
   unsigned i, slot;
 
   m_minigameFrames = 0;
-  for (i = 0; i < 4; i++)
-    m_players[i] = data.players[i];
 
-  core()->unserializeFromFile(dr_state_directory() + "/sonicshuffle.state.zip");
+  loadState(state());
 
   /* Inject which mini-game to load: supertype + id together select it (see
    * SS_MINIGAMES). Held for a while so the game reads our values as it comes out
@@ -367,7 +333,7 @@ void SonicShuffle::doApplyGameData(const DrGameData &data)
    * dr_character -> Sonic Shuffle roster mapping. */
   for (i = 0; i < 4; i++)
   {
-    slot = ss_slot(m_players[i], i);
+    slot = dr_player_slot(m_players[i], i);
     m_retro->writeu16(static_cast<uint16_t>(m_players[i].coins), SS_PLAYER_ADDR(slot, rings));
     //m_retro->writes16(static_cast<int16_t>(m_players[i].coins), SS_PLAYER_ADDR(slot, rings_to_lose));
     m_retro->writeu8(static_cast<uint8_t>(m_players[i].stars), SS_PLAYER_ADDR(slot, precioustones));
@@ -395,7 +361,7 @@ void SonicShuffle::doApplyGameData(const DrGameData &data)
 
     for (i = 0; i < 4; i++)
     {
-      slot = ss_slot(m_players[i], i);
+      slot = dr_player_slot(m_players[i], i);
       team_of[slot] = (m_players[i].team_id == ref_team) ? 0 : 1;
     }
 
@@ -424,7 +390,7 @@ void SonicShuffle::doApplyGameData(const DrGameData &data)
     for (i = 0; i < 4; i++)
       if (m_players[i].team_type == DR_TEAM_TYPE_1V3_SOLO)
       {
-        solo = static_cast<uint8_t>(ss_slot(m_players[i], i));
+        solo = static_cast<uint8_t>(dr_player_slot(m_players[i], i));
         break;
       }
     m_retro->writeForFrames(SS_MINIGAME_SOLO_ADDR, &solo, 1, 120);
@@ -482,7 +448,7 @@ dr_minigame_result_t SonicShuffle::minigameResult(unsigned index)
   if (index >= 4)
     return result;
 
-  slot = ss_slot(m_players[index], index);
+  slot = dr_player_slot(m_players[index], index);
   m_retro->reads16(&earned, SS_MINIGAME_EARNED_ADDR[slot]);
   m_retro->reads16(&bonus, SS_MINIGAME_BONUS_ADDR[slot]);
 

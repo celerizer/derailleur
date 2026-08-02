@@ -47,7 +47,6 @@ void MarioPartyGcn::doApplyGameData(const DrGameData &data)
   m_minigameFrames = 0;
   for (unsigned i = 0; i < 4; i++)
   {
-    m_players[i] = data.players[i];
     m_slotOf[i] = static_cast<int>(i);
   }
   int16_t id = static_cast<int16_t>(data.minigame->minigame_id);

@@ -11,13 +11,10 @@ public:
   MarioPartyE(QObject *parent = nullptr);
   const char *name() const override { return "Mario Party-e"; }
   dr_guest id() const override { return DR_GUEST_MARIOPARTYE; }
+  dr_core coreId() const override { return DR_CORE_MGBA; }
+  const char *rom() const override { return "e-Reader (USA).gba"; }
 
-  QRetro *core() const override { return m_retro ? m_retro->core() : nullptr; }
   bool usesWarmup() const override { return false; }
-  std::string gamePath() const override { return m_gamePath; }
-  void startCore() override;
-  void pause() override   { if (m_retro) m_retro->pause(); }
-  void unpause() override { if (m_retro) m_retro->unpause(); }
 
   dr_minigame_result_t minigameResult(unsigned index) override;
   const dr_mp_minigame_t *minigames() const override;
@@ -30,8 +27,6 @@ protected:
 private:
   void runTimeBombTicks();
 
-  DrRetro *m_retro = nullptr;
-  std::string m_gamePath;
   unsigned m_winners = 0;
 };
 

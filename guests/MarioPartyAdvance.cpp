@@ -54,27 +54,7 @@ MarioPartyAdvance::MarioPartyAdvance(QObject *parent)
   : DrGuest(parent)
 {
   m_retro = new DrRetro(this);
-  m_gamePath = (dr_roms_directory() + "/Mario Party Advance (USA).gba").toStdString();
-  QRetro *c = new QRetro();
-  if (!c->loadCore(dr_core_path(DR_CORE_MGBA).toStdString().c_str()))
-  {
-    log(DR_LOG_ERROR, "failed to load core: mgba_libretro.so");
-    m_valid = false;
-  }
-  /* Content is loaded lazily on the first launch (see DrGuest::applyGameData). */
-  if (!QFile::exists(QString::fromStdString(m_gamePath)))
-  {
-    log(DR_LOG_ERROR, "rom not found: Mario Party Advance (USA).gba");
-    m_valid = false;
-  }
-  m_retro->setCore(c, true);
-}
-
-void MarioPartyAdvance::startCore()
-{
-  if (auto *c = core())
-    connect(c, &QRetro::frameBegin, this, [this]() { run(); }, Qt::DirectConnection);
-  m_retro->startCore();
+  m_retro->init(coreId(), rom());
 }
 
 const dr_mp_minigame_t *MarioPartyAdvance::minigames() const
@@ -94,14 +74,8 @@ void MarioPartyAdvance::doApplyGameData(const DrGameData &data)
   m_gameStarted = false;
   m_winners = 0;
   m_EndWaitFrames = 0;
-  if (m_retro && m_retro->core())
-  {
-    QString statePath = dr_state_directory() + "/mpadvance.state.zip";
-    bool ok = m_retro->core()->unserializeFromFile(statePath);
-    log(DR_LOG_INFO, qPrintable(QString("unserializeFromFile(%1): %2").arg(statePath).arg(ok ? "ok" : "failed")));
-  }
-  if (m_retro)
-    m_retro->writeu8((uint8_t)minigame->minigame_id, MPA_MINIGAME_ID_ADDR);
+  loadState(state());
+  m_retro->writeu8((uint8_t)minigame->minigame_id, MPA_MINIGAME_ID_ADDR);
 
   /* Only the first two board players map onto Mario Party Advance's two slots. */
   for (unsigned i = 0; i < 2; i++)

@@ -122,16 +122,6 @@ static const size_t BT_HEAP_PTR_ADDRS[2] = {
 /// @warning If the state data changes this needs to be updated, it's heap-allocated -mgmt
 static const size_t BT_MINIGAME_ID_ADDR = 0x80191646;
 
-/* In-game player slot for a board player, from their controller port. Banjo-Tooie
- * numbers its players linearly 0-3 by controller port, but Mario Party assigns
- * ports non-linearly, so scores/winners come back per port and must be mapped
- * back to the board index (falling back to the board index if out of range). */
-static unsigned btSlot(const dr_player_t &p, unsigned fallback)
-{
-  unsigned slot = static_cast<unsigned>(p.control_port - DR_CONTROL_PORT_P1);
-  return slot < 4 ? slot : fallback;
-}
-
 typedef enum
 {
   BT_MINIGAME_TARGITZANS_TEMPLE_SHOOTOUT = 0,
@@ -170,36 +160,11 @@ static const dr_mp_minigame_t BT_MINIGAMES[] = {
 
 BanjoTooie::BanjoTooie(QObject *parent)
   : DrGuest(parent)
-  , m_gamePath(dr_roms_directory() + "/Banjo-Tooie (USA).z64")
 {
+  /* Content is loaded on the first launch so the per-character hires icons can be
+   * laid down (onBeforeBoot) before GLideN64 scans them. */
   m_retro = new DrRetroN64(this);
-  QRetro *c = new QRetro();
-  c->setSavingEnabled(false);
-
-  QString corePath = dr_core_path(DR_CORE_MUPEN64PLUSNEXT);
-  if (!c->loadCore(corePath.toUtf8().constData()))
-  {
-    log(DR_LOG_ERROR, qPrintable(QString("failed to load core: %1").arg(corePath)));
-    m_valid = false;
-  }
-
-  /* Just make sure the ROM exists -- content is loaded on the first launch so the
-   * per-character hires icons can be laid down before GLideN64 scans them. */
-  if (!QFile::exists(m_gamePath))
-  {
-    log(DR_LOG_ERROR, qPrintable(QString("rom not found: %1").arg(m_gamePath)));
-    m_valid = false;
-  }
-
-  m_retro->setCore(c, true);
-  m_retro->applyN64Remaps();
-}
-
-void BanjoTooie::startCore()
-{
-  if (auto *c = core())
-    connect(c, &QRetro::frameBegin, this, [this]() { run(); }, Qt::DirectConnection);
-  m_retro->startCore();
+  m_retro->init(coreId(), rom());
 }
 
 void BanjoTooie::run()
@@ -354,12 +319,11 @@ void BanjoTooie::onBeforeBoot(const DrGameData &data)
 
   for (unsigned i = 0; i < 4; i++)
   {
-    m_players[i] = data.players[i];
     m_slotToIndex[i] = i;
   }
   for (unsigned i = 0; i < 4; i++)
   {
-    const unsigned slot = btSlot(m_players[i], i);
+    const unsigned slot = dr_player_slot(m_players[i], i);
     m_slotToIndex[slot] = i;
     writePlayerIcon(slot, data.players[i].character);
   }
@@ -372,7 +336,7 @@ void BanjoTooie::doApplyGameData(const DrGameData &data)
 {
   (void)data; /* players cached in onBeforeBoot; m_minigame set by base */
 
-  core()->unserializeFromFile(dr_state_directory() + "/banjotooie.state.zip");
+  loadState(state());
 
   uint16_t id = static_cast<uint16_t>(m_minigame ? m_minigame->minigame_id : 0);
   m_retro->writeForFrames(BT_MINIGAME_ID_ADDR, &id, sizeof(id), 60);

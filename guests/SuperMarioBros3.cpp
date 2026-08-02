@@ -59,31 +59,7 @@ SuperMarioBros3::SuperMarioBros3(QObject *parent)
   : DrGuest(parent)
 {
   m_retro = new DrRetro(this);
-
-  QString corePath = dr_core_path(DR_CORE_FCEUMM);
-  QString gamePath = dr_roms_directory() + "/Super Mario Bros. 3 (USA) (Rev 1).nes";
-  m_gamePath = gamePath.toStdString();
-
-  QRetro *core = new QRetro();
-  core->setSavingEnabled(false);
-  if (!core->loadCore(corePath.toUtf8().constData()))
-  {
-    log(DR_LOG_ERROR, qPrintable(QString("failed to load core: %1").arg(corePath)));
-    m_valid = false;
-  }
-  if (!QFile::exists(gamePath))
-  {
-    log(DR_LOG_ERROR, qPrintable(QString("rom not found: %1").arg(gamePath)));
-    m_valid = false;
-  }
-  m_retro->setCore(core, true);
-}
-
-void SuperMarioBros3::startCore()
-{
-  if (auto *c = core())
-    connect(c, &QRetro::frameBegin, this, [this]() { run(); }, Qt::DirectConnection);
-  m_retro->startCore();
+  m_retro->init(coreId(), rom());
 }
 
 const dr_mp_minigame_t *SuperMarioBros3::minigames() const
@@ -126,10 +102,8 @@ static smb3_player_colors_t smb3ColorsFor(dr_character c)
 void SuperMarioBros3::doApplyGameData(const DrGameData &data)
 {
   m_minigameFrames = 0;
-  for (unsigned i = 0; i < 4; i++)
-    m_players[i] = data.players[i];
 
-  core()->unserializeFromFile(dr_state_directory() + "/supermariobros3.state.zip");
+  loadState(state());
 
   /* Select the Vs. map for this mini-game (the entry's id); hold it as the match
    * spins up. */

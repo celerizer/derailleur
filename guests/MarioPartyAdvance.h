@@ -11,13 +11,11 @@ public:
   MarioPartyAdvance(QObject *parent = nullptr);
   const char *name() const override { return "Mario Party Advance"; }
   dr_guest id() const override { return DR_GUEST_MARIOPARTYADVANCE; }
+  dr_core coreId() const override { return DR_CORE_MGBA; }
+  const char *rom() const override { return "Mario Party Advance (USA).gba"; }
+  const char *state() const override { return "mpadvance"; }
 
-  QRetro *core() const override { return m_retro ? m_retro->core() : nullptr; }
   bool usesWarmup() const override { return false; }
-  std::string gamePath() const override { return m_gamePath; }
-  void startCore() override;
-  void pause() override { if (m_retro) m_retro->pause(); }
-  void unpause() override { if (m_retro) m_retro->unpause(); }
 
   dr_minigame_result_t minigameResult(unsigned index) override;
   const dr_mp_minigame_t *minigames() const override;
@@ -28,8 +26,6 @@ private:
   void run4pPinball();
   void run() override;
 
-  DrRetro *m_retro = nullptr;
-  std::string m_gamePath;
   bool m_gameStarted = false;
   unsigned m_winners = 0;
   unsigned m_EndWaitFrames = 0;

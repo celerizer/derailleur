@@ -23,27 +23,7 @@ MarioPartyE::MarioPartyE(QObject *parent)
   : DrGuest(parent)
 {
   m_retro = new DrRetro(this);
-  m_gamePath = (dr_roms_directory() + "/e-Reader (USA).gba").toStdString();
-  QRetro *c = new QRetro();
-  if (!c->loadCore(dr_core_path(DR_CORE_MGBA).toUtf8().constData()))
-  {
-    log(DR_LOG_ERROR, "failed to load core: mgba_libretro.so");
-    m_valid = false;
-  }
-  /* Content is loaded lazily on the first launch (see DrGuest::applyGameData). */
-  if (!QFile::exists(QString::fromStdString(m_gamePath)))
-  {
-    log(DR_LOG_ERROR, "rom not found: e-Reader (USA).gba");
-    m_valid = false;
-  }
-  m_retro->setCore(c, true);
-}
-
-void MarioPartyE::startCore()
-{
-  if (auto *c = core())
-    connect(c, &QRetro::frameBegin, this, [this]() { run(); }, Qt::DirectConnection);
-  m_retro->startCore();
+  m_retro->init(coreId(), rom());
 }
 
 void MarioPartyE::runTimeBombTicks()

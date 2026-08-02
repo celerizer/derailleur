@@ -32,6 +32,9 @@ public:
   bool applyOnGuiThread() const override { return true; }
 
   QRetro *core() const override { return m_retro ? m_retro->core() : nullptr; }
+  /// Patches the Dolphin library (unique arena name) and dlopens it, lazily on
+  /// the first launch. Returns false if it cannot be loaded.
+  bool loadCore() override;
   void startCore() override;
   void pause() override { if (m_retro) m_retro->pause(); }
   void unpause() override { if (m_retro) m_retro->unpause(); }
@@ -56,6 +59,7 @@ private:
   QString m_m3uPath;
   QByteArray m_name;
   QString m_subdir;
+  QString m_baseCorePath; /* the (unpatched) Dolphin library, loaded lazily */
   int m_discIndex = -1;
 };
 
