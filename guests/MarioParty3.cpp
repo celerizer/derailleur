@@ -110,7 +110,8 @@ static MpN64Config buildConfig()
   config.game = (dr_roms_directory() + "/Mario Party 3 (USA).z64").toStdString();
   config.state = (dr_state_directory() + "/mp3.state.zip").toStdString();
 
-  config.scene_miniexplain = 0x70;
+  config.scene_miniexplain[0] = 0x70;
+  config.scene_miniexplain[1] = 0x70;
   config.scene_miniresults = 0x71;
 
   config.scene_addr = 0x800ce202;    // u16

@@ -48,7 +48,8 @@ void MarioPartyN64::run()
       qPrintable(QString("MP_SCENE_ADDR: 0x%1").arg((uint16_t)val, 4, 16, QChar('0'))));
     m_lastScene = val;
     if (m_minigameActive && m_minigameFrames >= 60 &&
-        val != m_config.scene_miniexplain && val != m_minigame->scene_id)
+        val != m_config.scene_miniexplain[0] && val != m_config.scene_miniexplain[1] &&
+        val != m_minigame->scene_id)
       finishMinigame();
   }
 }

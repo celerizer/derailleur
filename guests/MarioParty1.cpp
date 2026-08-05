@@ -81,7 +81,8 @@ static MpN64Config buildConfig()
   config.game = (dr_roms_directory() + "/Mario Party (USA).z64").toStdString();
   config.state = (dr_state_directory() + "/mp1.state.zip").toStdString();
 
-  config.scene_miniexplain = 0x6f;
+  config.scene_miniexplain[0] = 0x6f;
+  config.scene_miniexplain[1] = 0x6f;
   config.scene_miniresults = 0x7c;
 
   config.scene_addr = 0x800C596C;    // u16

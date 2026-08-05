@@ -10,7 +10,7 @@ struct MpN64Config
   std::string game;
   std::string state;
 
-  int scene_miniexplain;
+  int scene_miniexplain[2]; // two because MP2 has two overlays for this
   int scene_miniresults;
 
   size_t scene_addr;
