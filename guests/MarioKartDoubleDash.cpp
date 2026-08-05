@@ -1,14 +1,34 @@
 #include "MarioKartDoubleDash.h"
 
+static const size_t MKDD_CUP_ADDR = 0x803CB7A8;
+
+static const size_t MKDD_TRACK_ADDR = 0x803CB7AC;
+
+// u32 players (0=1, 1=2, etc)
+static const size_t MKDD_PLAYER_COUNT_ADDR = 0x812C1BC0;
+
+// u32 game type (1=versus, 3=battle)
+static const size_t MKDD_GAMETYPE_ADDR = 0x812C1BCC;
+
+// u32 engine class (0=50cc, 1=100cc, 2=150cc, 3=mirror)
+static const size_t MKDD_CC_ADDR = 0x812C1BD0;
+
 static const size_t MKDD_CHAR1_ADDR[4] = { 0x812C1C04, 0x812C1C20, 0x812C1C3C, 0x812C1C58 };
 static const size_t MKDD_CHAR2_ADDR[4] = { 0x812C1C08, 0x812C1C24, 0x812C1C40, 0x812C1C5C };
 static const size_t MKDD_KART_ADDR[4]  = { 0x812C1C0C, 0x812C1C28, 0x812C1C44, 0x812C1C60 };
 
+// Number of selectable karts, for the random pick. TODO: verify (some karts may be
+// weight/character-locked).
+#define MKDD_KART_COUNT 20
+
+// u32 lap count per player (a race is 3 laps).
+static const size_t MKDD_LAPS_ADDR[4] = { 0x8037FF60, 0x8037FF64, 0x8037FF68, 0x8037FF6C };
+
+// u32 finishing placement per player (1 = 1st, 2 = 2nd, ...).
+static const size_t MKDD_PLACEMENT_ADDR[4] = { 0x8037FFA0, 0x8037FFA4, 0x8037FFA8, 0x8037FFAC };
+
 // static const size_t MKDD_CONTROL_TYPE_ADDR[4] = { 0, 0, 0, 0 };
 // static const size_t MKDD_RESULT_ADDR[4]       = { 0, 0, 0, 0 };
-
-// #define MKDD_COURSE_ADDR 0
-// #define MKDD_RACE_STATE_ADDR 0
 
 typedef enum
 {
@@ -97,15 +117,41 @@ static mkdd_char mkddCharFor(dr_character character)
 
 static const dr_mp_minigame_t MKDD_MINIGAMES[] =
 {
-  { "Mario Kart: Luigi Circuit", DR_MINIGAME_4P, MKDD_COURSE_LUIGI_CIRCUIT, 0xFF, DR_NO_QUIRKS },
+  { "Mario Kart: Luigi Circuit",    DR_MINIGAME_4P, MKDD_COURSE_LUIGI_CIRCUIT,    0xFF, DR_NO_QUIRKS },
+  { "Mario Kart: Peach Beach",      DR_MINIGAME_4P, MKDD_COURSE_PEACH_BEACH,      0xFF, DR_NO_QUIRKS },
+  { "Mario Kart: Baby Park",        DR_MINIGAME_4P, MKDD_COURSE_BABY_PARK,        0xFF, DR_NO_QUIRKS },
+  { "Mario Kart: Dry Dry Desert",   DR_MINIGAME_4P, MKDD_COURSE_DRY_DRY_DESERT,   0xFF, DR_NO_QUIRKS },
+  { "Mario Kart: Mushroom Bridge",  DR_MINIGAME_4P, MKDD_COURSE_MUSHROOM_BRIDGE,  0xFF, DR_NO_QUIRKS },
+  { "Mario Kart: Mario Circuit",    DR_MINIGAME_4P, MKDD_COURSE_MARIO_CIRCUIT,    0xFF, DR_NO_QUIRKS },
+  { "Mario Kart: Daisy Cruiser",    DR_MINIGAME_4P, MKDD_COURSE_DAISY_CRUISER,    0xFF, DR_NO_QUIRKS },
+  { "Mario Kart: Waluigi Stadium",  DR_MINIGAME_4P, MKDD_COURSE_WALUIGI_STADIUM,  0xFF, DR_NO_QUIRKS },
+  { "Mario Kart: Sherbet Land",     DR_MINIGAME_4P, MKDD_COURSE_SHERBET_LAND,     0xFF, DR_NO_QUIRKS },
+  { "Mario Kart: Mushroom City",    DR_MINIGAME_4P, MKDD_COURSE_MUSHROOM_CITY,    0xFF, DR_NO_QUIRKS },
+  { "Mario Kart: Yoshi Circuit",    DR_MINIGAME_4P, MKDD_COURSE_YOSHI_CIRCUIT,    0xFF, DR_NO_QUIRKS },
+  { "Mario Kart: DK Mountain",      DR_MINIGAME_4P, MKDD_COURSE_DK_MOUNTAIN,      0xFF, DR_NO_QUIRKS },
+  { "Mario Kart: Wario Colosseum",  DR_MINIGAME_4P, MKDD_COURSE_WARIO_COLOSSEUM,  0xFF, DR_NO_QUIRKS },
+  { "Mario Kart: Dino Dino Jungle", DR_MINIGAME_4P, MKDD_COURSE_DINO_DINO_JUNGLE, 0xFF, DR_NO_QUIRKS },
+  { "Mario Kart: Bowser's Castle",  DR_MINIGAME_4P, MKDD_COURSE_BOWSERS_CASTLE,   0xFF, DR_NO_QUIRKS },
+  { "Mario Kart: Rainbow Road",     DR_MINIGAME_4P, MKDD_COURSE_RAINBOW_ROAD,     0xFF, DR_NO_QUIRKS },
   { nullptr, DR_MINIGAME_INVALID, 0xFF, 0xFF, DR_NO_QUIRKS },
+};
+
+/* Steps of the post-load menu sequence, driven a frame at a time in run(). The
+ * value is what advanceSetup() does when the current step's wait elapses. */
+enum
+{
+  MKDD_SETUP_DONE = 0,
+  MKDD_SETUP_CUP,     /* write the cup, tap A */
+  MKDD_SETUP_TRACK,   /* write the track, tap A */
+  MKDD_SETUP_CONFIRM, /* tap A once more */
+  MKDD_SETUP_START,   /* start the mini-game */
 };
 
 MarioKartDoubleDash::MarioKartDoubleDash(QRetro *sharedCore, QObject *parent)
   : DolphinGuest(parent)
   , m_corePath(dr_core_path(DR_CORE_DOLPHIN).toStdString())
-  , m_discPath((dr_roms_directory() + "/Mario Kart Double Dash (USA)").toStdString())
-  , m_statePath((dr_state_directory() + "/mkdd.state.zip").toStdString())
+  , m_discPath((dr_roms_directory() + "/Mario Kart - Double Dash!! (USA)").toStdString())
+  , m_statePath((dr_state_directory() + "/mariokartdoubledash.state.zip").toStdString())
 {
   m_retro = new DrRetro(sharedCore, this);
 }
@@ -121,13 +167,74 @@ void MarioKartDoubleDash::run()
 {
   m_retro->tickFrameWrites();
 
+  /* Release a forced A press shortly after it starts so it reads as a discrete
+   * press (see BanjoTooie::run). */
+  if (m_aReleaseDelay > 0 && --m_aReleaseDelay == 0)
+    core()->input()->joypads()[0].setForcedButton(RETRO_DEVICE_ID_JOYPAD_A, false);
+
+  /* Walk the menu (cup -> track -> confirm -> start) once each step's wait
+   * elapses. Armed by doApplyGameData right after the state loads. */
+  if (m_setupStep != MKDD_SETUP_DONE && --m_stepDelay <= 0)
+    advanceSetup();
+
   if (!m_minigameActive)
     return;
 
   m_minigameFrames++;
 
-  // TODO: poll the race-state address to detect when the race finishes, then
-  //       finishMinigameInFrames(...) after the results settle. See KirbyAirRide.
+  if (!m_finishPending)
+  {
+    for (unsigned i = 0; i < 4; i++)
+    {
+      uint32_t laps = 0;
+      if (m_retro->readu32(&laps, MKDD_LAPS_ADDR[i]) == DR_OK && laps >= 3)
+      {
+        m_finishPending = true;
+        finishMinigameInFrames(360);
+        break;
+      }
+    }
+  }
+}
+
+/* Force a discrete P1 A press to advance a menu; run() releases it after a short
+ * hold. */
+void MarioKartDoubleDash::pressA()
+{
+  core()->input()->joypads()[0].setForcedButton(RETRO_DEVICE_ID_JOYPAD_A, true);
+  m_aReleaseDelay = 8;
+}
+
+/* One step of the post-load menu sequence: write the next value, tap A, and arm
+ * the wait before the following step (30 frames each). */
+void MarioKartDoubleDash::advanceSetup()
+{
+  switch (m_setupStep)
+  {
+  case MKDD_SETUP_CUP:
+    m_retro->writes32(m_cup, MKDD_CUP_ADDR);
+    pressA();
+    m_setupStep = MKDD_SETUP_TRACK;
+    m_stepDelay = 30;
+    break;
+  case MKDD_SETUP_TRACK:
+    m_retro->writes32(m_track, MKDD_TRACK_ADDR);
+    pressA();
+    m_setupStep = MKDD_SETUP_CONFIRM;
+    m_stepDelay = 30;
+    break;
+  case MKDD_SETUP_CONFIRM:
+    pressA();
+    m_setupStep = MKDD_SETUP_START;
+    m_stepDelay = 30;
+    break;
+  case MKDD_SETUP_START:
+    m_setupStep = MKDD_SETUP_DONE;
+    startMinigame();
+    break;
+  default:
+    break;
+  }
 }
 
 const dr_mp_minigame_t *MarioKartDoubleDash::minigames() const
@@ -139,26 +246,43 @@ void MarioKartDoubleDash::doApplyGameData(const DrGameData &data)
 {
   m_minigameFrames = 0;
   m_finishPending = false;
+  m_aReleaseDelay = 0;
 
-  // TODO: write the chosen course (data.minigame->minigame_id) into MKDD_COURSE_ADDR,
-  //       e.g. with m_retro->writeForFrames(...).
+  const int course = data.minigame ? data.minigame->minigame_id : 0;
+  m_cup = course / 4;
+  m_track = course % 4;
 
   for (unsigned i = 0; i < 4; i++)
   {
+    /* Write each registered player into the in-game slot matching their controller
+     * port, so their physical controller drives that racer (MKDD's slots are linear
+     * by port). */
+    const unsigned slot = dr_player_slot(m_players[i], i);
     // The player rides up front as their character; the partner is always Toad.
-    m_retro->writes32(mkddCharFor(m_players[i].character), MKDD_CHAR1_ADDR[i]);
-    m_retro->writes32(MKDD_CHAR_TOAD, MKDD_CHAR2_ADDR[i]);
+    m_retro->writes32(mkddCharFor(m_players[i].character), MKDD_CHAR2_ADDR[slot]);
+    m_retro->writes32(MKDD_CHAR_TOAD, MKDD_CHAR1_ADDR[slot]);
+    // Random kart for each player.
+    m_retro->writes32(dr_rand() % MKDD_KART_COUNT, MKDD_KART_ADDR[slot]);
   }
 
   applyPlayers();
-  startMinigame();
+  pressA();
+
+  m_setupStep = MKDD_SETUP_CUP;
+  m_stepDelay = 90;
 }
 
 dr_minigame_result_t MarioKartDoubleDash::minigameResult(unsigned index)
 {
   dr_minigame_result_t result = { 0, 0 };
-  // TODO: read the finishing placement for `index` and award coins to the winner.
-  (void)index;
+  if (index >= 4)
+    return result;
+
+  const unsigned slot = dr_player_slot(m_players[index], index);
+  uint32_t place = 0;
+  if (m_retro->readu32(&place, MKDD_PLACEMENT_ADDR[slot]) == DR_OK && place == 1)
+    result.coins = 10;
+
   return result;
 }
 

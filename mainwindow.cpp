@@ -202,6 +202,7 @@ MainWindow::MainWindow(QWidget *parent)
     addSoloGcn("gcn-mp5", [](QRetro *c, QObject *p) -> DolphinGuest * { return new MarioParty5(c, p); });
     addSoloGcn("gcn-mp6", [](QRetro *c, QObject *p) -> DolphinGuest * { return new MarioParty6(c, p); });
     addSoloGcn("gcn-mp7", [](QRetro *c, QObject *p) -> DolphinGuest * { return new MarioParty7(c, p); });
+    addSoloGcn("gcn-mkdd", [](QRetro *c, QObject *p) -> DolphinGuest * { return new MarioKartDoubleDash(c, p); });
   }
   else
   {
@@ -211,7 +212,7 @@ MainWindow::MainWindow(QWidget *parent)
     dolphin->addGame(new MarioParty6(dolphin->core(), dolphin));
     dolphin->addGame(new MarioParty7(dolphin->core(), dolphin));
     //dolphin->addGame(new KirbyAirRide(dolphin->core(), dolphin));
-    //dolphin->addGame(new MarioKartDoubleDash(dolphin->core(), dolphin));
+    dolphin->addGame(new MarioKartDoubleDash(dolphin->core(), dolphin));
     dolphin->finalizeGames();
     if (dolphin->isValid())
       m_Guests->add(dolphin);

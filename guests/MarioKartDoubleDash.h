@@ -33,6 +33,8 @@ protected:
 
 private:
   void applyPlayers();
+  void pressA();
+  void advanceSetup();
 
   DrRetro *m_retro = nullptr;
   std::string m_corePath;
@@ -40,6 +42,13 @@ private:
   std::string m_statePath;
   int m_minigameFrames = 0;
   bool m_finishPending = false;
+
+  /* Post-load menu sequence (see doApplyGameData/advanceSetup). */
+  int m_setupStep = 0;
+  int m_stepDelay = 0;
+  int m_aReleaseDelay = 0;
+  int m_cup = 0;
+  int m_track = 0;
 };
 
 #endif
