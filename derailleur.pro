@@ -12,6 +12,10 @@ GIT_HASH = $$system(git -C $$PWD rev-parse --short HEAD)
 isEmpty(GIT_HASH): GIT_HASH = unknown
 DEFINES += DR_GIT_HASH=$$GIT_HASH
 
+GIT_HASH_FULL = $$system(git -C $$PWD rev-parse HEAD)
+isEmpty(GIT_HASH_FULL): GIT_HASH_FULL = unknown
+DEFINES += DR_GIT_HASH_FULL=$$GIT_HASH_FULL
+
 DEFINES += QRETRO_INTERNAL
 
 CONFIG += QRETRO_CONFIG_NO_GAMEPAD
