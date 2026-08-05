@@ -2,6 +2,7 @@
 
 #include <array>
 #include <memory>
+#include <QDateTime>
 #include <QDir>
 #include <QFile>
 #include <QGuiApplication>
@@ -56,6 +57,16 @@
 #define SHOW_OVERLAY 1
 #define SHOW_DEBUG 1
 
+/* Git hashes arrive from the .pro as bare tokens; stringize them for logging. */
+#ifndef DR_GIT_HASH
+#define DR_GIT_HASH unknown
+#endif
+#ifndef DR_GIT_HASH_FULL
+#define DR_GIT_HASH_FULL unknown
+#endif
+#define DR_STRINGIZE_(x) #x
+#define DR_STRINGIZE(x) DR_STRINGIZE_(x)
+
 MainWindow::MainWindow(QWidget *parent)
   : QMainWindow(parent)
 {
@@ -68,6 +79,13 @@ MainWindow::MainWindow(QWidget *parent)
 #if SHOW_LOGGER
   m_Logger = new DrLogger(nullptr);
   m_Tools->addTool(tr("Log"), m_Logger);
+
+  /* Build/version banner -- first thing logged so it heads every session log. */
+  m_Logger->message(DR_LOG_INFO, QString("derailleur built %1 %2").arg(__DATE__, __TIME__));
+  m_Logger->message(DR_LOG_INFO, QString("build revision %1").arg(DR_STRINGIZE(DR_GIT_HASH)));
+  m_Logger->message(DR_LOG_INFO, QString("git hash %1").arg(DR_STRINGIZE(DR_GIT_HASH_FULL)));
+  m_Logger->message(DR_LOG_INFO,
+    QString("started %1").arg(QDateTime::currentDateTime().toString(Qt::ISODate)));
 #endif
 
   /* Show only the Log while starting up (cores load, guests build). Everything
