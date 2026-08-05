@@ -17,8 +17,6 @@ static const size_t MKDD_CHAR1_ADDR[4] = { 0x812C1C04, 0x812C1C20, 0x812C1C3C, 0
 static const size_t MKDD_CHAR2_ADDR[4] = { 0x812C1C08, 0x812C1C24, 0x812C1C40, 0x812C1C5C };
 static const size_t MKDD_KART_ADDR[4]  = { 0x812C1C0C, 0x812C1C28, 0x812C1C44, 0x812C1C60 };
 
-// Number of selectable karts, for the random pick. TODO: verify (some karts may be
-// weight/character-locked).
 #define MKDD_KART_COUNT 20
 
 // u32 lap count per player (a race is 3 laps).
@@ -54,11 +52,6 @@ typedef enum
   MKDD_CHAR_PETEY_PIRANHA = 0x12,
   MKDD_CHAR_KING_BOO = 0x13,
 } mkdd_char;
-
-// Control Types — TODO: verify
-#define MKDD_CONTROL_HUMAN 0
-#define MKDD_CONTROL_CPU   1
-#define MKDD_CONTROL_NONE  2
 
 static mkdd_char mkddCharFor(dr_character character)
 {
@@ -136,8 +129,7 @@ static const dr_mp_minigame_t MKDD_MINIGAMES[] =
   { nullptr, DR_MINIGAME_INVALID, 0xFF, 0xFF, DR_NO_QUIRKS },
 };
 
-/* Steps of the post-load menu sequence, driven a frame at a time in run(). The
- * value is what advanceSetup() does when the current step's wait elapses. */
+/* Automated menuing state machine */
 enum
 {
   MKDD_SETUP_DONE = 0,
@@ -167,13 +159,10 @@ void MarioKartDoubleDash::run()
 {
   m_retro->tickFrameWrites();
 
-  /* Release a forced A press shortly after it starts so it reads as a discrete
-   * press (see BanjoTooie::run). */
+  /* Release a forced A press shortly after it starts so it reads as a press */
   if (m_aReleaseDelay > 0 && --m_aReleaseDelay == 0)
     core()->input()->joypads()[0].setForcedButton(RETRO_DEVICE_ID_JOYPAD_A, false);
 
-  /* Walk the menu (cup -> track -> confirm -> start) once each step's wait
-   * elapses. Armed by doApplyGameData right after the state loads. */
   if (m_setupStep != MKDD_SETUP_DONE && --m_stepDelay <= 0)
     advanceSetup();
 
@@ -197,8 +186,6 @@ void MarioKartDoubleDash::run()
   }
 }
 
-/* Force a discrete P1 A press to advance a menu; run() releases it after a short
- * hold. */
 void MarioKartDoubleDash::pressA()
 {
   core()->input()->joypads()[0].setForcedButton(RETRO_DEVICE_ID_JOYPAD_A, true);
@@ -254,13 +241,12 @@ void MarioKartDoubleDash::doApplyGameData(const DrGameData &data)
 
   for (unsigned i = 0; i < 4; i++)
   {
-    /* Write each registered player into the in-game slot matching their controller
-     * port, so their physical controller drives that racer (MKDD's slots are linear
-     * by port). */
     const unsigned slot = dr_player_slot(m_players[i], i);
-    // The player rides up front as their character; the partner is always Toad.
+
+    // Pair every player with Toad
     m_retro->writes32(mkddCharFor(m_players[i].character), MKDD_CHAR2_ADDR[slot]);
     m_retro->writes32(MKDD_CHAR_TOAD, MKDD_CHAR1_ADDR[slot]);
+
     // Random kart for each player.
     m_retro->writes32(dr_rand() % MKDD_KART_COUNT, MKDD_KART_ADDR[slot]);
   }
@@ -294,8 +280,5 @@ void MarioKartDoubleDash::applyPlayers()
 
     if (p.control_port == DR_CONTROL_PORT_INVALID || p.control_port >= DR_CONTROL_PORT_SIZE)
       continue;
-
-    // TODO: map p.character -> kart/driver, p.control_type -> human/CPU slot,
-    //       and p.difficulty -> CPU level, writing each to memory.
   }
 }
