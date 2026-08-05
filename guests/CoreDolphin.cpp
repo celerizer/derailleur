@@ -301,22 +301,43 @@ void CoreDolphin::doApplyGameData(const DrGameData &data)
     log(DR_LOG_INFO, "disc change: single-disc core, keeping the booted disc");
 
   // Load the per-game savestate
-  log(DR_LOG_INFO, qPrintable(QString("disc change: loading savestate %1")
-                                .arg(QString::fromStdString(owner->statePath()))));
-  core()->unserializeFromFile(QString::fromStdString(owner->statePath()));
+  const QString statePath = QString::fromStdString(owner->statePath());
+  log(DR_LOG_INFO, qPrintable(QString("disc change: loading savestate %1").arg(statePath)));
+  const bool stateOk = core()->unserializeFromFile(statePath);
   QApplication::processEvents();
-  log(DR_LOG_INFO, "disc change: savestate loaded");
+  log(stateOk ? DR_LOG_INFO : DR_LOG_ERROR,
+    qPrintable(QString("disc change: savestate %1")
+                 .arg(stateOk ? "loaded" : "FAILED to load")));
+
+  // Cleanup any leftover mini-game state
+  owner->cancelMinigame();
 
   // Delegate game-specific setup (writes minigame_id, players, etc.)
   log(DR_LOG_INFO, "disc change: applying game-specific setup");
   owner->applyGameData(data);
   QApplication::processEvents();
 
+  core()->unpause();
+
+  // Wait for the delegate to actually start its mini-game before revealing it
+  static const int maxSetupFrames = 900;
+  int setupFrames = 0;
+  while (!owner->minigameActive() && setupFrames < maxSetupFrames)
+  {
+    core()->waitFrames(1);
+    QApplication::processEvents();
+    setupFrames++;
+  }
+  if (setupFrames > 0)
+    log(owner->minigameActive() ? DR_LOG_INFO : DR_LOG_WARN,
+      qPrintable(QString("disc change: waited %1 frames for delegate setup%2")
+                   .arg(setupFrames)
+                   .arg(owner->minigameActive() ? "" : " (timed out)")));
+
   // Spin again (this was the time needed for MP6 to draw a new frame)
   static const int minigameDrawFrames = 48;
   log(DR_LOG_INFO, qPrintable(
                      QString("disc change: spinning %1 frames to draw a frame").arg(minigameDrawFrames)));
-  core()->unpause();
   for (int i = 0; i < minigameDrawFrames; i++)
   {
     core()->waitFrames(1);

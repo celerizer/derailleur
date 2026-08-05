@@ -113,6 +113,7 @@ public:
 
   virtual QList<DrMinigameGroup> minigameGroups() const;
   void cancelMinigame() { m_minigameActive = false; }
+  bool minigameActive() const { return m_minigameActive; }
 
   /// Applies a whole minigame launch — the chosen minigame and all four players
   /// — in one call. Sets m_minigame, applies emulation quirks, then dispatches to
