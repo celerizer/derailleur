@@ -145,6 +145,10 @@ static const size_t MP8_MINIGAME_STAR_ADDR[4] =
 static const size_t MP8_COIN_STAR_ADDR[4] =
   { 0x80228324, 0x8022843C, 0x80228554, 0x8022866C };
 
+/// u16 - mini-game bonus result per player.
+static const size_t MP8_BONUS_RESULT_ADDR[4] =
+  { 0x80228328, 0x80228440, 0x80228558, 0x80228670 };
+
 /// u16 - mini-game result per player.
 static const size_t MP8_RESULT_ADDR[4] =
   { 0x8022832A, 0x80228442, 0x8022855A, 0x80228672 };
@@ -474,13 +478,15 @@ dr_minigame_result_t MarioParty8::minigameResult(unsigned index)
 
   const unsigned slot = dr_player_slot(m_players[index], index);
 
-  /* MP8 stores each player's coin outcome in the result field; report it back to
-   * the host as coins earned. Read signed -- Battle/Duel can be negative. @todo
-   * confirm this holds the coin delta (not a win/place code). */
   int16_t coins = 0;
   if (m_retro->reads16(&coins, MP8_RESULT_ADDR[slot]) != DR_OK)
     return result;
 
   result.coins = coins;
+
+  int16_t bonus = 0;
+  if (m_retro->reads16(&bonus, MP8_BONUS_RESULT_ADDR[slot]) == DR_OK)
+    result.bonus_coins = bonus;
+
   return result;
 }
