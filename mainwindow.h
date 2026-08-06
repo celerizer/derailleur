@@ -47,6 +47,9 @@ private:
   /// (challenge mode, or a debug launch before a host was chosen).
   void showChooser();
   void showGuests();
+  /// Cancels the active mini-game locally and returns to the board. Shared by the
+  /// debug Cancel button and netplay cancels received from a peer.
+  void cancelActiveMinigame();
   void warmupStep();
   void launchMinigame(
     DrGuest *guest, const dr_mp_minigame_t *minigame, const dr_player_t players[4]);

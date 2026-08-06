@@ -219,10 +219,46 @@ void DrNetplay::requestHardResync()
     m_ResyncStateReady = false;
     m_ResyncState.clear();
     m_Received.clear();
+    /* Force the resync target to be the live foreground context. runResync only
+     * runs for the active, unfrozen context (onFrameBegin early-returns otherwise),
+     * so if context activation had drifted -- or the context is frozen mid-load --
+     * the resync would never fire. Forcing it here guarantees the repair lands and
+     * leaves every peer back on the same context afterwards. */
+    m_ActiveContext = ctx;
+    if (m_FrozenContext == ctx)
+      m_FrozenContext = -1;
     m_ResyncActive = true;
     m_FrameReady.wakeAll();
   }
-  emit logMessage(DR_LOG_INFO, QString("netplay: hard resync requested for ctx %1").arg(ctx));
+  emit logMessage(DR_LOG_INFO, QString("netplay: hard resync requested for ctx %1").arg(ctxLabel(ctx)));
+}
+
+void DrNetplay::requestResync()
+{
+  if (!m_Active)
+    return;
+  if (m_IsServer)
+  {
+    requestHardResync();
+  }
+  else if (!m_Sockets.isEmpty())
+  {
+    emit logMessage(DR_LOG_INFO, "netplay: asking server for a hard resync");
+    writeMessage(m_Sockets.first(), DR_NETPLAY_PACKET_RESYNC_REQUEST, QByteArray());
+  }
+}
+
+void DrNetplay::broadcastCancelMinigame()
+{
+  if (!m_Active)
+    return;
+  emit logMessage(DR_LOG_INFO, "netplay: broadcasting mini-game cancel");
+  /* The server fans it out to all clients; a client sends it to the server, which
+   * relays to the rest when it handles the packet. */
+  if (m_IsServer)
+    broadcast(DR_NETPLAY_PACKET_CANCEL, QByteArray());
+  else if (!m_Sockets.isEmpty())
+    writeMessage(m_Sockets.first(), DR_NETPLAY_PACKET_CANCEL, QByteArray());
 }
 
 void DrNetplay::sendCandidates(const QList<QPair<int, int>> &candidates)
@@ -300,7 +336,7 @@ void DrNetplay::setActiveContext(QRetro *core)
     m_FrameReady.wakeAll();
   }
   emit logMessage(DR_LOG_INFO,
-    QString("netplay: active context = %1 (barrier frame %2)").arg(ctx).arg(m_CtxFrame[ctx]));
+    QString("netplay: active context = %1 (barrier frame %2)").arg(ctxLabel(ctx)).arg(m_CtxFrame[ctx]));
 }
 
 void DrNetplay::freezeActiveContext()
@@ -318,7 +354,7 @@ void DrNetplay::freezeActiveContext()
     m_FrameReady.wakeAll();
   }
   emit logMessage(DR_LOG_INFO,
-    QString("netplay: froze ctx %1 at frame %2").arg(ctx).arg(frame));
+    QString("netplay: froze ctx %1 at frame %2").arg(ctxLabel(ctx)).arg(frame));
 }
 
 void DrNetplay::joinSession(const QString &address, quint16 port)
@@ -362,7 +398,14 @@ void DrNetplay::setLocalSource(QRetroInputBackend *backend)
   m_LocalInput.setUseMaps(true);
 }
 
-void DrNetplay::attachCore(QRetro *core)
+QString DrNetplay::ctxLabel(int ctx) const
+{
+  if (ctx < 0 || ctx >= DR_NETPLAY_MAX_CONTEXTS || m_ContextNames[ctx].isEmpty())
+    return QString::number(ctx);
+  return QStringLiteral("%1 (%2)").arg(ctx).arg(m_ContextNames[ctx]);
+}
+
+void DrNetplay::attachCore(QRetro *core, const QString &name)
 {
   if (!core || m_ContextIds.contains(core) || m_ContextCount >= DR_NETPLAY_MAX_CONTEXTS)
     return;
@@ -370,6 +413,7 @@ void DrNetplay::attachCore(QRetro *core)
   const int ctx = m_ContextCount++;
   m_ContextIds.insert(core, ctx);
   m_Contexts[ctx] = core;
+  m_ContextNames[ctx] = name;
 
   auto *backend = new QRetroInputBackendShared(m_Store, core);
   backend->init(core->input()->joypads(), core->input()->maxUsers());
@@ -451,7 +495,7 @@ void DrNetplay::onFrameBegin(int context)
       commitMergedFrame(context, frame);
       if (frame == m_CtxBarrier[context])
         emit logMessage(DR_LOG_INFO,
-          QString("netplay: ctx %1 passed barrier frame %2").arg(context).arg(frame));
+          QString("netplay: ctx %1 passed barrier frame %2").arg(ctxLabel(context)).arg(frame));
       m_CtxFrame[context] = frame + 1;
       return;
     }
@@ -464,14 +508,14 @@ void DrNetplay::onFrameBegin(int context)
     if (context != m_ActiveContext)
     {
       emit logMessage(DR_LOG_INFO,
-        QString("netplay: ctx %1 stopped gating at frame %2 (switched away)").arg(context).arg(frame));
+        QString("netplay: ctx %1 stopped gating at frame %2 (switched away)").arg(ctxLabel(context)).arg(frame));
       return;
     }
 
     /* If we timeout waiting for an input frame, either request a hard sync (client) or do it ourselves (host) */
     emit logMessage(DR_LOG_WARN,
       QString("netplay: timed out waiting for ctx %1 frame %2 — requesting hard resync")
-        .arg(context).arg(frame));
+        .arg(ctxLabel(context)).arg(frame));
     if (!m_ResyncActive.load())
     {
       if (m_IsServer)
@@ -756,6 +800,15 @@ void DrNetplay::handleMessage(QTcpSocket *sock, quint8 type, const QByteArray &p
     break;
   }
 
+  case DR_NETPLAY_PACKET_CANCEL:
+  {
+    emit cancelMinigameReceived();
+    /* The server relays the cancel on to the other clients. */
+    if (m_IsServer)
+      broadcast(DR_NETPLAY_PACKET_CANCEL, payload, sock);
+    break;
+  }
+
   case DR_NETPLAY_PACKET_RESYNC_BEGIN:
   {
     /* Pause the current context and await serialized data (a savestate) from the host */
@@ -766,10 +819,16 @@ void DrNetplay::handleMessage(QTcpSocket *sock, quint8 type, const QByteArray &p
       m_ResyncStateReady = false;
       m_ResyncState.clear();
       m_Received.clear();
+      /* Force the resync target live (see requestHardResync): runResync only runs
+       * for the active, unfrozen context, so match the host's ctx even if this
+       * peer's activation had drifted or the context was frozen mid-load. */
+      m_ActiveContext = ctx;
+      if (m_FrozenContext == ctx)
+        m_FrozenContext = -1;
       m_ResyncActive = true;
       m_FrameReady.wakeAll();
     }
-    emit logMessage(DR_LOG_INFO, QString("netplay: hard resync incoming for ctx %1").arg(ctx));
+    emit logMessage(DR_LOG_INFO, QString("netplay: hard resync incoming for ctx %1").arg(ctxLabel(ctx)));
     break;
   }
 
@@ -1067,6 +1126,8 @@ int DrNetplay::payloadLength(quint8 type)
   case DR_NETPLAY_PACKET_VERSION:
     return DR_NETPLAY_VERSION_HASH_LEN;
   case DR_NETPLAY_PACKET_RESYNC_REQUEST:
+    return 0;
+  case DR_NETPLAY_PACKET_CANCEL:
     return 0;
   default:
     return -1;

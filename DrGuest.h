@@ -155,6 +155,11 @@ protected:
 
   bool m_valid = true;
   bool m_minigameActive = false;
+  /* Pause the core the instant startMinigame() fires so netplay peers latch onto an
+   * identical frame (the launcher unpauses once it is the gated context). Dolphin
+   * delegates clear this: they share a core that CoreDolphin drives, so only
+   * CoreDolphin's own startMinigame does the pause. */
+  bool m_pauseOnStart = true;
   int m_finishCountdown = 0;
   int m_minigameFrameCount = 0;    // frames elapsed in the current minigame
   bool m_frameHookInstalled = false;
@@ -188,6 +193,9 @@ signals:
   /// A minigame was aborted (e.g. the global stuck-minigame timeout) rather than
   /// completing normally. Return to the board without writing results.
   void minigameCanceled();
+  /// The guest suspects its just-started state may differ across netplay peers
+  /// (e.g. a non-deterministic setup that couldn't be gated). Prompts a hard resync.
+  void desyncSuspected();
 };
 
 #endif

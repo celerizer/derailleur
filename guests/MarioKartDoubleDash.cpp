@@ -4,6 +4,12 @@ static const size_t MKDD_CUP_ADDR = 0x803CB7A8;
 
 static const size_t MKDD_TRACK_ADDR = 0x803CB7AC;
 
+// u32 item box option (0=recommended, 1=basic, 2=frantic, 3=none)
+static const size_t MKDD_VS_ITEM_BOX = 0x812BFB2C;
+
+// u32 laps option (0=recommended, else number of laps)
+static const size_t MKDD_VS_LAPS = 0x812BFB30;
+
 // u32 players (0=1, 1=2, etc)
 static const size_t MKDD_PLAYER_COUNT_ADDR = 0x812C1BC0;
 
@@ -90,7 +96,6 @@ static mkdd_char mkddCharFor(dr_character character)
   }
 }
 
-// Courses — TODO: verify course IDs
 #define MKDD_COURSE_LUIGI_CIRCUIT     0
 #define MKDD_COURSE_PEACH_BEACH       1
 #define MKDD_COURSE_BABY_PARK         2

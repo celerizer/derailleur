@@ -34,7 +34,8 @@ typedef enum
   DR_NETPLAY_PACKET_VERSION      = 0x08, /* client -> server: build hash on connect */
   DR_NETPLAY_PACKET_MINIGAME_FILTER = 0x09, /* server -> clients: var-length disabled-set payload */
   DR_NETPLAY_PACKET_RESYNC_REQUEST  = 0x0A, /* client -> server: I timed out, please hard-resync */
-  DR_NETPLAY_PACKET_SAVE            = 0x0B  /* server -> clients: var-length save-directory bundle */
+  DR_NETPLAY_PACKET_SAVE            = 0x0B, /* server -> clients: var-length save-directory bundle */
+  DR_NETPLAY_PACKET_CANCEL          = 0x0C  /* any peer (relayed): cancel the active mini-game */
 } dr_netplay_packet_type;
 
 /* Maximum peers in a session (also the per-frame input array width). */
@@ -143,6 +144,15 @@ public:
   /// in lockstep from a fresh sync point. Safe to call mid-session.
   void requestHardResync();
 
+  /// Trigger a hard resync from any peer: the server does it directly, a client
+  /// asks the server to. No-op outside a session. Use when a peer suspects it may
+  /// have diverged (e.g. a non-deterministic setup that couldn't be gated).
+  void requestResync();
+
+  /// Tell every peer to cancel the active mini-game and return to the board. The
+  /// caller cancels locally; this only propagates it. No-op outside a session.
+  void broadcastCancelMinigame();
+
   /// Server only: broadcasts the chosen minigame candidates to clients as
   /// opaque (guestIndex, minigameIndex) pairs (-1 = none). Always exactly 5.
   void sendCandidates(const QList<QPair<int, int>> &candidates);
@@ -157,8 +167,9 @@ public:
   /// hardware into our private joypad array instead of a core's array.
   void setLocalSource(QRetroInputBackend *backend);
 
-  /// Installs a QRetroInputBackendShared on `core` and gates its frameBegin.
-  void attachCore(QRetro *core);
+  /// Installs a QRetroInputBackendShared on `core` and gates its frameBegin. `name`
+  /// labels the context in logs (e.g. the guest/host name).
+  void attachCore(QRetro *core, const QString &name = QString());
 
   bool sessionActive() const { return m_Active; }
 
@@ -182,6 +193,9 @@ signals:
   /// Emitted when the input delay changes (locally or from a peer) so the UI
   /// can reflect the new value. Does not re-broadcast.
   void inputDelayChanged(int frames);
+  /// A peer cancelled the active mini-game; the app should cancel locally and
+  /// return to the board. Emitted only for cancels received from the network.
+  void cancelMinigameReceived();
   /// Diagnostic log; level matches DrLogger::message (DR_LOG_*).
   void logMessage(unsigned level, const QString &msg);
 
@@ -191,6 +205,9 @@ private slots:
   void onSocketDisconnected();
 
 private:
+  /// "index (name)" for logs, or just the index when the context has no name.
+  QString ctxLabel(int ctx) const;
+
   // Frame coordination (timing thread).
   void onFrameBegin(int context);
   void runResync(int context);
@@ -249,6 +266,7 @@ private:
   // deterministic order (host first, then guests), identical across peers.
   QHash<QRetro *, int> m_ContextIds;
   QRetro *m_Contexts[DR_NETPLAY_MAX_CONTEXTS] = {}; // context id -> core, for state I/O
+  QString m_ContextNames[DR_NETPLAY_MAX_CONTEXTS];  // context id -> label, for logs
   int m_ContextCount = 0;
   int m_ActiveContext = -1;
   int m_FrozenContext = -1; // context held (retro_run paused) until re-activated

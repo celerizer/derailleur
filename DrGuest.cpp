@@ -193,6 +193,13 @@ void DrGuest::startMinigame()
     }, Qt::DirectConnection);
   }
 
+  /* Latch the core at this exact frame for netplay: setActiveContext (fired from the
+   * minigameStarted handler) gates from here, and the launcher unpauses once this is
+   * the active context. Without the pause the core free-runs a wall-clock-dependent
+   * number of frames between here and the gate engaging, desyncing peers. */
+  if (m_pauseOnStart && core())
+    core()->pause();
+
   emit minigameStarted();
 }
 

@@ -12,7 +12,10 @@ class DolphinGuest : public DrGuest
   Q_OBJECT
 
 public:
-  DolphinGuest(QObject *parent = nullptr) : DrGuest(parent) {}
+  /* A delegate shares CoreDolphin's core, which CoreDolphin pauses/gates on its own
+   * startMinigame; the delegate must not pause it (that would freeze CoreDolphin's
+   * post-start draw spin). */
+  DolphinGuest(QObject *parent = nullptr) : DrGuest(parent) { m_pauseOnStart = false; }
 
   virtual std::string corePath() const = 0;
   virtual std::string discPath() const = 0;

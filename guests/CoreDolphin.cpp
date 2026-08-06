@@ -89,6 +89,11 @@ CoreDolphin::CoreDolphin(const QString &subdir, QObject *parent)
   m_retro->setCore(new QRetro(), true);
   m_name = ("Dolphin " + subdir).toUtf8();
 
+  /* startMinigame() runs on the GUI thread here (doDelegateLaunch), so the base's
+   * GUI-thread pause would race the free-running timing thread. doDelegateLaunch
+   * pauses deterministically on the timing thread instead (see below). */
+  m_pauseOnStart = false;
+
   /* Pretend to not support gyro/accel so we can use the sticks */
   core()->setEnvironmentCallbackSupported(RETRO_ENVIRONMENT_GET_SENSOR_INTERFACE, false);
 
@@ -334,16 +339,46 @@ void CoreDolphin::doApplyGameData(const DrGameData &data)
                    .arg(setupFrames)
                    .arg(owner->minigameActive() ? "" : " (timed out)")));
 
-  // Spin again (this was the time needed for MP6 to draw a new frame)
+  /* Spin again (this was the time needed for MP6 to draw a new frame). Count ACTUAL
+   * emulated frames (core()->frames()), not waitFrames iterations: the timing loop
+   * skips retro_run under audio/visibility backpressure, so a fixed iteration count
+   * advances the game a peer-dependent number of frames and desyncs netplay (the
+   * post-loadState scene transitions land in this window). A generous iteration cap
+   * avoids hanging if the core never advances (e.g. not visible). */
   static const int minigameDrawFrames = 48;
   log(DR_LOG_INFO, qPrintable(
                      QString("disc change: spinning %1 frames to draw a frame").arg(minigameDrawFrames)));
-  for (int i = 0; i < minigameDrawFrames; i++)
+  const unsigned drawStart = core()->frames();
+  int drawGuard = 0;
+  while (core()->frames() - drawStart < static_cast<unsigned>(minigameDrawFrames) &&
+         drawGuard++ < minigameDrawFrames * 20)
   {
     core()->waitFrames(1);
     QApplication::processEvents();
   }
+  /* If the setup couldn't run the full deterministic frame count (the timing loop
+   * skips retro_run under audio/visibility backpressure, which varies per machine),
+   * this peer may have reached a different game state than the others. Rather than
+   * try to force the frames, flag it so we resync from the host once gated. */
+  const bool drawUnderran = (core()->frames() - drawStart < static_cast<unsigned>(minigameDrawFrames));
+  if (drawUnderran)
+    log(DR_LOG_WARN, qPrintable(QString("disc change: only advanced %1/%2 draw frames "
+      "(core stalled?) -- forcing a hard resync")
+        .arg(core()->frames() - drawStart).arg(minigameDrawFrames)));
+
+  /* Latch the core at this exact frame boundary for netplay. Running pause() as a
+   * timing-thread action (rather than from this GUI thread) makes it land on a
+   * deterministic frame instead of racing the free-running timing thread -- without
+   * it peers can end up exactly one frame apart. setActiveContext then gates from
+   * here and mainwindow's minigameStarted handler unpauses. */
+  core()->execOnTimingThread([c = core()]() { c->pause(); });
 
   log(DR_LOG_INFO, "disc change: starting minigame");
   startMinigame();
+
+  /* Emitted after startMinigame so the guest is already the active/gated context
+   * (mainwindow's minigameStarted handler ran setActiveContext) -- the resync then
+   * targets this context. */
+  if (drawUnderran)
+    emit desyncSuspected();
 }

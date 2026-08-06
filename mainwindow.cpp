@@ -516,9 +516,9 @@ void MainWindow::startWithHost(DrHost *host)
 
 #if SHOW_DEBUG
   connect(m_Debug, &DrDebug::cancelRequested, this, [this]() {
-    if (DrGuest *guest = m_Guests->currentGuest())
-      guest->cancelMinigame();
-    showHost();
+    cancelActiveMinigame();
+    /* In a netplay session, cancel for everyone (no-op otherwise). */
+    m_Netplay->broadcastCancelMinigame();
   });
 
   connect(m_Debug, &DrDebug::setTurnRequested, this,
@@ -549,6 +549,11 @@ void MainWindow::startWithHost(DrHost *host)
   for (DrGuest *guest : m_Guests->guests())
     connect(guest, &DrGuest::minigameFinished, m_Netplay, &DrNetplay::freezeActiveContext,
       Qt::DirectConnection);
+
+  /* A guest that couldn't run its setup deterministically (see CoreDolphin) asks to
+   * be re-synced from the host, so all peers converge on one state. */
+  for (DrGuest *guest : m_Guests->guests())
+    connect(guest, &DrGuest::desyncSuspected, m_Netplay, &DrNetplay::requestResync);
 
   connect(m_Host, &DrHost::minigameRequested, this,
     [this](DrMinigameCandidate candidate, std::array<dr_player_t, 4> players) {
@@ -664,6 +669,10 @@ void MainWindow::launchMinigame(
          * can't read. See launchMinigame's comment where setActiveContext used to
          * live. */
         m_Netplay->setActiveContext(guest->core());
+        /* startMinigame() paused the core so it latched at a deterministic frame;
+         * resume now that it is the gated foreground context, so the first frame the
+         * core runs is the (input-synced) barrier frame. */
+        guest->unpause();
 #if SHOW_OVERLAY
         m_Overlay->fadeOut();
 #endif
@@ -720,6 +729,9 @@ void MainWindow::setupNetplay()
   connect(m_Netplay, &DrNetplay::logMessage, m_Logger, &DrLogger::message, Qt::QueuedConnection);
 #endif
 
+  /* A peer cancelled the mini-game -- cancel here too and return to the board. */
+  connect(m_Netplay, &DrNetplay::cancelMinigameReceived, this, &MainWindow::cancelActiveMinigame);
+
   /* A client follows the server's game choice: build the matching host and
    * start it locally. */
   connect(m_Netplay, &DrNetplay::startGameRequested, this, [this](int gameId) {
@@ -756,7 +768,7 @@ void MainWindow::attachNetplay()
   m_Netplay->setLocalSource(m_Host->core()->input()->backend());
 
   QSet<QRetro *> seen;
-  m_Netplay->attachCore(m_Host->core());
+  m_Netplay->attachCore(m_Host->core(), QStringLiteral("host"));
   seen.insert(m_Host->core());
   for (DrGuest *guest : m_Guests->guests())
   {
@@ -769,7 +781,7 @@ void MainWindow::attachNetplay()
     QRetro *core = guest->core();
     if (core && !seen.contains(core))
     {
-      m_Netplay->attachCore(core);
+      m_Netplay->attachCore(core, QString::fromUtf8(guest->name()));
       seen.insert(core);
     }
   }
@@ -795,6 +807,13 @@ void MainWindow::showChooser()
     m_Overlay->fadeOut();
 #endif
   });
+}
+
+void MainWindow::cancelActiveMinigame()
+{
+  if (DrGuest *guest = m_Guests->currentGuest())
+    guest->cancelMinigame();
+  showHost();
 }
 
 void MainWindow::showHost()
