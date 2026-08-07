@@ -1,27 +1,82 @@
 #include "MarioKartDoubleDash.h"
 
 static const size_t MKDD_CUP_ADDR = 0x803CB7A8;
-
 static const size_t MKDD_TRACK_ADDR = 0x803CB7AC;
 
-// u32 item box option (0=recommended, 1=basic, 2=frantic, 3=none)
+typedef enum
+{
+  MKDD_ITEM_BOX_RECOMMENDED = 0,
+  MKDD_ITEM_BOX_BASIC       = 1,
+  MKDD_ITEM_BOX_FRANTIC     = 2,
+  MKDD_ITEM_BOX_NONE        = 3,
+} mkdd_item_box;
+
+// u32 item box option
 static const size_t MKDD_VS_ITEM_BOX = 0x812BFB2C;
 
 // u32 laps option (0=recommended, else number of laps)
 static const size_t MKDD_VS_LAPS = 0x812BFB30;
 
-// u32 players (0=1, 1=2, etc)
+typedef enum
+{
+  MKDD_PLAYERS_1 = 0,
+  MKDD_PLAYERS_2 = 1,
+  MKDD_PLAYERS_3 = 2,
+  MKDD_PLAYERS_4 = 3,
+} mkdd_player_count;
+
+// u32 player count (see mkdd_player_count)
 static const size_t MKDD_PLAYER_COUNT_ADDR = 0x812C1BC0;
 
-// u32 game type (1=versus, 3=battle)
+typedef enum
+{
+  MKDD_GAMETYPE_VERSUS = 1,
+  MKDD_GAMETYPE_BATTLE = 3,
+} mkdd_gametype;
+
+// u32 game type
 static const size_t MKDD_GAMETYPE_ADDR = 0x812C1BCC;
 
-// u32 engine class (0=50cc, 1=100cc, 2=150cc, 3=mirror)
+typedef enum
+{
+  MKDD_CC_50 = 0,
+  MKDD_CC_100 = 1,
+  MKDD_CC_150 = 2,
+  MKDD_CC_MIRROR = 3,
+} mkdd_cc;
+
+// u32 engine class
 static const size_t MKDD_CC_ADDR = 0x812C1BD0;
+
+// u32 battle type (shine thief can only be a 4p, balloon/bomb can be battle games)
+static const size_t MKDD_BATTLE_TYPE = 0x812C1BCC;
 
 static const size_t MKDD_CHAR1_ADDR[4] = { 0x812C1C04, 0x812C1C20, 0x812C1C3C, 0x812C1C58 };
 static const size_t MKDD_CHAR2_ADDR[4] = { 0x812C1C08, 0x812C1C24, 0x812C1C40, 0x812C1C5C };
 static const size_t MKDD_KART_ADDR[4]  = { 0x812C1C0C, 0x812C1C28, 0x812C1C44, 0x812C1C60 };
+
+/* Pointer chain to a kart's runtime status:
+ *   [ [ [0x803561D8] + 0x5B8 ] + 0x430 + kart*4 ] + 0x578  ->  mGameStatus (u32 bitflags)
+ * ORing MKDD_STATUS_BOT into it makes that kart CPU-controlled. The objects only
+ * exist once the race has started, so the chain reads null until then. */
+static const size_t MKDD_KART_ROOT_PTR      = 0x803561D8;
+static const size_t MKDD_KART_LIST_OFFSET   = 0x5B8;
+static const size_t MKDD_KART_ARRAY_OFFSET  = 0x430;
+static const size_t MKDD_KART_STATUS_OFFSET = 0x578;
+static const uint32_t MKDD_STATUS_BOT       = 0x8;
+
+typedef enum
+{
+  MKDD_BATTLE_STAGE_COOKIE_LAND = 0,
+  MKDD_BATTLE_STAGE_NINTENDO_GAMECUBE = 1,
+  MKDD_BATTLE_STAGE_BLOCK_CITY = 2,
+  MKDD_BATTLE_STAGE_PIPE_PLAZA = 3,
+  MKDD_BATTLE_STAGE_LUIGIS_MANSION = 4,
+  MKDD_BATTLE_STAGE_TILT_A_KART = 5,
+} mkdd_battle_stage;
+
+// u32 battle stage
+static const size_t MKDD_BATTLE_STAGE = 0x815973D0;
 
 #define MKDD_KART_COUNT 20
 
@@ -30,9 +85,6 @@ static const size_t MKDD_LAPS_ADDR[4] = { 0x8037FF60, 0x8037FF64, 0x8037FF68, 0x
 
 // u32 finishing placement per player (1 = 1st, 2 = 2nd, ...).
 static const size_t MKDD_PLACEMENT_ADDR[4] = { 0x8037FFA0, 0x8037FFA4, 0x8037FFA8, 0x8037FFAC };
-
-// static const size_t MKDD_CONTROL_TYPE_ADDR[4] = { 0, 0, 0, 0 };
-// static const size_t MKDD_RESULT_ADDR[4]       = { 0, 0, 0, 0 };
 
 typedef enum
 {
@@ -176,6 +228,30 @@ void MarioKartDoubleDash::run()
 
   m_minigameFrames++;
 
+  /* 60 frames after the race starts, flag the CPU players as bots so the game's AI
+   * drives them (the kart objects are allocated by then). Done once. */
+  if (!m_botsApplied && m_minigameFrames >= 60)
+  {
+    m_botsApplied = true;
+    for (unsigned i = 0; i < 4; i++)
+    {
+      if (m_players[i].control_type != DR_CONTROL_TYPE_CPU)
+        continue;
+      const unsigned slot = dr_player_slot(m_players[i], i);
+      const size_t addr = kartStatusAddr(slot);
+      uint32_t status = 0;
+      if (!addr || m_retro->readu32(&status, addr) != DR_OK)
+      {
+        log(DR_LOG_WARN, qPrintable(QString("MKDD: kart %1 mGameStatus unreadable, bot skipped").arg(slot)));
+        continue;
+      }
+      const uint32_t updated = status | MKDD_STATUS_BOT;
+      m_retro->writeu32(updated, addr);
+      log(DR_LOG_INFO, qPrintable(QString("MKDD: kart %1 mGameStatus 0x%2 -> 0x%3")
+        .arg(slot).arg(status, 8, 16, QChar('0')).arg(updated, 8, 16, QChar('0'))));
+    }
+  }
+
   if (!m_finishPending)
   {
     for (unsigned i = 0; i < 4; i++)
@@ -195,6 +271,23 @@ void MarioKartDoubleDash::pressA()
 {
   core()->input()->joypads()[0].setForcedButton(RETRO_DEVICE_ID_JOYPAD_A, true);
   m_aReleaseDelay = 8;
+}
+
+size_t MarioKartDoubleDash::kartStatusAddr(unsigned kart)
+{
+  uint32_t rootPtr = 0;
+  if (m_retro->readu32(&rootPtr, MKDD_KART_ROOT_PTR) != DR_OK || !rootPtr)
+    return 0;
+
+  uint32_t listPtr = 0;
+  if (m_retro->readu32(&listPtr, rootPtr + MKDD_KART_LIST_OFFSET) != DR_OK || !listPtr)
+    return 0;
+
+  uint32_t kartObj = 0;
+  if (m_retro->readu32(&kartObj, listPtr + MKDD_KART_ARRAY_OFFSET + (kart * 4)) != DR_OK || !kartObj)
+    return 0;
+
+  return static_cast<size_t>(kartObj) + MKDD_KART_STATUS_OFFSET;
 }
 
 /* One step of the post-load menu sequence: write the next value, tap A, and arm
@@ -238,6 +331,7 @@ void MarioKartDoubleDash::doApplyGameData(const DrGameData &data)
 {
   m_minigameFrames = 0;
   m_finishPending = false;
+  m_botsApplied = false;
   m_aReleaseDelay = 0;
 
   const int course = data.minigame ? data.minigame->minigame_id : 0;

@@ -35,6 +35,9 @@ private:
   void applyPlayers();
   void pressA();
   void advanceSetup();
+  /// Follows the kart pointer chain to `kart`'s mGameStatus field, or 0 if the
+  /// objects aren't allocated yet (before the race starts).
+  size_t kartStatusAddr(unsigned kart);
 
   DrRetro *m_retro = nullptr;
   std::string m_corePath;
@@ -42,6 +45,7 @@ private:
   std::string m_statePath;
   int m_minigameFrames = 0;
   bool m_finishPending = false;
+  bool m_botsApplied = false;
 
   /* Post-load menu sequence (see doApplyGameData/advanceSetup). */
   int m_setupStep = 0;
