@@ -113,7 +113,7 @@ static const dr_scene_name_t MP1_SCENE_NAMES[] =
   // { 0x44, "" },
   // { 0x45, "" },
   // { 0x46, "" },
-  // { 0x47, "" },
+  { 0x47, "DK's Jungle Adventure" }, // talking to whomp
   // { 0x48, "" },
   // { 0x49, "" },
   // { 0x4a, "" },
