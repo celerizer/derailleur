@@ -291,27 +291,6 @@ void DrNetplay::broadcastCancelMinigame()
     writeMessage(m_Sockets.first(), DR_NETPLAY_PACKET_CANCEL, QByteArray());
 }
 
-void DrNetplay::sendCandidates(const QList<QPair<int, int>> &candidates)
-{
-  if (!m_IsServer)
-    return;
-
-  QByteArray payload;
-  QDataStream s(&payload, QIODevice::WriteOnly);
-  s.setByteOrder(QDataStream::LittleEndian);
-  for (int i = 0; i < DR_NETPLAY_CANDIDATE_SLOTS; i++)
-  {
-    quint16 guest = 0xFFFF, minigame = 0xFFFF;
-    if (i < candidates.size() && candidates[i].first >= 0 && candidates[i].second >= 0)
-    {
-      guest = static_cast<quint16>(candidates[i].first);
-      minigame = static_cast<quint16>(candidates[i].second);
-    }
-    s << guest << minigame;
-  }
-  broadcast(DR_NETPLAY_PACKET_CANDIDATES, payload);
-}
-
 void DrNetplay::setMinigameFilter(const QByteArray &payload)
 {
   m_MinigameFilter = payload;
@@ -835,22 +814,6 @@ void DrNetplay::handleMessage(QTcpSocket *sock, quint8 type, const QByteArray &p
     break;
   }
 
-  case DR_NETPLAY_PACKET_CANDIDATES:
-  {
-    QList<QPair<int, int>> candidates;
-    QDataStream s(payload);
-    s.setByteOrder(QDataStream::LittleEndian);
-    for (int i = 0; i < DR_NETPLAY_CANDIDATE_SLOTS; i++)
-    {
-      quint16 guest = 0xFFFF, minigame = 0xFFFF;
-      s >> guest >> minigame;
-      candidates.append({ guest == 0xFFFF ? -1 : static_cast<int>(guest),
-        minigame == 0xFFFF ? -1 : static_cast<int>(minigame) });
-    }
-    emit candidatesReceived(candidates);
-    break;
-  }
-
   case DR_NETPLAY_PACKET_SET_DELAY:
   {
     const int d = payload.isEmpty() ? m_InputDelay.load() : static_cast<quint8>(payload.at(0));
@@ -1190,8 +1153,6 @@ int DrNetplay::payloadLength(quint8 type)
     return 5; // 1-byte game id + 4-byte PRNG seed
   case DR_NETPLAY_PACKET_INPUT:
     return DR_NETPLAY_PACKET_PAYLOAD_SIZE;
-  case DR_NETPLAY_PACKET_CANDIDATES:
-    return DR_NETPLAY_CANDIDATES_PAYLOAD_SIZE;
   case DR_NETPLAY_PACKET_SET_DELAY:
     return 1;
   case DR_NETPLAY_PACKET_RESYNC_BEGIN:

@@ -27,7 +27,7 @@ typedef enum
   DR_NETPLAY_PACKET_HANDSHAKE    = 0x01, /* server -> client: { peerIndex, peerCount } */
   DR_NETPLAY_PACKET_START        = 0x02, /* server -> client: begin lockstep */
   DR_NETPLAY_PACKET_INPUT        = 0x03, /* either direction: DrNetplayPacket */
-  DR_NETPLAY_PACKET_CANDIDATES   = 0x04, /* server -> client: candidate (guest, minigame) pairs */
+  /* 0x04 retired (was CANDIDATES; peers now roll candidates from the shared PRNG). */
   DR_NETPLAY_PACKET_SET_DELAY    = 0x05, /* any peer (relayed): new input delay, 1 byte */
   DR_NETPLAY_PACKET_RESYNC_BEGIN = 0x06, /* server -> clients: { context } stop for resync */
   DR_NETPLAY_PACKET_RESYNC_STATE = 0x07, /* server -> clients: [u32 len][u64 frame][zstate] */
@@ -52,11 +52,6 @@ typedef enum
 
 /* Input packet payload: quint64 + quint8 + quint8 + quint16 + 6 * qint16. */
 #define DR_NETPLAY_PACKET_PAYLOAD_SIZE (8 + 1 + 1 + 2 + 6 * 2)
-
-/* Minigame candidates: this many slots, each a pair of quint16 (guest index,
- * minigame index). */
-#define DR_NETPLAY_CANDIDATE_SLOTS 5
-#define DR_NETPLAY_CANDIDATES_PAYLOAD_SIZE (DR_NETPLAY_CANDIDATE_SLOTS * 2 * 2)
 
 /* Fixed, null-padded git short hash exchanged on connect for version checks. */
 #define DR_NETPLAY_VERSION_HASH_LEN 16
@@ -119,7 +114,6 @@ public:
   /// launch can run a different number of host frames on each peer.
   void freezeActiveContext();
 
-  void setInputDelay(int frames) { m_InputDelay = frames; }
   int inputDelay() const { return m_InputDelay.load(); }
 
   /// "Golf mode": one player (a peer index) sends with 0 input delay while everyone
@@ -134,7 +128,6 @@ public:
   /// one peer can drive it (e.g. the host from the netplay UI). Use this instead of
   /// setGolfMode when the call happens on only one peer rather than in lockstep.
   void broadcastGolfMode(int authorityPlayer, int highDelay = 30);
-  void setTimeout(int ms) { m_TimeoutMs = ms; }
 
   /// Changes the input delay (buffer frames) locally and, during a session,
   /// propagates it to every peer (the server relays). Safe to call mid-session:
@@ -143,7 +136,6 @@ public:
   void changeInputDelay(int frames);
 
   bool isServer() const { return m_IsServer; }
-  bool hasSession() const { return m_Server != nullptr || !m_Sockets.isEmpty(); }
 
   /// Wakes any timing thread parked in waitForFrame so it can exit. Call before
   /// tearing down cores (e.g. on window close) to avoid blocking shutdown.
@@ -167,10 +159,6 @@ public:
   /// caller cancels locally; this only propagates it. No-op outside a session.
   void broadcastCancelMinigame();
 
-  /// Server only: broadcasts the chosen minigame candidates to clients as
-  /// opaque (guestIndex, minigameIndex) pairs (-1 = none). Always exactly 5.
-  void sendCandidates(const QList<QPair<int, int>> &candidates);
-
   /// Sets the authoritative allowed-mini-games filter (opaque payload from
   /// DrMinigameFilter). The server broadcasts it to every client and re-sends it
   /// at session start so it is delivered at least once; clients store it for
@@ -191,8 +179,6 @@ public:
   /// out of [0,3] fall back to the peer index. No-op if `core` isn't a context.
   void setContextPortMap(QRetro *core, const int slotForPeer[DR_NETPLAY_MAX_PEERS]);
 
-  bool sessionActive() const { return m_Active; }
-
 protected:
   /// Forwards app-wide keyboard events into m_LocalInput regardless of focus.
   bool eventFilter(QObject *watched, QEvent *event) override;
@@ -204,9 +190,6 @@ signals:
   void lobbyJoined(int peerIndex, int peerCount);
   /// Emitted on a client when the server selects a game (a dr_game value).
   void startGameRequested(int gameId);
-  /// Emitted on a client with the server's chosen candidate (guest, minigame)
-  /// index pairs (-1 = none).
-  void candidatesReceived(QList<QPair<int, int>> candidates);
   /// Emitted (locally on set, or on a client when the host's filter arrives)
   /// with the opaque allowed-mini-games payload to apply.
   void minigameFilterReceived(QByteArray payload);
@@ -286,7 +269,7 @@ private:
    * m_GolfHighDelay. -1 = off (use m_InputDelay for everyone). See effectiveDelay. */
   std::atomic<int> m_GolfAuthority{ -1 };
   std::atomic<int> m_GolfHighDelay{ 30 };
-  int m_TimeoutMs = 30000; /* stall this long before requesting a hard resync */
+  int m_TimeoutMs = 5000; /* stall this long before requesting a hard resync */
 
   bool m_Active = false;
   bool m_Abort = false;
