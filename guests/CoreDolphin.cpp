@@ -325,7 +325,7 @@ void CoreDolphin::doApplyGameData(const DrGameData &data)
   core()->unpause();
 
   // Wait for the delegate to actually start its mini-game before revealing it
-  static const int maxSetupFrames = 900;
+  static const int maxSetupFrames = 60 * 30;
   int setupFrames = 0;
   while (!owner->minigameActive() && setupFrames < maxSetupFrames)
   {
