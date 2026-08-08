@@ -555,6 +555,11 @@ void MainWindow::startWithHost(DrHost *host)
   for (DrGuest *guest : m_Guests->guests())
     connect(guest, &DrGuest::desyncSuspected, m_Netplay, &DrNetplay::requestResync);
 
+  /* A guest (e.g. a golf mini-game) can request netplay "golf mode" -- one player
+   * gets 0 input delay, the rest a high delay for turn-based priority. */
+  for (DrGuest *guest : m_Guests->guests())
+    connect(guest, &DrGuest::golfModeRequested, m_Netplay, &DrNetplay::setGolfMode);
+
   connect(m_Host, &DrHost::minigameRequested, this,
     [this](DrMinigameCandidate candidate, std::array<dr_player_t, 4> players) {
       launchMinigame(candidate.guest, candidate.minigame, players.data());
@@ -610,6 +615,16 @@ void MainWindow::launchMinigame(
 {
   if (!m_Guests->activateGuest(guest))
     return;
+
+  /* In netplay, route each peer to the in-game port its board player occupies (its
+   * control_port, where guests place that player), so a peer drives its own character
+   * -- matching local play. Identity when control ports are sequential. */
+  {
+    int slotForPeer[4];
+    for (unsigned i = 0; i < 4; i++)
+      slotForPeer[i] = static_cast<int>(dr_player_slot(players[i], i));
+    m_Netplay->setContextPortMap(guest->core(), slotForPeer);
+  }
 
 #if SHOW_OVERLAY
   {
@@ -818,6 +833,7 @@ void MainWindow::cancelActiveMinigame()
 
 void MainWindow::showHost()
 {
+
 #if SHOW_OVERLAY
   {
     QScreen *screen = windowHandle() ? windowHandle()->screen() : QGuiApplication::primaryScreen();

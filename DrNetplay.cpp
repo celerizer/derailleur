@@ -198,6 +198,36 @@ void DrNetplay::changeInputDelay(int frames)
     writeMessage(m_Sockets.first(), DR_NETPLAY_PACKET_SET_DELAY, payload);
 }
 
+void DrNetplay::setGolfMode(int authorityPlayer, int highDelay)
+{
+  m_GolfHighDelay = qBound(0, highDelay, 120);
+  m_GolfAuthority = authorityPlayer;
+  /* No broadcast and no pipeline reset needed: effectiveDelay() only changes this
+   * peer's own send scheduling, and the send loop back-fills/drains the delay change
+   * on the next frame (packets are frame-tagged, so the merge stays deterministic). */
+  if (authorityPlayer < 0)
+    emit logMessage(DR_LOG_INFO, "netplay: golf mode off");
+  else
+    emit logMessage(DR_LOG_INFO,
+      QString("netplay: golf mode on (authority peer %1 = 0 delay, others %2 frames)")
+        .arg(authorityPlayer).arg(m_GolfHighDelay.load()));
+}
+
+void DrNetplay::broadcastGolfMode(int authorityPlayer, int highDelay)
+{
+  setGolfMode(authorityPlayer, highDelay);
+  if (!m_Active)
+    return;
+  QByteArray payload;
+  payload.append(static_cast<char>(static_cast<int8_t>(authorityPlayer)));
+  payload.append(static_cast<char>(static_cast<uint8_t>(m_GolfHighDelay.load())));
+  /* The server fans it out; a client sends it to the server, which relays it on. */
+  if (m_IsServer)
+    broadcast(DR_NETPLAY_PACKET_GOLF, payload);
+  else if (!m_Sockets.isEmpty())
+    writeMessage(m_Sockets.first(), DR_NETPLAY_PACKET_GOLF, payload);
+}
+
 void DrNetplay::requestHardResync()
 {
   if (!m_IsServer || !m_Active || m_ActiveContext < 0)
@@ -405,6 +435,22 @@ QString DrNetplay::ctxLabel(int ctx) const
   return QStringLiteral("%1 (%2)").arg(ctx).arg(m_ContextNames[ctx]);
 }
 
+void DrNetplay::setContextPortMap(QRetro *core, const int slotForPeer[DR_NETPLAY_MAX_PEERS])
+{
+  const int ctx = m_ContextIds.value(core, -1);
+  if (ctx < 0)
+    return;
+  QMutexLocker lock(&m_RecvMutex); // read on the timing thread in commitMergedFrame
+  for (int i = 0; i < DR_NETPLAY_MAX_PEERS; i++)
+  {
+    const int slot = slotForPeer[i];
+    m_ContextPortMap[ctx][i] = (slot >= 0 && slot < DR_NETPLAY_MAX_PEERS) ? slot : i;
+  }
+  emit logMessage(DR_LOG_INFO, QString("netplay: ctx %1 port map [%2 %3 %4 %5]")
+    .arg(ctxLabel(ctx)).arg(m_ContextPortMap[ctx][0]).arg(m_ContextPortMap[ctx][1])
+    .arg(m_ContextPortMap[ctx][2]).arg(m_ContextPortMap[ctx][3]));
+}
+
 void DrNetplay::attachCore(QRetro *core, const QString &name)
 {
   if (!core || m_ContextIds.contains(core) || m_ContextCount >= DR_NETPLAY_MAX_CONTEXTS)
@@ -414,6 +460,8 @@ void DrNetplay::attachCore(QRetro *core, const QString &name)
   m_ContextIds.insert(core, ctx);
   m_Contexts[ctx] = core;
   m_ContextNames[ctx] = name;
+  for (int j = 0; j < DR_NETPLAY_MAX_PEERS; j++)
+    m_ContextPortMap[ctx][j] = j; // identity until a guest overrides it
 
   auto *backend = new QRetroInputBackendShared(m_Store, core);
   backend->init(core->input()->joypads(), core->input()->maxUsers());
@@ -480,7 +528,7 @@ void DrNetplay::onFrameBegin(int context)
      * drain. The delay therefore gives the network `delay` frames of slack and
      * can be retuned live. */
     sampleLocal();
-    const quint64 target = frame + static_cast<quint64>(m_InputDelay.load());
+    const quint64 target = frame + static_cast<quint64>(effectiveDelay());
     while (m_CtxSend[context] <= target)
     {
       DrNetplayPacket mine =
@@ -591,19 +639,33 @@ bool DrNetplay::waitForFrame(int context, quint64 frame)
 void DrNetplay::commitMergedFrame(int context, quint64 frame)
 {
   FrameInputs fi;
+  /* Peer i's input is merged into in-game port portMap[i] (identity unless a guest
+   * set it), so a peer drives the slot holding its board player. Copied under the
+   * lock since setContextPortMap writes it. */
+  int portMap[DR_NETPLAY_MAX_PEERS];
   {
     QMutexLocker lock(&m_RecvMutex);
     fi = m_Received.value(frameKey(context, frame));
     m_Received.remove(frameKey(context, frame));
+    for (int i = 0; i < DR_NETPLAY_MAX_PEERS; i++)
+      portMap[i] = (context >= 0 && context < DR_NETPLAY_MAX_CONTEXTS) ? m_ContextPortMap[context][i]
+                                                                       : i;
   }
 
+  /* Neutral everything first so any slot no peer maps to (a CPU slot) gets no input
+   * rather than last frame's. */
+  for (int s = 0; s < DR_NETPLAY_MAX_PEERS; s++)
+    applyPacketToJoypad(
+      DrNetplayPacket{ frame, static_cast<uint8_t>(s), static_cast<uint8_t>(context), 0, 0, 0, 0, 0,
+        0, 0 },
+      m_CommitPads[s]);
   for (int i = 0; i < DR_NETPLAY_MAX_PEERS; i++)
   {
     DrNetplayPacket p = fi.pkts[i];
     if (i >= m_PeerCount || !fi.have[i])
       p = DrNetplayPacket{ frame, static_cast<uint8_t>(i), static_cast<uint8_t>(context), 0, 0, 0,
         0, 0, 0, 0 };
-    applyPacketToJoypad(p, m_CommitPads[i]);
+    applyPacketToJoypad(p, m_CommitPads[portMap[i]]);
   }
 
   m_Store->commitFrame(frame, m_CommitPads);
@@ -809,6 +871,17 @@ void DrNetplay::handleMessage(QTcpSocket *sock, quint8 type, const QByteArray &p
     break;
   }
 
+  case DR_NETPLAY_PACKET_GOLF:
+  {
+    const int authority = payload.size() >= 1 ? static_cast<int8_t>(payload.at(0)) : -1;
+    const int highDelay = payload.size() >= 2 ? static_cast<uint8_t>(payload.at(1)) : 30;
+    setGolfMode(authority, highDelay);
+    /* The server relays it on to the other clients. */
+    if (m_IsServer)
+      broadcast(DR_NETPLAY_PACKET_GOLF, payload, sock);
+    break;
+  }
+
   case DR_NETPLAY_PACKET_RESYNC_BEGIN:
   {
     /* Pause the current context and await serialized data (a savestate) from the host */
@@ -894,7 +967,7 @@ void DrNetplay::primeContext(int context)
    * current (barrier) frame, so every peer can complete those frames before
    * real input arrives after a sync point. */
   const quint64 base = m_CtxFrame[context];
-  const int delay = m_InputDelay.load();
+  const int delay = effectiveDelay();
   for (int f = 0; f < delay; f++)
   {
     DrNetplayPacket p{};
@@ -1129,6 +1202,8 @@ int DrNetplay::payloadLength(quint8 type)
     return 0;
   case DR_NETPLAY_PACKET_CANCEL:
     return 0;
+  case DR_NETPLAY_PACKET_GOLF:
+    return 2;
   default:
     return -1;
   }

@@ -1,5 +1,6 @@
 #include "DrNetplayWidget.h"
 
+#include <QComboBox>
 #include <QDir>
 #include <QFormLayout>
 #include <QGroupBox>
@@ -70,6 +71,16 @@ DrNetplayWidget::DrNetplayWidget(DrNetplay *netplay, QWidget *parent)
   m_resyncButton->setEnabled(false);
   tuningForm->addRow(m_resyncButton);
 
+  m_golf = new QComboBox(tuningBox);
+  m_golf->addItem(tr("Off"), -1);
+  for (int i = 0; i < 4; i++)
+    m_golf->addItem(tr("Player %1").arg(i + 1), i);
+  m_golf->setToolTip(tr("Host only: give one player 0 input delay and everyone else a "
+                        "high delay, so that player has responsive priority in "
+                        "turn-based games (e.g. golf)."));
+  m_golf->setEnabled(false);
+  tuningForm->addRow(tr("Golf mode:"), m_golf);
+
   m_status = new QLabel(tr("Not connected"), this);
 
   QHBoxLayout *connectRow = new QHBoxLayout;
@@ -120,11 +131,17 @@ DrNetplayWidget::DrNetplayWidget(DrNetplay *netplay, QWidget *parent)
     connect(m_resyncButton, &QPushButton::clicked, this,
       [this]() { m_netplay->requestHardResync(); });
 
+    /* Host picks who (if anyone) gets golf mode; broadcast so every peer applies it. */
+    connect(m_golf, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int) {
+      m_netplay->broadcastGolfMode(m_golf->currentData().toInt());
+    });
+
     connect(m_netplay, &DrNetplay::sessionStarted, this, [this](int index, int count) {
       setStatus(tr("Connected as peer %1 of %2").arg(index + 1).arg(count));
       lockControls(true);
-      /* Only the host (peer 0) can drive a resync. */
+      /* Only the host (peer 0) can drive a resync or golf mode. */
       m_resyncButton->setEnabled(index == 0);
+      m_golf->setEnabled(index == 0);
     });
     connect(m_netplay, &DrNetplay::peerCountChanged, this, [this](int connected, int total) {
       setStatus(tr("%1 of %2 peers connected").arg(connected).arg(total));
@@ -137,6 +154,7 @@ DrNetplayWidget::DrNetplayWidget(DrNetplay *netplay, QWidget *parent)
       setStatus(tr("Error: %1").arg(reason));
       lockControls(false);
       m_resyncButton->setEnabled(false);
+      m_golf->setEnabled(false);
     });
   }
 }

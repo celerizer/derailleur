@@ -4,6 +4,7 @@
 #include <QWidget>
 
 class DrNetplay;
+class QComboBox;
 class QLabel;
 class QLineEdit;
 class QPushButton;
@@ -36,6 +37,7 @@ private:
 
   QSpinBox *m_buffer = nullptr;
   QPushButton *m_resyncButton = nullptr;
+  QComboBox *m_golf = nullptr;
   QLabel *m_status = nullptr;
 };
 

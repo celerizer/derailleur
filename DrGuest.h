@@ -196,6 +196,20 @@ signals:
   /// The guest suspects its just-started state may differ across netplay peers
   /// (e.g. a non-deterministic setup that couldn't be gated). Prompts a hard resync.
   void desyncSuspected();
+  /// Requests netplay "golf mode": `authorityPlayer` (a player index 0-3) gets 0
+  /// input delay, everyone else `highDelay` frames. -1 disables it. See setGolfMode.
+  void golfModeRequested(int authorityPlayer, int highDelay);
+
+protected:
+  /// Netplay "golf mode": give one player (`authorityPlayer`, a player index that
+  /// maps to a netplay peer) 0 input delay and everyone else `highDelay` frames, so
+  /// that player has responsive priority in turn-based games (e.g. golf). Pass -1 to
+  /// turn it off. No effect outside a netplay session. Call it from a deterministic
+  /// point (it is applied identically on every peer).
+  void setGolfMode(int authorityPlayer, int highDelay = 30)
+  {
+    emit golfModeRequested(authorityPlayer, highDelay);
+  }
 };
 
 #endif

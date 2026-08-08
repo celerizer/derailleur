@@ -35,7 +35,8 @@ typedef enum
   DR_NETPLAY_PACKET_MINIGAME_FILTER = 0x09, /* server -> clients: var-length disabled-set payload */
   DR_NETPLAY_PACKET_RESYNC_REQUEST  = 0x0A, /* client -> server: I timed out, please hard-resync */
   DR_NETPLAY_PACKET_SAVE            = 0x0B, /* server -> clients: var-length save-directory bundle */
-  DR_NETPLAY_PACKET_CANCEL          = 0x0C  /* any peer (relayed): cancel the active mini-game */
+  DR_NETPLAY_PACKET_CANCEL          = 0x0C, /* any peer (relayed): cancel the active mini-game */
+  DR_NETPLAY_PACKET_GOLF            = 0x0D  /* any peer (relayed): { s8 authority, u8 highDelay } */
 } dr_netplay_packet_type;
 
 /* Maximum peers in a session (also the per-frame input array width). */
@@ -120,6 +121,19 @@ public:
 
   void setInputDelay(int frames) { m_InputDelay = frames; }
   int inputDelay() const { return m_InputDelay.load(); }
+
+  /// "Golf mode": one player (a peer index) sends with 0 input delay while everyone
+  /// else sends with `highDelay` frames, giving that player responsive, priority
+  /// authority in turn-based games (e.g. golf). `authorityPlayer` < 0 turns it off.
+  /// Purely local (each peer applies it to its own send scheduling, which is
+  /// frame-tagged and stays deterministic); safe to call any time, in or out of a
+  /// session.
+  void setGolfMode(int authorityPlayer, int highDelay = 30);
+
+  /// Applies golf mode locally (see setGolfMode) AND propagates it to every peer, so
+  /// one peer can drive it (e.g. the host from the netplay UI). Use this instead of
+  /// setGolfMode when the call happens on only one peer rather than in lockstep.
+  void broadcastGolfMode(int authorityPlayer, int highDelay = 30);
   void setTimeout(int ms) { m_TimeoutMs = ms; }
 
   /// Changes the input delay (buffer frames) locally and, during a session,
@@ -171,6 +185,12 @@ public:
   /// labels the context in logs (e.g. the guest/host name).
   void attachCore(QRetro *core, const QString &name = QString());
 
+  /// Routes each netplay peer to an in-game port for `core`'s context: peer i's
+  /// input is merged into port slotForPeer[i]. Guests set this so a peer drives the
+  /// slot holding its board player (its control_port), matching local play. Values
+  /// out of [0,3] fall back to the peer index. No-op if `core` isn't a context.
+  void setContextPortMap(QRetro *core, const int slotForPeer[DR_NETPLAY_MAX_PEERS]);
+
   bool sessionActive() const { return m_Active; }
 
 protected:
@@ -205,6 +225,16 @@ private slots:
   void onSocketDisconnected();
 
 private:
+  /// This peer's current send delay: 0 or m_GolfHighDelay under golf mode (by whether
+  /// this peer is the authority), otherwise m_InputDelay.
+  int effectiveDelay() const
+  {
+    const int authority = m_GolfAuthority.load();
+    if (authority < 0)
+      return m_InputDelay.load();
+    return (m_PeerIndex == authority) ? 0 : m_GolfHighDelay.load();
+  }
+
   /// "index (name)" for logs, or just the index when the context has no name.
   QString ctxLabel(int ctx) const;
 
@@ -252,6 +282,10 @@ private:
   int m_PeerIndex = 0;
   int m_PeerCount = 1;
   std::atomic<int> m_InputDelay{ 2 };
+  /* "Golf mode": the authority peer sends with 0 delay, everyone else with
+   * m_GolfHighDelay. -1 = off (use m_InputDelay for everyone). See effectiveDelay. */
+  std::atomic<int> m_GolfAuthority{ -1 };
+  std::atomic<int> m_GolfHighDelay{ 30 };
   int m_TimeoutMs = 30000; /* stall this long before requesting a hard resync */
 
   bool m_Active = false;
@@ -267,6 +301,9 @@ private:
   QHash<QRetro *, int> m_ContextIds;
   QRetro *m_Contexts[DR_NETPLAY_MAX_CONTEXTS] = {}; // context id -> core, for state I/O
   QString m_ContextNames[DR_NETPLAY_MAX_CONTEXTS];  // context id -> label, for logs
+  // Per-context peer -> in-game port routing for the input merge. Identity by
+  // default; a guest sets it so peer i drives its board player's control_port slot.
+  int m_ContextPortMap[DR_NETPLAY_MAX_CONTEXTS][DR_NETPLAY_MAX_PEERS];
   int m_ContextCount = 0;
   int m_ActiveContext = -1;
   int m_FrozenContext = -1; // context held (retro_run paused) until re-activated
