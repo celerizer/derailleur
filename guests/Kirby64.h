@@ -3,17 +3,6 @@
 
 #include "../DrGuest.h"
 
-/* Kirby 64: The Crystal Shards
- *
- * Skeleton guest for the game's three multiplayer sub-games:
- *   - 100-Yard Hop
- *   - Bumper Crop Bump
- *   - Checkerboard Chase
- *
- * TODO: fill in the hardware addresses, the minigame-select write, and the
- *       per-minigame winner detection in run(). Everything below is stubbed so
- *       the guest builds and boots but does not yet drive real gameplay.
- */
 class Kirby64 : public DrGuest
 {
   Q_OBJECT

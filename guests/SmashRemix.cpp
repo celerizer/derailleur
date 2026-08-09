@@ -420,22 +420,17 @@ void SmashRemix::applyPlayers()
     /* Items: none by default. */
     sr_item startItem = SR_ITEM_NONE;
     sr_item tauntItem = SR_ITEM_NONE;
+
     if (m_minigame->minigame_id == 0x04 && p.team_type == DR_TEAM_TYPE_1V3_SOLO)
     {
-      /* Remix Golden Gun: arm the 1v3 solo player with a golden gun in both. */
       startItem = SR_ITEM_GOLDEN_GUN;
       tauntItem = SR_ITEM_GOLDEN_GUN;
     }
     else if (m_minigame->minigame_id == 0x05)
-    {
-      /* Remix Pokemon: everyone starts with a pokeball (no taunt item). */
       startItem = SR_ITEM_POKEBALL;
-    }
     else if (m_minigame->minigame_id == 0x06 && p.team_type == DR_TEAM_TYPE_1V3_SOLO)
-    {
       startItem = SR_ITEM_HAMMER;
-      tauntItem = SR_ITEM_HAMMER;
-    }
+      
     m_retro->writeu32(startItem, SR_START_ITEM_ADDR[slot]);
     m_retro->writeu32(tauntItem, SR_TAUNT_ITEM_ADDR[slot]);
   }
