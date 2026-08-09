@@ -12,7 +12,11 @@ static const size_t MK64_TRACK_ADDR = 0x800dc5a1;
 
 static const size_t MK64_LAPS_ADDR[4] = { 0x80164390, 0x80164394, 0x80164398, 0x8016439C }; // u32
 
-static const size_t MK64_NUMBER_PLAYERS_ADDR = 0x8018EDF3;
+// s16 per-player status; P1 at MK64_PLAYER_STATUS_ADDR, +MK64_PLAYER_STRIDE per slot.
+// ORing MK64_STATUS_BOT marks that racer as a CPU/bot.
+static const size_t MK64_PLAYER_STATUS_ADDR = 0x800F6990;
+static const size_t MK64_PLAYER_STRIDE = 0xDD8;
+static const int16_t MK64_STATUS_BOT = 0x1000;
 
 static const dr_mp_minigame_t MK64_MINIGAMES[] = {
   { "Single Race: Luigi Raceway", DR_MINIGAME_4P, 0x00, 0xFF, DR_NO_QUIRKS },
@@ -61,9 +65,12 @@ typedef struct
 } mk64_character_t;
 
 static const mk64_character_t MK64_CHARACTER_ID[] = {
-  { DR_CHARACTER_MARIO, 0x01, 0x00 }, { DR_CHARACTER_LUIGI, 0x02, 0x01 },
-  { DR_CHARACTER_PEACH, 0x03, 0x06 }, { DR_CHARACTER_YOSHI, 0x05, 0x02 },
-  { DR_CHARACTER_WARIO, 0x07, 0x05 }, { DR_CHARACTER_DONKEY_KONG, 0x06, 0x04 },
+  { DR_CHARACTER_MARIO, 0x01, 0x00 },
+  { DR_CHARACTER_LUIGI, 0x02, 0x01 },
+  { DR_CHARACTER_PEACH, 0x03, 0x06 },
+  { DR_CHARACTER_YOSHI, 0x05, 0x02 },
+  { DR_CHARACTER_WARIO, 0x07, 0x05 },
+  { DR_CHARACTER_DONKEY_KONG, 0x06, 0x04 },
 
   { DR_CHARACTER_DAISY, 0x04, 0x03 }, // Toad
   { DR_CHARACTER_WALUIGI, 0x08, 0x07 }, // Bowser
@@ -74,10 +81,32 @@ MarioKart64::MarioKart64(QObject *parent)
 {
   m_retro = new DrRetroN64(this);
   m_retro->init(coreId(), rom());
+
+  /* Y = accelerate and X = item to match MK8 */
+  for (unsigned port = 0; port < 4; port++)
+  {
+    core()->input()->remapButton(port, RETRO_DEVICE_ID_JOYPAD_Y, RETRO_DEVICE_ID_JOYPAD_B);
+    core()->input()->remapButton(port, RETRO_DEVICE_ID_JOYPAD_X, RETRO_DEVICE_ID_JOYPAD_L2);
+  }
 }
 
 void MarioKart64::run()
 {
+  /* Apply the CPU bot-status flags once the game has populated the status words. */
+  if (m_botFlagDelay > 0 && --m_botFlagDelay == 0)
+  {
+    for (unsigned slot = 0; slot < 4; slot++)
+    {
+      const int i = m_slotToIndex[slot];
+      if (i < 0 || m_controlTypes[i] != DR_CONTROL_TYPE_CPU)
+        continue;
+      const size_t addr = MK64_PLAYER_STATUS_ADDR + slot * MK64_PLAYER_STRIDE;
+      int16_t status = 0;
+      if (m_retro->reads16(&status, addr) == DR_OK)
+        m_retro->writes16(static_cast<int16_t>(status | MK64_STATUS_BOT), addr);
+    }
+  }
+
   if (m_lapsFreezeFrames > 0)
   {
     --m_lapsFreezeFrames;
@@ -128,7 +157,6 @@ void MarioKart64::doApplyGameData(const DrGameData &data)
     m_slotToIndex[i] = -1;
 
   /* Assign ports first so each player's character lands in the right slot. */
-  unsigned humans = 0;
   for (unsigned i = 0; i < 4; i++)
   {
     const dr_player_t &p = data.players[i];
@@ -138,8 +166,6 @@ void MarioKart64::doApplyGameData(const DrGameData &data)
     unsigned slot = static_cast<unsigned>(p.control_port - DR_CONTROL_PORT_P1);
     if (slot < 4)
       m_slotToIndex[slot] = static_cast<int>(i);
-    if (p.control_type == DR_CONTROL_TYPE_HUMAN)
-      humans++;
   }
 
   for (unsigned i = 0; i < 4; i++)
@@ -159,7 +185,9 @@ void MarioKart64::doApplyGameData(const DrGameData &data)
     }
   }
 
-  m_retro->writeu8(static_cast<uint8_t>(humans), MK64_NUMBER_PLAYERS_ADDR);
+  /* The player status words aren't populated yet right after load; the game overwrites
+   * anything we set here during init. Apply the CPU bot flags a while later (see run()). */
+  m_botFlagDelay = 180;
 }
 
 dr_minigame_result_t MarioKart64::minigameResult(unsigned index)

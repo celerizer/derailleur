@@ -13,7 +13,7 @@ public:
   dr_guest id() const override { return DR_GUEST_MARIOKART64; }
   dr_core coreId() const override { return DR_CORE_MUPEN64PLUSNEXT; }
   const char *rom() const override { return "Mario Kart 64 (USA).z64"; }
-  const char *state() const override { return "mk64"; }
+  const char *state() const override { return "mariokart64"; }
 
   bool usesWarmup() const override { return false; }
 
@@ -32,6 +32,7 @@ private:
   int m_lapsFreezeFrames = 0;
   int m_finishCountdown = -1;
   int m_winnerIndex = -1;
+  int m_botFlagDelay = -1; // frames after load until the CPU bot-status flags are applied
 };
 
 #endif

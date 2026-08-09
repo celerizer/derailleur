@@ -240,7 +240,7 @@ MainWindow::MainWindow(QWidget *parent)
     else
       delete g;
   };
-  //addGuest(new MarioKart64());
+  addGuest(new MarioKart64());
   addGuest(new MarioParty1());
   addGuest(new MarioParty2());
   addGuest(new MarioParty3());
