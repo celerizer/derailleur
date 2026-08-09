@@ -55,6 +55,7 @@ SOURCES += \
     guests/DolphinGuest.cpp \
     guests/Kirby64.cpp \
     guests/KirbyAirRide.cpp \
+    guests/MarioGolf.cpp \
     guests/MarioKart64.cpp \
     guests/MarioKartDoubleDash.cpp \
     guests/MarioParty1.cpp \
@@ -108,6 +109,7 @@ HEADERS += \
     guests/DolphinGuest.h \
     guests/Kirby64.h \
     guests/KirbyAirRide.h \
+    guests/MarioGolf.h \
     guests/MarioKart64.h \
     guests/MarioKartDoubleDash.h \
     guests/MarioParty1.h \

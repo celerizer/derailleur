@@ -37,6 +37,7 @@
 #include "guests/CoreDolphin.h"
 #include "guests/Kirby64.h"
 #include "guests/KirbyAirRide.h"
+#include "guests/MarioGolf.h"
 #include "guests/MarioKartDoubleDash.h"
 #include "guests/MarioParty4.h"
 #include "guests/MarioParty5.h"
@@ -248,6 +249,7 @@ MainWindow::MainWindow(QWidget *parent)
   addGuest(new YoshisIsland());
   addGuest(new MarioTennis());
   addGuest(new PokemonStadium2());
+  addGuest(new MarioGolf());
   //addGuest(new MarioPartyAdvance());
   //addGuest(new MarioPartyE());
   addGuest(new Kirby64());

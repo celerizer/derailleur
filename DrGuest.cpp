@@ -30,7 +30,7 @@ bool DrGuest::loadState(const char *name)
 void DrGuest::startCore()
 {
   if (QRetro *c = core())
-    connect(c, &QRetro::frameBegin, this, [this]() { run(); }, Qt::DirectConnection);
+    connect(c, &QRetro::frameBegin, this, [this]() { tick(); }, Qt::DirectConnection);
   if (m_retro)
     m_retro->startCore();
 }

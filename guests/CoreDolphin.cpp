@@ -303,7 +303,9 @@ void CoreDolphin::doApplyGameData(const DrGameData &data)
     log(DR_LOG_INFO, "disc change: disc settled");
   }
   else
+  {
     log(DR_LOG_INFO, "disc change: single-disc core, keeping the booted disc");
+  }
 
   // Load the per-game savestate
   const QString statePath = QString::fromStdString(owner->statePath());
