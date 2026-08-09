@@ -304,6 +304,7 @@ void CoreDolphin::doApplyGameData(const DrGameData &data)
   }
   else
   {
+    core()->show();
     log(DR_LOG_INFO, "disc change: single-disc core, keeping the booted disc");
   }
 
