@@ -414,22 +414,6 @@ QString DrNetplay::ctxLabel(int ctx) const
   return QStringLiteral("%1 (%2)").arg(ctx).arg(m_ContextNames[ctx]);
 }
 
-void DrNetplay::setContextPortMap(QRetro *core, const int slotForPeer[DR_NETPLAY_MAX_PEERS])
-{
-  const int ctx = m_ContextIds.value(core, -1);
-  if (ctx < 0)
-    return;
-  QMutexLocker lock(&m_RecvMutex); // read on the timing thread in commitMergedFrame
-  for (int i = 0; i < DR_NETPLAY_MAX_PEERS; i++)
-  {
-    const int slot = slotForPeer[i];
-    m_ContextPortMap[ctx][i] = (slot >= 0 && slot < DR_NETPLAY_MAX_PEERS) ? slot : i;
-  }
-  emit logMessage(DR_LOG_INFO, QString("netplay: ctx %1 port map [%2 %3 %4 %5]")
-    .arg(ctxLabel(ctx)).arg(m_ContextPortMap[ctx][0]).arg(m_ContextPortMap[ctx][1])
-    .arg(m_ContextPortMap[ctx][2]).arg(m_ContextPortMap[ctx][3]));
-}
-
 void DrNetplay::attachCore(QRetro *core, const QString &name)
 {
   if (!core || m_ContextIds.contains(core) || m_ContextCount >= DR_NETPLAY_MAX_CONTEXTS)
@@ -439,8 +423,6 @@ void DrNetplay::attachCore(QRetro *core, const QString &name)
   m_ContextIds.insert(core, ctx);
   m_Contexts[ctx] = core;
   m_ContextNames[ctx] = name;
-  for (int j = 0; j < DR_NETPLAY_MAX_PEERS; j++)
-    m_ContextPortMap[ctx][j] = j; // identity until a guest overrides it
 
   auto *backend = new QRetroInputBackendShared(m_Store, core);
   backend->init(core->input()->joypads(), core->input()->maxUsers());
@@ -618,33 +600,19 @@ bool DrNetplay::waitForFrame(int context, quint64 frame)
 void DrNetplay::commitMergedFrame(int context, quint64 frame)
 {
   FrameInputs fi;
-  /* Peer i's input is merged into in-game port portMap[i] (identity unless a guest
-   * set it), so a peer drives the slot holding its board player. Copied under the
-   * lock since setContextPortMap writes it. */
-  int portMap[DR_NETPLAY_MAX_PEERS];
   {
     QMutexLocker lock(&m_RecvMutex);
     fi = m_Received.value(frameKey(context, frame));
     m_Received.remove(frameKey(context, frame));
-    for (int i = 0; i < DR_NETPLAY_MAX_PEERS; i++)
-      portMap[i] = (context >= 0 && context < DR_NETPLAY_MAX_CONTEXTS) ? m_ContextPortMap[context][i]
-                                                                       : i;
   }
 
-  /* Neutral everything first so any slot no peer maps to (a CPU slot) gets no input
-   * rather than last frame's. */
-  for (int s = 0; s < DR_NETPLAY_MAX_PEERS; s++)
-    applyPacketToJoypad(
-      DrNetplayPacket{ frame, static_cast<uint8_t>(s), static_cast<uint8_t>(context), 0, 0, 0, 0, 0,
-        0, 0 },
-      m_CommitPads[s]);
   for (int i = 0; i < DR_NETPLAY_MAX_PEERS; i++)
   {
     DrNetplayPacket p = fi.pkts[i];
     if (i >= m_PeerCount || !fi.have[i])
       p = DrNetplayPacket{ frame, static_cast<uint8_t>(i), static_cast<uint8_t>(context), 0, 0, 0,
         0, 0, 0, 0 };
-    applyPacketToJoypad(p, m_CommitPads[portMap[i]]);
+    applyPacketToJoypad(p, m_CommitPads[i]);
   }
 
   m_Store->commitFrame(frame, m_CommitPads);

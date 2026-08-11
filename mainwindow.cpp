@@ -618,16 +618,6 @@ void MainWindow::launchMinigame(
   if (!m_Guests->activateGuest(guest))
     return;
 
-  /* In netplay, route each peer to the in-game port its board player occupies (its
-   * control_port, where guests place that player), so a peer drives its own character
-   * -- matching local play. Identity when control ports are sequential. */
-  {
-    int slotForPeer[4];
-    for (unsigned i = 0; i < 4; i++)
-      slotForPeer[i] = static_cast<int>(dr_player_slot(players[i], i));
-    m_Netplay->setContextPortMap(guest->core(), slotForPeer);
-  }
-
 #if SHOW_OVERLAY
   {
     /* Between continuous-play challenge mini-games, show the loading card with the

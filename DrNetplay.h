@@ -173,12 +173,6 @@ public:
   /// labels the context in logs (e.g. the guest/host name).
   void attachCore(QRetro *core, const QString &name = QString());
 
-  /// Routes each netplay peer to an in-game port for `core`'s context: peer i's
-  /// input is merged into port slotForPeer[i]. Guests set this so a peer drives the
-  /// slot holding its board player (its control_port), matching local play. Values
-  /// out of [0,3] fall back to the peer index. No-op if `core` isn't a context.
-  void setContextPortMap(QRetro *core, const int slotForPeer[DR_NETPLAY_MAX_PEERS]);
-
 protected:
   /// Forwards app-wide keyboard events into m_LocalInput regardless of focus.
   bool eventFilter(QObject *watched, QEvent *event) override;
@@ -284,9 +278,6 @@ private:
   QHash<QRetro *, int> m_ContextIds;
   QRetro *m_Contexts[DR_NETPLAY_MAX_CONTEXTS] = {}; // context id -> core, for state I/O
   QString m_ContextNames[DR_NETPLAY_MAX_CONTEXTS];  // context id -> label, for logs
-  // Per-context peer -> in-game port routing for the input merge. Identity by
-  // default; a guest sets it so peer i drives its board player's control_port slot.
-  int m_ContextPortMap[DR_NETPLAY_MAX_CONTEXTS][DR_NETPLAY_MAX_PEERS];
   int m_ContextCount = 0;
   int m_ActiveContext = -1;
   int m_FrozenContext = -1; // context held (retro_run paused) until re-activated
