@@ -38,6 +38,13 @@ private:
   int m_portLogDelay = -1;                    // TEST (remove): frames until the +5s port log
   int m_startupDelay = 0;                    // frames to wait after loadState before the A press
   int m_aReleaseDelay = 0;                   // frames until the forced P1 A press releases
+
+  /* One minigame entry per hole (2 courses x 18 holes) plus a null sentinel, built in
+   * the constructor. minigame_id holds the course, scene_id holds the hole. */
+  static const int MG_COURSE_COUNT = 2;
+  static const int MG_HOLE_COUNT = 18;
+  char m_minigameNames[MG_COURSE_COUNT * MG_HOLE_COUNT][48];
+  dr_mp_minigame_t m_minigames[MG_COURSE_COUNT * MG_HOLE_COUNT + 1];
 };
 
 #endif

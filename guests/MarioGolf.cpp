@@ -95,22 +95,33 @@ typedef enum
   MG_COURSE_MINIGOLF_PEACHS_CASTLE = 9,
 } mg_course;
 
-static const dr_mp_minigame_t MG_MINIGAMES[] = {
-  { "Mini-Golf: Luigi's Garden", DR_MINIGAME_4P, MG_COURSE_MINIGOLF_LUIGIS_GARDEN, 0xFF, DR_NO_QUIRKS },
-  { "Mini-Golf: Peach's Castle", DR_MINIGAME_4P, MG_COURSE_MINIGOLF_PEACHS_CASTLE, 0xFF, DR_NO_QUIRKS },
-  { nullptr, DR_MINIGAME_INVALID, 0xFF, 0xFF, DR_NO_QUIRKS },
-};
-
 MarioGolf::MarioGolf(QObject *parent)
   : DrGuest(parent)
 {
   m_retro = new DrRetroN64(this);
   m_retro->init(coreId(), rom());
+
+  /* One minigame per hole: minigame_id = course, scene_id = hole (0-17). */
+  static const struct { signed id; const char *name; } courses[MG_COURSE_COUNT] = {
+    { MG_COURSE_MINIGOLF_LUIGIS_GARDEN, "Luigi's Garden" },
+    { MG_COURSE_MINIGOLF_PEACHS_CASTLE, "Peach's Castle" },
+  };
+
+  int n = 0;
+  for (int c = 0; c < MG_COURSE_COUNT; c++)
+    for (int hole = 0; hole < MG_HOLE_COUNT; hole++, n++)
+    {
+      const QByteArray label =
+        QString("Mini-Golf: %1 Hole %2").arg(courses[c].name).arg(hole + 1).toUtf8();
+      qstrncpy(m_minigameNames[n], label.constData(), sizeof(m_minigameNames[n]));
+      m_minigames[n] = { m_minigameNames[n], DR_MINIGAME_4P, courses[c].id, hole, DR_NO_QUIRKS };
+    }
+  m_minigames[n] = { nullptr, DR_MINIGAME_INVALID, 0xFF, 0xFF, DR_NO_QUIRKS };
 }
 
 const dr_mp_minigame_t *MarioGolf::minigames() const
 {
-  return MG_MINIGAMES;
+  return m_minigames;
 }
 
 void MarioGolf::doApplyGameData(const DrGameData &data)
@@ -129,12 +140,13 @@ void MarioGolf::doApplyGameData(const DrGameData &data)
 
   loadState(state());
 
-  /* The chosen mini-golf course id is stored directly as the minigame_id. */
+  /* Each minigame encodes its course (minigame_id) and hole (scene_id). The hole address
+   * is 0-based one lower than the hole number, so the first hole writes -1. */
   if (data.minigame)
+  {
     m_retro->writeu32(static_cast<uint32_t>(data.minigame->minigame_id), MG_COURSE_ADDR);
-
-  /* Random hole (-1..17) for variety. */
-  m_retro->writes32((dr_rand() % 19) - 1, MG_HOLE_ADDR);
+    m_retro->writes32(data.minigame->scene_id - 1, MG_HOLE_ADDR);
+  }
 
   /* Each board player's golfer + color go into the in-game slot matching their
    * controller port. m_slotToIndex maps back for scoring. */
