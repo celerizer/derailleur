@@ -186,8 +186,8 @@ void MarioKart64::doApplyGameData(const DrGameData &data)
   }
 
   /* The player status words aren't populated yet right after load; the game overwrites
-   * anything we set here during init. Apply the CPU bot flags a while later (see run()). */
-  m_botFlagDelay = 180;
+   * anything we set here during init. Apply the CPU bot flags 5 seconds later (see run()). */
+  m_botFlagDelay = 300;
 }
 
 dr_minigame_result_t MarioKart64::minigameResult(unsigned index)
