@@ -228,6 +228,10 @@ typedef enum
 
   DR_ENDIANNESS_LITTLE,
   DR_ENDIANNESS_BIG,
+
+  /// Mupen64 hack: every 32bit word is flipped and stored as little-endian
+  /// instead of N64 native big-endian. This mode lets the user supply real
+  /// hardware addresses and they will be corrected by the memory interface.
   DR_ENDIANNESS_WORDFLIPPED,
 
   DR_ENDIANNESS_SIZE

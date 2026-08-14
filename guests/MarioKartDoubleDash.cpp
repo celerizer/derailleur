@@ -260,7 +260,7 @@ void MarioKartDoubleDash::run()
       if (m_retro->readu32(&laps, MKDD_LAPS_ADDR[i]) == DR_OK && laps >= 3)
       {
         m_finishPending = true;
-        finishMinigameInFrames(360);
+        finishMinigameInFrames(390);
         break;
       }
     }

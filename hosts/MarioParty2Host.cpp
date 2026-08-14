@@ -184,6 +184,8 @@ static DrHostConfig makeConfig()
   config.scene_miniresults = 0x70;
   config.scene_miniresults_battle = 0x6f;
   // scene_miniresults_duel: not available in mp2
+  config.scene_item_first = 0x01; // item mini-games
+  config.scene_item_last = 0x06;
   config.scene_board_results = 0x52;
   config.scene_last_five_turns = 0x40;
   config.scene_addr = 0x800FA63E; // u16
@@ -241,7 +243,6 @@ static DrHostConfig makeConfig()
   config.minigame_type_addr = 0x800DF6C5; // u8
   config.minigame_type_to_dr = MP2_MINIGAME_TYPE_TO_DR;
   config.minigame_type_to_dr_size = sizeof(MP2_MINIGAME_TYPE_TO_DR) / sizeof(*MP2_MINIGAME_TYPE_TO_DR);
-  config.next_scene_addr = 0x800fdc0b; // unused
   config.minigame_id_addr = 0x800F93C8; // u16 (minigame_id_is_8bit == false)
   config.minigame_id_is_8bit = false;
 
@@ -255,7 +256,12 @@ static DrHostConfig makeConfig()
   config.title_len_offset = 2;
 
   config.slot_addrs = MP2_SLOT_ADDRS;
-  config.scene_trampoline_addr = 0x800D34E0;
+  config.scene_stack_addr = 0x800E1F58;       // 5 x { s32 scene, s16 event, s16 stat }
+  config.scene_stack_count_addr = 0x800E1F52; // s16 element count
+  config.scene_stat_board = 0x0192;
+  config.scene_stat_minigame = 0x0094;
+  // scene_stat_duel: no duels in MP2
+  /* @todo MP2's old trampoline cheat below is now dead; remove it once verified. */
 
   config.scene_names = MP2_SCENE_NAMES;
 
@@ -272,40 +278,6 @@ MarioParty2Host::MarioParty2Host(QObject *parent)
       {
         called = true;
         m_core->cheatReset();
-
-        // Scene transition trampoline: hook at 0x8007712C, data cell at 0x800D34E0
-        m_core->cheatSet(2, true,
-          // Hook: J 0x800D34E4 + NOP at 0x8007712C
-          "8107712C 0803"
-          "+8107712E 4D39"
-          "+81077130 0000"  // NOP displaces original instruction at 0x80077130
-          "+81077132 0000"
-          // Trampoline at 0x800D34E4
-          "+810D34E4 3C08"  // LUI  T0, 0x800D
-          "+810D34E6 800D"
-          "+810D34E8 8D08"  // LW   T0, 0x34E0(T0)   — T0 = *scene_trampoline_addr
-          "+810D34EA 34E0"
-          "+810D34EC 1100"  // BEQ  T0, ZERO, +5     — if 0, passthrough
-          "+810D34EE 0005"
-          "+810D34F0 0000"  // NOP                   — (delay slot)
-          "+810D34F2 0000"
-          "+810D34F4 0008"  // SRL  A0, T0, 16       — A0 = scene
-          "+810D34F6 2402"
-          "+810D34F8 3107"  // ANDI A3, T0, 0xFFFF   — A3 = modifier
-          "+810D34FA FFFF"
-          "+810D34FC 0801"  // J    0x80077134       — return with overridden scene
-          "+810D34FE DC4D"
-          "+810D3500 0000"  // NOP                   — (delay slot)
-          "+810D3502 0000"
-          // Passthrough: displaced original instructions from 0x8007712C + 0x80077130
-          "+810D3504 AC44"  // TODO: displaced instruction from 0x8007712C
-          "+810D3506 0000"
-          "+810D3508 A447"  // TODO: displaced instruction from 0x80077130
-          "+810D350A 0000"
-          "+810D350C 0801"  // J    0x80077134       — return passthrough
-          "+810D350E DC4D"
-          "+810D3510 0000"  // NOP                   — (delay slot)
-          "+810D3512 0000");
 
         // Force Mini-Game Roulette IDs
         m_core->cheatSet(0, true,

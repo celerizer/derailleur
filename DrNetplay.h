@@ -36,19 +36,27 @@ typedef enum
   DR_NETPLAY_PACKET_RESYNC_REQUEST  = 0x0A, /* client -> server: I timed out, please hard-resync */
   DR_NETPLAY_PACKET_SAVE            = 0x0B, /* server -> clients: var-length save-directory bundle */
   DR_NETPLAY_PACKET_CANCEL          = 0x0C, /* any peer (relayed): cancel the active mini-game */
-  DR_NETPLAY_PACKET_GOLF            = 0x0D  /* any peer (relayed): { s8 authority, u8 highDelay } */
+  DR_NETPLAY_PACKET_GOLF            = 0x0D, /* any peer (relayed): { s8 authority, u8 highDelay } */
+  DR_NETPLAY_PACKET_LAUNCH          = 0x0E  /* var: [u64 frame][opaque]; frame 0 = client request */
 } dr_netplay_packet_type;
 
 /* Maximum peers in a session (also the per-frame input array width). */
 #define DR_NETPLAY_MAX_PEERS 4
 
-/* Maximum QRetro contexts (host + guests) tracked per peer. */
-#define DR_NETPLAY_MAX_CONTEXTS 16
+/* Maximum QRetro contexts (host + guests) tracked per peer. Must exceed the number of
+ * distinct cores attached (host + every non-Dolphin guest + each shared Dolphin core);
+ * a guest past this limit silently fails attachCore, runs ungated, and shows as context
+ * -1 in logs. The wire `context` field is a uint8_t, so anything up to 255 is safe. */
+#define DR_NETPLAY_MAX_CONTEXTS 48
 
 /* A hard resync jumps the per-context frame counter forward by this margin so
  * the post-resync timeline can never collide with stale in-flight packets from
  * before the resync (which sit within a few frames of the old counter). */
 #define DR_NETPLAY_RESYNC_MARGIN 600
+
+/* How many frames ahead of the current active-context frame a debug-menu launch is
+ * scheduled, so the broadcast reaches every peer before that gated frame arrives. */
+#define DR_NETPLAY_LAUNCH_DELAY 60
 
 /* Input packet payload: quint64 + quint8 + quint8 + quint16 + 6 * qint16. */
 #define DR_NETPLAY_PACKET_PAYLOAD_SIZE (8 + 1 + 1 + 2 + 6 * 2)
@@ -136,14 +144,25 @@ public:
   void changeInputDelay(int frames);
 
   bool isServer() const { return m_IsServer; }
+  bool active() const { return m_Active; }
+
+  /// Schedules a debug-menu mini-game launch so every peer runs it on the same gated
+  /// frame. `payload` is an opaque blob (the app serializes guest/mini-game/players);
+  /// the server assigns a target frame DR_NETPLAY_LAUNCH_DELAY ahead and broadcasts it,
+  /// a client forwards the request to the server. Every peer emits debugLaunchReady when
+  /// its active context reaches that frame. No-op outside a session (caller launches
+  /// directly instead).
+  void requestDebugLaunch(const QByteArray &payload);
 
   /// Wakes any timing thread parked in waitForFrame so it can exit. Call before
   /// tearing down cores (e.g. on window close) to avoid blocking shutdown.
   void abort();
 
   /// Server only: tells every connected client which game to start (a dr_game
-  /// value), then begins lockstep locally.
-  void startGame(int gameId);
+  /// value), then begins lockstep locally. `saveBaseName` is the host game's file
+  /// base (e.g. "Mario Party 3 (USA)"); only that game's save is shipped to clients,
+  /// not the whole save folder. Empty ships the entire folder (legacy fallback).
+  void startGame(int gameId, const QString &saveBaseName = QString());
 
   /// Server only: forces a hard resync of the active context — every client
   /// stops, receives the host's (compressed) savestate, loads it and resumes
@@ -193,6 +212,11 @@ signals:
   /// A peer cancelled the active mini-game; the app should cancel locally and
   /// return to the board. Emitted only for cancels received from the network.
   void cancelMinigameReceived();
+  /// A scheduled debug launch has reached its gated frame on this peer (emitted in
+  /// lockstep across peers). The active context has already been frozen synchronously on
+  /// the timing thread (like the host launch's DirectConnection freeze), so the handler
+  /// only deserializes `payload` and launches the mini-game on the GUI thread.
+  void debugLaunchReady(QByteArray payload);
   /// Diagnostic log; level matches DrLogger::message (DR_LOG_*).
   void logMessage(unsigned level, const QString &msg);
 
@@ -217,6 +241,8 @@ private:
 
   // Frame coordination (timing thread).
   void onFrameBegin(int context);
+  void scheduleLaunch(const QByteArray &payload); // server: pick target frame + broadcast
+  void maybeFireLaunch(quint64 frame); // fire a due launch after committing (active ctx)
   void runResync(int context);
   void sampleLocal();
   bool isFrameCompleteLocked(int context, quint64 frame) const;
@@ -262,7 +288,7 @@ private:
   /* "Golf mode": the authority peer sends with 0 delay, everyone else with
    * m_GolfHighDelay. -1 = off (use m_InputDelay for everyone). See effectiveDelay. */
   std::atomic<int> m_GolfAuthority{ -1 };
-  std::atomic<int> m_GolfHighDelay{ 30 };
+  std::atomic<int> m_GolfHighDelay{ 15 };
   int m_TimeoutMs = 5000; /* stall this long before requesting a hard resync */
 
   bool m_Active = false;
@@ -284,6 +310,11 @@ private:
   quint64 m_CtxFrame[DR_NETPLAY_MAX_CONTEXTS] = {};   // next netplay frame to consume per context
   quint64 m_CtxBarrier[DR_NETPLAY_MAX_CONTEXTS] = {}; // per-context sync-point frame (waits w/o timeout)
   quint64 m_CtxSend[DR_NETPLAY_MAX_CONTEXTS] = {};    // next local frame to send per context (delay pipeline)
+
+  // Debug-menu launch scheduled for a specific active-context frame (guarded by
+  // m_RecvMutex). -1 when none pending; m_PendingLaunchData is the opaque app payload.
+  qint64 m_PendingLaunchFrame = -1;
+  QByteArray m_PendingLaunchData;
 
   quint64 m_LocalFrame = 0; // singleplayer frame counter
 

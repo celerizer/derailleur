@@ -34,8 +34,8 @@ typedef enum
 // input latency (priority) while everyone else waits.
 static const size_t MG_TURN_ADDR = 0x800FBE74;
 
-// u8 per-player controller port (0-3), 0xB8-strided (same per-player block as shots/
-// sunk). Maps an in-game slot to its controller port for golf-mode/scoring routing.
+// u8 per-player controller port (0-3), 0xB8-strided. The block defaults to 0 (all
+// golfers read controller 0), so we write each golfer its own port for local + netplay.
 static const size_t MG_PLAYER_PORT_ADDR[4] = { 0x801B71F7, 0x801B72AF, 0x801B7367, 0x801B741F };
 
 // Per-player hole state, 0xB8-strided (P1 0x801B71F0, P3 0x801B7360, P4 0x801B7418).
@@ -172,9 +172,6 @@ void MarioGolf::doApplyGameData(const DrGameData &data)
     m_retro->writeForFrames(MG_BOT_ADDR[slot], &bot, 1, 300);
   }
 
-  /* TEST (remove): verify the port write stuck by logging the block 5s later. */
-  m_portLogDelay = 300;
-
   /* Don't reveal yet. Wait 60 frames for the loaded state to settle, force an A press
    * on P1 to advance past the intro, then reveal (startMinigame) once the game state
    * reaches MG_STATE_FINISHED -- see run(). */
@@ -185,16 +182,6 @@ void MarioGolf::doApplyGameData(const DrGameData &data)
 void MarioGolf::run()
 {
   m_retro->tickFrameWrites();
-
-  /* TEST (remove): confirm the port write stuck by logging the block 5s after setup. */
-  if (m_portLogDelay > 0 && --m_portLogDelay == 0)
-  {
-    uint8_t p[4] = {};
-    for (unsigned i = 0; i < 4; i++)
-      m_retro->readu8(&p[i], MG_PLAYER_PORT_ADDR[i]);
-    log(DR_LOG_INFO, qPrintable(QString("Mario Golf: ports +5s = %1 %2 %3 %4")
-      .arg(p[0]).arg(p[1]).arg(p[2]).arg(p[3])));
-  }
 
   /* Release the forced P1 A press a few frames after it was applied. */
   if (m_aReleaseDelay > 0 && --m_aReleaseDelay == 0)
@@ -276,6 +263,16 @@ void MarioGolf::run()
        * this latch, not the instantaneous read. */
       if (m_holeStrokes[slot] < 0)
         m_holeStrokes[slot] = static_cast<int>(shots[slot]);
+    }
+
+    /* Mercy rule: if their par-stroke didn't sink, max them out (9) so the game gives up
+     * on the hole and moves on instead of letting them keep putting. */
+    if (!sunk[slot] && shots[slot] == par)
+    {
+      m_retro->writeu32(9, MG_SHOTS_ADDR[slot]);
+      shots[slot] = 9;
+      log(DR_LOG_INFO, qPrintable(QString("Mario Golf: player %1 mercy-ruled (missed par)")
+        .arg(m_slotToIndex[slot])));
     }
 
     m_prevShots[slot] = shots[slot];

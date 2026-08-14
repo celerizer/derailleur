@@ -5,7 +5,6 @@
 #include <QRetro.h>
 #include <QRetroDirectories.h>
 
-
 static const dr_character MP3_CHAR_TO_DR[] = {
   DR_CHARACTER_MARIO, // 0x00
   DR_CHARACTER_LUIGI, // 0x01
@@ -77,9 +76,6 @@ static const size_t MP3_MINIGAME_TITLE_ADDRS[6] = {
   0xB122DA1F, // entry  9 len byte
   0xB122DA7F, // entry 11 len byte (sentinel)
 };
-
-// 72 game guy results
-/* duel results on duel map scene 0x73 */
 
 static const dr_scene_name_t MP3_SCENE_NAMES[] =
 {
@@ -230,6 +226,8 @@ static DrHostConfig makeConfig()
   config.scene_miniresults = 0x71;
   config.scene_miniresults_battle = 0x74;
   config.scene_miniresults_duel = 0x73;
+  config.scene_item_first = 0x3B; // item mini-games (Winner's Wheel .. Swing 'n' Swipe)
+  config.scene_item_last = 0x40;
   config.scene_addr = 0x800ce202; // u16
 
   static const uint8_t mp3_boards[] = { 0x48, 0x49, 0x4A, 0x4B, 0x4C, 0x4D };
@@ -299,8 +297,6 @@ static DrHostConfig makeConfig()
   config.minigame_type_addr = 0x80102C0D; // u8
   config.minigame_type_to_dr = MP3_MINIGAME_TYPE_TO_DR;
   config.minigame_type_to_dr_size = sizeof(MP3_MINIGAME_TYPE_TO_DR) / sizeof(*MP3_MINIGAME_TYPE_TO_DR);
-  config.next_scene_addr = 0x800D2032; // u16, unused
-  config.next_scene_modifier_addr = 0x800D2034; // u16, unused
   config.minigame_id_addr = 0x800cd068; // u8 (minigame_id_is_8bit == true)
   config.minigame_id_is_8bit = true;
 
@@ -313,7 +309,11 @@ static DrHostConfig makeConfig()
   config.title_id_step = 2;
   config.title_len_offset = 3;
   config.slot_addrs = MP3_SLOT_ADDRS;
-  config.scene_trampoline_addr = 0x800A7A54;
+  config.scene_stack_addr = 0x800D20F0;
+  config.scene_stack_count_addr = 0x800D6B60;
+  config.scene_stat_board = 0x0192;
+  config.scene_stat_minigame = 0x0192;
+  config.scene_stat_duel = 0x4190;
   config.turn_total_addr = 0x800CD05Au; // u8
   config.turn_current_addr = 0x800CD05Bu; // u8
   config.scene_duel_slot0_addr = 0x80102BA8u; // u8
@@ -362,41 +362,7 @@ MarioParty3Host::MarioParty3Host(QObject *parent)
           "+810A7A4C 0800"  // J    0x8000B00C          — return past the hooked instructions
           "+810A7A4E 2C03"
           "+810A7A50 0000"  // NOP                      — (delay slot)
-          "+810A7A52 0000"
-          
-          // This code intercepts the "next scene" value change to load them
-          // instead from our owned memory if nonzero, otherwise use the
-          // unmodified function.
-
-          // Hook at 80048168 to 800A7A58
-          "+81048168 0802"
-          "+8104816A 9E96"
-          "+8104816C 2400"
-          // Trampoline at 0x800A7A58
-          "+810A7A58 3C08"  // LUI  T0, 0x800A
-          "+810A7A5A 800A"
-          "+810A7A5C 8D08"  // LW   T0, 0x7A54(T0)
-          "+810A7A5E 7A54"
-          "+810A7A60 1100"  // BEQ  T0, ZERO, 5
-          "+810A7A62 0005"
-          "+810A7A64 0000"  // NOP
-          "+810A7A66 0000"
-          "+810A7A68 0008"  // SRL  A0, T0, 16
-          "+810A7A6A 2402"
-          "+810A7A6C 3107"  // ANDI A3, T0, 0xFFFF
-          "+810A7A6E FFFF"
-          "+810A7A70 0801"  // J    0x80048170
-          "+810A7A72 205C"
-          "+810A7A74 0000"  // NOP
-          "+810A7A76 0000"
-          "+810A7A78 AC44"  // SW   A0, 0(V0)
-          "+810A7A7A 0000"
-          "+810A7A7C A447"  // SH   A3, 4(V0)
-          "+810A7A7E 0004"
-          "+810A7A80 0801"  // J    0x80048170
-          "+810A7A82 205C"
-          "+810A7A84 0000"  // NOP
-          "+810A7A86 0000");
+          "+810A7A52 0000");
 
         // Unlock all minigames
         m_core->cheatSet(3, true,
@@ -552,4 +518,3 @@ MarioParty3Host::MarioParty3Host(QObject *parent)
     },
     Qt::DirectConnection);
 }
-

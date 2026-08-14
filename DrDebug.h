@@ -8,6 +8,7 @@
 #include "DrGuest.h"
 
 class QComboBox;
+class QLabel;
 class QMenu;
 class QToolButton;
 
@@ -28,13 +29,23 @@ signals:
 private:
   void refreshMinis(int guestIdx);
   void selectEntry(int idx);
+  /// The selected mini-game's type, or DR_MINIGAME_INVALID if none.
+  dr_minigame_type selectedType() const;
+  /// Relabels the per-player team dropdowns to match the selected type (Blue/Red for
+  /// 2v2, Solo/Team for 1v3, Player/Non-player for duel/item/1p, else numeric).
+  void updateTeamOptions();
+  /// Shows the warning icon by the request button when the team split is invalid for
+  /// the selected type (e.g. not one solo, not two duelers).
+  void validateTeams();
 
-  /* Per-player dropdowns. Port is fixed by player index and the team fields are
-   * inferred from the minigame type, so only these are user-selectable. */
+  /* Per-player dropdowns. team_color and team_type are still inferred (from team_id and
+   * the minigame type); everything else here is user-selectable. */
   struct PlayerControls
   {
     QComboBox *character = nullptr;
+    QComboBox *controlPort = nullptr;
     QComboBox *controlType = nullptr;
+    QComboBox *teamId = nullptr;
     QComboBox *difficulty = nullptr;
   };
 
@@ -43,6 +54,7 @@ private:
    * submenu per type, so you hover a type then pick a mini-game. */
   QToolButton *m_miniButton = nullptr;
   QMenu *m_miniMenu = nullptr;
+  QLabel *m_teamWarning = nullptr; /* "⚠" shown next to Request when the team split is invalid */
   int m_selectedEntry = -1; /* index into m_entries, or -1 */
   std::array<PlayerControls, 4> m_players{};
   QList<QPair<DrGuest *, DrMinigameGroup>> m_groups;

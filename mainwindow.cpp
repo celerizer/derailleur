@@ -5,6 +5,7 @@
 #include <QDateTime>
 #include <QDir>
 #include <QFile>
+#include <QFileInfo>
 #include <QGuiApplication>
 #include <QLabel>
 #include <QLineEdit>
@@ -67,6 +68,31 @@
 #endif
 #define DR_STRINGIZE_(x) #x
 #define DR_STRINGIZE(x) DR_STRINGIZE_(x)
+
+namespace
+{
+/* Opaque payload for a debug-menu launch relayed through netplay so every peer runs it
+ * on the same gated frame: guest index, mini-game index within that guest's list, then
+ * 7 bytes per player. DrNetplay prepends the target frame. */
+QByteArray serializeDebugLaunch(int guestIndex, int minigameIndex, const dr_player_t players[4])
+{
+  QByteArray b;
+  b.append(static_cast<char>(guestIndex));
+  b.append(static_cast<char>(minigameIndex));
+  for (unsigned i = 0; i < 4; i++)
+  {
+    const dr_player_t &p = players[i];
+    b.append(static_cast<char>(p.character));
+    b.append(static_cast<char>(p.control_port));
+    b.append(static_cast<char>(p.control_type));
+    b.append(static_cast<char>(p.difficulty));
+    b.append(static_cast<char>(p.team_color));
+    b.append(static_cast<char>(p.team_type));
+    b.append(static_cast<char>(p.team_id));
+  }
+  return b;
+}
+}
 
 MainWindow::MainWindow(QWidget *parent)
   : QMainWindow(parent)
@@ -312,7 +338,19 @@ MainWindow::MainWindow(QWidget *parent)
    * before a host has been chosen (launchMinigame tolerates a null host). */
   connect(m_Debug, &DrDebug::minigameRequested, this,
     [this](DrGuest *guest, const dr_mp_minigame_t *minigame, std::array<dr_player_t, 4> players) {
-      launchMinigame(guest, minigame, players.data());
+      /* In netplay a debug launch is async on one peer, so route it through netplay to
+       * start on the same gated frame everywhere; the actual launch runs from the
+       * debugLaunchReady handler. Outside a session, launch directly. */
+      if (m_Netplay && m_Netplay->active())
+      {
+        const int guestIndex = m_Guests->guests().indexOf(guest);
+        int minigameIndex = 0;
+        for (const dr_mp_minigame_t *mg = guest->minigames(); mg && mg->name && mg != minigame; mg++)
+          minigameIndex++;
+        m_Netplay->requestDebugLaunch(serializeDebugLaunch(guestIndex, minigameIndex, players.data()));
+      }
+      else
+        launchMinigame(guest, minigame, players.data());
     });
 #endif
 
@@ -476,7 +514,12 @@ void MainWindow::startWithHost(DrHost *host)
    * game. (On a client this is a no-op; the client got here via the server's
    * startGameRequested signal.) */
   if (m_Netplay->isServer())
-    m_Netplay->startGame(static_cast<int>(host->game()));
+  {
+    /* Ship only this host game's save (e.g. "Mario Party 3 (USA).sav"), keyed on the
+     * ROM's base name, rather than the whole save folder. */
+    const QString saveBase = QFileInfo(QString::fromStdString(host->gamePath())).completeBaseName();
+    m_Netplay->startGame(static_cast<int>(host->game()), saveBase);
+  }
 
   /* Only load guests that have at least one allowed mini-game; the rest never
    * boot (e.g. disabling every Dolphin mini-game skips the Dolphin core load
@@ -527,20 +570,11 @@ void MainWindow::startWithHost(DrHost *host)
     [this](int turn) { m_Host->setCurrentTurn(turn); });
 #endif
 
-  /* Every peer rolls its own candidates locally from the shared seeded PRNG
-   * (dr_rand), so the picks are identical without a network round-trip. This
-   * keeps the host state machine in lockstep — the client reaches ROULETTE on
-   * the same frame as the server instead of waiting for candidates to arrive. */
-  connect(m_Host, &DrHost::candidatesNeeded, this, [this](dr_minigame_type type) {
-    std::array<DrMinigameCandidate, 5> candidates = {};
-    for (auto &c : candidates)
-    {
-      const dr_mp_minigame_t *mg = nullptr;
-      c.guest = m_Guests->pickMinigame(type, mg);
-      c.minigame = mg;
-    }
-    m_Host->setCandidates(candidates);
-  });
+  /* The host pulls its own candidates straight from the guest list's cache when
+   * it opens the roulette. Every peer rolls locally from the shared seeded PRNG
+   * (dr_rand) at the same lockstepped frame, so the picks match without a network
+   * round-trip and the client reaches ROULETTE alongside the server. */
+  m_Host->setMinigameSource(m_Guests);
 
   /* Freeze the active context to wait for all netplay peers when a mini-game is started... */
   connect(m_Host, &DrHost::minigameRequested, m_Netplay,
@@ -561,6 +595,9 @@ void MainWindow::startWithHost(DrHost *host)
    * gets 0 input delay, the rest a high delay for turn-based priority. */
   for (DrGuest *guest : m_Guests->guests())
     connect(guest, &DrGuest::golfModeRequested, m_Netplay, &DrNetplay::setGolfMode);
+
+  /* The host can too (e.g. an item mini-game where only one player participates). */
+  connect(m_Host, &DrHost::golfModeRequested, m_Netplay, &DrNetplay::setGolfMode);
 
   connect(m_Host, &DrHost::minigameRequested, this,
     [this](DrMinigameCandidate candidate, std::array<dr_player_t, 4> players) {
@@ -738,6 +775,38 @@ void MainWindow::setupNetplay()
 
   /* A peer cancelled the mini-game -- cancel here too and return to the board. */
   connect(m_Netplay, &DrNetplay::cancelMinigameReceived, this, &MainWindow::cancelActiveMinigame);
+
+  /* A debug-menu launch has reached its scheduled gated frame (in lockstep on every
+   * peer). DrNetplay already froze the active context on the timing thread at that exact
+   * frame, so here we only deserialize and launch on the GUI thread. */
+  connect(m_Netplay, &DrNetplay::debugLaunchReady, this, [this](QByteArray payload) {
+    if (payload.size() < 2 + 4 * 7)
+      return;
+    auto u8 = [&](int i) { return static_cast<uint8_t>(payload.at(i)); };
+    DrGuest *guest = m_Guests->guests().value(u8(0), nullptr);
+    if (!guest)
+      return;
+    const dr_mp_minigame_t *minigame = guest->minigames();
+    for (int k = 0; k < u8(1) && minigame && minigame->name; k++)
+      minigame++;
+    if (!minigame || !minigame->name)
+      return;
+
+    std::array<dr_player_t, 4> players{};
+    int off = 2;
+    for (unsigned i = 0; i < 4; i++)
+    {
+      players[i].character = static_cast<dr_character>(u8(off++));
+      players[i].control_port = static_cast<dr_control_port>(u8(off++));
+      players[i].control_type = static_cast<dr_control_type>(u8(off++));
+      players[i].difficulty = static_cast<dr_difficulty>(u8(off++));
+      players[i].team_color = static_cast<dr_team_color>(u8(off++));
+      players[i].team_type = static_cast<dr_team_type>(u8(off++));
+      players[i].team_id = u8(off++);
+    }
+
+    launchMinigame(guest, minigame, players.data());
+  });
 
   /* A client follows the server's game choice: build the matching host and
    * start it locally. */

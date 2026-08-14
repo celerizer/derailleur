@@ -14,6 +14,14 @@ struct dr_scene_name_t
   const char *name;
 };
 
+/// One element of the game's native scene stack (see DrHostConfig::scene_stack_addr).
+struct mp64_overlay_t
+{
+  int32_t id;
+  int16_t event;
+  int16_t stat;
+};
+
 /// Returns the descriptive name for `scene_id` by scanning `scenes` until a
 /// match or the -1 terminator, or nullptr if there is no table or no match.
 static inline const char *dr_scene_name(const dr_scene_name_t *scenes, int scene_id)
@@ -96,17 +104,27 @@ struct DrHostConfig
   uint8_t minigame_blacklist[16];
   unsigned minigame_blacklist_count;
 
-  size_t next_scene_addr;
-  size_t next_scene_modifier_addr;
-
   const size_t *title_addrs;              // 6 addrs (5 slots + sentinel), nullptr = no injection
   uint8_t title_id_base;                  // first roulette ID (e.g. 0x25)
   uint8_t title_id_step;                  // step between IDs (e.g. 2); 0 = use slot_addrs instead
   uint8_t title_len_offset;              // added to nameLen when writing the length byte
   const size_t *slot_addrs;              // 5 word-flipped RAM addrs holding per-slot minigame IDs
-  size_t scene_trampoline_addr;          // packed word: upper half = scene, lower half = modifier; 0 = passthrough
+  /* The game's native scene stack: a LIFO of 5 8-byte elements { s32 scene, s16 event,
+   * s16 stat } at scene_stack_addr, with an s16 count at scene_stack_count_addr. The
+   * game pops the top (index count-1) each transition; when the count hits 0 it infers
+   * the next scene itself. We push a single results element to redirect after a
+   * mini-game. Both 0 = host does not drive scenes (see setSceneQueue). */
+  size_t scene_stack_addr;
+  size_t scene_stack_count_addr;
+  int16_t scene_stat_board;             // element `stat` for a board scene
+  int16_t scene_stat_minigame;          // element `stat` for a mini-game / results scene
+  int16_t scene_stat_duel;              // element `stat` for a duel-results scene
   size_t turn_total_addr;               // byte: total turn count; 0 = skip end-of-game check
   size_t turn_current_addr;             // byte: current turn count
+  /* Inclusive scene-id range for item mini-games (played natively, one participant).
+   * On entry the host grants netplay golf mode to that player; 0/0 = none. */
+  uint8_t scene_item_first;
+  uint8_t scene_item_last;
   uint8_t scene_board_results;          // scene forced when the game is over; 0 = passthrough
   uint8_t scene_last_five_turns;        // scene forced entering the last 5 turns; 0 = passthrough
   size_t scene_duel_slot0_addr;         // word-flipped RAM addr of duel board's first slot; 0 = use minigame_type_addr
@@ -115,8 +133,8 @@ struct DrHostConfig
   const dr_scene_name_t *scene_names;   // scene id -> name table (-1 terminated); nullptr = none
 };
 
-/// Mario Party 1-3 (Nintendo 64) host. Drives the board via a scene-trampoline
-/// state machine, watches memory for the roulette, and injects mini-game titles.
+/// Mario Party 1-3 (Nintendo 64) host. Drives the board by pushing onto the game's
+/// native scene stack, watches memory for the roulette, and injects mini-game titles.
 /// Concrete games (MarioParty1/2/3Host) just supply a DrHostConfig and game().
 class MarioPartyN64Host : public DrHost
 {
@@ -128,14 +146,14 @@ public:
   void writeResults(DrGuest *guest) override;
   void clearResults() override;
   void setCurrentTurn(unsigned turn) override;
-  void setCandidates(std::array<DrMinigameCandidate, 5> candidates) override;
   void startMinigame(unsigned index);
 
   void run(void);
 
   virtual void injectMinigameTitles(const std::array<DrMinigameCandidate, 5> &candidates);
 
-  // Called when miniexplain is detected. Return true to suppress candidatesNeeded.
+  // Called when miniexplain is detected. Maps the landed roulette id to a slot in
+  // m_pendingStartIndex; returns true if a slot matched, false to default to 0.
   virtual bool onMiniexplainDetected(dr_minigame_type type, int16_t minigameId,
     const DrPlayerArray &players)
   {
@@ -177,7 +195,13 @@ protected:
 
 private:
   void readPlayers(dr_minigame_type type);
+  /// Rerolls the shared mini-game pool and copies the five candidates for `type`
+  /// into m_candidates. No-op fill (all null) if there is no source.
+  void rollCandidates(dr_minigame_type type);
   void writeBattleCoins();
+  /// Writes all 5 scene-stack elements from `overlays` and sets the element count.
+  /// No-op when the stack isn't configured.
+  void setSceneQueue(const mp64_overlay_t overlays[5], int overlay_count);
 
   DrHostConfig m_config;
   int m_writing = 0;
@@ -189,11 +213,10 @@ private:
   signed m_MinigameType = -1;
   bool m_isDuelBoard = false;
   uint8_t m_pendingStartIndex = 0;
+  int m_startDelay = 0; // frames to spin after queuing the results scene before launching
   bool m_itemPending = false;
   bool m_itemSceneLeft = false;
   uint8_t m_itemChosenId = 0;
-  bool m_afterRouletteSceneLeft = false;
-  bool m_lastFiveTriggered = false; // last-5-turns event already forced this game
 
   /* MP3 mini-game star bandaid (see fixup_mg_star). Armed at writeResults; the
    * countdown runs down in run(), then adds coins for any player whose star total

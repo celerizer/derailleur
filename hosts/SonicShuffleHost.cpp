@@ -151,21 +151,14 @@ void SonicShuffleHost::run(void)
    * for the reference implementation):
    *
    *   1. Read the current scene id; edge-detect changes against m_lastScene.
-   *   2. While on the board, watch for the mini-game roulette trigger and emit
-   *      candidatesNeeded(type) so the picker fills m_candidates.
+   *   2. While on the board, watch for the mini-game roulette trigger and pull
+   *      candidates from m_MinigameSource (rerollMinigames + minigameCandidates)
+   *      into m_candidates, the way MarioPartyN64Host::rollCandidates does.
    *   3. Once the game commits to a slot, resolve the players and emit
    *      minigameRequested({guest, minigame}, players) to launch the guest.
    *   4. When the guest reports back, writeResults() pushes coins/rings onto the
    *      board and control returns here.
    */
-}
-
-void SonicShuffleHost::setCandidates(std::array<DrMinigameCandidate, 5> candidates)
-{
-  m_candidates = candidates;
-
-  /* @todo Inject the five candidates' names/ids into the roulette, the way
-   * MarioPartyN64Host::injectMinigameTitles does for the N64 hosts. */
 }
 
 void SonicShuffleHost::writeResults(DrGuest *guest)

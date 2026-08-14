@@ -32,7 +32,7 @@
 /* Serializes every file under `root` (recursively) into one compressed blob of
  * [u32 count]{ QString relPath, QByteArray data }..., so the host's save
  * directory can be shipped to clients. */
-static QByteArray dr_bundle_directory(const QString &root)
+static QByteArray dr_bundle_directory(const QString &root, const QString &baseFilter = QString())
 {
   QList<QPair<QString, QByteArray>> files;
   QDir base(root);
@@ -40,6 +40,10 @@ static QByteArray dr_bundle_directory(const QString &root)
   while (it.hasNext())
   {
     it.next();
+    /* When a base name is given, ship only that game's save (any extension), e.g.
+     * "Mario Party 3 (USA).sav", not the whole save folder. */
+    if (!baseFilter.isEmpty() && QFileInfo(it.filePath()).completeBaseName() != baseFilter)
+      continue;
     QFile f(it.filePath());
     if (f.open(QIODevice::ReadOnly))
       files.append({ base.relativeFilePath(it.filePath()), f.readAll() });
@@ -127,7 +131,7 @@ void DrNetplay::hostSession(quint16 port, int playerCount)
   emit peerCountChanged(1, m_PeerCount);
 }
 
-void DrNetplay::startGame(int gameId)
+void DrNetplay::startGame(int gameId, const QString &saveBaseName)
 {
   if (!m_IsServer)
     return;
@@ -150,14 +154,18 @@ void DrNetplay::startGame(int gameId)
    * front-to-back, so the filter is applied first. (Delivered at least once.) */
   broadcastVar(DR_NETPLAY_PACKET_MINIGAME_FILTER, m_MinigameFilter);
 
-  /* Ship our save directory so every client plays off the host's save (same
-   * unlocks / SRAM). Sent before START so clients redirect their save dir before
-   * building the host and loading content. */
+  /* Ship the host game's save so every client plays off it (same unlocks / SRAM).
+   * Only that one game's save file is sent, not the whole save folder. Sent before
+   * START so clients redirect their save dir before building the host and loading
+   * content. */
   {
-    const QByteArray bundle = dr_bundle_directory(dr_save_directory());
+    const QByteArray bundle = dr_bundle_directory(dr_save_directory(), saveBaseName);
     broadcastVar(DR_NETPLAY_PACKET_SAVE, bundle);
     emit logMessage(DR_LOG_INFO,
-      QString("netplay: sent save (%1 KiB) from %2").arg(bundle.size() / 1024).arg(dr_save_directory()));
+      QString("netplay: sent save (%1 KiB) for %2 from %3")
+        .arg(bundle.size() / 1024)
+        .arg(saveBaseName.isEmpty() ? QStringLiteral("(all)") : saveBaseName)
+        .arg(dr_save_directory()));
   }
 
   broadcast(DR_NETPLAY_PACKET_START, payload);
@@ -291,6 +299,71 @@ void DrNetplay::broadcastCancelMinigame()
     writeMessage(m_Sockets.first(), DR_NETPLAY_PACKET_CANCEL, QByteArray());
 }
 
+void DrNetplay::requestDebugLaunch(const QByteArray &payload)
+{
+  if (!m_Active)
+    return;
+  /* The server owns the frame clock, so it picks the target frame. A client forwards
+   * the opaque request (frame 0 = "please schedule") and gets the scheduled command
+   * back in the broadcast. */
+  if (m_IsServer)
+    scheduleLaunch(payload);
+  else if (!m_Sockets.isEmpty())
+  {
+    QByteArray msg;
+    {
+      QDataStream s(&msg, QIODevice::WriteOnly);
+      s.setByteOrder(QDataStream::LittleEndian);
+      s << static_cast<quint64>(0);
+    }
+    msg.append(payload);
+    writeVarMessage(m_Sockets.first(), DR_NETPLAY_PACKET_LAUNCH, msg);
+  }
+}
+
+void DrNetplay::scheduleLaunch(const QByteArray &payload)
+{
+  quint64 frame = 0;
+  {
+    QMutexLocker lock(&m_RecvMutex);
+    if (m_ActiveContext < 0 || m_ActiveContext >= DR_NETPLAY_MAX_CONTEXTS)
+      return;
+    frame = m_CtxFrame[m_ActiveContext] + DR_NETPLAY_LAUNCH_DELAY;
+    m_PendingLaunchFrame = static_cast<qint64>(frame);
+    m_PendingLaunchData = payload;
+  }
+  QByteArray msg;
+  {
+    QDataStream s(&msg, QIODevice::WriteOnly);
+    s.setByteOrder(QDataStream::LittleEndian);
+    s << frame;
+  }
+  msg.append(payload);
+  broadcastVar(DR_NETPLAY_PACKET_LAUNCH, msg);
+  emit logMessage(DR_LOG_INFO,
+    QString("netplay: scheduled debug launch for ctx %1 frame %2")
+      .arg(ctxLabel(m_ActiveContext)).arg(frame));
+}
+
+void DrNetplay::maybeFireLaunch(quint64 frame)
+{
+  QByteArray data;
+  {
+    QMutexLocker lock(&m_RecvMutex);
+    if (m_PendingLaunchFrame < 0 || frame != static_cast<quint64>(m_PendingLaunchFrame))
+      return;
+    data = m_PendingLaunchData;
+    m_PendingLaunchFrame = -1;
+    m_PendingLaunchData.clear();
+  }
+  /* Freeze the active context right here, synchronously on the timing thread -- exactly
+   * as the host launch does via its DirectConnection to freezeActiveContext -- so every
+   * peer stops the host on this same frame. The queued debugLaunchReady handler then only
+   * does the GUI-thread launch (not the freeze, which must not race to a later frame). */
+  freezeActiveContext();
+  emit debugLaunchReady(data);
+}
+
 void DrNetplay::setMinigameFilter(const QByteArray &payload)
 {
   m_MinigameFilter = payload;
@@ -416,8 +489,17 @@ QString DrNetplay::ctxLabel(int ctx) const
 
 void DrNetplay::attachCore(QRetro *core, const QString &name)
 {
-  if (!core || m_ContextIds.contains(core) || m_ContextCount >= DR_NETPLAY_MAX_CONTEXTS)
+  if (!core || m_ContextIds.contains(core))
     return;
+  if (m_ContextCount >= DR_NETPLAY_MAX_CONTEXTS)
+  {
+    /* Out of context slots: this core would run ungated (it shows as ctx -1 in logs and
+     * never syncs). Raise DR_NETPLAY_MAX_CONTEXTS rather than let it fail silently. */
+    emit logMessage(DR_LOG_ERROR,
+      QString("netplay: out of context slots (%1); '%2' will not sync -- raise "
+              "DR_NETPLAY_MAX_CONTEXTS").arg(DR_NETPLAY_MAX_CONTEXTS).arg(name));
+    return;
+  }
 
   const int ctx = m_ContextCount++;
   m_ContextIds.insert(core, ctx);
@@ -506,6 +588,7 @@ void DrNetplay::onFrameBegin(int context)
         emit logMessage(DR_LOG_INFO,
           QString("netplay: ctx %1 passed barrier frame %2").arg(ctxLabel(context)).arg(frame));
       m_CtxFrame[context] = frame + 1;
+      maybeFireLaunch(frame);
       return;
     }
 
@@ -664,7 +747,7 @@ void DrNetplay::onSocketReadyRead()
 
     /* Variable-length messages are framed [type][u32 len][payload]. */
     if (type == DR_NETPLAY_PACKET_RESYNC_STATE || type == DR_NETPLAY_PACKET_MINIGAME_FILTER ||
-        type == DR_NETPLAY_PACKET_SAVE)
+        type == DR_NETPLAY_PACKET_SAVE || type == DR_NETPLAY_PACKET_LAUNCH)
     {
       if (buf.size() < 1 + 4)
         break;
@@ -799,6 +882,32 @@ void DrNetplay::handleMessage(QTcpSocket *sock, quint8 type, const QByteArray &p
     /* The server relays the cancel on to the other clients. */
     if (m_IsServer)
       broadcast(DR_NETPLAY_PACKET_CANCEL, payload, sock);
+    break;
+  }
+
+  case DR_NETPLAY_PACKET_LAUNCH:
+  {
+    if (payload.size() < 8)
+      break;
+    const QByteArray opaque = payload.mid(8);
+    if (m_IsServer)
+    {
+      /* A client's launch request: (re)assign the frame and broadcast to everyone. */
+      scheduleLaunch(opaque);
+    }
+    else
+    {
+      /* The server's scheduled command: adopt its target frame. */
+      quint64 frame = 0;
+      {
+        QDataStream s(payload.left(8));
+        s.setByteOrder(QDataStream::LittleEndian);
+        s >> frame;
+      }
+      QMutexLocker lock(&m_RecvMutex);
+      m_PendingLaunchFrame = static_cast<qint64>(frame);
+      m_PendingLaunchData = opaque;
+    }
     break;
   }
 

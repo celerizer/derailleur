@@ -9,6 +9,21 @@
 #include <cctype>
 #include <cstring>
 
+void MarioPartyN64Host::setSceneQueue(const mp64_overlay_t overlays[5], int overlay_count)
+{
+  if (!m_config.scene_stack_addr || !m_config.scene_stack_count_addr)
+    return;
+
+  for (int i = 0; i < 5; i++)
+  {
+    const size_t elem = m_config.scene_stack_addr + static_cast<size_t>(i) * 8;
+    writes32(overlays[i].id, elem);
+    writes16(overlays[i].event, elem + 4);
+    writes16(overlays[i].stat, elem + 6);
+  }
+  writes16(static_cast<int16_t>(overlay_count), m_config.scene_stack_count_addr);
+}
+
 void MarioPartyN64Host::run(void)
 {
   static const uint8_t ff = 0xff;
@@ -55,6 +70,47 @@ void MarioPartyN64Host::run(void)
     else
       emit logMessage(DR_LOG_WARN,
         QString("scene: 0x%1 <<< UNKNOWN SCENE ID >>>").arg((uint8_t)scene_id, 2, 16, QChar('0')));
+
+    /* MP1: randomize the title-screen image on entry to the Intro scene (0x61). */
+    if (game() == DR_GAME_MARIOPARTY1 && (uint8_t)scene_id == 0x61)
+      writes8(static_cast<int8_t>(dr_rand() % 7), 0x800ED146);
+
+    /* Item mini-games play natively with a single participant. Grant that player golf
+     * mode (0 input delay, priority) on entry and clear it on exit. The participant is
+     * the board slot with team id 0; its controller_addr holds the player index. */
+    if (m_config.scene_item_first || m_config.scene_item_last)
+    {
+      auto inItem = [&](uint8_t v) {
+        return v >= m_config.scene_item_first && v <= m_config.scene_item_last;
+      };
+      const bool wasItem = inItem(m_lastScene);
+      const bool isItem = inItem((uint8_t)scene_id);
+      if (isItem && !wasItem)
+      {
+        int authority = -1;
+        for (unsigned i = 0; i < 4; i++)
+        {
+          uint8_t team = 0xFF;
+          readu8(&team, m_config.team_addr[i]);
+          if (team == 0)
+          {
+            uint8_t ctrl = 0;
+            readu8(&ctrl, m_config.controller_addr[i]);
+            authority = ctrl;
+            break;
+          }
+        }
+        emit logMessage(DR_LOG_INFO,
+          QString("item mini-game: golf mode -> player %1").arg(authority));
+        emit golfModeRequested(authority, 30);
+      }
+      else if (wasItem && !isItem)
+      {
+        emit logMessage(DR_LOG_INFO, "item mini-game over: golf mode off");
+        emit golfModeRequested(-1, 30);
+      }
+    }
+
     m_lastScene = (uint8_t)scene_id;
   }
 
@@ -63,13 +119,10 @@ void MarioPartyN64Host::run(void)
   case DR_HOST_STATE_INVALID:
     if (m_core->frames() <= 120)
       return;
-    else
-      setState(DR_HOST_STATE_BEFORE_BOARD);
+    setState(DR_HOST_STATE_BEFORE_BOARD);
     break;
   case DR_HOST_STATE_BEFORE_BOARD:
   {
-    writeu32(0, m_config.scene_trampoline_addr);
-
     writeForFrames(m_config.minigame_type_addr, &ff, 1, 30);
 
     for (unsigned r = 0; r < m_config.scene_board_id_count; r++)
@@ -135,8 +188,7 @@ void MarioPartyN64Host::run(void)
       {
         for (unsigned i = 0; i < m_config.minigame_type_to_dr_size; i++)
           if (m_config.minigame_type_to_dr[i] == DR_MINIGAME_DUEL) { m_MinigameType = i; break; }
-        m_candidates = {};
-        emit candidatesNeeded(DR_MINIGAME_DUEL);
+        rollCandidates(DR_MINIGAME_DUEL);
         setState(DR_HOST_STATE_BEFORE_ROULETTE);
       }
       break;
@@ -151,7 +203,6 @@ void MarioPartyN64Host::run(void)
 
       if (mg_type == DR_MINIGAME_ITEM)
       {
-        writeu32(0, m_config.scene_trampoline_addr);
         m_lastMinigameId = -1;
         writeu8(0xFF, m_config.minigame_id_addr);
         m_itemChosenId = 0x3B + (dr_rand() % 6);
@@ -162,14 +213,12 @@ void MarioPartyN64Host::run(void)
       else if (mg_type != DR_MINIGAME_INVALID)
       {
         m_MinigameType = minigame_type;
-        m_candidates = {};
-        emit candidatesNeeded(mg_type);
+        rollCandidates(mg_type);
         setState(DR_HOST_STATE_BEFORE_ROULETTE);
         break;
       }
     }
     writeu8(0xFF, m_config.minigame_type_addr);
-    writeu32(0, m_config.scene_trampoline_addr);
     break;
   }
   case DR_HOST_STATE_BEFORE_ROULETTE:
@@ -227,10 +276,60 @@ void MarioPartyN64Host::run(void)
       break;
 
     m_lastMinigameId = id;
+    m_startDelay = 0;
+    setState(DR_HOST_STATE_AFTER_ROULETTE);
+    break;
+  }
+
+  case DR_HOST_STATE_AFTER_ROULETTE:
+  {
+    /* Once the queue has been overwritten, spin a while so the game settles onto the
+     * results scene before we launch the guest mini-game. */
+    if (m_startDelay > 0)
+    {
+      if (--m_startDelay == 0)
+      {
+        dr_minigame_type mg_type = (m_MinigameType < (int)m_config.minigame_type_to_dr_size)
+          ? m_config.minigame_type_to_dr[m_MinigameType] : DR_MINIGAME_INVALID;
+        readPlayers(mg_type);
+
+        /* TODO remove: diagnose MP1 chosen-minigame reading in as 0. */
+        {
+          int16_t rawId = 0;
+          if (m_config.minigame_id_is_8bit)
+          {
+            int8_t v = 0;
+            reads8(&v, m_config.minigame_id_addr);
+            rawId = v;
+          }
+          else
+            reads16(&rawId, m_config.minigame_id_addr);
+          emit logMessage(DR_LOG_ERROR,
+            QString("TODO remove: minigame_id_addr @0x%1 = 0x%2 (latched m_lastMinigameId = 0x%3)")
+              .arg(m_config.minigame_id_addr, 0, 16)
+              .arg(static_cast<uint16_t>(rawId), 0, 16)
+              .arg(static_cast<uint16_t>(m_lastMinigameId), 0, 16));
+        }
+
+        onMiniexplainDetected(mg_type, m_lastMinigameId, m_pendingPlayers);
+        startMinigame(m_pendingStartIndex);
+
+        m_lastMinigameId = -1;
+        writeu8(0xFF, m_config.minigame_id_addr);
+        setState(DR_HOST_STATE_MINIGAME);
+      }
+      break;
+    }
+
+    /* Wait for the game to queue its own scene overlays. */
+    int16_t count = 0;
+    reads16(&count, m_config.scene_stack_count_addr);
+    if (!count)
+      break;
 
     dr_minigame_type mg_type = (m_MinigameType < (int)m_config.minigame_type_to_dr_size)
-      ? m_config.minigame_type_to_dr[m_MinigameType]
-      : DR_MINIGAME_INVALID;
+      ? m_config.minigame_type_to_dr[m_MinigameType] : DR_MINIGAME_INVALID;
+    int16_t stat = m_config.scene_stat_minigame;
     switch (mg_type)
     {
     case DR_MINIGAME_4P:
@@ -239,28 +338,31 @@ void MarioPartyN64Host::run(void)
     case DR_MINIGAME_1P:
       m_resultsScene = m_config.scene_miniresults;
       m_resultsModifier = 0;
+      stat = m_config.scene_stat_minigame;
       break;
     case DR_MINIGAME_BATTLE:
       m_resultsScene = m_config.scene_miniresults_battle;
       m_resultsModifier = 2;
+      stat = m_config.scene_stat_minigame;
       break;
     case DR_MINIGAME_DUEL:
-    {
       if (m_isDuelBoard)
       {
-        m_resultsScene = 0x5a;
+        m_resultsScene = m_config.scene_miniresults_duel;
         m_resultsModifier = 0;
+        stat = m_config.scene_stat_duel;
       }
       else
       {
         m_resultsScene = 0x75;
         m_resultsModifier = 2;
+        stat = m_config.scene_stat_board;
       }
       break;
-    }
     case DR_MINIGAME_ITEM:
       m_resultsScene = m_lastBoardScene;
       m_resultsModifier = 2;
+      stat = m_config.scene_stat_board;
       break;
     default:
       emit logMessage(DR_LOG_INFO,
@@ -268,77 +370,38 @@ void MarioPartyN64Host::run(void)
       break;
     }
 
-    emit logMessage(DR_LOG_INFO,
-      QString("next_scene: 0x%1 modifier 0x%2")
-        .arg(m_resultsScene, 2, 16, QChar('0'))
-        .arg(m_resultsModifier, 2, 16, QChar('0')));
-    writeu32(((uint32_t)m_resultsScene << 16) | (uint16_t)m_resultsModifier, m_config.scene_trampoline_addr);
-    m_afterRouletteSceneLeft = false;
-    setState(DR_HOST_STATE_AFTER_ROULETTE);
-    break;
-  }
-
-  case DR_HOST_STATE_AFTER_ROULETTE:
-  {
-    if (!m_afterRouletteSceneLeft)
+    /* Read the whole queue, swap the mini-game explanation element for our results
+     * screen, and keep everything else. */
+    mp64_overlay_t overlays[5] = {};
+    for (int i = 0; i < 5; i++)
     {
-      if ((uint8_t)scene_id != m_lastBoardScene)
-        m_afterRouletteSceneLeft = true;
-      else
-        break;
+      const size_t elem = m_config.scene_stack_addr + static_cast<size_t>(i) * 8;
+      reads32(&overlays[i].id, elem);
+      reads16(&overlays[i].event, elem + 4);
+      reads16(&overlays[i].stat, elem + 6);
     }
-    if ((uint8_t)scene_id != m_resultsScene)
-      break;
 
-    dr_minigame_type mg_type = (m_MinigameType < (int)m_config.minigame_type_to_dr_size)
-      ? m_config.minigame_type_to_dr[m_MinigameType] : DR_MINIGAME_INVALID;
-    readPlayers(mg_type);
-    onMiniexplainDetected(mg_type, m_lastMinigameId, m_pendingPlayers);
-    startMinigame(m_pendingStartIndex);
-
-    emit logMessage(DR_LOG_INFO,
-      QString("board_scene: 0x%1 modifier 1").arg(m_lastBoardScene, 2, 16, QChar('0')));
-    if (m_config.turn_total_addr)
-    {
-      uint8_t totalTurns = 0, currentTurns = 0;
-      readu8(&totalTurns,   m_config.turn_total_addr);
-      readu8(&currentTurns, m_config.turn_current_addr);
-      if (currentTurns > totalTurns)
-      {
-        /* Game over - force the board's results scene next instead of a new turn */
-        emit logMessage(DR_LOG_INFO,
-          QString("entering board results (turn %1/%2)").arg(currentTurns).arg(totalTurns));
-        writeu32(m_config.scene_board_results
-                   ? (((uint32_t)m_config.scene_board_results << 16) | 1) : 0,
-          m_config.scene_trampoline_addr);
-        setState(DR_HOST_STATE_INVALID);
-        break;
-      }
-      if (totalTurns - currentTurns == 4)
-      {
-        /* Last 5 turns - force that event scene once with modifier 1 */
-        if (!m_lastFiveTriggered)
+    const int active = (count < 5) ? count : 5;
+    int explainIdx = -1;
+    for (int i = 0; i < active && explainIdx < 0; i++)
+      for (unsigned e = 0; e < m_config.scene_miniexplain_count; e++)
+        if (overlays[i].id == static_cast<int32_t>(m_config.scene_miniexplain[e]))
         {
-          m_lastFiveTriggered = true;
-          emit logMessage(DR_LOG_INFO,
-            QString("entering last 5 turns (turn %1/%2)").arg(currentTurns).arg(totalTurns));
-          writeu32(m_config.scene_last_five_turns
-                     ? (((uint32_t)m_config.scene_last_five_turns << 16) | 1) : 0,
-            m_config.scene_trampoline_addr);
-          setState(DR_HOST_STATE_INVALID);
+          explainIdx = i;
           break;
         }
-      }
-      else
-      {
-        /* Off the trigger turn - re-arm so a later game (or wrap) fires again. */
-        m_lastFiveTriggered = false;
-      }
+
+    if (explainIdx < 0)
+    {
+      emit logMessage(DR_LOG_ERROR,
+        "AFTER_ROULETTE: no mini-game explanation in the scene queue; aborting");
+      setState(DR_HOST_STATE_INVALID);
+      break;
     }
-    writeu32(((uint32_t)m_lastBoardScene << 16) | 1, m_config.scene_trampoline_addr);
-    m_lastMinigameId = -1;
-    writeu8(0xFF, m_config.minigame_id_addr);
-    setState(DR_HOST_STATE_MINIGAME);
+
+    overlays[explainIdx] = { static_cast<int32_t>(m_resultsScene), m_resultsModifier, stat };
+    setSceneQueue(overlays, count);
+    m_startDelay = 30; // spin before launching the guest (see top of this case)
     break;
   }
 
@@ -349,6 +412,10 @@ void MarioPartyN64Host::run(void)
       m_lastMinigameId = -1;
       writeu8(0xFF, m_config.minigame_id_addr);
       writeForFrames(m_config.minigame_type_addr, &ff, 1, 30);
+      /* Back on the board -- roll a fresh pool for the next roulette. This happens
+       * inside the lockstepped run(), so every netplay peer rerolls in sync. */
+      if (m_MinigameSource)
+        m_MinigameSource->rerollMinigames();
       setState(DR_HOST_STATE_BOARD);
     }
     break;
@@ -364,6 +431,7 @@ MarioPartyN64Host::MarioPartyN64Host(const DrHostConfig &config, QObject *parent
 {
   m_core = new QRetro();
   m_ownCore = true;
+  m_gamePath = config.game; // so gamePath() yields the ROM (used for the netplay save name)
   if (!m_core->loadCore(config.core.c_str()))
   {
     log(DR_LOG_ERROR, qPrintable(QString("failed to load core: %1").arg(config.core.c_str())));
@@ -391,6 +459,9 @@ MarioPartyN64Host::MarioPartyN64Host(const DrHostConfig &config, QObject *parent
 
 void MarioPartyN64Host::injectMinigameTitles(const std::array<DrMinigameCandidate, 5> &candidates)
 {
+  if (!m_config.title_addrs) // no title table configured -> skip injection
+    return;
+
   std::array<std::string, 5> names;
   for (unsigned i = 0; i < 5; i++)
   {
@@ -461,10 +532,18 @@ void MarioPartyN64Host::writeMinigameNames(const std::array<std::string, 5> &nam
   }
 }
 
-void MarioPartyN64Host::setCandidates(std::array<DrMinigameCandidate, 5> candidates)
+void MarioPartyN64Host::rollCandidates(dr_minigame_type type)
 {
-  m_candidates = candidates;
-  injectMinigameTitles(candidates);
+  if (!m_MinigameSource)
+  {
+    m_candidates = {};
+    return;
+  }
+
+  /* Copy out the five candidates for the type the board just chose. The pool is
+   * rerolled when we return to the board after a mini-game, not here; the very
+   * first query lazily fills it. Titles are injected in BEFORE_ROULETTE. */
+  m_candidates = m_MinigameSource->minigameCandidates(type);
 }
 
 void MarioPartyN64Host::startMinigame(unsigned index)
@@ -678,7 +757,9 @@ void MarioPartyN64Host::writeResults(DrGuest *guest)
     if (places[0] == places[1] && places[1] == places[2] && places[2] == places[3])
     {
       emit logMessage(DR_LOG_INFO, "battle: four-way tie, returning to board");
-      writeu32(((uint32_t)m_lastBoardScene << 16) | 2, m_config.scene_trampoline_addr);
+      mp64_overlay_t overlays[5] = {};
+      overlays[0] = { static_cast<int32_t>(m_lastBoardScene), 2, m_config.scene_stat_board };
+      setSceneQueue(overlays, 1);
     }
     else
       writeBattleCoins();

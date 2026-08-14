@@ -28,8 +28,12 @@ static const dr_team_color MP1_PANEL_COLOR_TO_DR[] = {
 };
 
 static const size_t MP1_MINIGAME_TITLE_ADDRS[6] = {
-  0xB0FDBE54, 0xB0FDBE92, 0xB0FDBED6, 0xB0FDBF1C, 0xB0FDBF5A,
-  0xB0FDBF98, // sentinel — TODO: verify
+  0xB0FDBE54,
+  0xB0FDBE92,
+  0xB0FDBED6,
+  0xB0FDBF1C,
+  0xB0FDBF5A,
+  0xB0FDBF9A,
 };
 
 static const dr_minigame_type MP1_MINIGAME_TYPE_TO_DR[] = {
@@ -112,7 +116,7 @@ static const dr_scene_name_t MP1_SCENE_NAMES[] =
   // { 0x43, "" },
   // { 0x44, "" },
   // { 0x45, "" },
-  // { 0x46, "" },
+  { 0x46, "Visiting Bowser" },
   { 0x47, "DK's Jungle Adventure" }, // talking to whomp
   // { 0x48, "" },
   // { 0x49, "" },
@@ -129,7 +133,7 @@ static const dr_scene_name_t MP1_SCENE_NAMES[] =
   // { 0x54, "" },
   // { 0x55, "" },
   { 0x56, "Board event" },
-  // { 0x57, "" },
+  { 0x57, "Mario's Rainbow Castle" }, // talking to toad/bowser
   // { 0x58, "" },
   // { 0x59, "" },
   // { 0x5a, "" },
@@ -137,13 +141,13 @@ static const dr_scene_name_t MP1_SCENE_NAMES[] =
   // { 0x5c, "" },
   // { 0x5d, "" },
   // { 0x5e, "" },
-  // { 0x5f, "" },
+  { 0x5f, "Visiting Koopa Troopa" },
   // { 0x60, "" },
   { 0x61, "Intro" },
   { 0x62, "Board intro" },
   // { 0x63, "" },
   // { 0x64, "" },
-  // { 0x65, "" },
+  { 0x65, "Visiting Boo" },
   { 0x66, "Booting up" },
   { 0x67, "Booting up" },
   { 0x68, "Save data corrupted" },
@@ -237,16 +241,19 @@ static DrHostConfig makeConfig()
   config.minigame_type_to_dr = MP1_MINIGAME_TYPE_TO_DR;
   config.minigame_type_to_dr_size = 4;
 
-  config.next_scene_addr = 0x800F09F4; // unused
   config.minigame_id_addr = 0x800ED5DE; // u16 (minigame_id_is_8bit == false)
   config.minigame_id_is_8bit = false;
 
   config.title_addrs = MP1_MINIGAME_TITLE_ADDRS;
   config.title_id_base = 0x01;
-  config.title_id_step = 4;
+  config.title_id_step = 3; // roulette IDs 1,4,7,10,13
   config.title_len_offset = 2;
 
-  config.scene_trampoline_addr = 0x800CA9A0;
+  config.scene_stack_addr = 0x800D86B8;       // 5 x { s32 scene, s16 event, s16 stat }
+  config.scene_stack_count_addr = 0x800D86B2; // s16 element count
+  config.scene_stat_board = 0x0092;
+  config.scene_stat_minigame = 0x0094;
+  // scene_stat_duel: no duels in MP1
 
   config.scene_names = MP1_SCENE_NAMES;
 
@@ -267,53 +274,14 @@ MarioParty1Host::MarioParty1Host(QObject *parent)
         called = true;
         m_core->cheatReset();
 
-        // Scene transition trampoline: data cell at 0x800CA9A0, code at 0x800CA9A4
-        m_core->cheatSet(0, true,
-          // Trampoline at 0x800CA9A0
-          "810CA9A4 3C08"  // LUI  T0, 0x800D
-          "+810CA9A6 800D"
-          "+810CA9A8 8D08"  // LW   T0, 0xA9A0(T0)   — T0 = *0x800CA9A0
-          "+810CA9AA A9A0"
-          "+810CA9AC 1100"  // BEQ  T0, ZERO, +7     — if 0, passthrough
-          "+810CA9AE 0007"
-          "+810CA9B0 0000"  // NOP                   — (delay slot)
-          "+810CA9B2 0000"
-          // Override path
-          "+810CA9B4 0008"  // SRL  A0, T0, 16       — A0 = scene
-          "+810CA9B6 2402"
-          "+810CA9B8 3105"  // ANDI A1, T0, 0xFFFF   — A1 = modifier
-          "+810CA9BA FFFF"
-          "+810CA9BC 0080"  // ADDU S1, A0, ZERO     — save scene to S1
-          "+810CA9BE 8821"
-          "+810CA9C0 3C04"  // LUI  A0, 0x800F       — load game state pointer
-          "+810CA9C2 800F"
-          "+810CA9C4 0801"  // J    0x8005E05C       — return
-          "+810CA9C6 7817"
-          "+810CA9C8 0000"  // NOP                   — (delay slot)
-          "+810CA9CA 0000"
-          // Passthrough path
-          "+810CA9CC 0080"  // ADDU S1, A0, ZERO     — save scene arg to S1
-          "+810CA9CE 8821"
-          "+810CA9D0 3C04"  // LUI  A0, 0x800F       — load game state pointer
-          "+810CA9D2 800F"
-          "+810CA9D4 0801"  // J    0x8005E05C       — return
-          "+810CA9D6 7817"
-          "+810CA9D8 0000"  // NOP                   — (delay slot)
-          "+810CA9DA 0000"
-          // Hook at 0x8005E054: J 0x800CA9A4 + NOP
-          "+8105E054 0803"  // J    0x800CA9A4
-          "+8105E056 2A69"
-          "+8105E058 2400"  // NOP                   — (delay slot, displaces LUI A0, 0x800F)
-        );
-
         // Force Mini-Game Roulette IDs
         m_core->cheatSet(1, true,
           "81043AB4 0010"  // SLL  V0, S0, 2      — roulette ID offset = slot_index * 4 (step=4)
           "+81043AB6 1080"
           "+81043AB8 2442"  // ADDIU V0, V0, BASE  — roulette ID = offset + base
           "+81043ABA 0001"
-          "+81043B08 2400" // NOP
-          "+81043B74 2400"  // NOP
+          "+81043AC8 1000"
+          "+81043ACA 0071"
         );
 
         // Recommended Codes

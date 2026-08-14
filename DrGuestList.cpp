@@ -34,7 +34,6 @@ DrGuest *DrGuestList::pickMinigame(dr_minigame_type type, const dr_mp_minigame_t
   struct EligibleGroup
   {
     DrGuest *guest;
-    int guestIndex;
     const char *name;
     QList<const dr_mp_minigame_t *> minigames;
   };
@@ -53,7 +52,7 @@ DrGuest *DrGuestList::pickMinigame(dr_minigame_type type, const dr_mp_minigame_t
           minigames.append(mg);
       }
       if (!minigames.isEmpty())
-        eligible.append({ m_guests[i], i, group.name, minigames });
+        eligible.append({ m_guests[i], group.name, minigames });
     }
   }
 
@@ -72,9 +71,35 @@ DrGuest *DrGuestList::pickMinigame(dr_minigame_type type, const dr_mp_minigame_t
                        .arg(outMinigame->name)
                        .arg(outMinigame->minigame_id, 2, 16, QChar('0'))));
 
-  m_activeGuest = picked.guest;
-  setCurrentIndex(picked.guestIndex);
+  /* Picking does not activate the guest -- rerollMinigames rolls every type up
+   * front and must not disturb what is on screen. The chosen guest is activated
+   * only when its mini-game actually launches (see activateGuest). */
   return picked.guest;
+}
+
+void DrGuestList::rerollMinigames(void)
+{
+  for (unsigned t = 1; t < DR_MINIGAME_SIZE; t++)
+    for (DrMinigameCandidate &c : m_candidates[t])
+    {
+      const dr_mp_minigame_t *mg = nullptr;
+      c.guest = pickMinigame((dr_minigame_type)t, mg);
+      c.minigame = mg;
+    }
+  m_rolled = true;
+}
+
+const std::array<DrMinigameCandidate, 5> &DrGuestList::minigameCandidates(dr_minigame_type type)
+{
+  /* The first query rolls the whole cache; do it here so the roll lands on the
+   * host's lockstepped frame and every netplay peer stays in sync. */
+  if (!m_rolled)
+    rerollMinigames();
+
+  static const std::array<DrMinigameCandidate, 5> empty = {};
+  if (type <= DR_MINIGAME_INVALID || type >= DR_MINIGAME_SIZE)
+    return empty;
+  return m_candidates[type];
 }
 
 void DrGuestList::applyFilter(const QByteArray &payload)
