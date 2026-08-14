@@ -37,17 +37,69 @@ static const dr_team_color MP2_PANEL_COLOR_TO_DR[] = {
   DR_TEAM_COLOR_GREEN, // 0x04
 };
 
-static const size_t MP2_SLOT_ADDRS[5] = {
-  0x800df6c4,
-  0x800df6c0,
-  0x800df6c1,
-  0x800df6c2,
-  0x800df6c3,
-};
+/* Roulette-title trampolines + hooks (see DrHostConfig::cheat_title_hook). Two copies
+ * of the same trampoline redirect the title loader to our glyph block at 0x80400080 +
+ * (type*5 + slot)*32: A at 0x80400000 for the list-create pass (slot in S0) and B at
+ * 0x80400028 for the re-read on selection (slot in V1). Both read the type byte at
+ * 0x800DF6C5 and tail-call the loader at 0x800890CC. */
+static const char MP2_CHEAT_TITLE_HOOK[] =
+  // A: list-create (slot in S0)
+  "81400000 3C01"   // LUI   AT, 0x800E
+  "+81400002 800E"
+  "+81400004 9021"  // LBU   AT, 0xF6C5(AT)    — type byte (0x800DF6C5)
+  "+81400006 F6C5"
+  "+81400008 0001"  // SLL   V0, AT, 2
+  "+8140000A 1080"
+  "+8140000C 0041"  // ADDU  V0, V0, AT        — type * 5
+  "+8140000E 1021"
+  "+81400010 0050"  // ADDU  V0, V0, S0        — + slot
+  "+81400012 1021"
+  "+81400014 0002"  // SLL   V0, V0, 5         — * 32
+  "+81400016 1140"
+  "+81400018 3C01"  // LUI   AT, 0x8040
+  "+8140001A 8040"
+  "+8140001C 0022"  // ADDU  AT, AT, V0
+  "+8140001E 0821"
+  "+81400020 0802"  // J     0x800890CC
+  "+81400022 2433"
+  "+81400024 2425"  // ADDIU A1, AT, 0x80      — block base (delay slot)
+  "+81400026 0080"
+  // B: re-read (cursor slot in V1). V1 is the 0-4 cursor position and already the block
+  // index -- the force-id +1 only shifts the stored id (read by onMiniexplainDetected),
+  // not the cursor -- so index V1 directly with no decrement.
+  "+81400028 3C01"  // LUI   AT, 0x800E
+  "+8140002A 800E"
+  "+8140002C 9021"  // LBU   AT, 0xF6C5(AT)
+  "+8140002E F6C5"
+  "+81400030 0001"  // SLL   V0, AT, 2
+  "+81400032 1080"
+  "+81400034 0041"  // ADDU  V0, V0, AT        — type * 5
+  "+81400036 1021"
+  "+81400038 0043"  // ADDU  V0, V0, V1        — + cursor slot
+  "+8140003A 1021"
+  "+8140003C 0002"  // SLL   V0, V0, 5         — * 32
+  "+8140003E 1140"
+  "+81400040 3C01"  // LUI   AT, 0x8040
+  "+81400042 8040"
+  "+81400044 0022"  // ADDU  AT, AT, V0
+  "+81400046 0821"
+  "+81400048 0802"  // J     0x800890CC
+  "+8140004A 2433"
+  "+8140004C 2425"  // ADDIU A1, AT, 0x80      — block base
+  "+8140004E 0080"
+  // Hooks
+  "+8104B168 0C10"  // JAL 0x80400000 — list-create -> A
+  "+8104B16A 0000"
+  "+8104A564 0C10"  // JAL 0x80400028 — re-read -> B
+  "+8104A566 000A";
 
-static const size_t MP2_MINIGAME_TITLE_ADDRS[6] = {
-  0xB1157363, 0xB1157389, 0xB11573AF, 0xB11573D1, 0xB11573F7, 0xB115741D,
-};
+/* Force the mini-game roulette onto the slot index (0-4), so the chosen minigame id
+ * reads back as exactly the slot. */
+static const char MP2_CHEAT_FORCE_ID[] =
+  "8104AF9C 2602"   // ADDIU V0, S0, 1           — ID = slot index + 1 (1-5)
+  "+8104AF9E 0001"
+  "+8104AFAC 1000"  // BEQ  ZERO, ZERO, 0x8004B148 (accept)
+  "+8104AFAE 0066";
 
 static const dr_scene_name_t MP2_SCENE_NAMES[] =
 {
@@ -250,18 +302,15 @@ static DrHostConfig makeConfig()
   memcpy(config.minigame_blacklist, blacklist, sizeof(blacklist));
   config.minigame_blacklist_count = 6;
 
-  config.title_addrs = MP2_MINIGAME_TITLE_ADDRS;
-  config.title_id_base = 0x25;
-  config.title_id_step = 2;
-  config.title_len_offset = 2;
+  config.title_block_addr = 0x80400080;
+  config.cheat_title_hook = MP2_CHEAT_TITLE_HOOK;
+  config.cheat_force_id = MP2_CHEAT_FORCE_ID;
 
-  config.slot_addrs = MP2_SLOT_ADDRS;
   config.scene_stack_addr = 0x800E1F58;       // 5 x { s32 scene, s16 event, s16 stat }
   config.scene_stack_count_addr = 0x800E1F52; // s16 element count
   config.scene_stat_board = 0x0192;
   config.scene_stat_minigame = 0x0094;
   // scene_stat_duel: no duels in MP2
-  /* @todo MP2's old trampoline cheat below is now dead; remove it once verified. */
 
   config.scene_names = MP2_SCENE_NAMES;
 
@@ -278,16 +327,6 @@ MarioParty2Host::MarioParty2Host(QObject *parent)
       {
         called = true;
         m_core->cheatReset();
-
-        // Force Mini-Game Roulette IDs
-        m_core->cheatSet(0, true,
-          "8104AF98 0010"  // SLL  V0, S0, 1      — roulette ID offset = slot_index * 2 (step=2)
-          "+8104AF9A 1040"
-          "+8104AF9C 2442"  // ADDIU V0, V0, 0x25  — roulette ID = offset + 0x25 (base)
-          "+8104AF9E 0025"
-          "+8104AFA8 A022"  // SB   V0, X(AT)      — store injected ID (upper half: patch source reg to V0)
-          "+8104B020 2400"  // NOP                 — suppress downstream overwrite of injected ID
-        );
 
         // Recommended Codes
         m_core->cheatSet(1, true,

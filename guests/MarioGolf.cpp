@@ -112,7 +112,7 @@ MarioGolf::MarioGolf(QObject *parent)
     for (int hole = 0; hole < MG_HOLE_COUNT; hole++, n++)
     {
       const QByteArray label =
-        QString("Mini-Golf: %1 Hole %2").arg(courses[c].name).arg(hole + 1).toUtf8();
+        QString("Golf: %1 %2").arg(courses[c].name).arg(hole + 1).toUtf8();
       qstrncpy(m_minigameNames[n], label.constData(), sizeof(m_minigameNames[n]));
       m_minigames[n] = { m_minigameNames[n], DR_MINIGAME_4P, courses[c].id, hole, DR_NO_QUIRKS };
     }

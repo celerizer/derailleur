@@ -7,6 +7,7 @@ static const uint16_t MP4_CHARACTER_IDS[DR_CHARACTER_SIZE] = {
 };
 
 static const dr_mp_minigame_t MP4_MINIGAMES[] = {
+  /* 4P */
   { "Manta Rings", DR_MINIGAME_4P, 0x00, 0x09, DR_NO_QUIRKS },
   { "Slime Time", DR_MINIGAME_4P, 0x01, 0x0A, DR_NO_QUIRKS },
   { "Booksquirm", DR_MINIGAME_4P, 0x02, 0x0B, DR_NO_QUIRKS },
@@ -22,6 +23,8 @@ static const dr_mp_minigame_t MP4_MINIGAMES[] = {
   { "Bob-omb Breakers", DR_MINIGAME_4P, 0x0C, 0x15, DR_NO_QUIRKS },
   { "Long Claw of the Law", DR_MINIGAME_4P, 0x0D, 0x16, DR_NO_QUIRKS },
   { "Stamp Out!", DR_MINIGAME_4P, 0x0E, 0x17, DR_NO_QUIRKS },
+
+  /* 1v3 */
   { "Candlelight Fright", DR_MINIGAME_1V3, 0x0F, 0x18, DR_NO_QUIRKS },
   { "Makin' Waves", DR_MINIGAME_1V3, 0x10, 0x19, DR_NO_QUIRKS },
   { "Hide and Go BOOM!", DR_MINIGAME_1V3, 0x11, 0x1A, DR_NO_QUIRKS },
@@ -31,6 +34,8 @@ static const dr_mp_minigame_t MP4_MINIGAMES[] = {
   { "Money Belts", DR_MINIGAME_1V3, 0x15, 0x1E, DR_NO_QUIRKS },
   { "GOOOOOOOAL!!", DR_MINIGAME_1V3, 0x16, 0x1F, DR_NO_QUIRKS },
   { "Blame it on the Crane", DR_MINIGAME_1V3, 0x17, 0x20, DR_NO_QUIRKS },
+
+  /* 2v2 */
   { "The Great Deflate", DR_MINIGAME_2V2, 0x18, 0x21, DR_NO_QUIRKS },
   { "Revers-a-Bomb", DR_MINIGAME_2V2, 0x19, 0x22, DR_NO_QUIRKS },
   { "Right Oar Left?", DR_MINIGAME_2V2, 0x1A, 0x23, DR_NO_QUIRKS },
@@ -41,33 +46,43 @@ static const dr_mp_minigame_t MP4_MINIGAMES[] = {
   { "Dungeon Duos", DR_MINIGAME_2V2, 0x1F, 0x28, DR_NO_QUIRKS },
   { "Beach Volley Folley", DR_MINIGAME_2V2, 0x20, 0x29, DR_NO_QUIRKS }, // special
   { "Cheep Cheep Sweep", DR_MINIGAME_2V2, 0x21, 0x2A, DR_NO_QUIRKS },
-  { "Darts of Doom", DR_MINIGAME_INVALID, 0x22, 0x2B, DR_NO_QUIRKS },
-  { "Fruits of Doom", DR_MINIGAME_INVALID, 0x23, 0x2C, DR_NO_QUIRKS },
-  { "Balloon of Doom", DR_MINIGAME_INVALID, 0x24, 0x2D, DR_NO_QUIRKS },
+
+  /* Bowser */
+  { "Darts of Doom", DR_MINIGAME_SPECIAL, 0x22, 0x2B, DR_NO_QUIRKS },
+  { "Fruits of Doom", DR_MINIGAME_SPECIAL, 0x23, 0x2C, DR_NO_QUIRKS },
+  { "Balloon of Doom", DR_MINIGAME_SPECIAL, 0x24, 0x2D, DR_NO_QUIRKS },
+
+  /* Battle */
   { "Chain Chomp Fever", DR_MINIGAME_BATTLE, 0x25, 0x2E, DR_NO_QUIRKS },
   { "Paths of Peril", DR_MINIGAME_BATTLE, 0x26, 0x2F, DR_QUIRK_EFB_TO_TEXTURE },
   { "Bowser's Bigger Blast", DR_MINIGAME_BATTLE, 0x27, 0x30, DR_NO_QUIRKS },
   { "Butterfly Blitz", DR_MINIGAME_BATTLE, 0x28, 0x31, DR_NO_QUIRKS },
-  { "Barrel Baron", DR_MINIGAME_INVALID, 0x29, 0x32, DR_NO_QUIRKS },
+
+  /* Etc */
+  { "Barrel Baron", DR_MINIGAME_SPECIAL, 0x29, 0x32, DR_NO_QUIRKS },
   { "Mario Speedwagons", DR_MINIGAME_4P, 0x2A, 0x33, DR_NO_QUIRKS },
-  /* 0x2B unknown */
+  { "Reversal of Fortune", DR_MINIGAME_SPECIAL, 0x2B, 0x34, DR_NO_QUIRKS },
+
+  /* Story mode duel mini-games */
   { "Bowser Bop", DR_MINIGAME_DUEL, 0x2C, 0x35, DR_NO_QUIRKS },
   { "Mystic Match 'Em", DR_MINIGAME_DUEL, 0x2D, 0x36, DR_NO_QUIRKS },
   { "Archaeologuess", DR_MINIGAME_DUEL, 0x2E, 0x37, DR_NO_QUIRKS },
   { "Goomba's Chip Flip", DR_MINIGAME_DUEL, 0x2F, 0x38, DR_NO_QUIRKS },
   { "Kareening Koopas", DR_MINIGAME_DUEL, 0x30, 0x39, DR_NO_QUIRKS },
-  { "The Final Battle!", DR_MINIGAME_INVALID, 0x31, 0x3A, DR_NO_QUIRKS },
-  { "Jigsaw Jitters", DR_MINIGAME_INVALID, 0xFF, 0x3B, DR_NO_QUIRKS },
-  { "Challenge Booksquirm", DR_MINIGAME_INVALID, 0xFF, 0x3C, DR_NO_QUIRKS },
+
+  /* More etc */
+  { "The Final Battle!", DR_MINIGAME_SPECIAL, 0x31, 0x3A, DR_NO_QUIRKS },
+  { "Jigsaw Jitters", DR_MINIGAME_SPECIAL, 0xFF, 0x3B, DR_NO_QUIRKS },
+  { "Challenge Booksquirm", DR_MINIGAME_SPECIAL, 0xFF, 0x3C, DR_NO_QUIRKS },
   { "Rumble Fishing", DR_MINIGAME_BATTLE, 0xFF, 0x3D, DR_NO_QUIRKS },
   { "Take a Breather", DR_MINIGAME_4P, 0xFF, 0x3E, DR_NO_QUIRKS },
-  { "Bowser Wrestling", DR_MINIGAME_DUEL, 0xFF, 0x3F, DR_NO_QUIRKS },
-  { "Panels of Doom", DR_MINIGAME_DUEL, 0xFF, 0x40, DR_NO_QUIRKS },
-  { "Mushroom Medic", DR_MINIGAME_INVALID, 0xFF, 0x41, DR_NO_QUIRKS },
-  { "Doors of Doom", DR_MINIGAME_INVALID, 0xFF, 0x42, DR_NO_QUIRKS },
-  { "Bob-omb X-ing", DR_MINIGAME_INVALID, 0xFF, 0x43, DR_NO_QUIRKS },
-  { "Goomba Stomp", DR_MINIGAME_INVALID, 0xFF, 0x44, DR_NO_QUIRKS },
-  { "Panel Panic", DR_MINIGAME_INVALID, 0xFF, 0x45, DR_NO_QUIRKS },
+  { "Bowser Wrestling", DR_MINIGAME_SPECIAL, 0xFF, 0x3F, DR_NO_QUIRKS },
+  { "Panels of Doom", DR_MINIGAME_SPECIAL, 0xFF, 0x40, DR_NO_QUIRKS },
+  { "Mushroom Medic", DR_MINIGAME_SPECIAL, 0xFF, 0x41, DR_NO_QUIRKS },
+  { "Doors of Doom", DR_MINIGAME_SPECIAL, 0xFF, 0x42, DR_NO_QUIRKS },
+  { "Bob-omb X-ing", DR_MINIGAME_SPECIAL, 0xFF, 0x43, DR_NO_QUIRKS },
+  { "Goomba Stomp", DR_MINIGAME_SPECIAL, 0xFF, 0x44, DR_NO_QUIRKS },
+  { "Panel Panic", DR_MINIGAME_SPECIAL, 0xFF, 0x45, DR_NO_QUIRKS },
   { nullptr, DR_MINIGAME_INVALID, 0xFF, 0xFF, DR_NO_QUIRKS },
 };
 

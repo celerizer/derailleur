@@ -14,9 +14,10 @@ static const dr_character MP1_CHAR_TO_DR[] = {
 };
 
 static const dr_difficulty MP1_DIFF_TO_DR[] = {
-  DR_DIFFICULTY_EASY, // 0x00 TODO verify
-  DR_DIFFICULTY_NORMAL, // 0x01 TODO verify
-  DR_DIFFICULTY_HARD, // 0x02 TODO verify
+  DR_DIFFICULTY_EASY, // 0x00
+  DR_DIFFICULTY_NORMAL, // 0x01
+  DR_DIFFICULTY_HARD, // 0x02
+  DR_DIFFICULTY_VERY_HARD // 0x03
 };
 
 static const dr_team_color MP1_PANEL_COLOR_TO_DR[] = {
@@ -27,14 +28,68 @@ static const dr_team_color MP1_PANEL_COLOR_TO_DR[] = {
   DR_TEAM_COLOR_GREEN, // 0x04
 };
 
-static const size_t MP1_MINIGAME_TITLE_ADDRS[6] = {
-  0xB0FDBE54,
-  0xB0FDBE92,
-  0xB0FDBED6,
-  0xB0FDBF1C,
-  0xB0FDBF5A,
-  0xB0FDBF9A,
-};
+/* Roulette-title trampolines + hooks (see DrHostConfig::cheat_title_hook). Two copies
+ * of the same trampoline redirect the title loader to our glyph block at 0x80400080 +
+ * (type*5 + slot)*32: A at 0x80400000 for the list-create pass (slot in S0) and B at
+ * 0x80400028 for the re-read on selection (slot in V1). Both read the type byte at
+ * 0x800D6459 and tail-call the loader at 0x8006D7D8. */
+static const char MP1_CHEAT_TITLE_HOOK[] =
+  // A: list-create (slot in S0)
+  "81400000 3C01"   // LUI   AT, 0x800D
+  "+81400002 800D"
+  "+81400004 9021"  // LBU   AT, 0x6459(AT)    — type byte
+  "+81400006 6459"
+  "+81400008 0001"  // SLL   V0, AT, 2
+  "+8140000A 1080"
+  "+8140000C 0041"  // ADDU  V0, V0, AT        — type * 5
+  "+8140000E 1021"
+  "+81400010 0050"  // ADDU  V0, V0, S0        — + slot
+  "+81400012 1021"
+  "+81400014 0002"  // SLL   V0, V0, 5         — * 32
+  "+81400016 1140"
+  "+81400018 3C01"  // LUI   AT, 0x8040
+  "+8140001A 8040"
+  "+8140001C 0022"  // ADDU  AT, AT, V0
+  "+8140001E 0821"
+  "+81400020 0801"  // J     0x8006D7D8
+  "+81400022 B5F6"
+  "+81400024 2425"  // ADDIU A1, AT, 0x80      — block base (delay slot)
+  "+81400026 0080"
+  // B: re-read (cursor slot in V1). V1 is the 0-4 cursor position and already the block
+  // index -- the force-id +1 only shifts the stored id (read by onMiniexplainDetected),
+  // not the cursor -- so index V1 directly with no decrement.
+  "+81400028 3C01"  // LUI   AT, 0x800D
+  "+8140002A 800D"
+  "+8140002C 9021"  // LBU   AT, 0x6459(AT)
+  "+8140002E 6459"
+  "+81400030 0001"  // SLL   V0, AT, 2
+  "+81400032 1080"
+  "+81400034 0041"  // ADDU  V0, V0, AT        — type * 5
+  "+81400036 1021"
+  "+81400038 0043"  // ADDU  V0, V0, V1        — + cursor slot
+  "+8140003A 1021"
+  "+8140003C 0002"  // SLL   V0, V0, 5         — * 32
+  "+8140003E 1140"
+  "+81400040 3C01"  // LUI   AT, 0x8040
+  "+81400042 8040"
+  "+81400044 0022"  // ADDU  AT, AT, V0
+  "+81400046 0821"
+  "+81400048 0801"  // J     0x8006D7D8
+  "+8140004A B5F6"
+  "+8140004C 2425"  // ADDIU A1, AT, 0x80      — block base
+  "+8140004E 0080"
+  // Hooks
+  "+81043CB0 0C10"  // JAL 0x80400000 — list-create -> A
+  "+81043CB2 0000"
+  "+81043100 0C10"  // JAL 0x80400028 — re-read -> B
+  "+81043102 000A";
+
+static const char MP1_CHEAT_FORCE_ID[] =
+  "81043AB8 2602"   // ADDIU V0, S0, 1 ; ID = slot index + 1 (1-5)
+  "+81043ABA 0001"
+  "+81043AC8 1000"  // BEQ  ZERO, ZERO, 0x80043C90
+  "+81043ACA 0071"
+  "+810C4DD2 0707"; /// @todo remove; force MG 4 text color to white
 
 static const dr_minigame_type MP1_MINIGAME_TYPE_TO_DR[] = {
   DR_MINIGAME_4P, // 0x00
@@ -114,14 +169,14 @@ static const dr_scene_name_t MP1_SCENE_NAMES[] =
   // { 0x41, "" },
   // { 0x42, "" },
   // { 0x43, "" },
-  // { 0x44, "" },
+  { 0x44, "Visiting Toad" }, // generic
   // { 0x45, "" },
-  { 0x46, "Visiting Bowser" },
+  { 0x46, "Visiting Bowser" }, // generic
   { 0x47, "DK's Jungle Adventure" }, // talking to whomp
   // { 0x48, "" },
-  // { 0x49, "" },
+  { 0x49, "Peach's Birthday Cake" }, // bowser visit
   // { 0x4a, "" },
-  // { 0x4b, "" },
+  { 0x4b, "Peach's Birthday Cake" }, // goomba visit
   // { 0x4c, "" },
   // { 0x4d, "" },
   // { 0x4e, "" },
@@ -135,7 +190,7 @@ static const dr_scene_name_t MP1_SCENE_NAMES[] =
   { 0x56, "Board event" },
   { 0x57, "Mario's Rainbow Castle" }, // talking to toad/bowser
   // { 0x58, "" },
-  // { 0x59, "" },
+  { 0x59, "Bowser's Magma Mountain" }, // junction
   // { 0x5a, "" },
   // { 0x5b, "" },
   // { 0x5c, "" },
@@ -189,10 +244,10 @@ static DrHostConfig makeConfig()
   config.core = dr_core_path(DR_CORE_MUPEN64PLUSNEXT).toStdString();
   config.game = (dr_roms_directory() + "/Mario Party (USA).z64").toStdString();
 
-  config.scene_miniexplain[0] = 0x6F; // TODO: verify, may have multiple
+  config.scene_miniexplain[0] = 0x6F;
   config.scene_miniexplain_count = 1;
   config.scene_miniresults = 0x7C;
-  // scene_miniresults_battle / scene_miniresults_duel: not available in mp1
+  
   config.scene_addr = 0x800C596C; // u16
 
   static const uint8_t mp1_boards[] = { 0x36, 0x37, 0x38, 0x39, 0x3A, 0x3B, 0x3C, 0x3D };
@@ -244,10 +299,9 @@ static DrHostConfig makeConfig()
   config.minigame_id_addr = 0x800ED5DE; // u16 (minigame_id_is_8bit == false)
   config.minigame_id_is_8bit = false;
 
-  config.title_addrs = MP1_MINIGAME_TITLE_ADDRS;
-  config.title_id_base = 0x01;
-  config.title_id_step = 3; // roulette IDs 1,4,7,10,13
-  config.title_len_offset = 2;
+  config.title_block_addr = 0x80400080;
+  config.cheat_title_hook = MP1_CHEAT_TITLE_HOOK;
+  config.cheat_force_id = MP1_CHEAT_FORCE_ID;
 
   config.scene_stack_addr = 0x800D86B8;       // 5 x { s32 scene, s16 event, s16 stat }
   config.scene_stack_count_addr = 0x800D86B2; // s16 element count
@@ -273,16 +327,6 @@ MarioParty1Host::MarioParty1Host(QObject *parent)
       {
         called = true;
         m_core->cheatReset();
-
-        // Force Mini-Game Roulette IDs
-        m_core->cheatSet(1, true,
-          "81043AB4 0010"  // SLL  V0, S0, 2      — roulette ID offset = slot_index * 4 (step=4)
-          "+81043AB6 1080"
-          "+81043AB8 2442"  // ADDIU V0, V0, BASE  — roulette ID = offset + base
-          "+81043ABA 0001"
-          "+81043AC8 1000"
-          "+81043ACA 0071"
-        );
 
         // Recommended Codes
         m_core->cheatSet(2, true,

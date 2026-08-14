@@ -56,9 +56,6 @@ DrGuest *DrGuestList::pickMinigame(dr_minigame_type type, const dr_mp_minigame_t
     }
   }
 
-  log(DR_LOG_INFO, qPrintable(QString("pick type=%1 eligible=%2 randcount=%3")
-                       .arg((int)type).arg(eligible.size()).arg(dr_rand_count())));
-
   if (eligible.isEmpty())
     return nullptr;
 
@@ -66,26 +63,37 @@ DrGuest *DrGuestList::pickMinigame(dr_minigame_type type, const dr_mp_minigame_t
   const auto &picked = eligible[dr_rand() % eligible.size()];
   outMinigame = picked.minigames[dr_rand() % picked.minigames.size()];
 
-  log(DR_LOG_INFO, qPrintable(QString("guest: %1").arg(picked.name)));
-  log(DR_LOG_INFO, qPrintable(QString("minigame: %1 (0x%2)")
-                       .arg(outMinigame->name)
-                       .arg(outMinigame->minigame_id, 2, 16, QChar('0'))));
-
-  /* Picking does not activate the guest -- rerollMinigames rolls every type up
-   * front and must not disturb what is on screen. The chosen guest is activated
-   * only when its mini-game actually launches (see activateGuest). */
   return picked.guest;
 }
 
 void DrGuestList::rerollMinigames(void)
 {
   for (unsigned t = 1; t < DR_MINIGAME_SIZE; t++)
+  {
+    QStringList entries;
+
     for (DrMinigameCandidate &c : m_candidates[t])
     {
       const dr_mp_minigame_t *mg = nullptr;
       c.guest = pickMinigame((dr_minigame_type)t, mg);
       c.minigame = mg;
+
+      if (c.guest && c.minigame)
+      {
+        entries.append(QString("%1 -> %2 (0x%3)")
+                       .arg(c.guest->name())
+                       .arg(c.minigame->name)
+                       .arg(c.minigame->minigame_id, 2, 16, QChar('0')));
+      }
     }
+
+    if (!entries.isEmpty())
+    {
+      log(DR_LOG_INFO, qPrintable(QString("%1 mini-games: %2")
+                           .arg(dr_minigame_type_name((dr_minigame_type)t))
+                           .arg(entries.join(", "))));
+    }
+  }
   m_rolled = true;
 }
 
@@ -116,6 +124,14 @@ void DrGuestList::applyFilter(const QByteArray &payload)
     m_disabled.insert(key);
   }
   log(DR_LOG_INFO, qPrintable(QString("minigame filter: %1 disabled").arg(m_disabled.size())));
+
+  /* The cached candidates were rolled against the old filter, so they may now be
+   * disabled (or a freshly-enabled game may be missing). Invalidate the cache
+   * rather than reroll here: applyFilter arrives on an async control packet, not
+   * a lockstepped frame, so rerolling now could desync the shared PRNG. Clearing
+   * m_rolled defers the reroll to the next query, which happens inside the host's
+   * lockstepped run() -- so every netplay peer rerolls together. */
+  m_rolled = false;
 }
 
 bool DrGuestList::guestHasCandidate(DrGuest *guest) const

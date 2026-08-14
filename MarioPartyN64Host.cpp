@@ -5,9 +5,22 @@
 #include <QRetro.h>
 #include <QRetroDirectories.h>
 #include <QString>
-#include <algorithm>
 #include <cctype>
 #include <cstring>
+
+typedef enum
+{
+  MP64_TEXT_BLACK = 0,
+  MP64_TEXT_BLUE = 1,
+  MP64_TEXT_RED = 2,
+  MP64_TEXT_MAGENTA = 3,
+  MP64_TEXT_GREEN = 4,
+  MP64_TEXT_CYAN = 5,
+  MP64_TEXT_YELLOW = 6,
+  MP64_TEXT_WHITE = 7,
+
+  MP64_TEXT_SIZE
+} mp64_text_color;
 
 void MarioPartyN64Host::setSceneQueue(const mp64_overlay_t overlays[5], int overlay_count)
 {
@@ -119,6 +132,9 @@ void MarioPartyN64Host::run(void)
   case DR_HOST_STATE_INVALID:
     if (m_core->frames() <= 120)
       return;
+    /* First roll + title stamp for the whole block; refreshed on every return to the
+     * board after a mini-game (see DR_HOST_STATE_MINIGAME). */
+    rollAndStampTitles();
     setState(DR_HOST_STATE_BEFORE_BOARD);
     break;
   case DR_HOST_STATE_BEFORE_BOARD:
@@ -141,6 +157,21 @@ void MarioPartyN64Host::run(void)
           m_core->cheatSet(1, !m_isDuelBoard, m_config.cheat_regular_board);
         if (m_config.cheat_duel_board)
           m_core->cheatSet(2, m_isDuelBoard, m_config.cheat_duel_board);
+        /* Install the roulette-title trampoline. A game with a separate duel-mode
+         * overlay (MP3) has two variants, toggled like the board cheats above; a
+         * game without one keeps its single hook enabled on every board. */
+        if (m_config.cheat_title_hook)
+          m_core->cheatSet(
+            5, m_config.cheat_title_hook_duel ? !m_isDuelBoard : true, m_config.cheat_title_hook);
+        if (m_config.cheat_title_hook_duel)
+          m_core->cheatSet(6, m_isDuelBoard, m_config.cheat_title_hook_duel);
+        /* Force the roulette onto the slot index (chosen id reads back as 0-4),
+         * toggled per board/duel exactly like the title trampoline above. */
+        if (m_config.cheat_force_id)
+          m_core->cheatSet(
+            7, m_config.cheat_force_id_duel ? !m_isDuelBoard : true, m_config.cheat_force_id);
+        if (m_config.cheat_force_id_duel)
+          m_core->cheatSet(8, m_isDuelBoard, m_config.cheat_force_id_duel);
         setState(DR_HOST_STATE_BOARD);
         break;
       }
@@ -227,17 +258,14 @@ void MarioPartyN64Host::run(void)
       setState(DR_HOST_STATE_BEFORE_BOARD);
       break;
     }
-    if (!m_candidates[0].minigame)
-      break;
-    injectMinigameTitles(m_candidates);
+
+    /* Write -1 to current mini-game to monitor for change */
     if (m_config.minigame_id_is_8bit)
-    {
-      int8_t v = 0;
-      reads8(&v, m_config.minigame_id_addr);
-      m_lastMinigameId = v;
-    }
+      writes8(-1, m_config.minigame_id_addr);
     else
-      reads16(&m_lastMinigameId, m_config.minigame_id_addr);
+      writes16(-1, m_config.minigame_id_addr);
+
+    /* Proceed... */
     setState(DR_HOST_STATE_ROULETTE);
     break;
 
@@ -249,19 +277,27 @@ void MarioPartyN64Host::run(void)
       break;
     }
 
+    /**
+     * Check for changes to mini-game type while rolling.
+     * Useful if we somehow opened a new roulette before another finished.
+     */
     if (!m_isDuelBoard)
     {
       uint8_t minigame_type = 0;
+
       readu8(&minigame_type, m_config.minigame_type_addr);
       if (minigame_type != (uint8_t)m_MinigameType)
       {
-        m_lastMinigameId = -1;
-        writeu8(0xFF, m_config.minigame_id_addr);
-        setState(DR_HOST_STATE_BOARD);
-        break;
+        emit logMessage(DR_LOG_ERROR,
+          QString("Mini-game type switched from %1 to %2 somehow! Fixing...")
+            .arg(dr_minigame_type_name((dr_minigame_type)m_MinigameType))
+            .arg(dr_minigame_type_name((dr_minigame_type)minigame_type)));
+        m_MinigameType = minigame_type;
+        setState(DR_HOST_STATE_BEFORE_ROULETTE);
       }
     }
 
+    /* Wait for a change to chosen mini-game */
     int16_t id = 0;
     if (m_config.minigame_id_is_8bit)
     {
@@ -271,10 +307,10 @@ void MarioPartyN64Host::run(void)
     }
     else
       reads16(&id, m_config.minigame_id_addr);
-
     if (id == m_lastMinigameId)
       break;
 
+    /* A mini-game was chosen. Proceed... */
     m_lastMinigameId = id;
     m_startDelay = 0;
     setState(DR_HOST_STATE_AFTER_ROULETTE);
@@ -293,26 +329,12 @@ void MarioPartyN64Host::run(void)
           ? m_config.minigame_type_to_dr[m_MinigameType] : DR_MINIGAME_INVALID;
         readPlayers(mg_type);
 
-        /* TODO remove: diagnose MP1 chosen-minigame reading in as 0. */
-        {
-          int16_t rawId = 0;
-          if (m_config.minigame_id_is_8bit)
-          {
-            int8_t v = 0;
-            reads8(&v, m_config.minigame_id_addr);
-            rawId = v;
-          }
-          else
-            reads16(&rawId, m_config.minigame_id_addr);
-          emit logMessage(DR_LOG_ERROR,
-            QString("TODO remove: minigame_id_addr @0x%1 = 0x%2 (latched m_lastMinigameId = 0x%3)")
-              .arg(m_config.minigame_id_addr, 0, 16)
-              .arg(static_cast<uint16_t>(rawId), 0, 16)
-              .arg(static_cast<uint16_t>(m_lastMinigameId), 0, 16));
-        }
+        /* I can't remember why but these are offset differently */
+        if (game() != DR_GAME_MARIOPARTY1)
+          m_lastMinigameId -= 1;
 
-        onMiniexplainDetected(mg_type, m_lastMinigameId, m_pendingPlayers);
-        startMinigame(m_pendingStartIndex);
+        /* Start the mini-game! */
+        startMinigame(m_lastMinigameId);
 
         m_lastMinigameId = -1;
         writeu8(0xFF, m_config.minigame_id_addr);
@@ -339,11 +361,13 @@ void MarioPartyN64Host::run(void)
       m_resultsScene = m_config.scene_miniresults;
       m_resultsModifier = 0;
       stat = m_config.scene_stat_minigame;
+      m_startDelay = 45;
       break;
     case DR_MINIGAME_BATTLE:
       m_resultsScene = m_config.scene_miniresults_battle;
       m_resultsModifier = 2;
       stat = m_config.scene_stat_minigame;
+      m_startDelay = 15;
       break;
     case DR_MINIGAME_DUEL:
       if (m_isDuelBoard)
@@ -358,11 +382,13 @@ void MarioPartyN64Host::run(void)
         m_resultsModifier = 2;
         stat = m_config.scene_stat_board;
       }
+      m_startDelay = 15;
       break;
     case DR_MINIGAME_ITEM:
       m_resultsScene = m_lastBoardScene;
       m_resultsModifier = 2;
       stat = m_config.scene_stat_board;
+      m_startDelay = 15;
       break;
     default:
       emit logMessage(DR_LOG_INFO,
@@ -401,25 +427,28 @@ void MarioPartyN64Host::run(void)
 
     overlays[explainIdx] = { static_cast<int32_t>(m_resultsScene), m_resultsModifier, stat };
     setSceneQueue(overlays, count);
-    m_startDelay = 30; // spin before launching the guest (see top of this case)
     break;
   }
 
   case DR_HOST_STATE_MINIGAME:
   {
+    /* Wait for the game to return to the board */
     if ((uint8_t)scene_id == m_lastBoardScene)
     {
+      /* Invalidate our watchpoints */
       m_lastMinigameId = -1;
       writeu8(0xFF, m_config.minigame_id_addr);
       writeForFrames(m_config.minigame_type_addr, &ff, 1, 30);
-      /* Back on the board -- roll a fresh pool for the next roulette. This happens
-       * inside the lockstepped run(), so every netplay peer rerolls in sync. */
-      if (m_MinigameSource)
-        m_MinigameSource->rerollMinigames();
+      
+      /* Roll our next set of mini-games */
+      rollAndStampTitles();
+
+      /* Proceed... */
       setState(DR_HOST_STATE_BOARD);
     }
     break;
   }
+
   case DR_HOST_STATE_SIZE:
     break;
   }
@@ -457,92 +486,81 @@ MarioPartyN64Host::MarioPartyN64Host(const DrHostConfig &config, QObject *parent
   connect(m_core, &QRetro::frameEnd, this, [this]() { run(); }, Qt::DirectConnection);
 }
 
-void MarioPartyN64Host::injectMinigameTitles(const std::array<DrMinigameCandidate, 5> &candidates)
+void MarioPartyN64Host::stampTitleRow(
+  unsigned row, const std::array<DrMinigameCandidate, 5> &candidates)
 {
-  if (!m_config.title_addrs) // no title table configured -> skip injection
+  if (!m_config.title_block_addr || row >= 8) // block is [8][5][32]
     return;
 
-  std::array<std::string, 5> names;
-  for (unsigned i = 0; i < 5; i++)
+  for (unsigned slot = 0; slot < 5; slot++)
   {
     const char *name =
-      (candidates[i].minigame && candidates[i].minigame->name) ? candidates[i].minigame->name : "";
-    std::string s;
-    for (size_t k = 0, len = strnlen(name, 32); k < len; k++)
+      (candidates[slot].minigame && candidates[slot].minigame->name)
+        ? candidates[slot].minigame->name : "";
+
+    uint8_t glyphs[32] = {};
+    unsigned n = 0;
+    for (size_t k = 0, len = strnlen(name, 64); k < len && n < 31; k++)
     {
       char c = name[k];
       if (isalpha((unsigned char)c) || isdigit((unsigned char)c) || c == ' ')
-        s += c;
-      else if (c == '.') s += '\x85';
-      else if (c == ',') s += '\x82';
-      else if (c == '\'') s += '\x5C';
-      else if (c == '-') s += '\x3D';
-      else if (c == '!') s += '\xC2';
-      else if (c == '?') s += '\xC3';
-      else if (c == '_') s += '\x86';
-      else if (c == '&') s += '\x7E';
-      else if (c == '%') s += '\x7C';
-      else if (c == ':') s += '\x7B';
+        glyphs[n++] = (uint8_t)c;
+      else if (c == '.') glyphs[n++] = 0x85;
+      else if (c == ',') glyphs[n++] = 0x82;
+      else if (c == '\'') glyphs[n++] = 0x5C;
+      else if (c == '-') glyphs[n++] = 0x3D;
+      else if (c == '!') glyphs[n++] = 0xC2;
+      else if (c == '?') glyphs[n++] = 0xC3;
+      else if (c == '_') glyphs[n++] = 0x86;
+      else if (c == '&') glyphs[n++] = 0x7E;
+      else if (c == '%') glyphs[n++] = 0x7C;
+      else if (c == ':') glyphs[n++] = 0x7B;
     }
-    names[i] = s;
+    /* glyphs[n..31] stay zero: NUL terminator plus padding. */
+
+    const size_t base = m_config.title_block_addr + ((size_t)row * 5 + slot) * 32;
+    for (unsigned j = 0; j < 32; j++)
+      writeu8(glyphs[j], base + j);
   }
-  writeMinigameNames(names);
 }
 
-bool MarioPartyN64Host::initTitleSlots()
+void MarioPartyN64Host::rollAndStampTitles(void)
 {
-  for (unsigned i = 0; i < 5; i++)
-  {
-    size_t addr = m_config.title_addrs[i];
-    uint8_t marker = 0;
+  if (!m_MinigameSource)
+    return;
 
-    if (readu8(&marker, addr + 1) != DR_OK)
-      return false;
-    if (marker != 0x0B)
-      log(DR_LOG_WARN,
-        qPrintable(QString("initTitleSlots[%1]: expected 0x0B at 0x%2, got 0x%3")
-                     .arg(i).arg(addr + 1, 8, 16, QChar('0')).arg(marker, 2, 16, QChar('0'))));
-    m_titleSlotAddrs[i] = addr;
-  }
-  return true;
-}
+  /* One shared reroll keeps every netplay peer's pool identical (see DrMinigameSource). */
+  m_MinigameSource->rerollMinigames();
 
-void MarioPartyN64Host::writeMinigameNames(const std::array<std::string, 5> &names)
-{
-  if (!m_titleSlotsValid)
+  /* Stamp each mini-game type's five names into its own row up front, so the roulette
+   * loader reads whichever row its type byte selects without us reacting to the roll. */
+  for (unsigned t = 0; t < m_config.minigame_type_to_dr_size; t++)
   {
-    if (!initTitleSlots())
-      return;
-    m_titleSlotsValid = true;
+    const dr_minigame_type dr = m_config.minigame_type_to_dr[t];
+    if (dr != DR_MINIGAME_INVALID)
+      stampTitleRow(t, m_MinigameSource->minigameCandidates(dr));
   }
 
-  auto w = [&](uint8_t val, size_t addr) {
-    writeu8(val, addr);
-  };
-
-  for (unsigned i = 0; i < 5; i++)
+  /* A duel-mode overlay indexes the block with its own type byte, which need not match
+   * the duel type's row above; stamp the row it selects with the duel candidates too. */
+  if (m_isDuelBoard && m_config.title_type_addr_duel)
   {
-    size_t addr = m_titleSlotAddrs[i];
-    uint8_t nameLen = (uint8_t)std::min(names[i].size(), (size_t)32);
-
-    size_t contentBytes = m_config.title_addrs[i + 1] - addr - 2;
-    w(nameLen + m_config.title_len_offset, addr);
-    for (size_t j = 0; j < contentBytes; j++)
-      w(j < nameLen ? (uint8_t)names[i][j] : 0, addr + 2 + j);
+    uint8_t row = 0;
+    readu8(&row, m_config.title_type_addr_duel);
+    stampTitleRow(row, m_MinigameSource->minigameCandidates(DR_MINIGAME_DUEL));
   }
 }
 
 void MarioPartyN64Host::rollCandidates(dr_minigame_type type)
 {
+  /* The pool is already rolled (rollAndStampTitles); just copy out the chosen type's
+   * five so startMinigame launches the right guest. */
   if (!m_MinigameSource)
   {
     m_candidates = {};
     return;
   }
 
-  /* Copy out the five candidates for the type the board just chose. The pool is
-   * rerolled when we return to the board after a mini-game, not here; the very
-   * first query lazily fills it. Titles are injected in BEFORE_ROULETTE. */
   m_candidates = m_MinigameSource->minigameCandidates(type);
 }
 
@@ -552,7 +570,8 @@ void MarioPartyN64Host::startMinigame(unsigned index)
     return;
   const dr_mp_minigame_t *mg = m_candidates[index].minigame;
   emit logMessage(DR_LOG_INFO,
-    QString("chosen mini-game: %1 (0x%2)")
+    QString("chosen mini-game: %1 - %2 (0x%3)")
+      .arg(index)
       .arg(mg->name ? mg->name : "(unnamed)")
       .arg(mg->minigame_id, 2, 16, QChar('0')));
   emit minigameRequested(m_candidates[index], m_pendingPlayers);

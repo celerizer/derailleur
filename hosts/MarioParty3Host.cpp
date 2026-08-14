@@ -57,25 +57,109 @@ static const char MP3_CHEAT_DUEL_BOARD[] =
   "+810DFEC4 2400"
   "+810DE2AC 2400";
 
-// Hardware addresses (accessed wordflipped via MarioPartyN64Host). u8 fields unflip ^3.
-static const size_t MP3_SLOT_ADDRS[5] = {
-  0x80102C08, // slot 0
-  0x80102C09, // slot 1
-  0x80102C0A, // slot 2
-  0x80102C0B, // slot 3
-  0x80102C0C, // slot 4
-};
+/* Roulette-title trampoline + hook (see DrHostConfig::cheat_title_hook). MP3 has two
+ * mode overlays with their own title loader call site, toggled by the host: the
+ * shared_board overlay (regular boards) and the name_81 overlay (duel / story). Both
+ * trampolines live at 0x80400000 and tail-call the same loader at 0x8005B43C; they
+ * differ only in which type byte they read. Only one is enabled at a time. */
+static const char MP3_CHEAT_TITLE_HOOK_BOARD[] =
+  // A: list-create (slot in S0). Backs out to the original loader on an ITEM type so
+  // item mini-games keep their real names. Runs long, so B starts at 0x80400038.
+  "81400000 3C01"   // LUI   AT, 0x8010
+  "+81400002 8010"
+  "+81400004 9021"  // LBU   AT, 0x2C0D(AT)    — shared_board type byte (0x80102C0D)
+  "+81400006 2C0D"
+  "+81400008 2402"  // ADDIU V0, ZERO, 3       — ITEM minigame type
+  "+8140000A 0003"
+  "+8140000C 1022"  // BEQ   AT, V0, 0x80400030 — ITEM: back out, run the original loader
+  "+8140000E 0008"
+  "+81400010 0001"  // SLL   V0, AT, 2         — (delay slot) type * 4
+  "+81400012 1080"
+  "+81400014 0041"  // ADDU  V0, V0, AT        — type * 5
+  "+81400016 1021"
+  "+81400018 0050"  // ADDU  V0, V0, S0        — + slot
+  "+8140001A 1021"
+  "+8140001C 0002"  // SLL   V0, V0, 5         — * 32
+  "+8140001E 1140"
+  "+81400020 3C01"  // LUI   AT, 0x8040
+  "+81400022 8040"
+  "+81400024 0022"  // ADDU  AT, AT, V0
+  "+81400026 0821"
+  "+81400028 0801"  // J     0x8005B43C        — redirect into the loader
+  "+8140002A 6D0F"
+  "+8140002C 2425"  // ADDIU A1, AT, 0x80      — (delay slot) block base
+  "+8140002E 0080"
+  "+81400030 0801"  // J     0x8005B43C        — back out: original loader, A1 (real id) untouched
+  "+81400032 6D0F"
+  "+81400034 0000"  // NOP                     — (delay slot)
+  "+81400036 0000"
+  // B: re-read (cursor slot in V1). Item mini-games never reach the cursor re-read, so
+  // no back-out. V1 is the 0-4 cursor position and already the block index -- the
+  // force-id +1 only shifts the stored id (read by onMiniexplainDetected), not the
+  // cursor -- so index V1 directly with no decrement.
+  "+81400038 3C01"  // LUI   AT, 0x8010
+  "+8140003A 8010"
+  "+8140003C 9021"  // LBU   AT, 0x2C0D(AT)
+  "+8140003E 2C0D"
+  "+81400040 0001"  // SLL   V0, AT, 2
+  "+81400042 1080"
+  "+81400044 0041"  // ADDU  V0, V0, AT        — type * 5
+  "+81400046 1021"
+  "+81400048 0043"  // ADDU  V0, V0, V1        — + cursor slot
+  "+8140004A 1021"
+  "+8140004C 0002"  // SLL   V0, V0, 5         — * 32
+  "+8140004E 1140"
+  "+81400050 3C01"  // LUI   AT, 0x8040
+  "+81400052 8040"
+  "+81400054 0022"  // ADDU  AT, AT, V0
+  "+81400056 0821"
+  "+81400058 0801"  // J     0x8005B43C
+  "+8140005A 6D0F"
+  "+8140005C 2425"  // ADDIU A1, AT, 0x80      — block base
+  "+8140005E 0080"
+  // Hooks
+  "+810DFFD8 0C10"  // JAL 0x80400000 — list-create -> A
+  "+810DFFDA 0000"
+  "+810DF480 0C10"  // JAL 0x80400038 — re-read -> B
+  "+810DF482 000E";
 
-// TABLE_BASE=0xB122D74A, HEADER=0x124 (0x48 entries), ENTRY=0x30
-// Slots use odd entries (1,3,5,7,9), each spanning into the next entry for capacity
-static const size_t MP3_MINIGAME_TITLE_ADDRS[6] = {
-  0xB122D89F, // entry  1 len byte
-  0xB122D8FF, // entry  3 len byte
-  0xB122D95F, // entry  5 len byte
-  0xB122D9BF, // entry  7 len byte
-  0xB122DA1F, // entry  9 len byte
-  0xB122DA7F, // entry 11 len byte (sentinel)
-};
+static const char MP3_CHEAT_TITLE_HOOK_DUEL[] =
+  "81400000 3C01"   // LUI   AT, 0x8010
+  "+81400002 8010"
+  "+81400004 9021"  // LBU   AT, 0x2BAD(AT)    — name_81 type byte (0x80102BAD)
+  "+81400006 2BAD"
+  "+81400008 0001"  // SLL   V0, AT, 2
+  "+8140000A 1080"
+  "+8140000C 0041"  // ADDU  V0, V0, AT        — type * 5
+  "+8140000E 1021"
+  "+81400010 0050"  // ADDU  V0, V0, S0        — + slot
+  "+81400012 1021"
+  "+81400014 0002"  // SLL   V0, V0, 5         — * 32
+  "+81400016 1140"
+  "+81400018 3C01"  // LUI   AT, 0x8040
+  "+8140001A 8040"
+  "+8140001C 0022"  // ADDU  AT, AT, V0
+  "+8140001E 0821"
+  "+81400020 0801"  // J     0x8005B43C        — back into the loader
+  "+81400022 6D0F"
+  "+81400024 2425"  // ADDIU A1, AT, 0x80      — block base (delay slot)
+  "+81400026 0080"
+  "+810DFAD8 0C10"  // JAL   0x80400000        — hook (was JAL 0x8005B43C)
+  "+810DFADA 0000";
+
+/* Force the mini-game roulette onto the slot index (0-4). Like the title hook, MP3
+ * has a board (shared_board) and a duel/story (name_81) variant, toggled by the host. */
+static const char MP3_CHEAT_FORCE_ID_BOARD[] =
+  "810DFE84 2602"   // ADDIU V0, S0, 1           — ID = slot index + 1 (1-5)
+  "+810DFE86 0001"
+  "+810DFE94 1000"  // BEQ  ZERO, ZERO, 0x800DFF80 (accept)
+  "+810DFE96 003A";
+
+static const char MP3_CHEAT_FORCE_ID_DUEL[] =
+  "810DF7E8 2602"   // ADDIU V0, S0, 1           — ID = slot index + 1 (1-5)
+  "+810DF7EA 0001"
+  "+810DF7F8 1000"  // BEQ  ZERO, ZERO, 0x800DFA5C (accept)
+  "+810DF7FA 0098";
 
 static const dr_scene_name_t MP3_SCENE_NAMES[] =
 {
@@ -304,11 +388,12 @@ static DrHostConfig makeConfig()
   memcpy(config.minigame_blacklist, blacklist, sizeof(blacklist));
   config.minigame_blacklist_count = 3;
 
-  config.title_addrs = MP3_MINIGAME_TITLE_ADDRS;
-  config.title_id_base = 2;
-  config.title_id_step = 2;
-  config.title_len_offset = 3;
-  config.slot_addrs = MP3_SLOT_ADDRS;
+  config.title_block_addr = 0x80400080;
+  config.title_type_addr_duel = 0x80102BAD; // name_81 overlay's type byte
+  config.cheat_title_hook = MP3_CHEAT_TITLE_HOOK_BOARD;
+  config.cheat_title_hook_duel = MP3_CHEAT_TITLE_HOOK_DUEL;
+  config.cheat_force_id = MP3_CHEAT_FORCE_ID_BOARD;
+  config.cheat_force_id_duel = MP3_CHEAT_FORCE_ID_DUEL;
   config.scene_stack_addr = 0x800D20F0;
   config.scene_stack_count_addr = 0x800D6B60;
   config.scene_stat_board = 0x0192;
@@ -335,34 +420,6 @@ MarioParty3Host::MarioParty3Host(QObject *parent)
       {
         called = true;
         m_core->cheatReset();
-
-        // Hook decompressor at 0x8000B004: if A0 == 0x0122D74A (title table),
-        // set A3 = 0 to skip decompression and use our patched copy in place
-        m_core->cheatSet(0, true,
-          // Hook: J 0x800A7A30 + NOP at 0x8000B004
-          "8100B004 0802"
-          "+8100B006 9E8C"
-          "+8100B008 0000"
-          "+8100B00A 0000"
-          // Trampoline at 0x800A7A30
-          "+810A7A30 AFBF"  // SW   RA, 32(SP)          — displaced original insn from 0x8000B004
-          "+810A7A32 0020"
-          "+810A7A34 AFA4"  // SW   A0, 20(SP)          — displaced original insn from 0x8000B008
-          "+810A7A36 0014"
-          "+810A7A38 3C01"  // LUI  AT, 0x0123          — AT = 0x01230000
-          "+810A7A3A 0123"
-          "+810A7A3C 2421"  // ADDIU AT, AT, -0x28B6    — AT = 0x0122D74A (title table ROM offset)
-          "+810A7A3E D74A"
-          "+810A7A40 1481"  // BNE  A0, AT, +2          — if A0 != title table, skip A3 = 0
-          "+810A7A42 0002"
-          "+810A7A44 0000"  // NOP                      — (delay slot)
-          "+810A7A46 0000"
-          "+810A7A48 0000"  // OR   A3, R0, R0          — A3 = 0: signal decompressor to skip
-          "+810A7A4A 3825"
-          "+810A7A4C 0800"  // J    0x8000B00C          — return past the hooked instructions
-          "+810A7A4E 2C03"
-          "+810A7A50 0000"  // NOP                      — (delay slot)
-          "+810A7A52 0000");
 
         // Unlock all minigames
         m_core->cheatSet(3, true,
@@ -418,102 +475,6 @@ MarioParty3Host::MarioParty3Host(QObject *parent)
 
         m_core->cheatSet(1, false, MP3_CHEAT_REGULAR_BOARD);
         m_core->cheatSet(2, false, MP3_CHEAT_DUEL_BOARD);
-
-        // Write the minigame-title table to ROM at 0xB122D74A. Entries are indexed
-        // by (minigame_id - 1); MarioParty3.cpp uses ids 0x01-0x48, so the table
-        // needs 0x48 entries (strings 0x00-0x47).
-        //   0x00-0x0F : 48-byte roulette slots (names injected at runtime)
-        //   named     : item + special names, each at its (id - 1) string index
-        //   all others: share one 6-byte filler entry
-        static constexpr size_t   TABLE_BASE        = 0xB122D74A;
-        static constexpr uint32_t ENTRY_COUNT       = 0x48; // strings 0x00-0x47
-        static constexpr uint32_t FULL_COUNT        = 16;
-        static constexpr uint32_t ENTRY_SIZE        = 48;
-        static constexpr uint32_t SMALL_ENTRY_SIZE  = 6;  // single shared filler
-        static constexpr uint32_t NAMED_ENTRY_SIZE  = 24; // longest name is 20 chars + 3
-        static constexpr uint32_t HEADER_SIZE       = 4 + ENTRY_COUNT * 4;
-        static constexpr uint32_t FULL_AREA_SIZE    = FULL_COUNT * ENTRY_SIZE;
-        static constexpr uint32_t FILLER_OFFSET     = HEADER_SIZE + FULL_AREA_SIZE;
-        static constexpr uint32_t NAMED_AREA_OFFSET = FULL_AREA_SIZE + SMALL_ENTRY_SIZE;
-
-        // Static (non-roulette) names, placed at string index = minigame_id - 1.
-        struct NamedEntry { uint32_t index; const char *name; };
-        static const NamedEntry NAMED[] = {
-          { 0x3A, "Winner's Wheel" },       // id 0x3B
-          { 0x3B, "Hey, Batter, Batter!" }, // id 0x3C
-          { 0x3C, "Bobbing Bow-loons" },    // id 0x3D
-          { 0x3D, "Dorrie Dip" },           // id 0x3E
-          { 0x3E, "Swinging with Sharks" }, // id 0x3F
-          { 0x3F, "Swing 'n' Swipe" },      // id 0x40
-          { 0x41, "Stardust Battle" },      // id 0x42
-        };
-        static constexpr uint32_t NAMED_COUNT = sizeof(NAMED) / sizeof(*NAMED);
-
-        auto xw = [this](uint8_t val, size_t addr) {
-          writeu8(val, addr);
-        };
-        auto xw32 = [&xw](uint32_t val, size_t addr) {
-          xw(uint8_t(val >> 24), addr);
-          xw(uint8_t(val >> 16), addr + 1);
-          xw(uint8_t(val >>  8), addr + 2);
-          xw(uint8_t(val      ), addr + 3);
-        };
-
-        xw32(ENTRY_COUNT, TABLE_BASE);
-        for (uint32_t i = 0; i < FULL_COUNT; i++)
-          xw32(HEADER_SIZE + i * ENTRY_SIZE, TABLE_BASE + 4 + i * 4);
-        for (uint32_t i = FULL_COUNT; i < ENTRY_COUNT; i++)
-          xw32(FILLER_OFFSET, TABLE_BASE + 4 + i * 4); // default: shared filler
-        for (uint32_t n = 0; n < NAMED_COUNT; n++)
-          xw32(HEADER_SIZE + NAMED_AREA_OFFSET + n * NAMED_ENTRY_SIZE,
-               TABLE_BASE + 4 + NAMED[n].index * 4);
-
-        for (uint32_t i = 0; i < FULL_COUNT; i++)
-        {
-          size_t base = TABLE_BASE + HEADER_SIZE + i * ENTRY_SIZE;
-          xw(0x00, base);     // alignment
-          xw(0x03, base + 1); // len (empty: strlen 0 + offset 3)
-          xw(0x0B, base + 2); // marker
-          for (uint32_t j = 3; j < ENTRY_SIZE; j++)
-            xw(0x00, base + j);
-        }
-
-        {
-          // One filler entry shared by every unnamed id.
-          size_t base = TABLE_BASE + FILLER_OFFSET;
-          xw(0x00, base);     // alignment
-          xw(0x04, base + 1); // len (offset 3 + strlen 1)
-          xw(0x0B, base + 2); // marker
-          xw('A',  base + 3);
-          xw(0x00, base + 4);
-          xw(0x00, base + 5);
-        }
-
-        for (uint32_t n = 0; n < NAMED_COUNT; n++)
-        {
-          size_t base = TABLE_BASE + HEADER_SIZE + NAMED_AREA_OFFSET + n * NAMED_ENTRY_SIZE;
-          const char *name = NAMED[n].name;
-          uint8_t encoded[32] = {};
-          uint8_t nameLen = 0;
-          for (size_t k = 0, srcLen = strlen(name); k < srcLen && nameLen < NAMED_ENTRY_SIZE - 3; k++)
-          {
-            char c = name[k];
-            uint8_t enc;
-            if (isalpha((unsigned char)c) || isdigit((unsigned char)c) || c == ' ')
-              enc = (uint8_t)c;
-            else if (c == '\'') enc = 0x5C;
-            else if (c == '-')  enc = 0x3D;
-            else if (c == ',')  enc = 0x82;
-            else if (c == '!')  enc = 0xC2;
-            else continue;
-            encoded[nameLen++] = enc;
-          }
-          xw(0x00, base);
-          xw(nameLen + 3, base + 1); // len = offset 3 + strlen
-          xw(0x0B, base + 2);        // marker
-          for (uint32_t j = 0; j < NAMED_ENTRY_SIZE - 3; j++)
-            xw(j < nameLen ? encoded[j] : 0, base + 3 + j);
-        }
       }
     },
     Qt::DirectConnection);

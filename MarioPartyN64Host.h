@@ -104,11 +104,22 @@ struct DrHostConfig
   uint8_t minigame_blacklist[16];
   unsigned minigame_blacklist_count;
 
-  const size_t *title_addrs;              // 6 addrs (5 slots + sentinel), nullptr = no injection
-  uint8_t title_id_base;                  // first roulette ID (e.g. 0x25)
-  uint8_t title_id_step;                  // step between IDs (e.g. 2); 0 = use slot_addrs instead
-  uint8_t title_len_offset;              // added to nameLen when writing the length byte
-  const size_t *slot_addrs;              // 5 word-flipped RAM addrs holding per-slot minigame IDs
+  /* Roulette-title injection. A cheat (cheat_title_hook) installs a trampoline that
+   * redirects the game's title loader to read NUL-terminated glyph strings from a
+   * flat block at title_block_addr, laid out type-major as [type][5 slots][32 bytes]:
+   *   title_block_addr + (rawType * 5 + slot) * 32
+   * The trampoline reads the game's own minigame-type byte, so nothing has to react
+   * to the roll -- the host stamps every type's row up front on entering the board
+   * (see rollAndStampTitles). 0 = no injection. */
+  size_t title_block_addr;
+  size_t title_type_addr_duel;            // duel-overlay type byte, stamped with duel candidates; 0 = none
+  const char *cheat_title_hook;           // GS: trampoline + jal hook for the board title loader; nullptr = none
+  const char *cheat_title_hook_duel;      // GS: same for a duel-mode overlay (MP3 name_81); nullptr = none
+  /* GS codes that force the roulette to land on the slot index, so the chosen minigame
+   * id read back is exactly the slot (0-4). Toggled by board/duel like the hooks above;
+   * cheat_force_id_duel = nullptr for a game without a separate duel overlay. */
+  const char *cheat_force_id;
+  const char *cheat_force_id_duel;
   /* The game's native scene stack: a LIFO of 5 8-byte elements { s32 scene, s16 event,
    * s16 stat } at scene_stack_addr, with an s16 count at scene_stack_count_addr. The
    * game pops the top (index count-1) each transition; when the count hits 0 it infers
@@ -150,54 +161,16 @@ public:
 
   void run(void);
 
-  virtual void injectMinigameTitles(const std::array<DrMinigameCandidate, 5> &candidates);
-
-  // Called when miniexplain is detected. Maps the landed roulette id to a slot in
-  // m_pendingStartIndex; returns true if a slot matched, false to default to 0.
-  virtual bool onMiniexplainDetected(dr_minigame_type type, int16_t minigameId,
-    const DrPlayerArray &players)
-  {
-    (void)type;
-    (void)players;
-    if (m_config.title_id_step > 0)
-    {
-      for (unsigned k = 0; k < 5; k++)
-        if (minigameId == (int16_t)(m_config.title_id_base + k * m_config.title_id_step))
-        {
-          m_pendingStartIndex = k;
-          return true;
-        }
-      return false;
-    }
-    if (m_config.slot_addrs)
-    {
-      for (unsigned k = 0; k < 5; k++)
-      {
-        uint8_t slotId = 0;
-        readu8(&slotId, m_config.slot_addrs[k]);
-        if (minigameId == (int16_t)slotId)
-        {
-          m_pendingStartIndex = k;
-          return true;
-        }
-      }
-      return false;
-    }
-    m_pendingStartIndex = 0;
-    return true;
-  }
-
-protected:
-  bool initTitleSlots();
-  void writeMinigameNames(const std::array<std::string, 5> &names);
-  size_t m_titleSlotAddrs[5] = {};
-  bool m_titleSlotsValid = false;
-
 private:
   void readPlayers(dr_minigame_type type);
-  /// Rerolls the shared mini-game pool and copies the five candidates for `type`
-  /// into m_candidates. No-op fill (all null) if there is no source.
+  /// Copies the five cached candidates for `type` into m_candidates (for launching the
+  /// chosen guest). Does not reroll -- the pool is rolled by rollAndStampTitles.
   void rollCandidates(dr_minigame_type type);
+  /// Rerolls the shared pool and stamps every mini-game type's five names into its row
+  /// of the title block, so the roulette can read any row without reacting to the roll.
+  void rollAndStampTitles(void);
+  /// Encodes and writes one 5-slot title row (block index `row`) into the block.
+  void stampTitleRow(unsigned row, const std::array<DrMinigameCandidate, 5> &candidates);
   void writeBattleCoins();
   /// Writes all 5 scene-stack elements from `overlays` and sets the element count.
   /// No-op when the stack isn't configured.
