@@ -344,6 +344,22 @@ void MarioPartyN64Host::run(void)
           ? m_config.minigame_type_to_dr[m_MinigameType] : DR_MINIGAME_INVALID;
         readPlayers(mg_type);
 
+        /* A 1P mini-game has a single participant (the board slot with team id 0);
+         * give that player netplay golf mode so they play without waiting on the idle
+         * peers. Cleared when the mini-game returns to the board. */
+        if (mg_type == DR_MINIGAME_1P)
+        {
+          int authority = -1;
+          for (unsigned i = 0; i < 4; i++)
+            if (m_pendingPlayers[i].team_id == 0)
+            {
+              authority = static_cast<int>(m_pendingPlayers[i].control_port) - DR_CONTROL_PORT_P1;
+              break;
+            }
+          emit golfModeRequested(authority, 30);
+          m_hostGolfMode = true;
+        }
+
         /* I can't remember why but these are offset differently */
         if (game() != DR_GAME_MARIOPARTY1)
           m_lastMinigameId -= 1;
@@ -454,7 +470,14 @@ void MarioPartyN64Host::run(void)
       m_lastMinigameId = -1;
       writeu8(0xFF, m_config.minigame_id_addr);
       writeForFrames(m_config.minigame_type_addr, &ff, 1, 30);
-      
+
+      /* Clear any golf mode we granted for a 1P mini-game. */
+      if (m_hostGolfMode)
+      {
+        emit golfModeRequested(-1, 30);
+        m_hostGolfMode = false;
+      }
+
       /* Roll our next set of mini-games */
       rollAndStampTitles();
 
@@ -499,10 +522,6 @@ MarioPartyN64Host::MarioPartyN64Host(const DrHostConfig &config, QObject *parent
   applyN64Remaps();
 
   connect(m_core, &QRetro::frameEnd, this, [this]() { run(); }, Qt::DirectConnection);
-
-  /* A savestate load restores an arbitrary board state; reroll the pool so the next
-   * roulette isn't the set that was current when the state was saved. */
-  connect(m_core, &QRetro::onStateLoaded, this, [this]() { rollAndStampTitles(); });
 }
 
 void MarioPartyN64Host::stampTitleRow(

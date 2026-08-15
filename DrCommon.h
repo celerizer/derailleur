@@ -620,4 +620,9 @@ int dr_rand(void);
 
 unsigned long dr_rand_count(void);
 
+/// Read/restore the raw PRNG state, so a netplay hard resync can realign the shared
+/// dr_rand sequence (which is not part of the emulator savestate).
+unsigned dr_rand_state(void);
+void dr_set_rand_state(unsigned state, unsigned long count);
+
 #endif

@@ -334,6 +334,8 @@ private:
   int m_ResyncCtx = -1;
   bool m_ResyncStateReady = false;
   quint64 m_ResyncFrame = 0;
+  quint32 m_ResyncRandState = 0; // host's dr_rand state to restore alongside the savestate
+  quint64 m_ResyncRandCount = 0;
   QByteArray m_ResyncState; // decompressed savestate awaiting load (client)
 };
 

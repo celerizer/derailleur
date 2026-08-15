@@ -137,3 +137,14 @@ unsigned long dr_rand_count(void)
 {
   return rand_count;
 }
+
+unsigned dr_rand_state(void)
+{
+  return rand_state;
+}
+
+void dr_set_rand_state(unsigned state, unsigned long count)
+{
+  rand_state = static_cast<uint32_t>(state);
+  rand_count = count;
+}

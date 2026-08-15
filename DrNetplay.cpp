@@ -950,14 +950,18 @@ void DrNetplay::handleMessage(QTcpSocket *sock, quint8 type, const QByteArray &p
   case DR_NETPLAY_PACKET_RESYNC_STATE:
   {
     quint64 frame = 0;
+    quint32 randState = 0;
+    quint64 randCount = 0;
     {
-      QDataStream s(payload.left(8));
+      QDataStream s(payload.left(20));
       s.setByteOrder(QDataStream::LittleEndian);
-      s >> frame;
+      s >> frame >> randState >> randCount;
     }
-    const QByteArray raw = qUncompress(payload.mid(8));
+    const QByteArray raw = qUncompress(payload.mid(20));
     QMutexLocker lock(&m_RecvMutex);
     m_ResyncFrame = frame;
+    m_ResyncRandState = randState;
+    m_ResyncRandCount = randCount;
     m_ResyncState = raw;
     m_ResyncStateReady = true;
     m_FrameReady.wakeAll();
@@ -1053,6 +1057,10 @@ void DrNetplay::runResync(int context)
       QDataStream s(&payload, QIODevice::WriteOnly);
       s.setByteOrder(QDataStream::LittleEndian);
       s << static_cast<quint64>(newFrame);
+      /* Ship the shared PRNG state too -- it lives outside the savestate, so peers must
+       * realign it to stay in lockstep after the resync. */
+      s << static_cast<quint32>(dr_rand_state());
+      s << static_cast<quint64>(dr_rand_count());
     }
     payload.append(qCompress(raw));
     QMetaObject::invokeMethod(
@@ -1077,6 +1085,8 @@ void DrNetplay::runResync(int context)
      * host's frame and re-prime so the next gate is a clean barrier. */
     QByteArray state;
     quint64 frame = 0;
+    quint32 randState = 0;
+    quint64 randCount = 0;
     {
       QMutexLocker lock(&m_RecvMutex);
       while (!m_ResyncStateReady && m_Active && !m_Abort && m_ResyncActive.load())
@@ -1088,6 +1098,8 @@ void DrNetplay::runResync(int context)
       }
       state = m_ResyncState;
       frame = m_ResyncFrame;
+      randState = m_ResyncRandState;
+      randCount = m_ResyncRandCount;
       m_ResyncStateReady = false;
       m_ResyncState.clear();
     }
@@ -1095,6 +1107,9 @@ void DrNetplay::runResync(int context)
     if (state.isEmpty() ||
         !core->unserialize(state.constData(), static_cast<size_t>(state.size())))
       emit logMessage(DR_LOG_ERROR, "netplay: hard resync unserialize failed");
+
+    /* Realign the shared PRNG to the host's, alongside the loaded state. */
+    dr_set_rand_state(randState, randCount);
 
     {
       QMutexLocker lock(&m_RecvMutex);

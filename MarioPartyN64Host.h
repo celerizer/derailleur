@@ -195,6 +195,7 @@ private:
   bool m_itemPending = false;
   bool m_itemSceneLeft = false;
   uint8_t m_itemChosenId = 0;
+  bool m_hostGolfMode = false; // host granted golf mode for the running mini-game (1P)
 
   /* MP3 mini-game star bandaid (see fixup_mg_star). Armed at writeResults; the
    * countdown runs down in run(), then adds coins for any player whose star total
