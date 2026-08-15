@@ -341,11 +341,15 @@ void CoreDolphin::doApplyGameData(const DrGameData &data)
                    .arg(setupFrames)
                    .arg(owner->minigameActive() ? "" : " (timed out)")));
 
-  /* Latch the core at this exact frame boundary for netplay. Running pause() as a
-   * timing-thread action (rather than from this GUI thread) makes it land on a
-   * deterministic frame instead of racing the free-running timing thread -- without
-   * it peers can end up exactly one frame apart. setActiveContext then gates from
-   * here and mainwindow's minigameStarted handler unpauses. */
+  /* A timed-out delegate means our setup diverged from the peers'; ask for a hard
+   * resync (once) so we realign. Only meaningful during a netplay session. */
+  if (dr_netplay_active() && !owner->minigameActive() && !m_resyncRequested)
+  {
+    m_resyncRequested = true;
+    emit desyncSuspected();
+  }
+
+  /* Stop on an exact frame gate */
   core()->execOnTimingThread([c = core()]() { c->pause(); });
 
   log(DR_LOG_INFO, "disc change: starting minigame");

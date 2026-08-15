@@ -61,6 +61,7 @@ private:
   QString m_subdir;
   QString m_baseCorePath; /* the (unpatched) Dolphin library, loaded lazily */
   int m_discIndex = -1;
+  bool m_resyncRequested = false; /* only ask for a hard resync once per session */
 };
 
 #endif

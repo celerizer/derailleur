@@ -586,9 +586,10 @@ static inline const char *dr_wii_control_name(dr_wii_control c)
 /// instance through dr_settings_get(); load once at startup and save on change.
 struct dr_settings
 {
-  /// Give each GameCube game its own Dolphin instance instead of sharing one and
-  /// hot-swapping discs. Takes effect at startup (instances are built then).
-  bool separate_gamecube_instances = false;
+  /// Share a single Dolphin core across the GameCube games (hot-swapping discs)
+  /// instead of giving each its own instance. Off by default (separate instances);
+  /// only worth enabling to save memory. Takes effect at startup.
+  bool shared_gamecube_core = false;
 };
 
 dr_settings &dr_settings_get(void);
@@ -609,6 +610,11 @@ QString dr_core_path(dr_core core);
 QString dr_os_extension(void);
 
 void dr_srand(unsigned seed);
+
+/// Whether a netplay session is currently active. Set by DrNetplay so code without a
+/// DrNetplay handle (e.g. guests) can gate netplay-only behavior.
+bool dr_netplay_active(void);
+void dr_set_netplay_active(bool active);
 
 int dr_rand(void);
 

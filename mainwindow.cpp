@@ -213,7 +213,7 @@ MainWindow::MainWindow(QWidget *parent)
   m_Netplay = new DrNetplay(m_InputStore, this);
   setupNetplay();
 
-  if (dr_settings_get().separate_gamecube_instances)
+  if (!dr_settings_get().shared_gamecube_core)
   {
     /* One single-disc Dolphin per GameCube game (like the Wii ones), so no disc
      * swapping happens at all. Each needs a unique subdir for its own system/save

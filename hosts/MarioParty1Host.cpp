@@ -179,7 +179,7 @@ static const dr_scene_name_t MP1_SCENE_NAMES[] =
   // { 0x4c, "" },
   { 0x4d, "Yoshi's Tropical Island" }, // thwomp visit
   { 0x4e, "Yoshi's Tropical Island" }, // bubba event
-  // { 0x4f, "" },
+  { 0x4f, "Yoshi's Tropical Island" }, // bowser visit
   // { 0x50, "" },
   // { 0x51, "" },
   // { 0x52, "" },

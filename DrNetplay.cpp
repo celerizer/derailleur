@@ -176,6 +176,7 @@ void DrNetplay::startGame(int gameId, const QString &saveBaseName)
   broadcast(DR_NETPLAY_PACKET_SET_DELAY, delayPayload);
 
   m_Active = true;
+  dr_set_netplay_active(true);
   resetFrameCounter();
   emit logMessage(DR_LOG_INFO,
     QString("netplay: server starting game %1, peers=%2, sockets=%3")
@@ -847,6 +848,7 @@ void DrNetplay::handleMessage(QTcpSocket *sock, quint8 type, const QByteArray &p
     }
     dr_srand(seed);
     m_Active = true;
+    dr_set_netplay_active(true);
     resetFrameCounter();
     emit logMessage(DR_LOG_INFO,
       QString("netplay: client received start, game %1, peers=%2").arg(gameId).arg(m_PeerCount));
@@ -1175,6 +1177,7 @@ void DrNetplay::dropSession(const QString &reason)
     return;
 
   m_Active = false;
+  dr_set_netplay_active(false);
 
   for (QTcpSocket *sock : m_Sockets)
   {
