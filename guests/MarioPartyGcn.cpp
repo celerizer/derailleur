@@ -28,6 +28,8 @@ void MarioPartyGcn::run()
     m_lastScene = val;
     if (!m_minigameActive && val == m_config.scene_miniexplain)
       startMinigame();
+    if (m_minigame && val == m_minigame->scene_id && dr_netplay_active())
+      emit hardResyncRequested();
     if (m_minigameActive && m_minigameFrames >= 60 &&
         val != m_config.scene_miniexplain && val != m_minigame->scene_id &&
         val != -1)

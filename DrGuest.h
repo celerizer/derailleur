@@ -196,6 +196,9 @@ signals:
   /// The guest suspects its just-started state may differ across netplay peers
   /// (e.g. a non-deterministic setup that couldn't be gated). Prompts a hard resync.
   void desyncSuspected();
+  /// Proactively asks for a hard resync (e.g. on the frame a mini-game begins), to
+  /// realign peers after the non-deterministic boot/practice. May fire repeatedly.
+  void hardResyncRequested();
   /// Requests netplay "golf mode": `authorityPlayer` (a player index 0-3) gets 0
   /// input delay, everyone else `highDelay` frames. -1 disables it. See setGolfMode.
   void golfModeRequested(int authorityPlayer, int highDelay);

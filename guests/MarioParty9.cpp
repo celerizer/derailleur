@@ -227,6 +227,8 @@ void MarioParty9::run()
     {
       applyControlRemap(m_minigame->quirks, m_players);
       m_controlsApplied = true;
+      if (dr_netplay_active())
+        emit hardResyncRequested();
     }
   }
 

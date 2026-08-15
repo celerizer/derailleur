@@ -603,6 +603,10 @@ void MainWindow::startWithHost(DrHost *host)
   for (DrGuest *guest : m_Guests->guests())
     connect(guest, &DrGuest::desyncSuspected, m_Netplay, &DrNetplay::requestResync);
 
+  /* A guest can also proactively request a hard resync (e.g. entering a mini-game). */
+  for (DrGuest *guest : m_Guests->guests())
+    connect(guest, &DrGuest::hardResyncRequested, m_Netplay, &DrNetplay::requestResync);
+
   /* A guest (e.g. a golf mini-game) can request netplay "golf mode" -- one player
    * gets 0 input delay, the rest a high delay for turn-based priority. */
   for (DrGuest *guest : m_Guests->guests())

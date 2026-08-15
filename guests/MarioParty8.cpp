@@ -409,6 +409,9 @@ void MarioParty8::run()
     else if (m_minigame && val == m_minigame->scene_id)
       applyControlRemap(m_minigame->quirks, m_players);
 
+    if (m_minigame && val == m_minigame->scene_id && dr_netplay_active())
+      emit hardResyncRequested();
+
     /* Once the scene leaves the mini-game (its own scene_id), the explanation
      * screen and the -1 loading state, the mini-game is over. */
     if (m_minigameActive && m_minigameFrames >= 60 &&
