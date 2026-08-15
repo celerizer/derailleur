@@ -115,6 +115,19 @@ bool CoreDolphin::loadCore()
   const bool ok = core() && core()->loadCore(loadPath.toUtf8().constData());
   if (!ok)
     log(DR_LOG_ERROR, qPrintable(QString("failed to load core: %1").arg(loadPath)));
+  else
+  {
+    // Apply Dolphin settings we will need
+    // See: https://github.com/classicslive/QRetro/blob/master/docs/Cores.md#Dolphin
+
+    // Core > Dual Core Mode
+    // Needs to be disabled for serialization to work.
+    core()->options()->setOptionValue("dolphin_main_cpu_thread", "disabled");
+
+    // Core > Fastmem
+    // Needs to be disabled for multi-instancing to work.
+    core()->options()->setOptionValue("dolphin_fastmem", "disabled");
+  }
 
   if (!patchedPath.isEmpty())
     QFile::remove(patchedPath);
@@ -147,27 +160,14 @@ void CoreDolphin::addGame(DolphinGuest *game)
   }
 
   if (m_games.isEmpty())
-  {
-    // Apply Dolphin settings we will need
-    // See: https://github.com/classicslive/QRetro/blob/master/docs/Cores.md#Dolphin
-
-    // Core > Dual Core Mode
-    // Needs to be disabled for serialization to work.
-    core()->options()->setOptionValue("dolphin_main_cpu_thread", "disabled");
-
-    // Core > Fastmem
-    // Needs to be disabled for multi-instancing to work.
-    core()->options()->setOptionValue("dolphin_fastmem", "disabled");
-
-    /* The library is dlopen'd lazily on the first launch; see loadCore(). */
     m_baseCorePath = QString::fromStdString(game->corePath());
-  }
 
   m_games.append(game);
   m_discPaths.append(discPath);
 
   connect(game, &DrGuest::minigameFinished, this, [this]() { finishMinigame(); });
   connect(game, &DrGuest::logMessage, this, &DrGuest::logMessage);
+  connect(game, &DrGuest::hardResyncRequested, this, &DrGuest::hardResyncRequested);
 
   // Collect all mini-games from this game
   for (const dr_mp_minigame_t *mg = game->minigames(); mg && mg->name; mg++)
@@ -178,9 +178,6 @@ void CoreDolphin::addGame(DolphinGuest *game)
 
 void CoreDolphin::finalizeGames()
 {
-  /* Only write the disc-list m3u here; the base loads it lazily on the first
-   * launch (gamePath() returns m_m3uPath) so the two Dolphin cores don't both
-   * boot at startup. */
   QFile m3u(m_m3uPath);
   if (m3u.open(QIODevice::WriteOnly | QIODevice::Text))
   {
