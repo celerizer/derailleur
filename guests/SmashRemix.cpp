@@ -4,21 +4,21 @@
 #include <QFile>
 
 static const dr_mp_minigame_t SR_MINIGAMES[] = {
-  { "Remix Free-for-all", DR_MINIGAME_4P,     0x00, 0xFF, DR_NO_QUIRKS },
-  { "Remix Battle",       DR_MINIGAME_BATTLE, 0x00, 0xFF, DR_NO_QUIRKS },
+  { "Remix Free-for-all", DR_MINIGAME_4P,     0x00, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Remix Battle",       DR_MINIGAME_BATTLE, 0x00, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
 
-  { "Remix Team Battle", DR_MINIGAME_2V2, 0x01, 0xFF, DR_NO_QUIRKS },
+  { "Remix Team Battle", DR_MINIGAME_2V2, 0x01, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
 
-  { "Remix Giant Battle", DR_MINIGAME_1V3, 0x02, 0xFF, DR_NO_QUIRKS },
-  { "Remix Tiny Battle",  DR_MINIGAME_1V3, 0x03, 0xFF, DR_NO_QUIRKS },
-  { "Remix Golden Gun",   DR_MINIGAME_1V3, 0x04, 0xFF, DR_NO_QUIRKS },
-  { "Remix Hammer",  DR_MINIGAME_1V3, 0x06, 0xFF, DR_NO_QUIRKS },
+  { "Remix Giant Battle", DR_MINIGAME_1V3, 0x02, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Remix Tiny Battle",  DR_MINIGAME_1V3, 0x03, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Remix Golden Gun",   DR_MINIGAME_1V3, 0x04, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Remix Hammer",  DR_MINIGAME_1V3, 0x06, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
 
-  { "Remix PKMN", DR_MINIGAME_4P, 0x05, 0xFF, DR_NO_QUIRKS },
+  { "Remix PKMN", DR_MINIGAME_4P, 0x05, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
 
-  { "Remix Duel", DR_MINIGAME_DUEL, 0x00, 0xFF, DR_NO_QUIRKS },
+  { "Remix Duel", DR_MINIGAME_DUEL, 0x00, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
 
-  { nullptr, DR_MINIGAME_INVALID, 0xFF, 0xFF, DR_NO_QUIRKS },
+  { nullptr, DR_MINIGAME_INVALID, 0xFF, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
 };
 
 /* Whether the game is in team battle mode */

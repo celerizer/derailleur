@@ -368,7 +368,19 @@ MainWindow::MainWindow(QWidget *parent)
 #endif
 
   /* Settings: user-facing options backed by the global dr_settings. */
-  m_Tools->addTool(tr("Settings"), new DrSettings());
+  DrSettings *settingsTool = new DrSettings();
+  m_Tools->addTool(tr("Settings"), settingsTool);
+  connect(settingsTool, &DrSettings::redownloadSavesRequested, this, [this]() {
+    QSettings s(QDir::current().filePath("derailleur.ini"), QSettings::IniFormat);
+    DrDownloader downloader;
+#if SHOW_LOGGER
+    connect(&downloader, &DrDownloader::logMessage, m_Logger, &DrLogger::message);
+    connect(&downloader, &DrDownloader::progressStarted, m_Logger, &DrLogger::showProgress);
+    connect(&downloader, &DrDownloader::progressFinished, m_Logger, &DrLogger::hideProgress);
+    connect(&downloader, &DrDownloader::progressUpdated, m_Logger, &DrLogger::setProgress);
+#endif
+    downloader.downloadSaves(s, dr_save_directory(), dr_state_directory());
+  });
 
   connect(m_Stack, &QStackedWidget::currentChanged, this, [this](int index) {
     if (QWidget *page = m_Stack->widget(index))

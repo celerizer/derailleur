@@ -19,23 +19,23 @@ static const size_t MK64_PLAYER_STRIDE = 0xDD8;
 static const int16_t MK64_STATUS_BOT = 0x1000;
 
 static const dr_mp_minigame_t MK64_MINIGAMES[] = {
-  { "Single Race: Luigi Raceway", DR_MINIGAME_4P, 0x00, 0xFF, DR_NO_QUIRKS },
-  { "Single Race: Moo Moo Farm", DR_MINIGAME_4P, 0x01, 0xFF, DR_NO_QUIRKS },
-  { "Single Race: Koopa Troopa Beach", DR_MINIGAME_4P, 0x02, 0xFF, DR_NO_QUIRKS },
-  { "Single Race: Kalimari Desert", DR_MINIGAME_4P, 0x03, 0xFF, DR_NO_QUIRKS },
-  { "Single Race: Toad's Turnpike", DR_MINIGAME_4P, 0x04, 0xFF, DR_NO_QUIRKS },
-  { "Single Race: Frappe Snowland", DR_MINIGAME_4P, 0x05, 0xFF, DR_NO_QUIRKS },
-  { "Single Race: Choco Mountain", DR_MINIGAME_4P, 0x06, 0xFF, DR_NO_QUIRKS },
-  { "Single Race: Mario Raceway", DR_MINIGAME_4P, 0x07, 0xFF, DR_NO_QUIRKS },
-  { "Single Race: Wario Stadium", DR_MINIGAME_4P, 0x08, 0xFF, DR_NO_QUIRKS },
-  { "Single Race: Sherbet Land", DR_MINIGAME_4P, 0x09, 0xFF, DR_NO_QUIRKS },
-  { "Single Race: Royal Raceway", DR_MINIGAME_4P, 0x0A, 0xFF, DR_NO_QUIRKS },
-  { "Single Race: Bowser's Castle", DR_MINIGAME_4P, 0x0B, 0xFF, DR_NO_QUIRKS },
-  { "Single Race: D.K.'s Jungle Parkway", DR_MINIGAME_4P, 0x0C, 0xFF, DR_NO_QUIRKS },
-  { "Single Race: Yoshi Valley", DR_MINIGAME_4P, 0x0D, 0xFF, DR_NO_QUIRKS },
-  { "Single Race: Banshee Boardwalk", DR_MINIGAME_4P, 0x0E, 0xFF, DR_NO_QUIRKS },
-  { "Single Race: Rainbow Road", DR_MINIGAME_4P, 0x0F, 0xFF, DR_NO_QUIRKS },
-  { nullptr, DR_MINIGAME_INVALID, 0xFF, 0xFF, DR_NO_QUIRKS },
+  { "Single Race: Luigi Raceway", DR_MINIGAME_4P, 0x00, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Single Race: Moo Moo Farm", DR_MINIGAME_4P, 0x01, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Single Race: Koopa Troopa Beach", DR_MINIGAME_4P, 0x02, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Single Race: Kalimari Desert", DR_MINIGAME_4P, 0x03, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Single Race: Toad's Turnpike", DR_MINIGAME_4P, 0x04, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Single Race: Frappe Snowland", DR_MINIGAME_4P, 0x05, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Single Race: Choco Mountain", DR_MINIGAME_4P, 0x06, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Single Race: Mario Raceway", DR_MINIGAME_4P, 0x07, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Single Race: Wario Stadium", DR_MINIGAME_4P, 0x08, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Single Race: Sherbet Land", DR_MINIGAME_4P, 0x09, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Single Race: Royal Raceway", DR_MINIGAME_4P, 0x0A, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Single Race: Bowser's Castle", DR_MINIGAME_4P, 0x0B, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Single Race: D.K.'s Jungle Parkway", DR_MINIGAME_4P, 0x0C, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Single Race: Yoshi Valley", DR_MINIGAME_4P, 0x0D, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Single Race: Banshee Boardwalk", DR_MINIGAME_4P, 0x0E, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Single Race: Rainbow Road", DR_MINIGAME_4P, 0x0F, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { nullptr, DR_MINIGAME_INVALID, 0xFF, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
 };
 
 static const uint8_t MK64_TRACK_ID[] = {
@@ -122,7 +122,7 @@ void MarioKart64::run()
       if (m_retro->readu32(&laps, MK64_LAPS_ADDR[i]) == DR_OK && laps >= 3)
       {
         m_winnerIndex = m_slotToIndex[i];
-        m_finishCountdown = 240;
+        m_finishCountdown = 360;
         break;
       }
     }

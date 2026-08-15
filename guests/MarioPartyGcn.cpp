@@ -26,6 +26,8 @@ void MarioPartyGcn::run()
   {
     log(DR_LOG_INFO, qPrintable(QString("%1 scene: 0x%2").arg(name()).arg(val, 4, 16, QChar('0'))));
     m_lastScene = val;
+    if (!m_minigameActive && val == m_config.scene_miniexplain)
+      startMinigame();
     if (m_minigameActive && m_minigameFrames >= 60 &&
         val != m_config.scene_miniexplain && val != m_minigame->scene_id &&
         val != -1)
@@ -52,7 +54,6 @@ void MarioPartyGcn::doApplyGameData(const DrGameData &data)
   int16_t id = static_cast<int16_t>(data.minigame->minigame_id);
   m_retro->writeForFrames(m_config.minigame_addr, &id, sizeof(id), 120);
   applyPlayers();
-  startMinigame();
 }
 
 dr_minigame_result_t MarioPartyGcn::minigameResult(unsigned index)

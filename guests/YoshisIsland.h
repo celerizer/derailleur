@@ -3,14 +3,6 @@
 
 #include "../DrGuest.h"
 
-/*
- * Super Mario World 2: Yoshi's Island (SNES) -- skeleton guest, hosted by its
- * own snes9x core.
- *
- * TODO: fill in the mini-game table, the per-player/setup memory addresses,
- *       doApplyGameData (load a savestate + write the selected mini-game and
- *       players), finish detection in run(), and minigameResult.
- */
 class YoshisIsland : public DrGuest
 {
   Q_OBJECT

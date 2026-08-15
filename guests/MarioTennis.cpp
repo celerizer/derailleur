@@ -101,10 +101,10 @@ static const mt_character_t MT_DR_TO_CHAR[DR_CHARACTER_SIZE] = {
 };
 
 static const dr_mp_minigame_t MT_MINIGAMES[] = {
-  { "Tennis: Exhibition", DR_MINIGAME_2V2, 0x03, 0xFF, DR_NO_QUIRKS },
-  { "Tennis: Bowser Stage", DR_MINIGAME_2V2, 0x06, 0xFF, DR_NO_QUIRKS },
-  { "Tennis: Tiebreaker", DR_MINIGAME_DUEL, 0x07, 0xFF, DR_NO_QUIRKS },
-  { nullptr, DR_MINIGAME_INVALID, 0xFF, 0xFF, DR_NO_QUIRKS },
+  { "Tennis: Exhibition", DR_MINIGAME_2V2, 0x03, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Tennis: Bowser Stage", DR_MINIGAME_2V2, 0x06, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Tennis: Tiebreaker", DR_MINIGAME_DUEL, 0x07, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { nullptr, DR_MINIGAME_INVALID, 0xFF, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
 };
 
 MarioTennis::MarioTennis(QObject *parent)

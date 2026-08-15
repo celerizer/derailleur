@@ -259,6 +259,21 @@ void MarioPartyN64Host::run(void)
       break;
     }
 
+    /* Color each roulette title by its flags: yellow for a lucky mini-game, red for an
+     * unlucky one, white otherwise. minigame_title_color_addr is the base of a u8 array
+     * indexed by slot (0-4). */
+    if (m_config.minigame_title_color_addr)
+      for (unsigned i = 0; i < 5; i++)
+      {
+        const dr_mp_minigame_t *mg = m_candidates[i].minigame;
+        uint8_t color = MP64_TEXT_WHITE;
+        if (mg && mg->flags.flags.lucky)
+          color = MP64_TEXT_YELLOW;
+        else if (mg && mg->flags.flags.unlucky)
+          color = MP64_TEXT_RED;
+        writeu8(color, m_config.minigame_title_color_addr + i);
+      }
+
     /* Write -1 to current mini-game to monitor for change */
     if (m_config.minigame_id_is_8bit)
       writes8(-1, m_config.minigame_id_addr);
@@ -484,6 +499,10 @@ MarioPartyN64Host::MarioPartyN64Host(const DrHostConfig &config, QObject *parent
   applyN64Remaps();
 
   connect(m_core, &QRetro::frameEnd, this, [this]() { run(); }, Qt::DirectConnection);
+
+  /* A savestate load restores an arbitrary board state; reroll the pool so the next
+   * roulette isn't the set that was current when the state was saved. */
+  connect(m_core, &QRetro::onStateLoaded, this, [this]() { rollAndStampTitles(); });
 }
 
 void MarioPartyN64Host::stampTitleRow(
@@ -631,6 +650,20 @@ void MarioPartyN64Host::readPlayers(dr_minigame_type type)
     else
       m_pendingPlayers[i].team_type = DR_TEAM_TYPE_SOLO;
   }
+
+  /* TODO remove: diagnose in-game duels being odd. Dump what team_addr/controller_addr
+   * actually hold, to compare against the debug menu (which sets both duelists team_id 0). */
+  if (type == DR_MINIGAME_DUEL)
+    for (unsigned i = 0; i < 4; i++)
+    {
+      const dr_player_t &p = m_pendingPlayers[i];
+      emit logMessage(DR_LOG_ERROR,
+        QString("TODO duel: p%1 team_id=%2 team_type=%3 port=%4 chr=%5 %6")
+          .arg(i).arg(p.team_id).arg((int)p.team_type)
+          .arg((int)p.control_port - DR_CONTROL_PORT_P1)
+          .arg(dr_character_name(p.character))
+          .arg(p.control_type == DR_CONTROL_TYPE_CPU ? "CPU" : "human"));
+    }
 }
 
 void MarioPartyN64Host::writeBattleCoins()

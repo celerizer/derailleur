@@ -4,6 +4,7 @@
 
 #include <QCheckBox>
 #include <QLabel>
+#include <QPushButton>
 #include <QVBoxLayout>
 
 DrSettings::DrSettings(QWidget *parent)
@@ -30,6 +31,14 @@ DrSettings::DrSettings(QWidget *parent)
   note->setWordWrap(true);
   note->setEnabled(false); /* muted */
   layout->addWidget(note);
+
+  QPushButton *redownloadSaves = new QPushButton(tr("Re-download saves"), this);
+  redownloadSaves->setToolTip(
+    tr("Fetch the latest save files from the server, overwriting your local ones.\n"
+       "Saves are otherwise downloaded only on the first launch."));
+  connect(redownloadSaves, &QPushButton::clicked, this,
+    [this]() { emit redownloadSavesRequested(); });
+  layout->addWidget(redownloadSaves);
 
   layout->addStretch();
 }

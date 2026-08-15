@@ -88,8 +88,7 @@ static const char MP1_CHEAT_FORCE_ID[] =
   "81043AB8 2602"   // ADDIU V0, S0, 1 ; ID = slot index + 1 (1-5)
   "+81043ABA 0001"
   "+81043AC8 1000"  // BEQ  ZERO, ZERO, 0x80043C90
-  "+81043ACA 0071"
-  "+810C4DD2 0707"; /// @todo remove; force MG 4 text color to white
+  "+81043ACA 0071";
 
 static const dr_minigame_type MP1_MINIGAME_TYPE_TO_DR[] = {
   DR_MINIGAME_4P, // 0x00
@@ -178,8 +177,8 @@ static const dr_scene_name_t MP1_SCENE_NAMES[] =
   // { 0x4a, "" },
   { 0x4b, "Peach's Birthday Cake" }, // goomba visit
   // { 0x4c, "" },
-  // { 0x4d, "" },
-  // { 0x4e, "" },
+  { 0x4d, "Yoshi's Tropical Island" }, // thwomp visit
+  { 0x4e, "Yoshi's Tropical Island" }, // bubba event
   // { 0x4f, "" },
   // { 0x50, "" },
   // { 0x51, "" },
@@ -187,7 +186,7 @@ static const dr_scene_name_t MP1_SCENE_NAMES[] =
   // { 0x53, "" },
   // { 0x54, "" },
   // { 0x55, "" },
-  { 0x56, "Board event" },
+  // { 0x56, "" },
   { 0x57, "Mario's Rainbow Castle" }, // talking to toad/bowser
   // { 0x58, "" },
   { 0x59, "Bowser's Magma Mountain" }, // junction
@@ -195,7 +194,7 @@ static const dr_scene_name_t MP1_SCENE_NAMES[] =
   // { 0x5b, "" },
   // { 0x5c, "" },
   // { 0x5d, "" },
-  // { 0x5e, "" },
+  { 0x5e, "Eternal Star" }, // baby bowser visit
   { 0x5f, "Visiting Koopa Troopa" },
   // { 0x60, "" },
   { 0x61, "Intro" },
@@ -283,6 +282,8 @@ static DrHostConfig makeConfig()
   config.panel_color_addr[1] = 0x800f32f7;
   config.panel_color_addr[2] = 0x800f3327;
   config.panel_color_addr[3] = 0x800f3357;
+
+  config.minigame_title_color_addr = 0x800C4DD0;
 
   config.char_to_dr = MP1_CHAR_TO_DR;
   config.char_to_dr_size = sizeof(MP1_CHAR_TO_DR) / sizeof(*MP1_CHAR_TO_DR);

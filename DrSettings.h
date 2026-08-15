@@ -15,6 +15,10 @@ class DrSettings : public QWidget
 
 public:
   explicit DrSettings(QWidget *parent = nullptr);
+
+signals:
+  /// The user asked to re-download the save files (see DrDownloader::downloadSaves).
+  void redownloadSavesRequested();
 };
 
 #endif

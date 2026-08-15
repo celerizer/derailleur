@@ -282,6 +282,51 @@ typedef enum
   DR_GUEST_SIZE
 } dr_guest;
 
+typedef union
+{
+  unsigned raw;
+
+  struct
+  {
+    /// A mini-game with no winners or losers where coins are collected, ie.
+    /// Paratroopa Plunge
+    unsigned lucky : 1;
+
+    /// A mini-game that is disastrous to one or more players, ie.
+    /// Bash 'n' Cash
+    unsigned unlucky : 1;
+
+    /// A mini-game that desyncs on netplay. Hint to reroll it during a
+    /// netplay session.
+    unsigned no_netplay : 1;
+
+    /// A mini-game that does not support bots. Hint to not choose it as a
+    /// candidiate in one-player or zero-player games.
+    unsigned no_bots : 1;
+
+    /// A mini-game that does not support dynamic difficulty
+    unsigned no_difficulty : 1;
+
+    /// A mini-game that uses the GameCube microphone
+    unsigned mic : 1;
+  } flags;
+} dr_minigame_flags_t;
+
+#define DR_FLAG_BITS_LUCKY 0x01u
+#define DR_FLAG_BITS_UNLUCKY 0x02u
+#define DR_FLAG_BITS_NO_NETPLAY 0x04u
+#define DR_FLAG_BITS_NO_BOTS 0x08u
+#define DR_FLAG_BITS_NO_DIFFICULTY 0x10u
+#define DR_FLAG_BITS_MIC 0x20u
+
+#define DR_NO_FLAGS { 0u }
+#define DR_FLAG_LUCKY { DR_FLAG_BITS_LUCKY }
+#define DR_FLAG_UNLUCKY { DR_FLAG_BITS_UNLUCKY }
+#define DR_FLAG_NO_NETPLAY { DR_FLAG_BITS_NO_NETPLAY }
+#define DR_FLAG_NO_BOTS { DR_FLAG_BITS_NO_BOTS }
+#define DR_FLAG_NO_DIFFICULTY { DR_FLAG_BITS_NO_DIFFICULTY }
+#define DR_FLAG_MIC { DR_FLAG_BITS_MIC }
+
 typedef enum
 {
   DR_TEAM_COLOR_INVALID = 0,
@@ -390,6 +435,7 @@ typedef struct
   signed minigame_id;
   signed scene_id;
   dr_emulation_quirk_t quirks;
+  dr_minigame_flags_t flags;
 } dr_mp_minigame_t;
 
 typedef enum

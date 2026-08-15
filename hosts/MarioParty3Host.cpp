@@ -365,6 +365,8 @@ static DrHostConfig makeConfig()
   /* MP3 sometimes doesn't credit the mini-game star; the host adds it (bandaid). */
   config.fixup_mg_star = true;
 
+  config.minigame_title_color_addr = 0x80100E9C;
+
   config.scene_board_results = 0x4f;
   config.scene_last_five_turns = 0x51;
 

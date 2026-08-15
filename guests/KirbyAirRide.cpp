@@ -74,7 +74,7 @@ static const size_t KAR_RESULT_ADDR[4]       = { 0x80535CCC, 0x80535CCD, 0x80535
 
 static const dr_mp_minigame_t KAR_MINIGAMES[] =
 {
-  { "Drag Race", DR_MINIGAME_4P, KAR_STADIUM_DRAG_RACE_1, 0xFF, DR_NO_QUIRKS },
+  { "Drag Race", DR_MINIGAME_4P, KAR_STADIUM_DRAG_RACE_1, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
   //{ "Air Glider", DR_MINIGAME_4P, KAR_STADIUM_AIR_GLIDER, 0xFF, DR_NO_QUIRKS },
   //{ "Target Flight", DR_MINIGAME_4P, KAR_STADIUM_TARGET_FLIGHT, 0xFF, DR_NO_QUIRKS },
   //{ "High Jump", DR_MINIGAME_4P, KAR_STADIUM_HIGH_JUMP, 0xFF, DR_NO_QUIRKS },
@@ -82,7 +82,7 @@ static const dr_mp_minigame_t KAR_MINIGAMES[] =
   //{ "Destruction Derby", DR_MINIGAME_4P, KAR_STADIUM_DESTRUCTION_DERBY_1, 0xFF, DR_NO_QUIRKS },
   //{ "Single Race", DR_MINIGAME_4P, KAR_STADIUM_SINGLE_RACE_FANTASY_MEADOWS, 0xFF, DR_NO_QUIRKS },
   //{ "VS King Dedede", DR_MINIGAME_4P, KAR_STADIUM_VS_KING_DEDEDE, 0xFF, DR_NO_QUIRKS },
-  { nullptr, DR_MINIGAME_INVALID, 0xFF, 0xFF, DR_NO_QUIRKS },
+  { nullptr, DR_MINIGAME_INVALID, 0xFF, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
 };
 
 KirbyAirRide::KirbyAirRide(QRetro *sharedCore, QObject *parent)

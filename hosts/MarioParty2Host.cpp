@@ -279,6 +279,8 @@ static DrHostConfig makeConfig()
   config.panel_color_addr[2] = 0x800fd343;
   config.panel_color_addr[3] = 0x800fd377;
 
+  config.minigame_title_color_addr = 0x800C8D78;
+
   config.char_to_dr = MP2_CHAR_TO_DR;
   config.char_to_dr_size = sizeof(MP2_CHAR_TO_DR) / sizeof(*MP2_CHAR_TO_DR);
   config.diff_to_dr = MP2_DIFF_TO_DR;

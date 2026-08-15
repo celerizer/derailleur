@@ -47,6 +47,9 @@ void MarioPartyN64::run()
     log(DR_LOG_INFO,
       qPrintable(QString("MP_SCENE_ADDR: 0x%1").arg((uint16_t)val, 4, 16, QChar('0'))));
     m_lastScene = val;
+    if (!m_minigameActive &&
+        (val == m_config.scene_miniexplain[0] || val == m_config.scene_miniexplain[1]))
+      startMinigame();
     if (m_minigameActive && m_minigameFrames >= 60 &&
         val != m_config.scene_miniexplain[0] && val != m_config.scene_miniexplain[1] &&
         val != m_minigame->scene_id)
@@ -100,8 +103,6 @@ void MarioPartyN64::doApplyGameData(const DrGameData &data)
     m_retro->writeu8(mpN64Difficulty(p.difficulty), m_config.difficulty_addr[i]);
     m_retro->writeu8(static_cast<uint8_t>(p.team_id), m_config.team_addr[i]);
   }
-
-  startMinigame();
 }
 
 dr_minigame_result_t MarioPartyN64::minigameResult(unsigned index)

@@ -85,6 +85,11 @@ struct DrHostConfig
   size_t coins_addr[4]; /* u16 current coins; 0 = not available */
   size_t stars_addr[4]; /* u8 current stars; 0 = not available */
   size_t mg_star_addr[4]; /* s16 mini-game star; 0 = not available */
+
+  /// An array of u8 color IDs for mini-game titles. Variable length but we
+  /// only care about the first five anyway.
+  size_t minigame_title_color_addr;
+
   /* MP3 bandaid: MP3 sometimes fails to add mini-game winnings to the mini-game
    * star total on a normal (non-duel, non-battle) mini-game. When set, the host
    * checks a second after the results and adds the coins itself if it didn't. */
