@@ -16,7 +16,7 @@ static const dr_mp_minigame_t MP1_MINIGAMES[] = {
   { "Treasure Divers", DR_MINIGAME_4P, 0x04, 0x04, DR_NO_QUIRKS, DR_FLAG_LUCKY },
   { "Shell Game", DR_MINIGAME_1P, 0x05, 0x05, DR_NO_QUIRKS, DR_NO_FLAGS },
   // { "Same Game", DR_MINIGAME_1P, 0x06, 0x06, DR_NO_QUIRKS },
-  { "Hot Bob-omb", DR_MINIGAME_4P, 0x07, 0x07, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Hot Bob-omb", DR_MINIGAME_4P, 0x07, 0x07, DR_NO_QUIRKS, DR_FLAG_UNLUCKY },
   // 08 yoshis tongue meeting -- unused
   { "Pipe Maze", DR_MINIGAME_1V3, 0x09, 0x09, DR_NO_QUIRKS, DR_NO_FLAGS },
   { "Ghost Guess", DR_MINIGAME_1P, 0x0A, 0x0A, DR_NO_QUIRKS, DR_NO_FLAGS },
@@ -57,7 +57,7 @@ static const dr_mp_minigame_t MP1_MINIGAMES[] = {
   { "Cast Aways", DR_MINIGAME_4P, 0x2B, 0x2B, DR_NO_QUIRKS, DR_FLAG_LUCKY },
   { "Key-pa-way", DR_MINIGAME_4P, 0x2C, 0x2C, DR_NO_QUIRKS, DR_NO_FLAGS },
   { "Running of the Bulb", DR_MINIGAME_4P, 0x2D, 0x2D, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Hot Rope Jump", DR_MINIGAME_4P, 0x2E, 0x2E, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Hot Rope Jump", DR_MINIGAME_4P, 0x2E, 0x2E, DR_NO_QUIRKS, DR_FLAG_UNLUCKY },
   { "Handcar Havoc", DR_MINIGAME_2V2, 0x2F, 0x2F, DR_NO_QUIRKS, DR_NO_FLAGS },
 
   // 30 unused
