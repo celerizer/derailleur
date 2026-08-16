@@ -2,6 +2,8 @@
 
 #include <cstring>
 
+#include <asm/gameshark/mp3.h>
+
 #include <QRetro.h>
 #include <QRetroDirectories.h>
 
@@ -30,179 +32,6 @@ static const dr_minigame_type MP3_MINIGAME_TYPE_TO_DR[] = {
   DR_MINIGAME_BATTLE, // 0x04
   DR_MINIGAME_DUEL, // 0x05
 };
-
-static const dr_team_color MP3_PANEL_COLOR_TO_DR[] = {
-  DR_TEAM_COLOR_INVALID, // 0x00
-  DR_TEAM_COLOR_BLUE, // 0x01
-  DR_TEAM_COLOR_RED, // 0x02
-  DR_TEAM_COLOR_YELLOW, // 0x03
-  DR_TEAM_COLOR_GREEN, // 0x04
-};
-
-static const char MP3_CHEAT_REGULAR_BOARD[] =
-  "810DFE80 0010"
-  "+810DFE82 1040"
-  "+810DFE84 2442"
-  "+810DFE86 0002"
-  "+810DFE90 A022"
-  "+810DFEBC 2400"
-  "+810DFF28 2400";
-
-static const char MP3_CHEAT_DUEL_BOARD[] =
-  "810DFE70 0010"
-  "+810DFE72 1040"
-  "+810DFE74 2442"
-  "+810DFE76 0002"
-  "+810DFE80 A022"
-  "+810DFEC4 2400"
-  "+810DE2AC 2400";
-
-/* Roulette-title trampolines + hooks (see DrHostConfig::cheat_title_hook). Assembly in
- * scratch RAM at 0x80097724; glyph block at +0x6000 (0x8009D724), 8 title colors at +0x6500
- * (0x8009DC24). MP3 has two toggled overlays sharing this base: the shared_board board hook
- * and the name_81 duel/story hook. A (list-create, slot in S0) computes block + (type*5 +
- * slot)*32 into A1 and copies the 8 colors into the game's color array (0x80100E9C) before
- * tail-calling the loader (0x8005B43C); the board A also backs out to the loader on an ITEM
- * type so items keep their real names. B (re-read, slot in V1) just redirects. (Generated.) */
-static const char MP3_CHEAT_TITLE_HOOK_BOARD[] =
-  "81097724 3C01"  // LUI  AT, type_hi
-  "+81097726 8010"
-  "+81097728 9021"  // LBU  AT, type_byte
-  "+8109772A 2C0D"
-  "+8109772C 2402"  // ADDIU V0, ZERO, 3 (ITEM)
-  "+8109772E 0003"
-  "+81097730 1022"  // BEQ  AT, V0, back_out
-  "+81097732 0013"
-  "+81097734 0001"  // SLL  V0, AT, 2
-  "+81097736 1080"
-  "+81097738 0041"  // ADDU V0, V0, AT (type*5)
-  "+8109773A 1021"
-  "+8109773C 0050"  // ADDU V0, V0, S0 (+slot)
-  "+8109773E 1021"
-  "+81097740 0002"  // SLL  V0, V0, 5 (*32)
-  "+81097742 1140"
-  "+81097744 3C01"  // LUI  AT, block_hi
-  "+81097746 800A"
-  "+81097748 0022"  // ADDU AT, AT, V0
-  "+8109774A 0821"
-  "+8109774C 2425"  // ADDIU A1, AT, block_lo
-  "+8109774E D724"
-  "+81097750 3C01"  // LUI  AT, type_hi
-  "+81097752 8010"
-  "+81097754 9028"  // LBU  T0, type_byte
-  "+81097756 2C0D"
-  "+81097758 0008"  // SLL  T0, T0, 3 (type*8)
-  "+8109775A 40C0"
-  "+8109775C 3C01"  // LUI  AT, colors_hi
-  "+8109775E 800A"
-  "+81097760 0028"  // ADDU T0, AT, T0 (colors + type*8)
-  "+81097762 4021"
-  "+81097764 8D02"  // LW   V0, colrow+0
-  "+81097766 DC24"
-  "+81097768 3C01"  // LUI  AT, coldst_hi
-  "+8109776A 8010"
-  "+8109776C AC22"  // SW   V0, coldst+0
-  "+8109776E 0E9C"
-  "+81097770 8D02"  // LW   V0, colrow+4
-  "+81097772 DC28"
-  "+81097774 AC22"  // SW   V0, coldst+4
-  "+81097776 0EA0"
-  "+81097778 0801"  // J    loader
-  "+8109777A 6D0F"
-  "+8109777C 0000"  // NOP
-  "+8109777E 0000"
-  "+81097780 0801"  // J    loader (back_out)
-  "+81097782 6D0F"
-  "+81097784 0000"  // NOP
-  "+81097786 0000"
-  "+81097788 3C01"  // LUI  AT, type_hi
-  "+8109778A 8010"
-  "+8109778C 9021"  // LBU  AT, type_byte
-  "+8109778E 2C0D"
-  "+81097790 0001"  // SLL  V0, AT, 2
-  "+81097792 1080"
-  "+81097794 0041"  // ADDU V0, V0, AT
-  "+81097796 1021"
-  "+81097798 0043"  // ADDU V0, V0, V1 (+cursor)
-  "+8109779A 1021"
-  "+8109779C 0002"  // SLL  V0, V0, 5
-  "+8109779E 1140"
-  "+810977A0 3C01"  // LUI  AT, block_hi
-  "+810977A2 800A"
-  "+810977A4 0022"  // ADDU AT, AT, V0
-  "+810977A6 0821"
-  "+810977A8 0801"  // J    loader
-  "+810977AA 6D0F"
-  "+810977AC 2425"  // ADDIU A1, AT, block_lo (delay)
-  "+810977AE D724"
-  "+810DFFD8 0C02"  // JAL 0x80097724 -- list-create -> A
-  "+810DFFDA 5DC9"
-  "+810DF480 0C02"  // JAL 0x80097788 -- re-read -> B
-  "+810DF482 5DE2";
-
-static const char MP3_CHEAT_TITLE_HOOK_DUEL[] =
-  /* --- A: list-create, slot in S0 --- */
-  "81097724 0010"  // SLL   V0, S0, 5           - slot*32 (row 0)
-  "+81097726 1140"
-  "+81097728 3C01"  // LUI   AT, block_hi
-  "+8109772A 800A"
-  "+8109772C 0022"  // ADDU  AT, AT, V0
-  "+8109772E 0821"
-  "+81097730 2425"  // ADDIU A1, AT, block_lo    - block base 0x8009D724
-  "+81097732 D724"
-  "+81097734 3C01"  // LUI   AT, colors_hi
-  "+81097736 800A"
-  "+81097738 8C22"  // LW    V0, colors+0
-  "+8109773A DC24"
-  "+8109773C 3C01"  // LUI   AT, coldst_hi
-  "+8109773E 8010"
-  "+81097740 AC22"  // SW    V0, coldst+0        - name_81 color table 0x80100EEC
-  "+81097742 0EEC"
-  "+81097744 3C01"  // LUI   AT, colors_hi
-  "+81097746 800A"
-  "+81097748 8C22"  // LW    V0, colors+4
-  "+8109774A DC28"
-  "+8109774C 3C01"  // LUI   AT, coldst_hi
-  "+8109774E 8010"
-  "+81097750 AC22"  // SW    V0, coldst+4
-  "+81097752 0EF0"
-  "+81097754 0801"  // J     0x8005B43C
-  "+81097756 6D0F"
-  "+81097758 0000"  // NOP
-  "+8109775A 0000"
-  /* --- B: re-read, slot in V0 --- */
-  "+8109775C 0002"  // SLL   V0, V0, 5           - slot*32 (row 0)
-  "+8109775E 1140"
-  "+81097760 3C01"  // LUI   AT, block_hi
-  "+81097762 800A"
-  "+81097764 0022"  // ADDU  AT, AT, V0
-  "+81097766 0821"
-  "+81097768 0801"  // J     0x8005B43C
-  "+8109776A 6D0F"
-  "+8109776C 2425"  // ADDIU A1, AT, block_lo    (delay slot)
-  "+8109776E D724"
-  /* --- stash the slot before A0 is clobbered (dead insn) --- */
-  "+810DE148 0080"  // ADDU  V0, A0, ZERO
-  "+810DE14A 1021"
-  /* --- hooks --- */
-  "+810E0164 0C02"   // JAL 0x80097724 -> A
-  "+810E0166 5DC9"
-  "+810DE160 0C02"  // JAL 0x8009775C -- re-read -> B
-  "+810DE162 5DD7";
-
-/* Force the mini-game roulette onto the slot index (0-4). Like the title hook, MP3
- * has a board (shared_board) and a duel/story (name_81) variant, toggled by the host. */
-static const char MP3_CHEAT_FORCE_ID_BOARD[] =
-  "810DFE84 2602"   // ADDIU V0, S0, 1 — ID = slot index + 1 (1-5)
-  "+810DFE86 0001"
-  "+810DFE94 1000"  // BEQ  ZERO, ZERO, 0x800DFF80 (accept)
-  "+810DFE96 003A";
-
-static const char MP3_CHEAT_FORCE_ID_DUEL[] =
-  "810DFE74 2602"   // ADDIU V0, S0, 1 — ID = slot index + 1 (1-5)
-  "+810DFE76 0001"
-  "+810DFE84 1000"  // BEQ ZERO, ZERO, +0x98 -> 0x800E00E8 (accept)
-  "+810DFE86 0098";
 
 static const dr_scene_name_t MP3_SCENE_NAMES[] =
 {
@@ -299,7 +128,7 @@ static const dr_scene_name_t MP3_SCENE_NAMES[] =
   { 0x58, "Booting up" }, // Nintendo/Hudson logos
   { 0x59, "sldebug" }, // unused
 
-  { 0x5a, "Loading" },
+  { 0x5a, "Loading (duel)" },
   { 0x5b, "Gate Guy" },
   { 0x5c, "Arrowhead" },
   { 0x5d, "Pipesqueak" },
@@ -309,7 +138,7 @@ static const dr_scene_name_t MP3_SCENE_NAMES[] =
   // { 0x61, "" },
   // { 0x62, "" },
   // { 0x63, "" },
-  // { 0x64, "" },
+  { 0x64, "Duel Board intro", true },
   // { 0x65, "" },
   // { 0x66, "" },
   { 0x67, "Initializing save file" },
@@ -348,111 +177,100 @@ static DrHostConfig makeConfig()
   config.core = dr_core_path(DR_CORE_MUPEN64PLUSNEXT).toStdString();
   config.game = (dr_roms_directory() + "/Mario Party 3 (USA).z64").toStdString();
 
-  config.scene_miniexplain[0] = 0x70;
-  config.scene_miniexplain_count = 1;
-  config.scene_miniresults = 0x71;
-  config.scene_miniresults_battle = 0x74;
-  config.scene_miniresults_duel = 0x73;
-  config.scene_item_first = 0x3B; // item mini-games (Winner's Wheel .. Swing 'n' Swipe)
-  config.scene_item_last = 0x40;
-  config.scene_addr = 0x800ce202; // u16
+  config.scenes.main_menu = 0x77; // Castle Grounds
+  config.scenes.minigame_explain[0] = 0x70;
+  config.scenes.minigame_explain[1] = -1;
+  config.scenes.minigame_results = 0x71;
+  config.scenes.minigame_results_battle = 0x74;
+  config.scenes.minigame_results_duel = 0x73;
+  // item / 1P mini-games (Winner's Wheel .. Swing 'n' Swipe)
+  static const int mp3_1p_scenes[] = { 0x3B, 0x3C, 0x3D, 0x3E, 0x3F, 0x40, -1 };
+  memcpy(config.scenes.single_player_ids, mp3_1p_scenes, sizeof(mp3_1p_scenes));
+  config.values.scene = { 0x800ce202, DR_VALUE_TYPE_U16 }; // u16
 
-  static const uint8_t mp3_boards[] = { 0x48, 0x49, 0x4A, 0x4B, 0x4C, 0x4D };
-  memcpy(config.scene_board_ids, mp3_boards, sizeof(mp3_boards));
-  config.scene_board_id_count = sizeof(mp3_boards) / sizeof(*mp3_boards);
+  static const int mp3_boards[] = { 0x48, 0x49, 0x4A, 0x4B, 0x4C, 0x4D, -1 };
+  memcpy(config.scenes.boards, mp3_boards, sizeof(mp3_boards));
 
-  static const uint8_t mp3_duel_boards[] = { 0x5B, 0x5C, 0x5D, 0x5E, 0x5F, 0x60 };
-  memcpy(config.scene_duel_board_ids, mp3_duel_boards, sizeof(mp3_duel_boards));
-  config.scene_duel_board_id_count = sizeof(mp3_duel_boards) / sizeof(*mp3_duel_boards);
+  static const int mp3_duel_boards[] = { 0x5B, 0x5C, 0x5D, 0x5E, 0x5F, 0x60, -1 };
+  memcpy(config.scenes.boards_duel, mp3_duel_boards, sizeof(mp3_duel_boards));
 
-  config.character_addr[0] = 0x800d110b;
-  config.character_addr[1] = 0x800d1143;
-  config.character_addr[2] = 0x800d117b;
-  config.character_addr[3] = 0x800d11b3;
-  config.controller_addr[0] = 0x800d110a;
-  config.controller_addr[1] = 0x800d1142;
-  config.controller_addr[2] = 0x800d117a;
-  config.controller_addr[3] = 0x800d11b2;
-  config.difficulty_addr[0] = 0x800d1109;
-  config.difficulty_addr[1] = 0x800d1141;
-  config.difficulty_addr[2] = 0x800d1179;
-  config.difficulty_addr[3] = 0x800d11b1;
-  config.team_addr[0] = 0x800d1108;
-  config.team_addr[1] = 0x800d1140;
-  config.team_addr[2] = 0x800d1178;
-  config.team_addr[3] = 0x800d11b0;
-  config.bot_addr[0] = 0x800d110c;
-  config.bot_addr[1] = 0x800d1144;
-  config.bot_addr[2] = 0x800d117c;
-  config.bot_addr[3] = 0x800d11b4;
-  config.result_addr[0] = 0x800d1110;
-  config.result_addr[1] = 0x800d1148;
-  config.result_addr[2] = 0x800d1180;
-  config.result_addr[3] = 0x800d11b8;
-  config.bonus_result_addr[0] = 0x800d110e;
-  config.bonus_result_addr[1] = 0x800d1146;
-  config.bonus_result_addr[2] = 0x800d117e;
-  config.bonus_result_addr[3] = 0x800d11b6;
-  config.panel_color_addr[0] = 0x800d1124;
-  config.panel_color_addr[1] = 0x800d115c;
-  config.panel_color_addr[2] = 0x800d1194;
-  config.panel_color_addr[3] = 0x800d11cc;
-  config.coins_addr[0] = 0x800d1112;
-  config.coins_addr[1] = 0x800d114a;
-  config.coins_addr[2] = 0x800d1182;
-  config.coins_addr[3] = 0x800d11ba;
-  config.mg_star_addr[0] = 0x800d1130;
-  config.mg_star_addr[1] = 0x800d1168;
-  config.mg_star_addr[2] = 0x800d11a0;
-  config.mg_star_addr[3] = 0x800d11d8;
-  /* MP3 sometimes doesn't credit the mini-game star; the host adds it (bandaid). */
-  config.fixup_mg_star = true;
+  config.values.character[0] = { 0x800d110b, DR_VALUE_TYPE_U8 };
+  config.values.character[1] = { 0x800d1143, DR_VALUE_TYPE_U8 };
+  config.values.character[2] = { 0x800d117b, DR_VALUE_TYPE_U8 };
+  config.values.character[3] = { 0x800d11b3, DR_VALUE_TYPE_U8 };
+  config.values.controller[0] = { 0x800d110a, DR_VALUE_TYPE_U8 };
+  config.values.controller[1] = { 0x800d1142, DR_VALUE_TYPE_U8 };
+  config.values.controller[2] = { 0x800d117a, DR_VALUE_TYPE_U8 };
+  config.values.controller[3] = { 0x800d11b2, DR_VALUE_TYPE_U8 };
+  config.values.difficulty[0] = { 0x800d1109, DR_VALUE_TYPE_U8 };
+  config.values.difficulty[1] = { 0x800d1141, DR_VALUE_TYPE_U8 };
+  config.values.difficulty[2] = { 0x800d1179, DR_VALUE_TYPE_U8 };
+  config.values.difficulty[3] = { 0x800d11b1, DR_VALUE_TYPE_U8 };
+  config.values.team[0] = { 0x800d1108, DR_VALUE_TYPE_U8 };
+  config.values.team[1] = { 0x800d1140, DR_VALUE_TYPE_U8 };
+  config.values.team[2] = { 0x800d1178, DR_VALUE_TYPE_U8 };
+  config.values.team[3] = { 0x800d11b0, DR_VALUE_TYPE_U8 };
+  config.values.bot[0] = { 0x800d110c, DR_VALUE_TYPE_U8 };
+  config.values.bot[1] = { 0x800d1144, DR_VALUE_TYPE_U8 };
+  config.values.bot[2] = { 0x800d117c, DR_VALUE_TYPE_U8 };
+  config.values.bot[3] = { 0x800d11b4, DR_VALUE_TYPE_U8 };
+  config.values.result[0] = { 0x800d1110, DR_VALUE_TYPE_U16 };
+  config.values.result[1] = { 0x800d1148, DR_VALUE_TYPE_U16 };
+  config.values.result[2] = { 0x800d1180, DR_VALUE_TYPE_U16 };
+  config.values.result[3] = { 0x800d11b8, DR_VALUE_TYPE_U16 };
+  config.values.bonus_result[0] = { 0x800d110e, DR_VALUE_TYPE_S16 };
+  config.values.bonus_result[1] = { 0x800d1146, DR_VALUE_TYPE_S16 };
+  config.values.bonus_result[2] = { 0x800d117e, DR_VALUE_TYPE_S16 };
+  config.values.bonus_result[3] = { 0x800d11b6, DR_VALUE_TYPE_S16 };
+  config.values.panel_color[0] = { 0x800d1124, DR_VALUE_TYPE_U8 };
+  config.values.panel_color[1] = { 0x800d115c, DR_VALUE_TYPE_U8 };
+  config.values.panel_color[2] = { 0x800d1194, DR_VALUE_TYPE_U8 };
+  config.values.panel_color[3] = { 0x800d11cc, DR_VALUE_TYPE_U8 };
+  config.values.coins[0] = { 0x800d1112, DR_VALUE_TYPE_U16 };
+  config.values.coins[1] = { 0x800d114a, DR_VALUE_TYPE_U16 };
+  config.values.coins[2] = { 0x800d1182, DR_VALUE_TYPE_U16 };
+  config.values.coins[3] = { 0x800d11ba, DR_VALUE_TYPE_U16 };
+  config.values.mg_star[0] = { 0x800d1130, DR_VALUE_TYPE_S16 };
+  config.values.mg_star[1] = { 0x800d1168, DR_VALUE_TYPE_S16 };
+  config.values.mg_star[2] = { 0x800d11a0, DR_VALUE_TYPE_S16 };
+  config.values.mg_star[3] = { 0x800d11d8, DR_VALUE_TYPE_S16 };
 
-  config.minigame_title_color_addr = 0x80100E9C;
+  config.values.minigame_title_color = { 0x80100E9C, DR_VALUE_TYPE_U8 };
 
-  config.scene_board_results = 0x4f;
-  config.scene_last_five_turns = 0x51;
+  config.scenes.board_results = 0x4f;
+  config.scenes.last_five_turns = 0x51;
 
   config.char_to_dr = MP3_CHAR_TO_DR;
   config.char_to_dr_size = sizeof(MP3_CHAR_TO_DR) / sizeof(*MP3_CHAR_TO_DR);
   config.diff_to_dr = MP3_DIFF_TO_DR;
   config.diff_to_dr_size = sizeof(MP3_DIFF_TO_DR) / sizeof(*MP3_DIFF_TO_DR);
 
-  config.battle_addr = 0x800cc698; // u16
+  config.values.battle = { 0x800cc698, DR_VALUE_TYPE_S16 }; // u16
 
-  config.panel_color_to_dr = MP3_PANEL_COLOR_TO_DR;
-  config.panel_color_to_dr_size = sizeof(MP3_PANEL_COLOR_TO_DR) / sizeof(*MP3_PANEL_COLOR_TO_DR);
-
-  config.minigame_type_addr = 0x80102C0D; // u8
+  config.values.minigame_type = { 0x80102C0D, DR_VALUE_TYPE_U8 }; // u8
   config.minigame_type_to_dr = MP3_MINIGAME_TYPE_TO_DR;
   config.minigame_type_to_dr_size = sizeof(MP3_MINIGAME_TYPE_TO_DR) / sizeof(*MP3_MINIGAME_TYPE_TO_DR);
-  config.minigame_id_addr = 0x800cd068; // u8 (minigame_id_is_8bit == true)
-  config.minigame_id_is_8bit = true;
+  config.values.minigame_id = { 0x800cd068, DR_VALUE_TYPE_S8 };
 
-  static const uint8_t blacklist[] = { 0x43, 0x44, 0x45 }; // ignore game guy
-  memcpy(config.minigame_blacklist, blacklist, sizeof(blacklist));
-  config.minigame_blacklist_count = 3;
+  config.cheats.cave = MP3_CAVE;
+  config.cheats.cave_addr = MP3_CAVE_ADDR;
+  config.cheats.cave_size = MP3_CAVE_SIZE;
+  config.cheats.cheat_board = MP3_HOOK_BOARD;
+  config.cheats.cheat_duel = MP3_HOOK_DUEL;
+  
+  config.stat.board = 0x0192;
+  config.stat.minigame = 0x0192;
+  config.stat.duel = 0x4190;
 
-  config.title_block_addr = 0x8009D724; // 0x80097724 + 0x6000
-  config.title_color_addr = 0x8009DC24; // + 0x6500 (after the block)
-  config.title_type_addr_duel = 0x80102BAD; // name_81 overlay's type byte
-  config.cheat_title_hook = MP3_CHEAT_TITLE_HOOK_BOARD;
-  config.cheat_title_hook_duel = MP3_CHEAT_TITLE_HOOK_DUEL;
-  config.cheat_force_id = MP3_CHEAT_FORCE_ID_BOARD;
-  config.cheat_force_id_duel = MP3_CHEAT_FORCE_ID_DUEL;
-  config.scene_stack_addr = 0x800D20F0;
-  config.scene_stack_count_addr = 0x800D6B60;
-  config.scene_stat_board = 0x0192;
-  config.scene_stat_minigame = 0x0192;
-  config.scene_stat_duel = 0x4190;
-  config.turn_total_addr = 0x800CD05Au; // u8
-  config.turn_current_addr = 0x800CD05Bu; // u8
-  config.turn_owner_addr = 0x800CD067u;   // s8 whose turn
-  config.space_index_addr = 0x800CD069u;  // s8 current space index
-  config.board_guard_is_8bit = true;
-  config.scene_duel_slot0_addr = 0x80102BA8u; // u8
-  config.cheat_regular_board = MP3_CHEAT_REGULAR_BOARD;
-  config.cheat_duel_board = MP3_CHEAT_DUEL_BOARD;
+  config.values.scene_stack = { 0x800D20F0, DR_VALUE_TYPE_POINTER };
+  config.values.scene_stack_count = { 0x800D6B60, DR_VALUE_TYPE_S16 };
+  config.values.turn_total = { 0x800CD05Au, DR_VALUE_TYPE_U8 };
+  config.values.turn_current = { 0x800CD05Bu, DR_VALUE_TYPE_U8 };
+  config.values.turn_owner = { 0x800CD067u, DR_VALUE_TYPE_S8 };
+  config.values.space_index = { 0x800CD069u, DR_VALUE_TYPE_S8 };
+  config.values.title_block = { MP3_TITLE_BLOCK, DR_VALUE_TYPE_POINTER };
+  config.values.title_color = { MP3_TITLE_COLORS, DR_VALUE_TYPE_POINTER };
+  config.values.title_type_duel = { 0x80102BAD, DR_VALUE_TYPE_U8 };
 
   config.scene_names = MP3_SCENE_NAMES;
 
@@ -470,60 +288,9 @@ MarioParty3Host::MarioParty3Host(QObject *parent)
         called = true;
         m_core->cheatReset();
 
-        // Unlock all minigames
-        m_core->cheatSet(3, true,
-          "81035C00 2404"
-          "+81035C02 00FF"
-          "+D110AE18 1040"
-          "+8111B75E 0041"
-          "+D110AE18 1040"
-          "+8011B761 0047");
-
-        // Recommended Codes
-        m_core->cheatSet(4, true,
-          "810A12D6 0000"
-          
-          "+81009C10 080F"
-          "+81009C12 FC00"
-          "+81009C14 27BD"
-          "+81009C16 FFE8"
-
-          "+813FF000 3C05"
-          "+813FF002 0013"
-          "+813FF004 24A5"
-          "+813FF006 0046"
-          "+813FF008 1485"
-          "+813FF00A 000B"
-          "+813FF00C 2400"
-          "+813FF010 3C04"
-          "+813FF012 0013"
-          "+813FF014 2484"
-          "+813FF016 001C"
-          "+813FF018 3C1B"
-          "+813FF01A 800D"
-          "+813FF01C 8365"
-          "+813FF01E D058"
-          "+813FF020 8366"
-          "+813FF022 D059"
-          "+813FF024 30A5"
-          "+813FF026 0001"
-          "+813FF028 1405"
-          "+813FF02A 0002"
-          "+813FF02C 2400"
-          "+813FF030 2484"
-          "+813FF032 000C"
-          "+813FF034 0086"
-          "+813FF036 2021"
-          "+813FF038 0800"
-          "+813FF03A 2706"
-          "+813FF03C AFBF"
-          "+813FF03E 0014"
-
-          "+D11095AA 2484"
-          "+81109348 2400");
-
-        m_core->cheatSet(1, false, MP3_CHEAT_REGULAR_BOARD);
-        m_core->cheatSet(2, false, MP3_CHEAT_DUEL_BOARD);
+        // Recommended Codes -- none!
+        // m_core->cheatSet(0, true,
+        //   );
       }
     },
     Qt::DirectConnection);
