@@ -117,6 +117,10 @@ struct DrHostConfig
    * to the roll -- the host stamps every type's row up front on entering the board
    * (see rollAndStampTitles). 0 = no injection. */
   size_t title_block_addr;
+  /* 8 u8 title colors (see mp64_text_color), stamped by the host right after the glyph
+   * block. The title trampoline copies these into minigame_title_color_addr when it
+   * runs, so the game shows them for the roulette. 0 = no color injection. */
+  size_t title_color_addr;
   size_t title_type_addr_duel;            // duel-overlay type byte, stamped with duel candidates; 0 = none
   const char *cheat_title_hook;           // GS: trampoline + jal hook for the board title loader; nullptr = none
   const char *cheat_title_hook_duel;      // GS: same for a duel-mode overlay (MP3 name_81); nullptr = none
@@ -137,6 +141,12 @@ struct DrHostConfig
   int16_t scene_stat_duel;              // element `stat` for a duel-results scene
   size_t turn_total_addr;               // byte: total turn count; 0 = skip end-of-game check
   size_t turn_current_addr;             // byte: current turn count
+  /* Failsafe: "whose turn" and "current space index" must not move between committing to
+   * a roulette and launching the mini-game. If either changes during the roulette flow we
+   * misread the roulette, so bail back to BOARD. 0 = not watched. */
+  size_t turn_owner_addr;
+  size_t space_index_addr;
+  bool board_guard_is_8bit;             // true = the two guard values are s8 (else s16)
   /* Inclusive scene-id range for item mini-games (played natively, one participant).
    * On entry the host grants netplay golf mode to that player; 0/0 = none. */
   uint8_t scene_item_first;
@@ -167,6 +177,19 @@ public:
   void run(void);
 
 private:
+  /// Address of the active mini-game type byte: the duel-overlay byte on a duel
+  /// board, otherwise the game's normal type byte.
+  size_t mgTypeAddr() const
+  {
+    return (m_isDuelBoard && m_config.title_type_addr_duel)
+      ? m_config.title_type_addr_duel : m_config.minigame_type_addr;
+  }
+  /// Reads a roulette-flow guard value (turn owner / space index), s8 or s16 per config.
+  int32_t readBoardGuard(size_t addr);
+  /// Snapshots the guard values as the roulette begins (see turn_owner_addr).
+  void captureBoardGuard();
+  /// True if a watched guard value moved since captureBoardGuard().
+  bool boardGuardTripped();
   void readPlayers(dr_minigame_type type);
   /// Copies the five cached candidates for `type` into m_candidates (for launching the
   /// chosen guest). Does not reroll -- the pool is rolled by rollAndStampTitles.
@@ -176,6 +199,9 @@ private:
   void rollAndStampTitles(void);
   /// Encodes and writes one 5-slot title row (block index `row`) into the block.
   void stampTitleRow(unsigned row, const std::array<DrMinigameCandidate, 5> &candidates);
+  /// Writes one type row's 8 title colors (5 candidate colors + padding) into the color
+  /// table at title_color_addr + row*8, for the trampoline to copy by type.
+  void stampTitleColors(unsigned row, const std::array<DrMinigameCandidate, 5> &candidates);
   void writeBattleCoins();
   /// Writes all 5 scene-stack elements from `overlays` and sets the element count.
   /// No-op when the stack isn't configured.
@@ -190,6 +216,9 @@ private:
   int16_t m_resultsModifier = 0;
   signed m_MinigameType = -1;
   bool m_isDuelBoard = false;
+  uint8_t m_lastDuelType = 0xFF; // previous duel type byte; roulette gates on (non-0)->0
+  int32_t m_guardTurn = 0;       // snapshot of turn_owner_addr while the roulette runs
+  int32_t m_guardSpace = 0;      // snapshot of space_index_addr while the roulette runs
   uint8_t m_pendingStartIndex = 0;
   int m_startDelay = 0; // frames to spin after queuing the results scene before launching
   bool m_itemPending = false;

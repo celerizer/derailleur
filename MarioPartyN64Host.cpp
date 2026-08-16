@@ -139,42 +139,48 @@ void MarioPartyN64Host::run(void)
     break;
   case DR_HOST_STATE_BEFORE_BOARD:
   {
-    writeForFrames(m_config.minigame_type_addr, &ff, 1, 30);
+    writeForFrames(mgTypeAddr(), &ff, 1, 30);
 
+    bool matched = false;
+    bool isDuel = false;
     for (unsigned r = 0; r < m_config.scene_board_id_count; r++)
+      if ((uint8_t)scene_id == m_config.scene_board_ids[r]) { matched = true; break; }
+    for (unsigned d = 0; !matched && d < m_config.scene_duel_board_id_count; d++)
+      if ((uint8_t)scene_id == m_config.scene_duel_board_ids[d]) { matched = true; isDuel = true; break; }
+    if (matched)
     {
-      if ((uint8_t)scene_id == m_config.scene_board_ids[r])
+      m_lastBoardScene = (uint8_t)scene_id;
+      m_isDuelBoard = isDuel;
+      /* The initial roll happened before we knew this was a duel board, so the duel
+       * candidates weren't stamped into row 0; reroll now that m_isDuelBoard is set. */
+      if (m_isDuelBoard)
       {
-        m_lastBoardScene = (uint8_t)scene_id;
-        m_isDuelBoard = false;
-        for (unsigned d = 0; d < m_config.scene_duel_board_id_count; d++)
-          if (m_lastBoardScene == m_config.scene_duel_board_ids[d])
-          {
-            m_isDuelBoard = true;
-            break;
-          }
-        if (m_config.cheat_regular_board)
-          m_core->cheatSet(1, !m_isDuelBoard, m_config.cheat_regular_board);
-        if (m_config.cheat_duel_board)
-          m_core->cheatSet(2, m_isDuelBoard, m_config.cheat_duel_board);
-        /* Install the roulette-title trampoline. A game with a separate duel-mode
-         * overlay (MP3) has two variants, toggled like the board cheats above; a
-         * game without one keeps its single hook enabled on every board. */
-        if (m_config.cheat_title_hook)
-          m_core->cheatSet(
-            5, m_config.cheat_title_hook_duel ? !m_isDuelBoard : true, m_config.cheat_title_hook);
-        if (m_config.cheat_title_hook_duel)
-          m_core->cheatSet(6, m_isDuelBoard, m_config.cheat_title_hook_duel);
-        /* Force the roulette onto the slot index (chosen id reads back as 0-4),
-         * toggled per board/duel exactly like the title trampoline above. */
-        if (m_config.cheat_force_id)
-          m_core->cheatSet(
-            7, m_config.cheat_force_id_duel ? !m_isDuelBoard : true, m_config.cheat_force_id);
-        if (m_config.cheat_force_id_duel)
-          m_core->cheatSet(8, m_isDuelBoard, m_config.cheat_force_id_duel);
-        setState(DR_HOST_STATE_BOARD);
-        break;
+        m_lastDuelType = 0xFF;
+        rollAndStampTitles();
       }
+      /* Hold the active type byte at 0xFF for a bit so a value left over from loading
+       * doesn't read as an in-progress roulette the instant we enter the board. */
+      writeForFrames(mgTypeAddr(), &ff, 1, 30);
+      if (m_config.cheat_regular_board)
+        m_core->cheatSet(1, !m_isDuelBoard, m_config.cheat_regular_board);
+      if (m_config.cheat_duel_board)
+        m_core->cheatSet(2, m_isDuelBoard, m_config.cheat_duel_board);
+      /* Install the roulette-title trampoline. A game with a separate duel-mode
+       * overlay (MP3) has two variants, toggled like the board cheats above; a
+       * game without one keeps its single hook enabled on every board. */
+      if (m_config.cheat_title_hook)
+        m_core->cheatSet(
+          5, m_config.cheat_title_hook_duel ? !m_isDuelBoard : true, m_config.cheat_title_hook);
+      if (m_config.cheat_title_hook_duel)
+        m_core->cheatSet(6, m_isDuelBoard, m_config.cheat_title_hook_duel);
+      /* Force the roulette onto the slot index (chosen id reads back as 0-4),
+       * toggled per board/duel exactly like the title trampoline above. */
+      if (m_config.cheat_force_id)
+        m_core->cheatSet(
+          7, m_config.cheat_force_id_duel ? !m_isDuelBoard : true, m_config.cheat_force_id);
+      if (m_config.cheat_force_id_duel)
+        m_core->cheatSet(8, m_isDuelBoard, m_config.cheat_force_id_duel);
+      setState(DR_HOST_STATE_BOARD);
     }
     break;
   }
@@ -202,7 +208,7 @@ void MarioPartyN64Host::run(void)
       {
         m_itemPending = false;
         m_itemSceneLeft = false;
-        writeForFrames(m_config.minigame_type_addr, &ff, 1, 30);
+        writeForFrames(mgTypeAddr(), &ff, 1, 30);
       }
       break;
     }
@@ -213,13 +219,22 @@ void MarioPartyN64Host::run(void)
 
     if (m_isDuelBoard)
     {
-      uint8_t slot0 = 0;
-      readu8(&slot0, m_config.scene_duel_slot0_addr);
-      if (slot0 == 2)
+      /* A duel board only ever runs the duel type, so unlike the regular board (which
+       * watches several types) we gate the roulette purely on the duel type byte
+       * transitioning to 0. */
+      uint8_t minigame_type = m_lastDuelType;
+      readu8(&minigame_type, m_config.title_type_addr_duel);
+      if (minigame_type != m_lastDuelType)
+        emit logMessage(DR_LOG_INFO,
+          QString("duel mg type: 0x%1").arg(minigame_type, 2, 16, QChar('0')));
+      const bool toZero = (minigame_type == 0 && m_lastDuelType != 0);
+      m_lastDuelType = minigame_type;
+      if (toZero)
       {
         for (unsigned i = 0; i < m_config.minigame_type_to_dr_size; i++)
           if (m_config.minigame_type_to_dr[i] == DR_MINIGAME_DUEL) { m_MinigameType = i; break; }
         rollCandidates(DR_MINIGAME_DUEL);
+        captureBoardGuard();
         setState(DR_HOST_STATE_BEFORE_ROULETTE);
       }
       break;
@@ -228,6 +243,9 @@ void MarioPartyN64Host::run(void)
     /* Check if the mini-game type value been set */
     uint8_t minigame_type = 0;
     readu8(&minigame_type, m_config.minigame_type_addr);
+    if (minigame_type != 0xFF)
+      emit logMessage(DR_LOG_INFO,
+        QString("board mg type: 0x%1").arg(minigame_type, 2, 16, QChar('0')));
     if (minigame_type != 0xFF && minigame_type < m_config.minigame_type_to_dr_size)
     {
       dr_minigame_type mg_type = m_config.minigame_type_to_dr[minigame_type];
@@ -245,11 +263,12 @@ void MarioPartyN64Host::run(void)
       {
         m_MinigameType = minigame_type;
         rollCandidates(mg_type);
+        captureBoardGuard();
         setState(DR_HOST_STATE_BEFORE_ROULETTE);
         break;
       }
     }
-    writeu8(0xFF, m_config.minigame_type_addr);
+    writeu8(0xFF, mgTypeAddr());
     break;
   }
   case DR_HOST_STATE_BEFORE_ROULETTE:
@@ -258,21 +277,6 @@ void MarioPartyN64Host::run(void)
       setState(DR_HOST_STATE_BEFORE_BOARD);
       break;
     }
-
-    /* Color each roulette title by its flags: yellow for a lucky mini-game, red for an
-     * unlucky one, white otherwise. minigame_title_color_addr is the base of a u8 array
-     * indexed by slot (0-4). */
-    if (m_config.minigame_title_color_addr)
-      for (unsigned i = 0; i < 5; i++)
-      {
-        const dr_mp_minigame_t *mg = m_candidates[i].minigame;
-        uint8_t color = MP64_TEXT_WHITE;
-        if (mg && mg->flags.flags.lucky)
-          color = MP64_TEXT_YELLOW;
-        else if (mg && mg->flags.flags.unlucky)
-          color = MP64_TEXT_RED;
-        writeu8(color, m_config.minigame_title_color_addr + i);
-      }
 
     /* Write -1 to current mini-game to monitor for change */
     if (m_config.minigame_id_is_8bit)
@@ -289,6 +293,13 @@ void MarioPartyN64Host::run(void)
     if ((uint8_t)scene_id != m_lastBoardScene)
     {
       setState(DR_HOST_STATE_BEFORE_BOARD);
+      break;
+    }
+    if (boardGuardTripped())
+    {
+      emit logMessage(DR_LOG_WARN,
+        "roulette failsafe: turn/space changed mid-roulette; returning to BOARD");
+      setState(DR_HOST_STATE_BOARD);
       break;
     }
 
@@ -326,6 +337,8 @@ void MarioPartyN64Host::run(void)
       break;
 
     /* A mini-game was chosen. Proceed... */
+    emit logMessage(DR_LOG_INFO,
+      QString("roulette chose id %1 (duel=%2)").arg(id).arg(m_isDuelBoard ? 1 : 0));
     m_lastMinigameId = id;
     m_startDelay = 0;
     setState(DR_HOST_STATE_AFTER_ROULETTE);
@@ -469,7 +482,7 @@ void MarioPartyN64Host::run(void)
       /* Invalidate our watchpoints */
       m_lastMinigameId = -1;
       writeu8(0xFF, m_config.minigame_id_addr);
-      writeForFrames(m_config.minigame_type_addr, &ff, 1, 30);
+      writeForFrames(mgTypeAddr(), &ff, 1, 30);
 
       /* Clear any golf mode we granted for a 1P mini-game. */
       if (m_hostGolfMode)
@@ -570,22 +583,48 @@ void MarioPartyN64Host::rollAndStampTitles(void)
   /* One shared reroll keeps every netplay peer's pool identical (see DrMinigameSource). */
   m_MinigameSource->rerollMinigames();
 
-  /* Stamp each mini-game type's five names into its own row up front, so the roulette
-   * loader reads whichever row its type byte selects without us reacting to the roll. */
+  /* Stamp each mini-game type's five names into its title row and its five colors into
+   * its 8-byte color row, so the trampoline reads whichever row the rolled type selects. */
   for (unsigned t = 0; t < m_config.minigame_type_to_dr_size; t++)
   {
     const dr_minigame_type dr = m_config.minigame_type_to_dr[t];
-    if (dr != DR_MINIGAME_INVALID)
-      stampTitleRow(t, m_MinigameSource->minigameCandidates(dr));
+    if (dr == DR_MINIGAME_INVALID)
+      continue;
+    const std::array<DrMinigameCandidate, 5> &cands = m_MinigameSource->minigameCandidates(dr);
+    stampTitleRow(t, cands);
+    stampTitleColors(t, cands);
   }
 
-  /* A duel-mode overlay indexes the block with its own type byte, which need not match
-   * the duel type's row above; stamp the row it selects with the duel candidates too. */
-  if (m_isDuelBoard && m_config.title_type_addr_duel)
+  /* A duel board always uses row 0 for the duel candidates, regardless of the duel
+   * mini-game's type byte; the duel trampoline reads row 0 unconditionally. */
+  if (m_isDuelBoard)
   {
-    uint8_t row = 0;
-    readu8(&row, m_config.title_type_addr_duel);
-    stampTitleRow(row, m_MinigameSource->minigameCandidates(DR_MINIGAME_DUEL));
+    const std::array<DrMinigameCandidate, 5> &cands =
+      m_MinigameSource->minigameCandidates(DR_MINIGAME_DUEL);
+    stampTitleRow(0, cands);
+    stampTitleColors(0, cands);
+  }
+}
+
+void MarioPartyN64Host::stampTitleColors(
+  unsigned row, const std::array<DrMinigameCandidate, 5> &candidates)
+{
+  if (!m_config.title_color_addr || row >= 8) // color table is 8 rows of 8 bytes
+    return;
+
+  /* 8 color bytes for this type row (see mp64_text_color): slots 0-4 follow the
+   * candidates' flags (yellow = lucky, red = unlucky, else white), 5-7 are padding.
+   * The trampoline copies the rolled type's row into the game's color array. */
+  for (unsigned i = 0; i < 8; i++)
+  {
+    const dr_mp_minigame_t *mg = (i < 5) ? candidates[i].minigame : nullptr;
+    uint8_t color = MP64_TEXT_WHITE;
+
+    if (mg && mg->flags.flags.lucky)
+      color = MP64_TEXT_YELLOW;
+    else if (mg && mg->flags.flags.unlucky)
+      color = MP64_TEXT_RED;
+    writeu8(color, m_config.title_color_addr + (size_t)row * 8 + i);
   }
 }
 
@@ -602,10 +641,46 @@ void MarioPartyN64Host::rollCandidates(dr_minigame_type type)
   m_candidates = m_MinigameSource->minigameCandidates(type);
 }
 
+int32_t MarioPartyN64Host::readBoardGuard(size_t addr)
+{
+  if (!addr)
+    return 0;
+  if (m_config.board_guard_is_8bit)
+  {
+    int8_t v = 0;
+    reads8(&v, addr);
+    return v;
+  }
+  int16_t v = 0;
+  reads16(&v, addr);
+  return v;
+}
+
+void MarioPartyN64Host::captureBoardGuard()
+{
+  m_guardTurn = readBoardGuard(m_config.turn_owner_addr);
+  m_guardSpace = readBoardGuard(m_config.space_index_addr);
+}
+
+bool MarioPartyN64Host::boardGuardTripped()
+{
+  if (!m_config.turn_owner_addr && !m_config.space_index_addr)
+    return false;
+  return readBoardGuard(m_config.turn_owner_addr) != m_guardTurn
+    || readBoardGuard(m_config.space_index_addr) != m_guardSpace;
+}
+
 void MarioPartyN64Host::startMinigame(unsigned index)
 {
   if (index >= 5 || !m_candidates[index].guest || !m_candidates[index].minigame)
+  {
+    emit logMessage(DR_LOG_ERROR,
+      QString("startMinigame: no valid candidate at index %1 (guest=%2 mg=%3)")
+        .arg(static_cast<int>(index))
+        .arg(index < 5 && m_candidates[index].guest ? 1 : 0)
+        .arg(index < 5 && m_candidates[index].minigame ? 1 : 0));
     return;
+  }
   const dr_mp_minigame_t *mg = m_candidates[index].minigame;
   emit logMessage(DR_LOG_INFO,
     QString("chosen mini-game: %1 - %2 (0x%3)")
@@ -835,7 +910,7 @@ void MarioPartyN64Host::writeResults(DrGuest *guest)
     else
       writeBattleCoins();
   }
-  writeu8(0xFF, m_config.minigame_type_addr);
+  writeu8(0xFF, mgTypeAddr());
   m_writing = 30;
   m_lastScene = 0xFF;
 }

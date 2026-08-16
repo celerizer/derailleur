@@ -57,109 +57,152 @@ static const char MP3_CHEAT_DUEL_BOARD[] =
   "+810DFEC4 2400"
   "+810DE2AC 2400";
 
-/* Roulette-title trampoline + hook (see DrHostConfig::cheat_title_hook). MP3 has two
- * mode overlays with their own title loader call site, toggled by the host: the
- * shared_board overlay (regular boards) and the name_81 overlay (duel / story). Both
- * trampolines live at 0x80400000 and tail-call the same loader at 0x8005B43C; they
- * differ only in which type byte they read. Only one is enabled at a time. */
+/* Roulette-title trampolines + hooks (see DrHostConfig::cheat_title_hook). Assembly in
+ * scratch RAM at 0x80097724; glyph block at +0x6000 (0x8009D724), 8 title colors at +0x6500
+ * (0x8009DC24). MP3 has two toggled overlays sharing this base: the shared_board board hook
+ * and the name_81 duel/story hook. A (list-create, slot in S0) computes block + (type*5 +
+ * slot)*32 into A1 and copies the 8 colors into the game's color array (0x80100E9C) before
+ * tail-calling the loader (0x8005B43C); the board A also backs out to the loader on an ITEM
+ * type so items keep their real names. B (re-read, slot in V1) just redirects. (Generated.) */
 static const char MP3_CHEAT_TITLE_HOOK_BOARD[] =
-  // A: list-create (slot in S0). Backs out to the original loader on an ITEM type so
-  // item mini-games keep their real names. Runs long, so B starts at 0x80400038.
-  "81400000 3C01"   // LUI   AT, 0x8010
-  "+81400002 8010"
-  "+81400004 9021"  // LBU   AT, 0x2C0D(AT)    — shared_board type byte (0x80102C0D)
-  "+81400006 2C0D"
-  "+81400008 2402"  // ADDIU V0, ZERO, 3       — ITEM minigame type
-  "+8140000A 0003"
-  "+8140000C 1022"  // BEQ   AT, V0, 0x80400030 — ITEM: back out, run the original loader
-  "+8140000E 0008"
-  "+81400010 0001"  // SLL   V0, AT, 2         — (delay slot) type * 4
-  "+81400012 1080"
-  "+81400014 0041"  // ADDU  V0, V0, AT        — type * 5
-  "+81400016 1021"
-  "+81400018 0050"  // ADDU  V0, V0, S0        — + slot
-  "+8140001A 1021"
-  "+8140001C 0002"  // SLL   V0, V0, 5         — * 32
-  "+8140001E 1140"
-  "+81400020 3C01"  // LUI   AT, 0x8040
-  "+81400022 8040"
-  "+81400024 0022"  // ADDU  AT, AT, V0
-  "+81400026 0821"
-  "+81400028 0801"  // J     0x8005B43C        — redirect into the loader
-  "+8140002A 6D0F"
-  "+8140002C 2425"  // ADDIU A1, AT, 0x80      — (delay slot) block base
-  "+8140002E 0080"
-  "+81400030 0801"  // J     0x8005B43C        — back out: original loader, A1 (real id) untouched
-  "+81400032 6D0F"
-  "+81400034 0000"  // NOP                     — (delay slot)
-  "+81400036 0000"
-  // B: re-read (cursor slot in V1). Item mini-games never reach the cursor re-read, so
-  // no back-out. V1 is the 0-4 cursor position and already the block index -- the
-  // force-id +1 only shifts the stored id (read by onMiniexplainDetected), not the
-  // cursor -- so index V1 directly with no decrement.
-  "+81400038 3C01"  // LUI   AT, 0x8010
-  "+8140003A 8010"
-  "+8140003C 9021"  // LBU   AT, 0x2C0D(AT)
-  "+8140003E 2C0D"
-  "+81400040 0001"  // SLL   V0, AT, 2
-  "+81400042 1080"
-  "+81400044 0041"  // ADDU  V0, V0, AT        — type * 5
-  "+81400046 1021"
-  "+81400048 0043"  // ADDU  V0, V0, V1        — + cursor slot
-  "+8140004A 1021"
-  "+8140004C 0002"  // SLL   V0, V0, 5         — * 32
-  "+8140004E 1140"
-  "+81400050 3C01"  // LUI   AT, 0x8040
-  "+81400052 8040"
-  "+81400054 0022"  // ADDU  AT, AT, V0
-  "+81400056 0821"
-  "+81400058 0801"  // J     0x8005B43C
-  "+8140005A 6D0F"
-  "+8140005C 2425"  // ADDIU A1, AT, 0x80      — block base
-  "+8140005E 0080"
-  // Hooks
-  "+810DFFD8 0C10"  // JAL 0x80400000 — list-create -> A
-  "+810DFFDA 0000"
-  "+810DF480 0C10"  // JAL 0x80400038 — re-read -> B
-  "+810DF482 000E";
+  "81097724 3C01"  // LUI  AT, type_hi
+  "+81097726 8010"
+  "+81097728 9021"  // LBU  AT, type_byte
+  "+8109772A 2C0D"
+  "+8109772C 2402"  // ADDIU V0, ZERO, 3 (ITEM)
+  "+8109772E 0003"
+  "+81097730 1022"  // BEQ  AT, V0, back_out
+  "+81097732 0013"
+  "+81097734 0001"  // SLL  V0, AT, 2
+  "+81097736 1080"
+  "+81097738 0041"  // ADDU V0, V0, AT (type*5)
+  "+8109773A 1021"
+  "+8109773C 0050"  // ADDU V0, V0, S0 (+slot)
+  "+8109773E 1021"
+  "+81097740 0002"  // SLL  V0, V0, 5 (*32)
+  "+81097742 1140"
+  "+81097744 3C01"  // LUI  AT, block_hi
+  "+81097746 800A"
+  "+81097748 0022"  // ADDU AT, AT, V0
+  "+8109774A 0821"
+  "+8109774C 2425"  // ADDIU A1, AT, block_lo
+  "+8109774E D724"
+  "+81097750 3C01"  // LUI  AT, type_hi
+  "+81097752 8010"
+  "+81097754 9028"  // LBU  T0, type_byte
+  "+81097756 2C0D"
+  "+81097758 0008"  // SLL  T0, T0, 3 (type*8)
+  "+8109775A 40C0"
+  "+8109775C 3C01"  // LUI  AT, colors_hi
+  "+8109775E 800A"
+  "+81097760 0028"  // ADDU T0, AT, T0 (colors + type*8)
+  "+81097762 4021"
+  "+81097764 8D02"  // LW   V0, colrow+0
+  "+81097766 DC24"
+  "+81097768 3C01"  // LUI  AT, coldst_hi
+  "+8109776A 8010"
+  "+8109776C AC22"  // SW   V0, coldst+0
+  "+8109776E 0E9C"
+  "+81097770 8D02"  // LW   V0, colrow+4
+  "+81097772 DC28"
+  "+81097774 AC22"  // SW   V0, coldst+4
+  "+81097776 0EA0"
+  "+81097778 0801"  // J    loader
+  "+8109777A 6D0F"
+  "+8109777C 0000"  // NOP
+  "+8109777E 0000"
+  "+81097780 0801"  // J    loader (back_out)
+  "+81097782 6D0F"
+  "+81097784 0000"  // NOP
+  "+81097786 0000"
+  "+81097788 3C01"  // LUI  AT, type_hi
+  "+8109778A 8010"
+  "+8109778C 9021"  // LBU  AT, type_byte
+  "+8109778E 2C0D"
+  "+81097790 0001"  // SLL  V0, AT, 2
+  "+81097792 1080"
+  "+81097794 0041"  // ADDU V0, V0, AT
+  "+81097796 1021"
+  "+81097798 0043"  // ADDU V0, V0, V1 (+cursor)
+  "+8109779A 1021"
+  "+8109779C 0002"  // SLL  V0, V0, 5
+  "+8109779E 1140"
+  "+810977A0 3C01"  // LUI  AT, block_hi
+  "+810977A2 800A"
+  "+810977A4 0022"  // ADDU AT, AT, V0
+  "+810977A6 0821"
+  "+810977A8 0801"  // J    loader
+  "+810977AA 6D0F"
+  "+810977AC 2425"  // ADDIU A1, AT, block_lo (delay)
+  "+810977AE D724"
+  "+810DFFD8 0C02"  // JAL 0x80097724 -- list-create -> A
+  "+810DFFDA 5DC9"
+  "+810DF480 0C02"  // JAL 0x80097788 -- re-read -> B
+  "+810DF482 5DE2";
 
 static const char MP3_CHEAT_TITLE_HOOK_DUEL[] =
-  "81400000 3C01"   // LUI   AT, 0x8010
-  "+81400002 8010"
-  "+81400004 9021"  // LBU   AT, 0x2BAD(AT)    — name_81 type byte (0x80102BAD)
-  "+81400006 2BAD"
-  "+81400008 0001"  // SLL   V0, AT, 2
-  "+8140000A 1080"
-  "+8140000C 0041"  // ADDU  V0, V0, AT        — type * 5
-  "+8140000E 1021"
-  "+81400010 0050"  // ADDU  V0, V0, S0        — + slot
-  "+81400012 1021"
-  "+81400014 0002"  // SLL   V0, V0, 5         — * 32
-  "+81400016 1140"
-  "+81400018 3C01"  // LUI   AT, 0x8040
-  "+8140001A 8040"
-  "+8140001C 0022"  // ADDU  AT, AT, V0
-  "+8140001E 0821"
-  "+81400020 0801"  // J     0x8005B43C        — back into the loader
-  "+81400022 6D0F"
-  "+81400024 2425"  // ADDIU A1, AT, 0x80      — block base (delay slot)
-  "+81400026 0080"
-  "+810DFAD8 0C10"  // JAL   0x80400000        — hook (was JAL 0x8005B43C)
-  "+810DFADA 0000";
+  /* --- A: list-create, slot in S0 --- */
+  "81097724 0010"  // SLL   V0, S0, 5           - slot*32 (row 0)
+  "+81097726 1140"
+  "+81097728 3C01"  // LUI   AT, block_hi
+  "+8109772A 800A"
+  "+8109772C 0022"  // ADDU  AT, AT, V0
+  "+8109772E 0821"
+  "+81097730 2425"  // ADDIU A1, AT, block_lo    - block base 0x8009D724
+  "+81097732 D724"
+  "+81097734 3C01"  // LUI   AT, colors_hi
+  "+81097736 800A"
+  "+81097738 8C22"  // LW    V0, colors+0
+  "+8109773A DC24"
+  "+8109773C 3C01"  // LUI   AT, coldst_hi
+  "+8109773E 8010"
+  "+81097740 AC22"  // SW    V0, coldst+0        - name_81 color table 0x80100EEC
+  "+81097742 0EEC"
+  "+81097744 3C01"  // LUI   AT, colors_hi
+  "+81097746 800A"
+  "+81097748 8C22"  // LW    V0, colors+4
+  "+8109774A DC28"
+  "+8109774C 3C01"  // LUI   AT, coldst_hi
+  "+8109774E 8010"
+  "+81097750 AC22"  // SW    V0, coldst+4
+  "+81097752 0EF0"
+  "+81097754 0801"  // J     0x8005B43C
+  "+81097756 6D0F"
+  "+81097758 0000"  // NOP
+  "+8109775A 0000"
+  /* --- B: re-read, slot in V0 --- */
+  "+8109775C 0002"  // SLL   V0, V0, 5           - slot*32 (row 0)
+  "+8109775E 1140"
+  "+81097760 3C01"  // LUI   AT, block_hi
+  "+81097762 800A"
+  "+81097764 0022"  // ADDU  AT, AT, V0
+  "+81097766 0821"
+  "+81097768 0801"  // J     0x8005B43C
+  "+8109776A 6D0F"
+  "+8109776C 2425"  // ADDIU A1, AT, block_lo    (delay slot)
+  "+8109776E D724"
+  /* --- stash the slot before A0 is clobbered (dead insn) --- */
+  "+810DE148 0080"  // ADDU  V0, A0, ZERO
+  "+810DE14A 1021"
+  /* --- hooks --- */
+  "+810E0164 0C02"   // JAL 0x80097724 -> A
+  "+810E0166 5DC9"
+  "+810DE160 0C02"  // JAL 0x8009775C -- re-read -> B
+  "+810DE162 5DD7";
 
 /* Force the mini-game roulette onto the slot index (0-4). Like the title hook, MP3
  * has a board (shared_board) and a duel/story (name_81) variant, toggled by the host. */
 static const char MP3_CHEAT_FORCE_ID_BOARD[] =
-  "810DFE84 2602"   // ADDIU V0, S0, 1           — ID = slot index + 1 (1-5)
+  "810DFE84 2602"   // ADDIU V0, S0, 1 — ID = slot index + 1 (1-5)
   "+810DFE86 0001"
   "+810DFE94 1000"  // BEQ  ZERO, ZERO, 0x800DFF80 (accept)
   "+810DFE96 003A";
 
 static const char MP3_CHEAT_FORCE_ID_DUEL[] =
-  "810DF7E8 2602"   // ADDIU V0, S0, 1           — ID = slot index + 1 (1-5)
-  "+810DF7EA 0001"
-  "+810DF7F8 1000"  // BEQ  ZERO, ZERO, 0x800DFA5C (accept)
-  "+810DF7FA 0098";
+  "810DFE74 2602"   // ADDIU V0, S0, 1 — ID = slot index + 1 (1-5)
+  "+810DFE76 0001"
+  "+810DFE84 1000"  // BEQ ZERO, ZERO, +0x98 -> 0x800E00E8 (accept)
+  "+810DFE86 0098";
 
 static const dr_scene_name_t MP3_SCENE_NAMES[] =
 {
@@ -390,7 +433,8 @@ static DrHostConfig makeConfig()
   memcpy(config.minigame_blacklist, blacklist, sizeof(blacklist));
   config.minigame_blacklist_count = 3;
 
-  config.title_block_addr = 0x80400080;
+  config.title_block_addr = 0x8009D724; // 0x80097724 + 0x6000
+  config.title_color_addr = 0x8009DC24; // + 0x6500 (after the block)
   config.title_type_addr_duel = 0x80102BAD; // name_81 overlay's type byte
   config.cheat_title_hook = MP3_CHEAT_TITLE_HOOK_BOARD;
   config.cheat_title_hook_duel = MP3_CHEAT_TITLE_HOOK_DUEL;
@@ -403,6 +447,9 @@ static DrHostConfig makeConfig()
   config.scene_stat_duel = 0x4190;
   config.turn_total_addr = 0x800CD05Au; // u8
   config.turn_current_addr = 0x800CD05Bu; // u8
+  config.turn_owner_addr = 0x800CD067u;   // s8 whose turn
+  config.space_index_addr = 0x800CD069u;  // s8 current space index
+  config.board_guard_is_8bit = true;
   config.scene_duel_slot0_addr = 0x80102BA8u; // u8
   config.cheat_regular_board = MP3_CHEAT_REGULAR_BOARD;
   config.cheat_duel_board = MP3_CHEAT_DUEL_BOARD;

@@ -28,61 +28,79 @@ static const dr_team_color MP1_PANEL_COLOR_TO_DR[] = {
   DR_TEAM_COLOR_GREEN, // 0x04
 };
 
-/* Roulette-title trampolines + hooks (see DrHostConfig::cheat_title_hook). Two copies
- * of the same trampoline redirect the title loader to our glyph block at 0x80400080 +
- * (type*5 + slot)*32: A at 0x80400000 for the list-create pass (slot in S0) and B at
- * 0x80400028 for the re-read on selection (slot in V1). Both read the type byte at
- * 0x800D6459 and tail-call the loader at 0x8006D7D8. */
+/* Roulette-title trampolines + hooks (see DrHostConfig::cheat_title_hook). Assembly lives
+ * in scratch RAM at 0x800B8A68; the glyph block is at +0x6000 (0x800BEA68) and the 8 title
+ * colors at +0x6500 (0x800BEF68). A (list-create, slot in S0) computes block + (type*5 +
+ * slot)*32 into A1 and copies the 8 colors into the game's color array (0x800C4DD0) before
+ * tail-calling the loader (0x8006D7D8); B (re-read, slot in V1) just redirects the title.
+ * Type byte at 0x800D6459. (Generated -- see scratchpad gen_trampolines.py.) */
 static const char MP1_CHEAT_TITLE_HOOK[] =
-  // A: list-create (slot in S0)
-  "81400000 3C01"   // LUI   AT, 0x800D
-  "+81400002 800D"
-  "+81400004 9021"  // LBU   AT, 0x6459(AT)    — type byte
-  "+81400006 6459"
-  "+81400008 0001"  // SLL   V0, AT, 2
-  "+8140000A 1080"
-  "+8140000C 0041"  // ADDU  V0, V0, AT        — type * 5
-  "+8140000E 1021"
-  "+81400010 0050"  // ADDU  V0, V0, S0        — + slot
-  "+81400012 1021"
-  "+81400014 0002"  // SLL   V0, V0, 5         — * 32
-  "+81400016 1140"
-  "+81400018 3C01"  // LUI   AT, 0x8040
-  "+8140001A 8040"
-  "+8140001C 0022"  // ADDU  AT, AT, V0
-  "+8140001E 0821"
-  "+81400020 0801"  // J     0x8006D7D8
-  "+81400022 B5F6"
-  "+81400024 2425"  // ADDIU A1, AT, 0x80      — block base (delay slot)
-  "+81400026 0080"
-  // B: re-read (cursor slot in V1). V1 is the 0-4 cursor position and already the block
-  // index -- the force-id +1 only shifts the stored id (read by onMiniexplainDetected),
-  // not the cursor -- so index V1 directly with no decrement.
-  "+81400028 3C01"  // LUI   AT, 0x800D
-  "+8140002A 800D"
-  "+8140002C 9021"  // LBU   AT, 0x6459(AT)
-  "+8140002E 6459"
-  "+81400030 0001"  // SLL   V0, AT, 2
-  "+81400032 1080"
-  "+81400034 0041"  // ADDU  V0, V0, AT        — type * 5
-  "+81400036 1021"
-  "+81400038 0043"  // ADDU  V0, V0, V1        — + cursor slot
-  "+8140003A 1021"
-  "+8140003C 0002"  // SLL   V0, V0, 5         — * 32
-  "+8140003E 1140"
-  "+81400040 3C01"  // LUI   AT, 0x8040
-  "+81400042 8040"
-  "+81400044 0022"  // ADDU  AT, AT, V0
-  "+81400046 0821"
-  "+81400048 0801"  // J     0x8006D7D8
-  "+8140004A B5F6"
-  "+8140004C 2425"  // ADDIU A1, AT, 0x80      — block base
-  "+8140004E 0080"
-  // Hooks
-  "+81043CB0 0C10"  // JAL 0x80400000 — list-create -> A
-  "+81043CB2 0000"
-  "+81043100 0C10"  // JAL 0x80400028 — re-read -> B
-  "+81043102 000A";
+  "810B8A68 3C01"  // LUI  AT, type_hi
+  "+810B8A6A 800D"
+  "+810B8A6C 9021"  // LBU  AT, type_byte
+  "+810B8A6E 6459"
+  "+810B8A70 0001"  // SLL  V0, AT, 2
+  "+810B8A72 1080"
+  "+810B8A74 0041"  // ADDU V0, V0, AT (type*5)
+  "+810B8A76 1021"
+  "+810B8A78 0050"  // ADDU V0, V0, S0 (+slot)
+  "+810B8A7A 1021"
+  "+810B8A7C 0002"  // SLL  V0, V0, 5 (*32)
+  "+810B8A7E 1140"
+  "+810B8A80 3C01"  // LUI  AT, block_hi
+  "+810B8A82 800C"
+  "+810B8A84 0022"  // ADDU AT, AT, V0
+  "+810B8A86 0821"
+  "+810B8A88 2425"  // ADDIU A1, AT, block_lo
+  "+810B8A8A EA68"
+  "+810B8A8C 3C01"  // LUI  AT, type_hi
+  "+810B8A8E 800D"
+  "+810B8A90 9028"  // LBU  T0, type_byte
+  "+810B8A92 6459"
+  "+810B8A94 0008"  // SLL  T0, T0, 3 (type*8)
+  "+810B8A96 40C0"
+  "+810B8A98 3C01"  // LUI  AT, colors_hi
+  "+810B8A9A 800C"
+  "+810B8A9C 0028"  // ADDU T0, AT, T0 (colors + type*8)
+  "+810B8A9E 4021"
+  "+810B8AA0 8D02"  // LW   V0, colrow+0
+  "+810B8AA2 EF68"
+  "+810B8AA4 3C01"  // LUI  AT, coldst_hi
+  "+810B8AA6 800C"
+  "+810B8AA8 AC22"  // SW   V0, coldst+0
+  "+810B8AAA 4DD0"
+  "+810B8AAC 8D02"  // LW   V0, colrow+4
+  "+810B8AAE EF6C"
+  "+810B8AB0 AC22"  // SW   V0, coldst+4
+  "+810B8AB2 4DD4"
+  "+810B8AB4 0801"  // J    loader
+  "+810B8AB6 B5F6"
+  "+810B8AB8 0000"  // NOP
+  "+810B8ABA 0000"
+  "+810B8ABC 3C01"  // LUI  AT, type_hi
+  "+810B8ABE 800D"
+  "+810B8AC0 9021"  // LBU  AT, type_byte
+  "+810B8AC2 6459"
+  "+810B8AC4 0001"  // SLL  V0, AT, 2
+  "+810B8AC6 1080"
+  "+810B8AC8 0041"  // ADDU V0, V0, AT
+  "+810B8ACA 1021"
+  "+810B8ACC 0043"  // ADDU V0, V0, V1 (+cursor)
+  "+810B8ACE 1021"
+  "+810B8AD0 0002"  // SLL  V0, V0, 5
+  "+810B8AD2 1140"
+  "+810B8AD4 3C01"  // LUI  AT, block_hi
+  "+810B8AD6 800C"
+  "+810B8AD8 0022"  // ADDU AT, AT, V0
+  "+810B8ADA 0821"
+  "+810B8ADC 0801"  // J    loader
+  "+810B8ADE B5F6"
+  "+810B8AE0 2425"  // ADDIU A1, AT, block_lo (delay)
+  "+810B8AE2 EA68"
+  "+81043CB0 0C02"  // JAL 0x800B8A68 -- list-create -> A
+  "+81043CB2 E29A"
+  "+81043100 0C02"  // JAL 0x800B8ABC -- re-read -> B
+  "+81043102 E2AF";
 
 static const char MP1_CHEAT_FORCE_ID[] =
   "81043AB8 2602"   // ADDIU V0, S0, 1 ; ID = slot index + 1 (1-5)
@@ -300,7 +318,8 @@ static DrHostConfig makeConfig()
   config.minigame_id_addr = 0x800ED5DE; // u16 (minigame_id_is_8bit == false)
   config.minigame_id_is_8bit = false;
 
-  config.title_block_addr = 0x80400080;
+  config.title_block_addr = 0x800BEA68; // 0x800B8A68 + 0x6000
+  config.title_color_addr = 0x800BEF68; // + 0x6500 (after the block)
   config.cheat_title_hook = MP1_CHEAT_TITLE_HOOK;
   config.cheat_force_id = MP1_CHEAT_FORCE_ID;
 
@@ -314,6 +333,9 @@ static DrHostConfig makeConfig()
 
   config.turn_total_addr = 0x800ED5C7;   // u8
   config.turn_current_addr = 0x800ED5C9; // u8
+  config.turn_owner_addr = 0x800ED5DC;   // s16 whose turn
+  config.space_index_addr = 0x800ED5E0;  // s16 current space index
+  config.board_guard_is_8bit = false;
 
   return config;
 }
