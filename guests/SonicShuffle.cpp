@@ -67,9 +67,9 @@ static const size_t SS_TURN_ORDER_ADDR[4] = { 0x21D81C, 0x21D81D, 0x21D81E, 0x21
  *   00 00 00 80 Medusa */
 static const size_t SS_MINIEVENT_ADDR = 0x21D84C;
 
-/* s16 - per-player mini-game result rings (contiguous, outside the player structs) */
-static const size_t SS_MINIGAME_BONUS_ADDR[4] = { 0x21D91A, 0x21D91C, 0x21D91E, 0x21D920 };
-static const size_t SS_MINIGAME_EARNED_ADDR[4] = { 0x21D924, 0x21D926, 0x21D928, 0x21D92A };
+/* s16 - per-player mini-game result rings */
+static const size_t SS_MINIGAME_BONUS_ADDR[4] = { 0x21D914, 0x21D918, 0x21D91C, 0x21D920 };
+static const size_t SS_MINIGAME_EARNED_ADDR[4] = { 0x21D924, 0x21D928, 0x21D92C, 0x21D930 };
 
 /* Per-player state, 0x200 bytes each from SS_PLAYER_BASE; pad keeps offsets (asserted below). */
 #pragma pack(push, 1)
