@@ -169,10 +169,14 @@ DrDebug::DrDebug(QWidget *parent)
       players[i].control_type = dr_control_type(pc.controlType->currentData().toInt());
       players[i].difficulty = dr_difficulty(pc.difficulty->currentData().toInt());
 
-      /* team_id is chosen directly now; team_color follows it (team 0 = blue) and
-       * team_type follows the minigame's layout for the chosen team. */
+      /* team_id is chosen directly now (any 0-3); team_color follows it and team_type
+       * follows the minigame's layout for the chosen team. */
       players[i].team_id = pc.teamId->currentData().toInt();
-      players[i].team_color = (players[i].team_id == 0) ? DR_TEAM_COLOR_BLUE : DR_TEAM_COLOR_RED;
+      static const dr_team_color k_teamColors[4] = {
+        DR_TEAM_COLOR_BLUE, DR_TEAM_COLOR_RED, DR_TEAM_COLOR_YELLOW, DR_TEAM_COLOR_GREEN
+      };
+      players[i].team_color = (players[i].team_id >= 0 && players[i].team_id < 4)
+        ? k_teamColors[players[i].team_id] : DR_TEAM_COLOR_INVALID;
 
       switch (minigame->type)
       {
@@ -299,31 +303,22 @@ void DrDebug::updateTeamOptions()
 {
   const dr_minigame_type type = selectedType();
 
-  /* Value->label pairs for the team dropdown, plus a valid default assignment per
-   * player so a freshly picked mini-game starts in a legal configuration. */
-  QList<QPair<int, QString>> opts;
+  /* Every player can be set to any team id 0-3 for any type, so arbitrary/invalid
+   * splits (e.g. everyone on one team) can be tested. The switch only picks a valid
+   * default assignment per player so a freshly chosen mini-game starts out legal. */
   int def[4] = { 0, 1, 2, 3 };
   switch (type)
   {
   case DR_MINIGAME_2V2:
-    opts = { { 0, tr("Blue") }, { 1, tr("Red") } };
+  case DR_MINIGAME_DUEL:
     def[0] = 0; def[1] = 0; def[2] = 1; def[3] = 1;
     break;
   case DR_MINIGAME_1V3:
-    opts = { { 0, tr("Solo") }, { 1, tr("Team") } };
-    def[0] = 0; def[1] = 1; def[2] = 1; def[3] = 1;
-    break;
-  case DR_MINIGAME_DUEL:
-    opts = { { 0, tr("Player") }, { 1, tr("Non-player") } };
-    def[0] = 0; def[1] = 0; def[2] = 1; def[3] = 1;
-    break;
   case DR_MINIGAME_1P:
   case DR_MINIGAME_ITEM:
-    opts = { { 0, tr("Player") }, { 1, tr("Non-player") } };
     def[0] = 0; def[1] = 1; def[2] = 1; def[3] = 1;
     break;
   default: /* 4P, battle, etc: free-for-all, each player their own team */
-    opts = { { 0, "0" }, { 1, "1" }, { 2, "2" }, { 3, "3" } };
     break;
   }
 
@@ -333,9 +328,9 @@ void DrDebug::updateTeamOptions()
     const int prev = c->count() ? c->currentData().toInt() : def[i];
     c->blockSignals(true);
     c->clear();
-    for (const auto &o : opts)
-      c->addItem(o.second, o.first);
-    /* Keep the prior choice if it's still a valid option, else the type's default. */
+    for (int v = 0; v < 4; v++)
+      c->addItem(QString::number(v), v);
+    /* Keep the prior choice, else the type's default. */
     int sel = c->findData(prev);
     if (sel < 0)
       sel = c->findData(def[i]);
