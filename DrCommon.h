@@ -309,6 +309,10 @@ typedef union
 
     /// A mini-game that uses the GameCube microphone
     unsigned mic : 1;
+
+    /// A mini-game that relies on controller rumble. Hint to not choose it
+    /// unless all players have rumble-supported controllers.
+    unsigned rumble : 1;
   } flags;
 } dr_minigame_flags_t;
 
@@ -353,6 +357,31 @@ typedef enum
 
   DR_TEAM_TYPE_SIZE
 } dr_team_type;
+
+typedef enum
+{
+  DR_VALUE_TYPE_INVALID = 0,
+
+  DR_VALUE_TYPE_S8,
+  DR_VALUE_TYPE_U8,
+  DR_VALUE_TYPE_S16,
+  DR_VALUE_TYPE_U16,
+  DR_VALUE_TYPE_S32,
+  DR_VALUE_TYPE_U32,
+  DR_VALUE_TYPE_S64,
+  DR_VALUE_TYPE_U64,
+  DR_VALUE_TYPE_FLOAT,
+  DR_VALUE_TYPE_DOUBLE,
+  DR_VALUE_TYPE_POINTER,
+
+  DR_VALUE_TYPE_SIZE
+} dr_value_type;
+
+typedef struct
+{
+  size_t address;
+  dr_value_type type;
+} dr_value_t;
 
 typedef struct
 {
