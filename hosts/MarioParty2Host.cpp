@@ -269,26 +269,9 @@ MarioParty2Host::MarioParty2Host(QObject *parent)
           /* Advance "START" prompt */
           "+8104F0FC 2400"
 
-          /* Save check -- no longer needed
-          "+D10D8BE8 2E03"
-          "+800C3C92 00CE"
-          "+D30D8BE8 2E03"
-          "+800C3C92 0000"
-          "+D10FA63E 005B"
-          "+800C3C93 001E"
-          "+D10C3C92 CE1E"
-          "+81113068 0008"
-          "+D10C3C92 CE1E"
-          "+8111306A 0031"
-          */
-
           /* Honestly don't remember. These may both be speed */
           "+810657EE 0005"
-          "+81062D8C 1000"
-
-          /* Disable proceed on board results */
-          "+D10FA63E 0051"
-          "+811072A0 2400");
+          "+81062D8C 1000");
       }
     },
     Qt::DirectConnection);

@@ -330,8 +330,8 @@ void SmashRemix::applyPlayers()
     if (p.control_port == DR_CONTROL_PORT_INVALID || p.control_port >= DR_CONTROL_PORT_SIZE)
       continue;
 
-    /** @todo this needs to get changed if we change how duel teams are set */
-    if (p.team_type == DR_TEAM_TYPE_INVALID)
+    /* Bystanders (unfilled slots, or duel nonparticipants) don't spawn. */
+    if (!dr_team_type_participates(p.team_type))
       continue;
 
     unsigned slot = p.control_port - DR_CONTROL_PORT_P1;

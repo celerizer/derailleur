@@ -231,7 +231,6 @@ private:
   uint8_t m_itemChosenId = 0;
   bool m_hostGolfMode = false; // host granted golf mode for the running mini-game (1P)
 
-
   dr_host_state m_State = DR_HOST_STATE_INVALID;
 
   std::array<DrMinigameCandidate, 5> m_candidates = {};

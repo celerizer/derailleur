@@ -789,13 +789,38 @@ void MarioPartyN64Host::readPlayers(dr_minigame_type type)
   for (unsigned i = 0; i < 4; i++)
   {
     if (type == DR_MINIGAME_1V3)
-      m_pendingPlayers[i].team_type = (m_pendingPlayers[i].team_id == 0) ? DR_TEAM_TYPE_1V3_SOLO : DR_TEAM_TYPE_1V3_GROUP;
+    {
+      switch (m_pendingPlayers[i].team_id)
+      {
+      case 0:
+        m_pendingPlayers[i].team_type = DR_TEAM_TYPE_1V3_SOLO;
+        break;
+      case 1:
+        m_pendingPlayers[i].team_type = DR_TEAM_TYPE_1V3_GROUP;
+        break;
+      default:
+        m_pendingPlayers[i].team_type = DR_TEAM_TYPE_INVALID;
+      }
+    }
     else if (type == DR_MINIGAME_2V2)
       m_pendingPlayers[i].team_type = DR_TEAM_TYPE_2V2;
     else if (type == DR_MINIGAME_4P)
       m_pendingPlayers[i].team_type = DR_TEAM_TYPE_4P;
     else if (type == DR_MINIGAME_DUEL)
-      m_pendingPlayers[i].team_type = (m_pendingPlayers[i].team_id == 0) ? DR_TEAM_TYPE_SOLO : DR_TEAM_TYPE_INVALID;
+    {
+      switch (m_pendingPlayers[i].team_id)
+      {
+      case 0:
+        m_pendingPlayers[i].team_type = DR_TEAM_TYPE_DUEL_TARGET;
+        break;
+      case 1:
+        m_pendingPlayers[i].team_type = DR_TEAM_TYPE_DUEL_INITIATOR;
+        break;
+      default:
+        m_pendingPlayers[i].team_type = DR_TEAM_TYPE_DUEL_NONPARTICIPANT;
+        break;
+      }
+    }
     else
       m_pendingPlayers[i].team_type = DR_TEAM_TYPE_SOLO;
   }

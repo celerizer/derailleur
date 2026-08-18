@@ -111,15 +111,15 @@ void SuperMarioBros3::doApplyGameData(const DrGameData &data)
   m_retro->writeForFrames(SMB3_VS_MAP_ADDR, &map, sizeof(map), 30);
 
   /* Recolor the two Vs. duelists to match their characters. The participating
-   * players (team_type != invalid) fill the Mario and Luigi sprite slots; hold the
-   * write for 30 frames so it sticks as the match spins up. */
+   * players fill the Mario and Luigi sprite slots; hold the write for 30 frames so
+   * it sticks as the match spins up. */
   const size_t ppuAddr[2] = { SMB3_VS_MARIO_PPU_ADDR, SMB3_VS_LUIGI_PPU_ADDR };
   m_slotToPlayer[0] = m_slotToPlayer[1] = -1;
   core()->input()->clearPortRoutes();
   unsigned slot = 0;
   for (unsigned i = 0; i < 4 && slot < 2; i++)
   {
-    if (m_players[i].team_type == DR_TEAM_TYPE_INVALID)
+    if (!dr_team_type_participates(m_players[i].team_type))
       continue;
     smb3_player_colors_t colors = smb3ColorsFor(m_players[i].character);
     m_retro->writeForFrames(ppuAddr[slot], &colors, sizeof(colors), 30);

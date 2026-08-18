@@ -83,10 +83,10 @@ void MarioPartyGcn::applyPlayers()
   {
     int slot = 0;
     for (unsigned i = 0; i < 4; i++)
-      if (m_players[i].team_type != DR_TEAM_TYPE_INVALID)
+      if (dr_team_type_participates(m_players[i].team_type))
         m_slotOf[i] = slot++;
     for (unsigned i = 0; i < 4; i++)
-      if (m_players[i].team_type == DR_TEAM_TYPE_INVALID)
+      if (!dr_team_type_participates(m_players[i].team_type))
         m_slotOf[i] = slot++;
   }
 

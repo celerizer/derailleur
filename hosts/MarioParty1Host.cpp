@@ -274,14 +274,6 @@ MarioParty1Host::MarioParty1Host(QObject *parent)
           "+D10F09F6 007F"
           "+800ED5E2 0000"
 
-          /* Don't proceed on results? */
-          "+D10F09F6 0064"
-          "+810FB1AC 2400"
-
-          /* Don't proceed on results */
-          "+D10F09F6 0040"
-          "+810FB1AC 2400"
-
           /* Advance "START" prompt */
           "+81046DDC 2400"
         );

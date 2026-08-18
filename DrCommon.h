@@ -356,8 +356,21 @@ typedef enum
   /* Entirely solo -- used for 1P mini-games, item games, etc. */
   DR_TEAM_TYPE_SOLO,
 
+  /* Duel-board roles: the two duelists -- the initiator who landed on the duel
+   * space and the target they challenged -- plus the bystanders who don't play. */
+  DR_TEAM_TYPE_DUEL_TARGET,
+  DR_TEAM_TYPE_DUEL_INITIATOR,
+  DR_TEAM_TYPE_DUEL_NONPARTICIPANT,
+
   DR_TEAM_TYPE_SIZE
 } dr_team_type;
+
+/// True if a player with this team type actually plays the mini-game, as opposed
+/// to a bystander: an unfilled/spectator slot (INVALID) or a duel nonparticipant.
+static inline bool dr_team_type_participates(dr_team_type type)
+{
+  return type != DR_TEAM_TYPE_INVALID && type != DR_TEAM_TYPE_DUEL_NONPARTICIPANT;
+}
 
 typedef enum
 {

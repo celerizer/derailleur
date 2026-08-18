@@ -29,6 +29,7 @@
 #include "hosts/MarioParty1Host.h"
 #include "hosts/MarioParty2Host.h"
 #include "hosts/MarioParty3Host.h"
+#include "hosts/MarioParty4Host.h"
 #include "hosts/SonicShuffleHost.h"
 #include "guests/MarioKart64.h"
 #include "guests/MarioParty1.h"
@@ -139,6 +140,7 @@ MainWindow::MainWindow(QWidget *parent)
     addHostButton("Mario Party 1", [this]() -> DrHost * { return new MarioParty1Host(this); });
     addHostButton("Mario Party 2", [this]() -> DrHost * { return new MarioParty2Host(this); });
     addHostButton("Mario Party 3", [this]() -> DrHost * { return new MarioParty3Host(this); });
+    addHostButton("Mario Party 4", [this]() -> DrHost * { return new MarioParty4Host(this); });
     layout->addStretch();
 
     m_StartGameTab = startGame;

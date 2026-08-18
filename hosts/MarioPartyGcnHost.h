@@ -24,6 +24,19 @@ struct DrGcnHostConfig
 
   struct
   {
+    /// Code cave: a raw byte blob stamped word-by-word into `cave_addr`
+    /// (cave_size bytes) periodically. nullptr = no cave.
+    const uint8_t *cave;
+    size_t cave_addr;
+    unsigned cave_size;
+
+    /// A Gecko code for the board hook that jumps into the cave; enabled for the
+    /// lifetime of the host. nullptr = none.
+    const char *cheat_board;
+  } cheats;
+
+  struct
+  {
     dr_value_t scene;                 // current scene id
     dr_value_t character[4];          // per-slot character id
     dr_value_t controller[4];         // per-slot controller port
@@ -72,9 +85,14 @@ public:
 
   void run(void);
 
+private:
+  /// Writes the code cave into RAM as aligned 32-bit words (no-op if unconfigured).
+  void stampCave(void);
+
 protected:
   DrGcnHostConfig m_config;
   dr_gcn_host_state m_State = DR_GCN_HOST_STATE_INVALID;
+  bool m_cheatsInstalled = false; // board hook enabled + cave first stamped on frame 1
 };
 
 #endif

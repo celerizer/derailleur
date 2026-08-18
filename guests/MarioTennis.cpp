@@ -129,7 +129,7 @@ void MarioTennis::run()
   /* If every player is a CPU, force controller 1 to press A so the game can proceed */
   bool allCpu = true;
   for (unsigned i = 0; i < 4; i++)
-    if (m_players[i].team_type != DR_TEAM_TYPE_INVALID &&
+    if (dr_team_type_participates(m_players[i].team_type) &&
         m_players[i].control_type == DR_CONTROL_TYPE_HUMAN)
     {
       allCpu = false;
