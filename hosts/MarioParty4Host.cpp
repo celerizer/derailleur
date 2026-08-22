@@ -77,6 +77,8 @@ static DrGcnHostConfig makeConfig()
 
   config.host_state_addr = MP4_HOST_STATE;
 
+  config.save_files = { "*-GMPE-MARIPA4BOX0.gci" };
+
   return config;
 }
 

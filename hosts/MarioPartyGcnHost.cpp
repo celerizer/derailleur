@@ -116,6 +116,17 @@ MarioPartyGcnHost::MarioPartyGcnHost(const DrGcnHostConfig &config, QObject *par
   connect(m_core, &QRetro::frameEnd, this, [this]() { run(); }, Qt::DirectConnection);
 }
 
+QStringList MarioPartyGcnHost::saveFilePatterns(void) const
+{
+  if (m_config.save_files.empty())
+    return DrHost::saveFilePatterns();
+
+  QStringList patterns;
+  for (const std::string &file : m_config.save_files)
+    patterns.append(QString::fromStdString(file));
+  return patterns;
+}
+
 void MarioPartyGcnHost::stampCave(void)
 {
   for (unsigned i = 0; i <= m_config.cheats.cave_size; i++)

@@ -3,6 +3,7 @@
 
 #include "../DrHost.h"
 #include <string>
+#include <vector>
 
 typedef enum
 {
@@ -83,6 +84,12 @@ struct DrGcnHostConfig
   unsigned minigame_type_to_dr_size;
 
   size_t host_state_addr;
+
+  /// Save files to ship to netplay clients (see DrHost::saveFilePatterns). A GCN
+  /// game's save is a memory-card file in Dolphin's GCI folder, named after the
+  /// game code rather than the ROM, so each game names its own. Empty falls back
+  /// to the ROM-named default.
+  std::vector<std::string> save_files;
 };
 
 class MarioPartyGcnHost : public DrHost
@@ -94,6 +101,7 @@ public:
 
   void writeResults(DrGuest *guest) override;
   void clearResults(void) override;
+  QStringList saveFilePatterns(void) const override;
 
   void run(void);
 

@@ -10,6 +10,7 @@
 #include <QHostAddress>
 #include <QKeyEvent>
 #include <QRandomGenerator>
+#include <QRegularExpression>
 #include <QTcpServer>
 #include <QTcpSocket>
 #include <QWidget>
@@ -32,21 +33,41 @@
 /* Serializes every file under `root` (recursively) into one compressed blob of
  * [u32 count]{ QString relPath, QByteArray data }..., so the host's save
  * directory can be shipped to clients. */
-static QByteArray dr_bundle_directory(const QString &root, const QString &baseFilter = QString())
+static QByteArray dr_bundle_directory(
+  const QString &root, const QStringList &fileFilters = QStringList())
 {
+  QList<QRegularExpression> filters;
+  for (const QString &filter : fileFilters)
+    filters.append(QRegularExpression(QRegularExpression::wildcardToRegularExpression(filter)));
+
   QList<QPair<QString, QByteArray>> files;
   QDir base(root);
   QDirIterator it(root, QDir::Files, QDirIterator::Subdirectories);
   while (it.hasNext())
   {
     it.next();
-    /* When a base name is given, ship only that game's save (any extension), e.g.
-     * "Mario Party 3 (USA).sav", not the whole save folder. */
-    if (!baseFilter.isEmpty() && QFileInfo(it.filePath()).completeBaseName() != baseFilter)
-      continue;
+    const QString rel = base.relativeFilePath(it.filePath());
+    /* When filters are given, ship only the files they select, not the whole save
+     * folder. Each is a wildcard tried against the file name (e.g.
+     * "Mario Party 3 (USA).*", matching that save wherever it sits) and against the
+     * path relative to the save dir, so a filter can also pin a subdirectory. */
+    if (!filters.isEmpty())
+    {
+      bool keep = false;
+      for (const QRegularExpression &re : filters)
+      {
+        if (re.match(it.fileName()).hasMatch() || re.match(rel).hasMatch())
+        {
+          keep = true;
+          break;
+        }
+      }
+      if (!keep)
+        continue;
+    }
     QFile f(it.filePath());
     if (f.open(QIODevice::ReadOnly))
-      files.append({ base.relativeFilePath(it.filePath()), f.readAll() });
+      files.append({ rel, f.readAll() });
   }
 
   QByteArray out;
@@ -131,7 +152,7 @@ void DrNetplay::hostSession(quint16 port, int playerCount)
   emit peerCountChanged(1, m_PeerCount);
 }
 
-void DrNetplay::startGame(int gameId, const QString &saveBaseName)
+void DrNetplay::startGame(int gameId, const QStringList &saveFilters)
 {
   if (!m_IsServer)
     return;
@@ -155,16 +176,16 @@ void DrNetplay::startGame(int gameId, const QString &saveBaseName)
   broadcastVar(DR_NETPLAY_PACKET_MINIGAME_FILTER, m_MinigameFilter);
 
   /* Ship the host game's save so every client plays off it (same unlocks / SRAM).
-   * Only that one game's save file is sent, not the whole save folder. Sent before
-   * START so clients redirect their save dir before building the host and loading
-   * content. */
+   * Only the files the host asked for are sent, not the whole save folder. Sent
+   * before START so clients redirect their save dir before building the host and
+   * loading content. */
   {
-    const QByteArray bundle = dr_bundle_directory(dr_save_directory(), saveBaseName);
+    const QByteArray bundle = dr_bundle_directory(dr_save_directory(), saveFilters);
     broadcastVar(DR_NETPLAY_PACKET_SAVE, bundle);
     emit logMessage(DR_LOG_INFO,
       QString("netplay: sent save (%1 KiB) for %2 from %3")
         .arg(bundle.size() / 1024)
-        .arg(saveBaseName.isEmpty() ? QStringLiteral("(all)") : saveBaseName)
+        .arg(saveFilters.isEmpty() ? QStringLiteral("(all)") : saveFilters.join(", "))
         .arg(dr_save_directory()));
   }
 

@@ -8,6 +8,7 @@
 #include <QObject>
 #include <QPair>
 #include <QString>
+#include <QStringList>
 #include <QWaitCondition>
 #include <atomic>
 #include <cstdint>
@@ -159,10 +160,11 @@ public:
   void abort();
 
   /// Server only: tells every connected client which game to start (a dr_game
-  /// value), then begins lockstep locally. `saveBaseName` is the host game's file
-  /// base (e.g. "Mario Party 3 (USA)"); only that game's save is shipped to clients,
-  /// not the whole save folder. Empty ships the entire folder (legacy fallback).
-  void startGame(int gameId, const QString &saveBaseName = QString());
+  /// value), then begins lockstep locally. `saveFilters` are the host game's save
+  /// file wildcards (see DrHost::saveFilePatterns, e.g. "Mario Party 3 (USA).*");
+  /// only the files they select are shipped to clients, not the whole save folder.
+  /// Empty ships the entire folder (legacy fallback).
+  void startGame(int gameId, const QStringList &saveFilters = QStringList());
 
   /// Server only: forces a hard resync of the active context — every client
   /// stops, receives the host's (compressed) savestate, loads it and resumes

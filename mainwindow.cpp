@@ -531,10 +531,7 @@ void MainWindow::startWithHost(DrHost *host)
    * startGameRequested signal.) */
   if (m_Netplay->isServer())
   {
-    /* Ship only this host game's save (e.g. "Mario Party 3 (USA).sav"), keyed on the
-     * ROM's base name, rather than the whole save folder. */
-    const QString saveBase = QFileInfo(QString::fromStdString(host->gamePath())).completeBaseName();
-    m_Netplay->startGame(static_cast<int>(host->game()), saveBase);
+    m_Netplay->startGame(static_cast<int>(host->game()), host->saveFilePatterns());
   }
 
   /* Only load guests that have at least one allowed mini-game; the rest never
@@ -846,6 +843,9 @@ void MainWindow::setupNetplay()
       break;
     case DR_GAME_MARIOPARTY3:
       host = new MarioParty3Host(this);
+      break;
+    case DR_GAME_MARIOPARTY4:
+      host = new MarioParty4Host(this);
       break;
     case DR_GAME_SONICSHUFFLE:
       host = new SonicShuffleHost(this);

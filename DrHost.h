@@ -3,6 +3,7 @@
 
 #include "DrGuest.h"
 #include "DrRetro.h"
+#include <QStringList>
 #include <array>
 
 struct DrMinigameCandidate
@@ -64,6 +65,10 @@ public:
 
   /// Which host game this is (used for netplay/session identity).
   virtual dr_game game(void) const = 0;
+
+  /// Wildcard patterns selecting which files under the save directory are shipped
+  /// to netplay clients at session start, so every peer plays off the host's save.
+  virtual QStringList saveFilePatterns(void) const;
 
   /// The pool a host queries for its mini-game candidates. Set once by the owner
   /// (MainWindow) after both the host and the guest list exist.
