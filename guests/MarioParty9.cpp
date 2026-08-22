@@ -228,9 +228,14 @@ void MarioParty9::run()
       applyControlRemap(m_minigame->quirks, m_players);
       m_controlsApplied = true;
       if (dr_netplay_active())
-        emit hardResyncRequested();
+        m_resyncCountdown = 180;
     }
   }
+
+  /* Hold the resync ~3s past the start so it lands on the running mini-game
+   * rather than the frame the controls swap on. */
+  if (m_resyncCountdown > 0 && --m_resyncCountdown == 0)
+    emit hardResyncRequested();
 
   if (!m_finishScheduled)
   {
@@ -252,6 +257,7 @@ void MarioParty9::doApplyGameData(const DrGameData &data)
 {
   m_minigameFrames = 0;
   m_finishScheduled = false;
+  m_resyncCountdown = 0;
 
   m_partyPointsStart = 0;
   m_retro->readu32(&m_partyPointsStart, MP9_PARTY_POINTS_ADDR);

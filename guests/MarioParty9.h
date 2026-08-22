@@ -40,6 +40,8 @@ private:
   bool m_finishScheduled = false;
   /// False until the start button is clicked and we swap off the pointer layout.
   bool m_controlsApplied = false;
+  /// Frames left before the deferred netplay hard resync; 0 = none pending.
+  int m_resyncCountdown = 0;
   uint32_t m_partyPointsStart = 0;
 };
 
