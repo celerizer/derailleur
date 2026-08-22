@@ -4,7 +4,24 @@
 #include <QRetroDirectories.h>
 #include <QString>
 
-#include <asm/gecko/mp4.h>
+#include <asm/mp4.h>
+
+#include <cstddef>
+
+typedef enum
+{
+  MPGC_TEXT_COLOR_BLACK = 0,
+  MPGC_TEXT_COLOR_BLACK_2 = 1,
+  MPGC_TEXT_COLOR_BLUE = 2,
+  MPGC_TEXT_COLOR_RED = 3,
+  MPGC_TEXT_COLOR_MAGENTA = 4,
+  MPGC_TEXT_COLOR_GREEN = 5,
+  MPGC_TEXT_COLOR_CYAN = 6,
+  MPGC_TEXT_COLOR_YELLOW = 7,
+  MPGC_TEXT_COLOR_WHITE = 8,
+  MPGC_TEXT_COLOR_DARK_GRAY = 9,
+  MPGC_TEXT_COLOR_LIGHT_GRAY = 10
+} mpgc_text_color;
 
 MarioPartyGcnHost::MarioPartyGcnHost(const DrGcnHostConfig &config, QObject *parent)
   : DrHost(parent)
@@ -12,15 +29,13 @@ MarioPartyGcnHost::MarioPartyGcnHost(const DrGcnHostConfig &config, QObject *par
 {
   m_core = new QRetro();
   m_ownCore = true;
-  m_gamePath = config.game; // so gamePath() yields the ROM (used for the netplay save name)
+  m_gamePath = config.game;
   if (!m_core->loadCore(config.core.c_str()))
   {
     log(DR_LOG_ERROR, qPrintable(QString("failed to load core: %1").arg(config.core.c_str())));
     m_valid = false;
   }
 
-  /* Read/write the save from the derailleur save dir (default cwd/save). Set before
-   * loadContent so the core sees it when it reads its memory card. */
   m_core->directories()->set(
     QRetroDirectories::Save, dr_save_directory().toUtf8().constData());
 
@@ -35,111 +50,323 @@ MarioPartyGcnHost::MarioPartyGcnHost(const DrGcnHostConfig &config, QObject *par
 
 void MarioPartyGcnHost::stampCave(void)
 {
-  //if (!m_config.cheats.cave || !m_config.cheats.cave_addr)
-  //  return;
+  for (unsigned i = 0; i <= m_config.cheats.cave_size; i++)
+    writeu8(MP4_CAVE[i], m_config.cheats.cave_addr + i);
+}
 
-  for (unsigned i = 0; i <= MP4_CAVE_SIZE; i++)
-    writeu8(MP4_CAVE[i], MP4_CAVE_ADDR + i);
+void MarioPartyGcnHost::rollMinigames(void)
+{
+  /* One shared reroll keeps every netplay peer's pool identical; the specific
+   * type's candidates are cached/stamped later once the roulette reveals it. */
+  if (m_MinigameSource)
+    m_MinigameSource->rerollMinigames();
+}
+
+void MarioPartyGcnHost::stampTitles(dr_minigame_type type)
+{
+  if (!m_MinigameSource)
+    return;
+
+  /* Cache the chosen type's five so startMinigame() can resolve the choice. This
+   * only reads the already-rolled pool, so it stays deterministic across peers. */
+  m_Candidates = m_MinigameSource->minigameCandidates(type);
+
+  /* Stamp the candidate names into the MP4 title block (5 slots x 32 bytes). */
+  for (unsigned slot = 0; slot < 5; slot++)
+  {
+    const char *name =
+      (m_Candidates[slot].minigame && m_Candidates[slot].minigame->name)
+        ? m_Candidates[slot].minigame->name : "";
+    const size_t addr = MP4_TITLE_BLOCK + slot * 32;
+
+    unsigned j = 0;
+
+    writeu8(0x0B, addr + j++);
+
+    if (m_Candidates[slot].minigame && m_Candidates[slot].minigame->flags.flags.lucky)
+    {
+      writeu8(0x1e, addr + j++);
+      writeu8(MPGC_TEXT_COLOR_YELLOW, addr + j++);
+    }
+    else if (m_Candidates[slot].minigame && m_Candidates[slot].minigame->flags.flags.unlucky)
+    {
+      writeu8(0x1e, addr + j++);
+      writeu8(MPGC_TEXT_COLOR_RED, addr + j++);
+    }
+
+    for (const char *p = name; *p && j < 31; p++)
+    {
+      unsigned char chara = static_cast<unsigned char>(*p);
+
+      if (chara == ' ')
+        chara = 0x10; /* thin space */
+      else if (chara == '.') chara = 0x85;
+      else if (chara == ',') chara = 0x82;
+      else if (chara == '\'') chara = 0x5C;
+      else if (chara == '-') chara = 0x3D;
+      else if (chara == '!') chara = 0xC2;
+      else if (chara == '?') chara = 0xC3;
+      else if (chara == '_') chara = 0x86;
+      else if (chara == '&') chara = 0x7E;
+      else if (chara == '%') chara = 0x7C;
+      else if (chara == ':') chara = 0x7B;
+
+      writeu8(chara, addr + j++);
+    }
+    writeu8(0x00, addr + j); /* null-terminate */
+  }
 }
 
 void MarioPartyGcnHost::run(void)
 {
-  const bool firstFrame = !m_cheatsInstalled;
-  m_cheatsInstalled = true; // so firstFrame is true only once; the gate below is per-120
+  tickFrameWrites();
 
-  if (firstFrame || m_core->frames() % 120 == 0)
+  if (m_core->frames() % 120 == 0)
   {
     stampCave();
 
-    /* Reroll a fresh candidate pool each cycle (every 120 frames ~= 2s) -- otherwise
-     * minigameCandidates() just returns the same cached five -- then stamp the names
-     * into the MP4 title block (5 slots x 32 bytes), mirroring MarioPartyN64Host. */
-    if (m_MinigameSource)
-    {
-      m_MinigameSource->rerollMinigames();
-      const std::array<DrMinigameCandidate, 5> &cands =
-        m_MinigameSource->minigameCandidates(DR_MINIGAME_4P);
-
-      for (unsigned slot = 0; slot < 5; slot++)
-      {
-        const char *name =
-          (cands[slot].minigame && cands[slot].minigame->name) ? cands[slot].minigame->name : "";
-        const size_t addr = MP4_TITLE_BLOCK + slot * 32;
-
-        unsigned j = 0;
-
-        writeu8(0x0B, addr + j++);
-
-        if (cands[slot].minigame->flags.flags.lucky)
-        {
-          writeu8(0x1e, addr + j++);
-          writeu8(0x07, addr + j++);
-        }
-        else if (cands[slot].minigame->flags.flags.lucky)
-        {
-          writeu8(0x1e, addr + j++);
-          writeu8(0x03, addr + j++);
-        }
-
-        for (const char *p = name; *p && j < 31; p++)
-        {
-          unsigned char chara = static_cast<unsigned char>(*p);
-
-          if (chara == ' ')
-            chara = 0x10; /* thin space */
-          else if (chara == '.') chara = 0x85;
-          else if (chara == ',') chara = 0x82;
-          else if (chara == '\'') chara = 0x5C;
-          else if (chara == '-') chara = 0x3D;
-          else if (chara == '!') chara = 0xC2;
-          else if (chara == '?') chara = 0xC3;
-          else if (chara == '_') chara = 0x86;
-          else if (chara == '&') chara = 0x7E;
-          else if (chara == '%') chara = 0x7C;
-          else if (chara == ':') chara = 0x7B;
-
-          writeu8(chara, addr + j++);
-        }
-        writeu8(0x00, addr + j); /* null-terminate */
-      }
-    }
+    /* stampCave re-lays the cave's default title block (the built-in trivia text), so
+     * re-apply the rolled names on top -- mirroring the original per-cycle stamp. */
+    if (m_MinigameType != DR_MINIGAME_INVALID)
+      stampTitles(m_MinigameType);
   }
 
+#if 0
   writeu32(0x4809A5F4, 0x800A23EC);
+  writeu32(0x38BE0001, 0x800A2504);
   writeu32(0x60380001, 0x80031084);
   writeu32(0x4E800020, 0x80031088);
+  writeu32(0x387E0001, 0x8009B6EC); // ExecBattle force picks to 1 and 2
+  writeu32(0x38600000, 0x8009B7E8); // ExecBattle skip verification
+#endif
+
+  for (int i = 0; MP4_HOOK_BOARD[i][0] != 0; i++)
+  {
+    switch (MP4_HOOK_BOARD[i][2])
+    {
+    case 1:
+      writeu8(MP4_HOOK_BOARD[i][1], MP4_HOOK_BOARD[i][0]);
+      break;
+    case 2:
+      writeu16(MP4_HOOK_BOARD[i][1], MP4_HOOK_BOARD[i][0]);
+      break;
+    case 4:
+      writeu32(MP4_HOOK_BOARD[i][1], MP4_HOOK_BOARD[i][0]);
+      break;
+    }
+  }
 
   writeu16(0x0054, 0x8009BC92); // ExecBattle skip mini-game
   writeu16(0x0054, 0x800A218A); // ExecMGSetup skip mini-game
   writeu16(0x0012, 0x8012EF12); // Force a sound group for results screen
+  writeu32(0x38C0000D, 0x80066DD8); // Increased Board Speed [gamemasterplc]
 
-  /* Skeleton: the state machine is in place but no transitions are driven yet. */
+  int64_t scene_value = 0;
+  readValue(&scene_value, m_config.values.scene);
+  const int32_t current_scene = static_cast<int32_t>(scene_value);
+  const int32_t previous_scene = m_PreviousScene;
+  m_PreviousScene = current_scene;
+
+  if (previous_scene != current_scene)
+  {
+    static const int8_t clear = -1;
+    writeForFrames(m_config.host_state_addr + offsetof(dr_host_state_t, minigame_type),
+      &clear, 1, 120);
+    log(DR_LOG_INFO,
+      qPrintable(QString("scene: 0x%1").arg(current_scene, 4, 16, QChar('0'))));
+  }
+
+  static const char *stateNames[] = {
+    "INVALID", "BEFORE_BOARD", "BOARD", "BEFORE_ROULETTE", "ROULETTE", "AFTER_ROULETTE", "MINIGAME"
+  };
+  auto setState = [&](dr_gcn_host_state s) {
+    log(DR_LOG_INFO,
+      qPrintable(QString("host state: %1 -> %2").arg(stateNames[m_State]).arg(stateNames[s])));
+    m_State = s;
+  };
+
   switch (m_State)
   {
   case DR_GCN_HOST_STATE_INVALID:
+    if (m_core->frames() <= 120)
+      return;
+    /* Roll an initial pool; the type-specific set is stamped once a roulette opens. */
+    rollMinigames();
+    setState(DR_GCN_HOST_STATE_BEFORE_BOARD);
     break;
+
   case DR_GCN_HOST_STATE_BEFORE_BOARD:
+    writeValue(-1, m_config.values.minigame_id);
+    setState(DR_GCN_HOST_STATE_BOARD);
     break;
+
   case DR_GCN_HOST_STATE_BOARD:
+  {
+    int8_t minigame_type = -1;
+
+    reads8(&minigame_type, m_config.host_state_addr + offsetof(dr_host_state_t, minigame_type));
+
+    /* Has the board signalled a mini-game roulette has opened? */
+    if (minigame_type >= 0 && (unsigned)minigame_type < m_config.minigame_type_to_dr_size)
+    {
+      m_MinigameType = m_config.minigame_type_to_dr[minigame_type];
+      log(DR_LOG_INFO,
+        qPrintable(QString("roulette type %1 (%2)")
+          .arg(minigame_type).arg(dr_minigame_type_name(m_MinigameType))));
+
+      /* Stamp the detected type's candidates so the roulette shows the right names. */
+      stampTitles(m_MinigameType);
+      setState(DR_GCN_HOST_STATE_BEFORE_ROULETTE);
+    }
+
     break;
+  }
+
   case DR_GCN_HOST_STATE_BEFORE_ROULETTE:
+    writeValue(-1, m_config.values.minigame_id);
+    setState(DR_GCN_HOST_STATE_ROULETTE);
     break;
+
   case DR_GCN_HOST_STATE_ROULETTE:
+  {
+    int64_t minigame_id = -1;
+
+    readValue(&minigame_id, m_config.values.minigame_id);
+    if (minigame_id > 0)
+      setState(DR_GCN_HOST_STATE_AFTER_ROULETTE);
+
     break;
+  }
+
   case DR_GCN_HOST_STATE_AFTER_ROULETTE:
+    if (current_scene != previous_scene)
+    {
+      startMinigame();
+      setState(DR_GCN_HOST_STATE_MINIGAME);
+    }
     break;
+
   case DR_GCN_HOST_STATE_MINIGAME:
+    if (current_scene != previous_scene && previous_scene == m_config.scene_miniresults)
+    {
+      rollMinigames();
+      setState(DR_GCN_HOST_STATE_BEFORE_BOARD);
+    }
     break;
+
   case DR_GCN_HOST_STATE_SIZE:
     break;
   }
 }
 
+void MarioPartyGcnHost::readPlayers(DrPlayerArray &players)
+{
+  players = {};
+
+  for (unsigned i = 0; i < 4; i++)
+  {
+    int64_t chr = 0, ctrl = 0, diff = 0, bot = 0, team = 0;
+    readValue(&chr, m_config.values.character[i]);
+    readValue(&ctrl, m_config.values.controller[i]);
+    readValue(&diff, m_config.values.difficulty[i]);
+    readValue(&bot, m_config.values.bot[i]);
+    readValue(&team, m_config.values.team[i]);
+
+    dr_player_t &p = players[i];
+
+    /* Reverse the dr_character -> native table to recover the board slot's character. */
+    p.character = DR_CHARACTER_INVALID;
+    if (m_config.character_ids)
+      for (unsigned c = 0; c < DR_CHARACTER_SIZE; c++)
+        if (m_config.character_ids[c] == static_cast<uint16_t>(chr))
+        {
+          p.character = static_cast<dr_character>(c);
+          break;
+        }
+
+    p.control_port = static_cast<dr_control_port>(DR_CONTROL_PORT_P1 + ctrl);
+    p.control_type = (bot & 0x01) ? DR_CONTROL_TYPE_CPU : DR_CONTROL_TYPE_HUMAN;
+    switch (diff)
+    {
+    case 0x00: p.difficulty = DR_DIFFICULTY_EASY;      break;
+    case 0x01: p.difficulty = DR_DIFFICULTY_NORMAL; break;
+    case 0x02: p.difficulty = DR_DIFFICULTY_HARD;      break;
+    case 0x03: p.difficulty = DR_DIFFICULTY_VERY_HARD; break;
+    default:   p.difficulty = DR_DIFFICULTY_NORMAL;    break;
+    }
+    p.team_id = static_cast<unsigned>(team);
+    switch (m_MinigameType)
+    {
+    case DR_MINIGAME_2V2:
+      p.team_type = DR_TEAM_TYPE_2V2;
+      break;
+    case DR_MINIGAME_1V3:
+      p.team_type = (p.team_id == 0) ? DR_TEAM_TYPE_1V3_SOLO
+                  : (p.team_id == 1) ? DR_TEAM_TYPE_1V3_GROUP
+                                     : DR_TEAM_TYPE_INVALID;
+      break;
+    default:
+      p.team_type = DR_TEAM_TYPE_4P;
+      break;
+    }
+  }
+}
+
+void MarioPartyGcnHost::startMinigame(void)
+{
+  int64_t id = -1;
+
+  readValue(&id, m_config.values.minigame_id);
+  id--;
+
+  /* For MP4, since we use mini-game IDs 0x11-0x15 and 0x25,0x26 */
+  if (game() == DR_GAME_MARIOPARTY4)
+    id &= 0x03;
+
+  if (id < 0 || id >= static_cast<int64_t>(m_Candidates.size()) || !m_Candidates[id].guest)
+  {
+    log(DR_LOG_ERROR,
+      qPrintable(QString("startMinigame: no candidate for id 0x%1").arg(id, 2, 16, QChar('0'))));
+    return;
+  }
+
+  DrPlayerArray players;
+  readPlayers(players);
+
+  log(DR_LOG_INFO,
+    qPrintable(QString("launching mini-game: %1 (index %2)")
+      .arg(m_Candidates[id].minigame->name ? m_Candidates[id].minigame->name : "(unnamed)")
+      .arg(id)));
+
+  emit minigameRequested(m_Candidates[id], players);
+}
+
 void MarioPartyGcnHost::writeResults(DrGuest *guest)
 {
-  (void)guest;
+  for (unsigned i = 0; i < 4; i++)
+  {
+    const dr_minigame_result_t result = guest->minigameResult(i);
+
+    /* When the board has a separate bonus field, split the winnings across the two;
+     * otherwise fold the bonus into the single result value. */
+    const int64_t coins = m_config.values.bonus_result[i].address
+      ? result.coins : result.coins + result.bonus_coins;
+    writeValue(coins, m_config.values.result[i]);
+    if (m_config.values.bonus_result[i].address)
+      writeValue(result.bonus_coins, m_config.values.bonus_result[i]);
+
+    log(DR_LOG_INFO,
+      qPrintable(QString("player %1 gets %2 coins (+%3 bonus)")
+        .arg(i).arg(result.coins).arg(result.bonus_coins)));
+  }
 }
 
 void MarioPartyGcnHost::clearResults(void)
 {
+  for (unsigned i = 0; i < 4; i++)
+  {
+    writeValue(0, m_config.values.result[i]);
+    if (m_config.values.bonus_result[i].address)
+      writeValue(0, m_config.values.bonus_result[i]);
+  }
 }

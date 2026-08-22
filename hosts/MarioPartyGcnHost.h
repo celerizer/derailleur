@@ -27,11 +27,14 @@ struct DrGcnHostConfig
     /// Code cave: a raw byte blob stamped word-by-word into `cave_addr`
     /// (cave_size bytes) periodically. nullptr = no cave.
     const uint8_t *cave;
+
+    /// The address in which to stamp the code cave
     size_t cave_addr;
+
+    /// The size in bytes of the cave data
     unsigned cave_size;
 
-    /// A Gecko code for the board hook that jumps into the cave; enabled for the
-    /// lifetime of the host. nullptr = none.
+    /// A list of Gecko codes for hooking functions into our assembly
     const char *cheat_board;
   } cheats;
 
@@ -67,12 +70,21 @@ struct DrGcnHostConfig
     /// The value that tracks which space the current player is standing on
     dr_value_t space_index;
   } values;
+
+  int scene_miniexplain;  // scene id shown while a mini-game is explained
+  int scene_miniresults;  // scene id shown on the mini-game results screen
+
+  /// dr_character -> native character id table (DR_CHARACTER_SIZE entries),
+  /// read in reverse to resolve a board slot's character
+  const uint16_t *character_ids;
+
+  /// Native roulette type byte -> dr_minigame_type (e.g. 0=4P, 1=1v3, 2=2v2)
+  const dr_minigame_type *minigame_type_to_dr;
+  unsigned minigame_type_to_dr_size;
+
+  size_t host_state_addr;
 };
 
-/// Abstract base for a GameCube Mario Party host. Owns a Dolphin core and runs a
-/// board/roulette state machine, mirroring MarioPartyN64Host. This is a skeleton:
-/// it holds the state and the memory map but does not drive any transitions yet.
-/// Concrete games (MarioParty4Host) supply a DrGcnHostConfig and game().
 class MarioPartyGcnHost : public DrHost
 {
   Q_OBJECT
@@ -86,13 +98,27 @@ public:
   void run(void);
 
 private:
-  /// Writes the code cave into RAM as aligned 32-bit words (no-op if unconfigured).
   void stampCave(void);
+
+  /// Reroll the shared mini-game pool (kept lockstepped across netplay peers).
+  void rollMinigames(void);
+
+  /// Cache `type`'s five candidates and stamp their names into the title block.
+  void stampTitles(dr_minigame_type type);
+
+  /// Resolve the roulette's chosen id to a cached candidate and launch it.
+  void startMinigame(void);
+
+  /// Fill `players` from the four board slots for the active mini-game type.
+  void readPlayers(DrPlayerArray &players);
+
+  int32_t m_PreviousScene = -1;
+  dr_minigame_type m_MinigameType = DR_MINIGAME_INVALID;
+  std::array<DrMinigameCandidate, 5> m_Candidates = {};
 
 protected:
   DrGcnHostConfig m_config;
   dr_gcn_host_state m_State = DR_GCN_HOST_STATE_INVALID;
-  bool m_cheatsInstalled = false; // board hook enabled + cave first stamped on frame 1
 };
 
 #endif

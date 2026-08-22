@@ -10,6 +10,21 @@ struct DrMinigameCandidate
   DrGuest *guest;
   const dr_mp_minigame_t *minigame;
 };
+
+typedef struct
+{
+  /// The type of mini-game being rolled in the roulette, doubling as a signal
+  /// that a mini-game is being rolled for at all.
+  /// The board context game will write to this value when the mini-game
+  /// roulette appears, using the game's internal mini-game type.
+  /// derailleur will monitor this value and reset it to -1 after the roulette
+  /// lifecycle has completed.
+  int8_t minigame_type;
+
+  /// Reserved for future use and alignment
+  int8_t reserved[3];
+} dr_host_state_t;
+
 Q_DECLARE_METATYPE(DrMinigameCandidate)
 Q_DECLARE_METATYPE(dr_minigame_type)
 using DrPlayerArray = std::array<dr_player_t, 4>;
