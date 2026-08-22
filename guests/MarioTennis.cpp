@@ -44,6 +44,8 @@ static const size_t MT_DIFFICULTY_ADDR[4] = {
 
 // sets won: index 0 = team_id 0 side, index 1 = team_id 1 side
 static const size_t MT_SETS_WON_ADDR[2] = { 0x8015344F, 0x80153450 };
+static const size_t MT_GAMES_WON_ADDR[2] = { 0x8015344D, 0x8015344E };
+static const size_t MT_POINTS_ADDR[2] = { 0x8015344A, 0x8015344B };
 
 static const size_t MT_COURT_ADDR = 0x80065240; // u8: court (0x00-0x0F random, 0x10 bowser)
 static const size_t MT_SETS_ADDR = 0x80065243;  // u8: number of sets
