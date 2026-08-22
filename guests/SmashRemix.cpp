@@ -4,15 +4,15 @@
 #include <QFile>
 
 static const dr_mp_minigame_t SR_MINIGAMES[] = {
-  { "Remix Free-for-all", DR_MINIGAME_4P,     0x00, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Remix Battle",       DR_MINIGAME_BATTLE, 0x00, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Remix Free-for-all", DR_MINIGAME_4P, 0x00, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Remix Battle", DR_MINIGAME_BATTLE, 0x00, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
 
   { "Remix Team Battle", DR_MINIGAME_2V2, 0x01, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
 
   { "Remix Giant Battle", DR_MINIGAME_1V3, 0x02, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Remix Tiny Battle",  DR_MINIGAME_1V3, 0x03, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Remix Golden Gun",   DR_MINIGAME_1V3, 0x04, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Remix Hammer",  DR_MINIGAME_1V3, 0x06, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Remix Tiny Battle", DR_MINIGAME_1V3, 0x03, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Remix Golden Gun", DR_MINIGAME_1V3, 0x04, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Remix Hammer", DR_MINIGAME_1V3, 0x06, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
 
   { "Remix PKMN", DR_MINIGAME_4P, 0x05, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
 
@@ -78,6 +78,47 @@ typedef enum
   SR_ITEM_MR_SATURN   = 18,
   SR_ITEM_RANDOM      = 19
 } sr_item;
+
+/* Which items are allowed to spawn, a u32 bitfield.
+ *
+ * Bits 0-3 are the containers (capsule, crate, barrel, egg) and bits 4-6 the
+ * recovery items. From bit 7 up the bits follow sr_item, so item N is bit
+ * (N + 6):
+ *
+ *   beam sword 0x00000080, home run bat 0x00000100, fan 0x00000200,
+ *   star rod 0x00000400, hammer 0x00002000, motion sensor bomb 0x00004000,
+ *   bob-omb 0x00008000
+ */
+static const size_t SR_ITEM_SWITCH_ADDR = 0x800a4d14;
+
+/* The same, for the items Smash Remix adds on top of the vanilla list */
+static const size_t SR_REMIX_ITEM_SWITCH_ADDR[2] = { 0x80445424, 0x80445428 };
+
+/* How often items spawn, a u8 */
+static const size_t SR_ITEM_FREQUENCY_ADDR = 0x800a4d24;
+
+typedef enum
+{
+  SR_ITEM_FREQUENCY_NONE = 0,
+  SR_ITEM_FREQUENCY_VERY_LOW = 1,
+  SR_ITEM_FREQUENCY_LOW = 2,
+  SR_ITEM_FREQUENCY_MIDDLE = 3,
+  SR_ITEM_FREQUENCY_HIGH = 4,
+  SR_ITEM_FREQUENCY_VERY_HIGH = 5
+} sr_item_frequency;
+
+/* Builds an item switch bitfield enabling only the given items */
+static uint32_t sr_item_mask(const sr_item *items, unsigned count)
+{
+  uint32_t mask = 0;
+  unsigned i;
+
+  for (i = 0; i < count; i++)
+    if (items[i] > SR_ITEM_NONE && items[i] < SR_ITEM_RANDOM)
+      mask |= 1u << (items[i] + 6);
+
+  return mask;
+}
 
 typedef struct
 {
@@ -291,6 +332,24 @@ void SmashRemix::doApplyGameData(const DrGameData &data)
   bool teamBattle = (minigame->type == DR_MINIGAME_2V2 || minigame->type == DR_MINIGAME_1V3);
   m_retro->writeu8(teamBattle ? 1 : 0, SR_GAME_TYPE_ADDR);
 
+  /* Remix PKMN spawns Poke Balls and nothing else; every other minigame is
+   * itemless, handing out its start/taunt items directly (see applyPlayers). */
+  if (minigame->minigame_id == 0x05)
+  {
+    static const sr_item pkmn_items[] = { SR_ITEM_POKEBALL };
+    m_retro->writeu32(sr_item_mask(pkmn_items, 1), SR_ITEM_SWITCH_ADDR);
+    m_retro->writeu8(SR_ITEM_FREQUENCY_VERY_HIGH, SR_ITEM_FREQUENCY_ADDR);
+  }
+  else
+  {
+    m_retro->writeu32(0, SR_ITEM_SWITCH_ADDR);
+    m_retro->writeu8(SR_ITEM_FREQUENCY_NONE, SR_ITEM_FREQUENCY_ADDR);
+  }
+
+  /* No Remix item ever spawns */
+  m_retro->writeu32(0, SR_REMIX_ITEM_SWITCH_ADDR[0]);
+  m_retro->writeu32(0, SR_REMIX_ITEM_SWITCH_ADDR[1]);
+
   log(DR_LOG_INFO, qPrintable(QString("Smash Remix starting!")));
 
   applyPlayers();
@@ -403,7 +462,7 @@ void SmashRemix::applyPlayers()
         color = 0x04;
       else
         color = slot;
-      team = i;
+      team = slot;
     }
     m_retro->writeu8(color, SR_PORT_COLOR_ADDR[slot]);
     m_retro->writeu8(team, SR_TEAM_ADDR_1[slot]);
