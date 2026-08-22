@@ -433,11 +433,20 @@ typedef enum
 
   /**
    * Mini-game where all 4 players are against each other
+   * Used in all games
    */
   DR_MINIGAME_4P,
 
+  /**
+   * Mini-game where 1 player is against the other three
+   * Used in all games
+   */
   DR_MINIGAME_1V3,
 
+  /**
+   * Mini-game where 2 groups of two are against each other
+   * Used in all games
+   */
   DR_MINIGAME_2V2,
 
   /**
@@ -633,6 +642,10 @@ struct dr_settings
   /// instead of giving each its own instance. Off by default (separate instances);
   /// only worth enabling to save memory. Takes effect at startup.
   bool shared_gamecube_core = false;
+
+  /// Show the loading overlay (frozen frame + bouncing icon, see DrOverlay) that
+  /// covers core swaps. On by default; turning it off shows the raw swap instead.
+  bool loading_overlay = true;
 };
 
 dr_settings &dr_settings_get(void);
