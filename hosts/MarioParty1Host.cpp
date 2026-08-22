@@ -2,7 +2,7 @@
 
 #include <cstring>
 
-#include <asm/gameshark/mp1.h>
+#include <asm/mp1.h>
 
 #include <QRetroDirectories.h>
 
@@ -247,6 +247,8 @@ static DrHostConfig makeConfig()
   config.values.turn_current = { 0x800ED5C9, DR_VALUE_TYPE_U8 }; // u8
   config.values.turn_owner = { 0x800ED5DC, DR_VALUE_TYPE_S16 };  // whose turn
   config.values.space_index = { 0x800ED5E0, DR_VALUE_TYPE_S16 }; // current space index
+
+  config.host_state_addr = MP1_HOST_STATE;
 
   return config;
 }

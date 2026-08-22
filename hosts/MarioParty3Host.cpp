@@ -2,7 +2,7 @@
 
 #include <cstring>
 
-#include <asm/gameshark/mp3.h>
+#include <asm/mp3.h>
 
 #include <QRetro.h>
 #include <QRetroDirectories.h>
@@ -245,9 +245,9 @@ static DrHostConfig makeConfig()
   config.diff_to_dr = MP3_DIFF_TO_DR;
   config.diff_to_dr_size = sizeof(MP3_DIFF_TO_DR) / sizeof(*MP3_DIFF_TO_DR);
 
-  config.values.battle = { 0x800cc698, DR_VALUE_TYPE_S16 }; // u16
+  config.values.battle = { 0x800cc698, DR_VALUE_TYPE_S16 };
 
-  config.values.minigame_type = { 0x80102C0D, DR_VALUE_TYPE_U8 }; // u8
+  config.values.minigame_type = { 0x80102C0D, DR_VALUE_TYPE_U8 };
   config.minigame_type_to_dr = MP3_MINIGAME_TYPE_TO_DR;
   config.minigame_type_to_dr_size = sizeof(MP3_MINIGAME_TYPE_TO_DR) / sizeof(*MP3_MINIGAME_TYPE_TO_DR);
   config.values.minigame_id = { 0x800cd068, DR_VALUE_TYPE_S8 };
@@ -273,6 +273,8 @@ static DrHostConfig makeConfig()
   config.values.title_type_duel = { 0x80102BAD, DR_VALUE_TYPE_U8 };
 
   config.scene_names = MP3_SCENE_NAMES;
+
+  config.host_state_addr = MP3_HOST_STATE;
 
   return config;
 }

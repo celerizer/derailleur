@@ -2,7 +2,7 @@
 
 #include <cstring>
 
-#include <asm/gameshark/mp2.h>
+#include <asm/mp2.h>
 
 #include <QRetroDirectories.h>
 
@@ -242,6 +242,8 @@ static DrHostConfig makeConfig()
   // stat.duel: no duels in MP2
 
   config.scene_names = MP2_SCENE_NAMES;
+
+  config.host_state_addr = MP2_HOST_STATE;
 
   return config;
 }
