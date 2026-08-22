@@ -33,6 +33,17 @@ DrSettings::DrSettings(QWidget *parent)
   note->setEnabled(false); /* muted */
   layout->addWidget(note);
 
+  QCheckBox *loadingOverlay = new QCheckBox(tr("Show the loading overlay"), this);
+  loadingOverlay->setChecked(dr_settings_get().loading_overlay);
+  loadingOverlay->setToolTip(
+    tr("Cover the switch between games with the last frame and a loading icon.\n"
+       "Turn this off to see the cores swapping underneath."));
+  connect(loadingOverlay, &QCheckBox::toggled, this, [](bool on) {
+    dr_settings_get().loading_overlay = on;
+    dr_settings_save();
+  });
+  layout->addWidget(loadingOverlay);
+
   QPushButton *redownloadSaves = new QPushButton(tr("Re-download saves"), this);
   redownloadSaves->setToolTip(
     tr("Fetch the latest save files from the server, overwriting your local ones.\n"

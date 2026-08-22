@@ -511,9 +511,10 @@ void MainWindow::startWithHost(DrHost *host)
   m_Host->setLocalPlayer(m_NetplayPeerIndex);
 
 #if SHOW_OVERLAY
+  if (DrOverlay *ov = overlay())
   {
     QPixmap loading(":/assets/loading.png");
-    m_Overlay->hold(loading);
+    ov->hold(loading);
   }
 #endif
 
@@ -674,6 +675,7 @@ void MainWindow::launchMinigame(
     return;
 
 #if SHOW_OVERLAY
+  if (DrOverlay *ov = overlay())
   {
     /* Between continuous-play challenge mini-games, show the loading card with the
      * last result and what is coming up instead of the frozen frame. */
@@ -688,7 +690,7 @@ void MainWindow::launchMinigame(
         for (const dr_mp_minigame_t *mg : group.minigames)
           if (mg == minigame)
             game = QString::fromUtf8(group.name);
-      m_Overlay->showLoadingCard(
+      ov->showLoadingCard(
         result, game, minigame ? QString::fromUtf8(minigame->name) : QString());
     }
     else
@@ -698,7 +700,7 @@ void MainWindow::launchMinigame(
       /* Freeze what is on screen to cover the core swap. With no host chosen
        * (challenge mode, or a debug launch) grab this window instead. */
       const WId source = (m_Host && m_Host->core()) ? m_Host->core()->winId() : winId();
-      m_Overlay->hold(screen->grabWindow(source));
+      ov->hold(screen->grabWindow(source));
     }
   }
 #endif
@@ -736,7 +738,8 @@ void MainWindow::launchMinigame(
          * core runs is the (input-synced) barrier frame. */
         guest->unpause();
 #if SHOW_OVERLAY
-        m_Overlay->fadeOut();
+        if (m_Overlay)
+          m_Overlay->fadeOut();
 #endif
         if (auto *a = guest->core()->audio())
           a->setMute(false);
@@ -886,9 +889,13 @@ void MainWindow::showChooser()
 #if SHOW_OVERLAY
   if (DrGuest *guest = m_Guests->currentGuest())
   {
-    QScreen *screen = windowHandle() ? windowHandle()->screen() : QGuiApplication::primaryScreen();
-    if (guest->core())
-      m_Overlay->hold(screen->grabWindow(guest->core()->winId()));
+    DrOverlay *ov = overlay();
+    if (guest->core() && ov)
+    {
+      QScreen *screen =
+        windowHandle() ? windowHandle()->screen() : QGuiApplication::primaryScreen();
+      ov->hold(screen->grabWindow(guest->core()->winId()));
+    }
   }
 #endif
 
@@ -898,7 +905,8 @@ void MainWindow::showChooser()
       guest->pause();
     m_Stack->setCurrentIndex(0);
 #if SHOW_OVERLAY
-    m_Overlay->fadeOut();
+    if (m_Overlay)
+      m_Overlay->fadeOut();
 #endif
   });
 }
@@ -914,9 +922,10 @@ void MainWindow::showHost()
 {
 
 #if SHOW_OVERLAY
+  if (DrOverlay *ov = overlay())
   {
     QScreen *screen = windowHandle() ? windowHandle()->screen() : QGuiApplication::primaryScreen();
-    m_Overlay->hold(screen->grabWindow(m_Guests->currentGuest()->core()->winId()));
+    ov->hold(screen->grabWindow(m_Guests->currentGuest()->core()->winId()));
   }
 #endif
 
@@ -930,7 +939,8 @@ void MainWindow::showHost()
     m_Host->unpause();
     m_Stack->setCurrentWidget(m_HostContainer);
 #if SHOW_OVERLAY
-    m_Overlay->fadeOut();
+    if (m_Overlay)
+      m_Overlay->fadeOut();
 #endif
   });
 }
@@ -938,8 +948,11 @@ void MainWindow::showHost()
 void MainWindow::showGuests()
 {
 #if SHOW_OVERLAY
-  QScreen *screen = windowHandle() ? windowHandle()->screen() : QGuiApplication::primaryScreen();
-  m_Overlay->hold(screen->grabWindow(m_Host->core()->winId()));
+  if (DrOverlay *ov = overlay())
+  {
+    QScreen *screen = windowHandle() ? windowHandle()->screen() : QGuiApplication::primaryScreen();
+    ov->hold(screen->grabWindow(m_Host->core()->winId()));
+  }
 #endif
 
   QTimer::singleShot(32, this, [this]() {
