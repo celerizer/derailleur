@@ -218,10 +218,10 @@ MainWindow::MainWindow(QWidget *parent)
   if (!dr_settings_get().shared_gamecube_core)
   {
     /* One single-disc Dolphin per GameCube game (like the Wii ones), so no disc
-     * swapping happens at all. Each needs a unique subdir for its own system/save
-     * dir and arena tag. They still load lazily -- only games launched ever boot. */
+     * swapping happens at all. Each needs a unique subdir for its arena tag and
+     * disc list. They still load lazily -- only games launched ever boot. */
     auto addSoloGcn = [this](const QString &subdir, DolphinGuest *(*make)(QRetro *, QObject *)) {
-      auto *core = new CoreDolphin(subdir, this);
+      auto *core = new CoreDolphin(subdir, false, this);
       core->addGame(make(core->core(), core));
       core->finalizeGames();
       if (core->isValid())
@@ -235,7 +235,7 @@ MainWindow::MainWindow(QWidget *parent)
   }
   else
   {
-    auto *dolphin = new CoreDolphin("gcn", this);
+    auto *dolphin = new CoreDolphin("gcn", false, this);
     dolphin->addGame(new MarioParty4(dolphin->core(), dolphin));
     dolphin->addGame(new MarioParty5(dolphin->core(), dolphin));
     dolphin->addGame(new MarioParty6(dolphin->core(), dolphin));
@@ -248,15 +248,16 @@ MainWindow::MainWindow(QWidget *parent)
   }
 
   /* The Wii core cannot survive a disc swap, so give each Wii game its own
-   * Dolphin instance with a single disc. They still load lazily, so only the
-   * ones actually launched ever boot. */
-  auto *dolphinMp8 = new CoreDolphin("wii-mp8", this);
+   * Dolphin instance with a single disc, and its own system/save dirs so the two
+   * NANDs stay apart. They still load lazily, so only the ones actually launched
+   * ever boot. */
+  auto *dolphinMp8 = new CoreDolphin("wii-mp8", true, this);
   dolphinMp8->addGame(new MarioParty8(dolphinMp8->core(), dolphinMp8));
   dolphinMp8->finalizeGames();
   if (dolphinMp8->isValid())
     m_Guests->add(dolphinMp8);
 
-  auto *dolphinMp9 = new CoreDolphin("wii-mp9", this);
+  auto *dolphinMp9 = new CoreDolphin("wii-mp9", true, this);
   dolphinMp9->addGame(new MarioParty9(dolphinMp9->core(), dolphinMp9));
   dolphinMp9->finalizeGames();
   if (dolphinMp9->isValid())

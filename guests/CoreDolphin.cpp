@@ -81,7 +81,7 @@ static QString writePatchedDolphinCore(const QString &originalPath, const QStrin
   return destPath;
 }
 
-CoreDolphin::CoreDolphin(const QString &subdir, QObject *parent)
+CoreDolphin::CoreDolphin(const QString &subdir, bool ownDirs, QObject *parent)
   : DrGuest(parent)
 {
   m_subdir = subdir;
@@ -97,10 +97,24 @@ CoreDolphin::CoreDolphin(const QString &subdir, QObject *parent)
   /* Pretend to not support gyro/accel so we can use the sticks */
   core()->setEnvironmentCallbackSupported(RETRO_ENVIRONMENT_GET_SENSOR_INTERFACE, false);
 
-  /* All Dolphin instances share the default system/save dirs; only the disc-list
-   * needs to stay per-instance, e.g. system/discs-gcn.m3u. */
-  const QString system =
-    QString::fromUtf8(core()->directories()->get(QRetroDirectories::System));
+  /* GameCube instances share the default system/save dirs. A Wii one takes its
+   * own so each game keeps a separate NAND rather than fighting over one. The
+   * disc-list is per-instance either way, e.g. system/discs-gcn.m3u. */
+  QRetroDirectories *dirs = core()->directories();
+  QString system = QString::fromUtf8(dirs->get(QRetroDirectories::System));
+
+  if (ownDirs)
+  {
+    const QString save =
+      QString::fromUtf8(dirs->get(QRetroDirectories::Save)) + "/" + subdir;
+
+    system += "/" + subdir;
+    QDir().mkpath(system);
+    QDir().mkpath(save);
+    dirs->set(QRetroDirectories::System, system);
+    dirs->set(QRetroDirectories::Save, save);
+  }
+
   m_m3uPath = system + "/discs-" + subdir + ".m3u";
 }
 

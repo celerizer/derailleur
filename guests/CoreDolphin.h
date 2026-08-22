@@ -13,7 +13,9 @@ class CoreDolphin : public DrGuest
   Q_OBJECT
 
 public:
-  CoreDolphin(const QString &subdir, QObject *parent = nullptr);
+  /// `ownDirs` gives this instance its own system/save dirs under `subdir`,
+  /// which the Wii games need so they don't share a NAND.
+  CoreDolphin(const QString &subdir, bool ownDirs = false, QObject *parent = nullptr);
   ~CoreDolphin();
 
   void addGame(DolphinGuest *game);
