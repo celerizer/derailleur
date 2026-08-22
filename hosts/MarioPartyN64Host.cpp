@@ -37,6 +37,43 @@ void MarioPartyN64Host::setSceneQueue(const dr_mp64_overlay_t overlays[5], int o
   writes16(static_cast<int16_t>(overlay_count), m_config.values.scene_stack_count.address);
 }
 
+bool MarioPartyN64Host::replaceSceneOverlay(const int *match_ids,
+                                            const dr_mp64_overlay_t &overlay)
+{
+  int16_t count = 0;
+  int idx = -1;
+  int active = 0;
+  dr_mp64_overlay_t overlays[5] = {};
+
+  reads16(&count, m_config.values.scene_stack_count.address);
+  if (!count)
+    return false;
+
+  for (int i = 0; i < 5; i++)
+  {
+    const size_t elem = m_config.values.scene_stack.address + static_cast<size_t>(i) * 8;
+    reads32(&overlays[i].id, elem);
+    reads16(&overlays[i].event, elem + 4);
+    reads16(&overlays[i].stat, elem + 6);
+  }
+
+  active = (count < 5) ? count : 5;
+  for (int i = 0; i < active && idx < 0; i++)
+    for (unsigned m = 0; match_ids[m] != -1; m++)
+      if (overlays[i].id == static_cast<int32_t>(match_ids[m]))
+      {
+        idx = i;
+        break;
+      }
+
+  if (idx < 0)
+    return false;
+
+  overlays[idx] = overlay;
+  setSceneQueue(overlays, count);
+  return true;
+}
+
 void MarioPartyN64Host::resetRuntimeState()
 {
   /* Release any netplay golf mode we were holding for a 1P/item mini-game. */
@@ -159,13 +196,17 @@ void MarioPartyN64Host::run(void)
   switch (m_State)
   {
   case DR_HOST_STATE_INVALID:
+    /* Wait an amount of time before doing anything */
     if (m_core->frames() <= 120)
       return;
-    /* First roll + title stamp for the whole block; refreshed on every return to the
-     * board after a mini-game (see DR_HOST_STATE_MINIGAME). */
+
+    /* Roll a set of mini-games at the beginning so they're always valid */
     rollAndStampTitles();
+
+    /* Proceed... */
     setState(DR_HOST_STATE_BEFORE_BOARD);
     break;
+
   case DR_HOST_STATE_BEFORE_BOARD:
   {
     writeForFrames(mgTypeAddr(), &ff, 1, 30);
@@ -471,7 +512,7 @@ void MarioPartyN64Host::run(void)
       m_resultsScene = m_config.scenes.minigame_results_battle;
       m_resultsModifier = 2;
       stat = m_config.stat.minigame;
-      m_startDelay = 15;
+      m_startDelay = 10;
       break;
     case DR_MINIGAME_DUEL:
       if (m_isDuelBoard)
@@ -500,37 +541,16 @@ void MarioPartyN64Host::run(void)
       break;
     }
 
-    /* Read the whole queue, swap the mini-game explanation element for our results
-     * screen, and keep everything else. */
-    dr_mp64_overlay_t overlays[5] = {};
-    for (int i = 0; i < 5; i++)
-    {
-      const size_t elem = m_config.values.scene_stack.address + static_cast<size_t>(i) * 8;
-      reads32(&overlays[i].id, elem);
-      reads16(&overlays[i].event, elem + 4);
-      reads16(&overlays[i].stat, elem + 6);
-    }
-
-    const int active = (count < 5) ? count : 5;
-    int explainIdx = -1;
-    for (int i = 0; i < active && explainIdx < 0; i++)
-      for (unsigned e = 0; m_config.scenes.minigame_explain[e] != -1; e++)
-        if (overlays[i].id == static_cast<int32_t>(m_config.scenes.minigame_explain[e]))
-        {
-          explainIdx = i;
-          break;
-        }
-
-    if (explainIdx < 0)
+    /* Swap the mini-game explanation element for our results screen, keeping the rest
+     * of the queue intact. */
+    const dr_mp64_overlay_t results =
+      { static_cast<int32_t>(m_resultsScene), m_resultsModifier, stat };
+    if (!replaceSceneOverlay(m_config.scenes.minigame_explain, results))
     {
       emit logMessage(DR_LOG_ERROR,
         "AFTER_ROULETTE: no mini-game explanation in the scene queue; aborting");
       setState(DR_HOST_STATE_INVALID);
-      break;
     }
-
-    overlays[explainIdx] = { static_cast<int32_t>(m_resultsScene), m_resultsModifier, stat };
-    setSceneQueue(overlays, count);
     break;
   }
 
@@ -614,8 +634,9 @@ void MarioPartyN64Host::stampTitleRow(
     for (size_t k = 0, len = strnlen(name, 64); k < len && n < 31; k++)
     {
       char c = name[k];
-      if (isalpha((unsigned char)c) || isdigit((unsigned char)c) || c == ' ')
+      if (isalpha((unsigned char)c) || isdigit((unsigned char)c))
         glyphs[n++] = (uint8_t)c;
+      else if (c == ' ') glyphs[n++] = 0x10;
       else if (c == '.') glyphs[n++] = 0x85;
       else if (c == ',') glyphs[n++] = 0x82;
       else if (c == '\'') glyphs[n++] = 0x5C;
@@ -756,18 +777,17 @@ void MarioPartyN64Host::readPlayers(dr_minigame_type type)
   for (unsigned i = 0; i < 4; i++)
   {
     uint8_t chr, ctrl, diff, bot, team;
-    if (readu8(&chr,  m_config.values.character[i].address)   != DR_OK) continue;
-    if (readu8(&ctrl, m_config.values.controller[i].address)  != DR_OK) continue;
-    if (readu8(&diff, m_config.values.difficulty[i].address)  != DR_OK) continue;
-    if (readu8(&bot,  m_config.values.bot[i].address)          != DR_OK) continue;
-    if (readu8(&team, m_config.values.team[i].address)         != DR_OK) continue;
+    if (readu8(&chr,  m_config.values.character[i].address) != DR_OK) continue;
+    if (readu8(&ctrl, m_config.values.controller[i].address) != DR_OK) continue;
+    if (readu8(&diff, m_config.values.difficulty[i].address) != DR_OK) continue;
+    if (readu8(&bot,  m_config.values.bot[i].address) != DR_OK) continue;
+    if (readu8(&team, m_config.values.team[i].address) != DR_OK) continue;
 
     dr_player_t &p = m_pendingPlayers[i];
-    p.character   = (chr  < m_config.char_to_dr_size)          ? m_config.char_to_dr[chr]          : DR_CHARACTER_INVALID;
-    p.difficulty  = (diff < m_config.diff_to_dr_size)          ? m_config.diff_to_dr[diff]          : DR_DIFFICULTY_INVALID;
+    p.character = (chr  < m_config.char_to_dr_size) ? m_config.char_to_dr[chr] : DR_CHARACTER_INVALID;
+    p.difficulty = (diff < m_config.diff_to_dr_size) ? m_config.diff_to_dr[diff] : DR_DIFFICULTY_INVALID;
     p.control_type = (bot & 0x01) ? DR_CONTROL_TYPE_CPU : DR_CONTROL_TYPE_HUMAN;
     p.control_port = static_cast<dr_control_port>(DR_CONTROL_PORT_P1 + ctrl);
-    /* The panel-color byte maps 1:1 onto dr_team_color (0 invalid, 1 blue .. 4 green). */
     p.team_color  = (panelColors[i] < DR_TEAM_COLOR_SIZE)
                       ? static_cast<dr_team_color>(panelColors[i]) : DR_TEAM_COLOR_INVALID;
     p.team_id = team;
@@ -824,91 +844,6 @@ void MarioPartyN64Host::readPlayers(dr_minigame_type type)
     else
       m_pendingPlayers[i].team_type = DR_TEAM_TYPE_SOLO;
   }
-
-  /* TODO remove: diagnose in-game duels being odd. Dump what team_addr/controller_addr
-   * actually hold, to compare against the debug menu (which sets both duelists team_id 0). */
-  if (type == DR_MINIGAME_DUEL)
-    for (unsigned i = 0; i < 4; i++)
-    {
-      const dr_player_t &p = m_pendingPlayers[i];
-      emit logMessage(DR_LOG_ERROR,
-        QString("TODO duel: p%1 team_id=%2 team_type=%3 port=%4 chr=%5 %6")
-          .arg(i).arg(p.team_id).arg((int)p.team_type)
-          .arg((int)p.control_port - DR_CONTROL_PORT_P1)
-          .arg(dr_character_name(p.character))
-          .arg(p.control_type == DR_CONTROL_TYPE_CPU ? "CPU" : "human"));
-    }
-}
-
-void MarioPartyN64Host::writeBattleCoins()
-{
-  if (!m_config.values.battle.address)
-    return;
-
-  int16_t totalCoins = 0;
-  reads16(&totalCoins, m_config.values.battle.address);
-
-  // Read each player's place (0 = 1st, 1 = 2nd, ...)
-  uint16_t places[4] = { 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF };
-  for (unsigned i = 0; i < 4; i++)
-    readu16(&places[i], m_config.values.result[i].address);
-
-  // Count players at each place; find 1st and 2nd place values
-  unsigned count[4] = {};
-  uint16_t firstPlace = 0xFFFF;
-  uint16_t secondPlace = 0xFFFF;
-  for (unsigned i = 0; i < 4; i++)
-  {
-    if (places[i] >= 4)
-      continue;
-    count[places[i]]++;
-    if (places[i] < firstPlace)
-      firstPlace = places[i];
-  }
-  if (firstPlace == 0xFFFF)
-    return;
-  int numFirst = count[firstPlace];
-  if (numFirst == 1)
-  {
-    for (uint16_t p = 0; p < 4; p++)
-      if (p != firstPlace && count[p] > 0)
-      {
-        secondPlace = p;
-        break;
-      }
-  }
-
-  // Compute truncated shares
-  int16_t bonusCoins[4] = {};
-  int16_t totalAssigned = 0;
-  for (unsigned i = 0; i < 4; i++)
-  {
-    if (places[i] == firstPlace)
-    {
-      bonusCoins[i] =
-        (numFirst == 1) ? (int16_t)(totalCoins * 70 / 100) : (int16_t)(totalCoins / numFirst);
-    }
-    else if (places[i] == secondPlace)
-    {
-      bonusCoins[i] = (int16_t)(totalCoins * 30 / (100 * count[secondPlace]));
-    }
-    totalAssigned += bonusCoins[i];
-  }
-
-  // One random qualifying player receives the remainder
-  if (int16_t remainder = totalCoins - totalAssigned)
-  {
-    unsigned qualifying[4], numQ = 0;
-    for (unsigned i = 0; i < 4; i++)
-      if (places[i] == firstPlace || places[i] == secondPlace)
-        qualifying[numQ++] = i;
-    if (numQ > 0)
-      bonusCoins[qualifying[dr_rand() % numQ]] += remainder;
-  }
-
-  for (unsigned i = 0; i < 4; i++)
-    if (m_config.values.bonus_result[i].address)
-      writes16(bonusCoins[i], m_config.values.bonus_result[i].address);
 }
 
 void MarioPartyN64Host::setCurrentTurn(unsigned turn)
@@ -930,51 +865,61 @@ void MarioPartyN64Host::clearResults()
     if (m_config.values.bonus_result[i].address)
       writes16(0, m_config.values.bonus_result[i].address);
   }
+
 }
 
 void MarioPartyN64Host::writeResults(DrGuest *guest)
 {
+  if (m_resultsScene == m_config.scenes.minigame_results_battle)
+  {
+    bool all_zero = true;
+
+    for (unsigned i = 0; i < 4; i++)
+    {
+      auto result = guest->minigameResult(i);
+      if (result.coins)
+      {
+        all_zero = false;
+        break;
+      }
+    }
+
+    if (all_zero)
+    {
+      /* Return Battle Mini-Game draws to the board */
+      const int battle_ids[2] = { m_config.scenes.minigame_results_battle, -1 };
+      const dr_mp64_overlay_t board =
+        { static_cast<int32_t>(m_lastBoardScene), m_resultsModifier, m_config.stat.board };
+      replaceSceneOverlay(battle_ids, board);
+      return;
+    }
+  }
+
   for (unsigned i = 0; i < 4; i++)
   {
     auto result = guest->minigameResult(i);
-
     uint8_t chr = 0;
+    
     readu8(&chr, m_config.values.character[i].address);
     dr_character character =
       (chr < m_config.char_to_dr_size) ? m_config.char_to_dr[chr] : DR_CHARACTER_INVALID;
 
     emit logMessage(
-      DR_LOG_INFO, QString("%1 gets %2 coins")
+      DR_LOG_INFO, QString("%1 gets %2 + %3 coins")
                      .arg(dr_character_name(character))
-                     .arg((result.coins && result.bonus_coins)
-                            ? QString("%1+%2").arg(result.coins).arg(result.bonus_coins)
-                            : QString::number(result.coins ? result.coins : result.bonus_coins)));
+                     .arg(result.coins)
+                     .arg(result.bonus_coins));
 
-    int16_t coins = static_cast<int16_t>(
-      m_config.values.bonus_result[i].address ? result.coins : result.coins + result.bonus_coins);
-    writes16(coins, m_config.values.result[i].address);
-    if (m_config.values.bonus_result[i].address)
-      writes16(static_cast<int16_t>(result.bonus_coins), m_config.values.bonus_result[i].address);
-  }
-
-  if (m_resultsScene == m_config.scenes.minigame_results_battle)
-  {
-    /* Read back the placements the loop just wrote (0 = 1st, 1 = 2nd, ...). A
-     * four-way tie has no meaningful pot split, so rather than the battle results
-     * scene, send the game to the current board scene with modifier 2. */
-    uint16_t places[4];
-    for (unsigned i = 0; i < 4; i++)
-      readu16(&places[i], m_config.values.result[i].address);
-    if (places[0] == places[1] && places[1] == places[2] && places[2] == places[3])
-    {
-      emit logMessage(DR_LOG_INFO, "battle: four-way tie, returning to board");
-      dr_mp64_overlay_t overlays[5] = {};
-      overlays[0] = { static_cast<int32_t>(m_lastBoardScene), 2, m_config.stat.board };
-      setSceneQueue(overlays, 1);
-    }
+    /* Mario Party 1: Add result + bonus together */
+    if (!m_config.values.bonus_result[i].address)
+      writeValue(result.coins + result.bonus_coins, m_config.values.result[i]);
     else
-      writeBattleCoins();
+    {
+      writeValue(result.coins, m_config.values.result[i]);
+      writeValue(result.bonus_coins, m_config.values.bonus_result[i]);
+    }
   }
+
   writeu8(0xFF, mgTypeAddr());
   m_writing = 30;
   m_lastScene = 0xFF;

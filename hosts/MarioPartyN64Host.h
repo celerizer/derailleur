@@ -158,6 +158,8 @@ struct DrHostConfig
     dr_value_t space_index;
   } values;
 
+  size_t host_state_addr;
+
   /// An array of all overlay IDs and their associated friendly names
   const dr_scene_name_t *scene_names;
 };
@@ -210,6 +212,10 @@ private:
   /// Writes all 5 scene-stack elements from `overlays` and sets the element count.
   /// No-op when the stack isn't configured.
   void setSceneQueue(const dr_mp64_overlay_t overlays[5], int overlay_count);
+  /// Finds the first live scene-stack element whose id matches one of the -1-terminated
+  /// `match_ids`, overwrites it with `overlay`, and writes the stack back. Returns false
+  /// (leaving the stack untouched) when the stack is empty or no element matches.
+  bool replaceSceneOverlay(const int *match_ids, const dr_mp64_overlay_t &overlay);
 
   DrHostConfig m_config;
   int m_writing = 0;
