@@ -39,6 +39,8 @@ DrGuest *DrGuestList::pickMinigame(dr_minigame_type type, const dr_mp_minigame_t
   };
   QList<EligibleGroup> eligible;
 
+  const bool netplay = dr_netplay_active();
+
   for (int i = 0; i < m_guests.size(); i++)
   {
     quint32 ord = 0;
@@ -48,7 +50,8 @@ DrGuest *DrGuestList::pickMinigame(dr_minigame_type type, const dr_mp_minigame_t
       for (const dr_mp_minigame_t *mg : group.minigames)
       {
         const quint32 key = (static_cast<quint32>(i) << 16) | ord++;
-        if (mg->type == type && mg->minigame_id != 0xFF && !m_disabled.contains(key))
+        if (mg->type == type && mg->minigame_id != 0xFF && !m_disabled.contains(key)
+            && !(netplay && mg->flags.flags.no_netplay))
           minigames.append(mg);
       }
       if (!minigames.isEmpty())
