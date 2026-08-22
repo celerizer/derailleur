@@ -2,6 +2,9 @@
 
 #include <QRetro.h>
 #include <QRetroDirectories.h>
+#include <QDir>
+#include <QImage>
+#include <QPainter>
 #include <QString>
 
 #include <asm/mp4.h>
@@ -22,6 +25,71 @@ typedef enum
   MPGC_TEXT_COLOR_DARK_GRAY = 9,
   MPGC_TEXT_COLOR_LIGHT_GRAY = 10
 } mpgc_text_color;
+
+/* MP4 shows its two battle mini-game candidates as 160x120 icons. Dolphin loads
+ * replacements for them out of <save>/User/Load/Textures/GMPE01, so a reroll can
+ * redraw them to name the two candidates. Drawn at 2x so the text stays sharp. */
+static const char *MP4_BATTLE_ICON_DIR = "/User/Load/Textures/GMPE01";
+static const char *MP4_BATTLE_ICON_FILE[2] = {
+  "tex1_160x120_c17ee11cac3327fe_14.png",
+  "tex1_160x120_44baee82452dd439_14.png"
+};
+
+#define MP4_BATTLE_ICON_WIDTH 160
+#define MP4_BATTLE_ICON_HEIGHT 120
+#define MP4_BATTLE_ICON_SCALE 2
+
+/* Draws `title` centered into an icon-sized image and writes it to `path`. The
+ * text wraps, and the font shrinks until every line fits, so nothing is cut off. */
+static bool mp4WriteBattleIcon(const QString &path, const QString &title)
+{
+  const int scale = MP4_BATTLE_ICON_SCALE;
+  const int outline = 2 * scale;
+  const int flags = Qt::AlignCenter | Qt::TextWordWrap;
+  QImage image(MP4_BATTLE_ICON_WIDTH * scale, MP4_BATTLE_ICON_HEIGHT * scale,
+    QImage::Format_ARGB32);
+  QPainter painter;
+  QRect rect;
+  QFont font;
+  int pixels;
+
+  image.fill(Qt::transparent);
+
+  if (!painter.begin(&image))
+    return false;
+  painter.setRenderHint(QPainter::TextAntialiasing, true);
+
+  /* The margin leaves room for the outline pass on every side */
+  rect = image.rect().adjusted(6 * scale, 4 * scale, -6 * scale, -4 * scale);
+
+  font = painter.font();
+  font.setBold(true);
+
+  for (pixels = 24 * scale; pixels > 6 * scale; pixels--)
+  {
+    QRect bounds;
+
+    font.setPixelSize(pixels);
+    painter.setFont(font);
+    bounds = painter.boundingRect(rect, flags, title);
+    if (bounds.height() <= rect.height() && bounds.width() <= rect.width())
+      break;
+  }
+
+  /* Outline first, so the name reads against whatever the icon sat on. Every
+   * offset in the square is drawn, otherwise the thicker ring leaves gaps. */
+  painter.setPen(Qt::black);
+  for (int dy = -outline; dy <= outline; dy += scale)
+    for (int dx = -outline; dx <= outline; dx += scale)
+      if (dx || dy)
+        painter.drawText(rect.translated(dx, dy), flags, title);
+
+  painter.setPen(Qt::white);
+  painter.drawText(rect, flags, title);
+  painter.end();
+
+  return image.save(path);
+}
 
 MarioPartyGcnHost::MarioPartyGcnHost(const DrGcnHostConfig &config, QObject *parent)
   : DrHost(parent)
@@ -58,8 +126,42 @@ void MarioPartyGcnHost::rollMinigames(void)
 {
   /* One shared reroll keeps every netplay peer's pool identical; the specific
    * type's candidates are cached/stamped later once the roulette reveals it. */
-  if (m_MinigameSource)
-    m_MinigameSource->rerollMinigames();
+  if (!m_MinigameSource)
+    return;
+
+  m_MinigameSource->rerollMinigames();
+
+  /* MP4 picks its battle mini-game from two pictures, so name them here. */
+  if (game() == DR_GAME_MARIOPARTY4)
+    stampBattleIcons();
+}
+
+void MarioPartyGcnHost::stampBattleIcons(void)
+{
+  const std::array<DrMinigameCandidate, 5> &candidates =
+    m_MinigameSource->minigameCandidates(DR_MINIGAME_BATTLE);
+  const QString dir = dr_save_directory() + MP4_BATTLE_ICON_DIR;
+
+  if (!QDir().mkpath(dir))
+  {
+    log(DR_LOG_WARN, qPrintable(QString("battle icons: cannot create %1").arg(dir)));
+    return;
+  }
+
+  /* The roulette only ever offers the first two of the type's five candidates. */
+  for (unsigned i = 0; i < 2; i++)
+  {
+    const dr_mp_minigame_t *minigame = candidates[i].minigame;
+    const QString title = (minigame && minigame->name)
+      ? QString::fromUtf8(minigame->name) : QString();
+    const QString path = dir + "/" + MP4_BATTLE_ICON_FILE[i];
+
+    if (mp4WriteBattleIcon(path, title))
+      log(DR_LOG_INFO, qPrintable(QString("battle icon %1: %2").arg(i).arg(title)));
+    else
+      log(DR_LOG_WARN,
+        qPrintable(QString("battle icon %1: failed to write %2").arg(i).arg(path)));
+  }
 }
 
 void MarioPartyGcnHost::stampTitles(dr_minigame_type type)
@@ -197,6 +299,7 @@ void MarioPartyGcnHost::run(void)
 
   case DR_GCN_HOST_STATE_BEFORE_BOARD:
     writeValue(-1, m_config.values.minigame_id);
+    writes8(-1, m_config.host_state_addr + offsetof(dr_host_state_t, minigame_type));
     setState(DR_GCN_HOST_STATE_BOARD);
     break;
 

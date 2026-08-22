@@ -103,6 +103,10 @@ private:
   /// Reroll the shared mini-game pool (kept lockstepped across netplay peers).
   void rollMinigames(void);
 
+  /// Redraw MP4's two battle mini-game candidate icons as their names, for
+  /// Dolphin's custom texture loader to pick up.
+  void stampBattleIcons(void);
+
   /// Cache `type`'s five candidates and stamp their names into the title block.
   void stampTitles(dr_minigame_type type);
 
