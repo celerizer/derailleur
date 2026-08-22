@@ -22,12 +22,15 @@ void dr_settings_load(void)
   QSettings s(settings_ini_path(), QSettings::IniFormat);
   g_settings.shared_gamecube_core =
     s.value("settings/shared_gamecube_core", g_settings.shared_gamecube_core).toBool();
+  g_settings.loading_overlay =
+    s.value("settings/loading_overlay", g_settings.loading_overlay).toBool();
 }
 
 void dr_settings_save(void)
 {
   QSettings s(settings_ini_path(), QSettings::IniFormat);
   s.setValue("settings/shared_gamecube_core", g_settings.shared_gamecube_core);
+  s.setValue("settings/loading_overlay", g_settings.loading_overlay);
   s.sync();
 }
 
