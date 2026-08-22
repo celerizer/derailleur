@@ -3,12 +3,15 @@
 static const size_t MKDD_CUP_ADDR = 0x803CB7A8;
 static const size_t MKDD_TRACK_ADDR = 0x803CB7AC;
 
+// u16 total laps for the race -- otherwise unused "sForceTotalLapNum"
+static const size_t MKDD_TOTAL_LAPS_ADDR = 0x803CB7EC;
+
 typedef enum
 {
   MKDD_ITEM_BOX_RECOMMENDED = 0,
-  MKDD_ITEM_BOX_BASIC       = 1,
-  MKDD_ITEM_BOX_FRANTIC     = 2,
-  MKDD_ITEM_BOX_NONE        = 3,
+  MKDD_ITEM_BOX_BASIC = 1,
+  MKDD_ITEM_BOX_FRANTIC = 2,
+  MKDD_ITEM_BOX_NONE = 3,
 } mkdd_item_box;
 
 // u32 item box option
@@ -80,7 +83,7 @@ static const size_t MKDD_BATTLE_STAGE = 0x815973D0;
 
 #define MKDD_KART_COUNT 20
 
-// u32 lap count per player (a race is 3 laps).
+// u32 current lap per player; a kart has finished once it reaches the total laps.
 static const size_t MKDD_LAPS_ADDR[4] = { 0x8037FF60, 0x8037FF64, 0x8037FF68, 0x8037FF6C };
 
 // u32 finishing placement per player (1 = 1st, 2 = 2nd, ...).
@@ -165,24 +168,26 @@ static mkdd_char mkddCharFor(dr_character character)
 #define MKDD_COURSE_BOWSERS_CASTLE    14
 #define MKDD_COURSE_RAINBOW_ROAD      15
 
+/* The scene_id field is unused here, so it carries the race's total laps. */
 static const dr_mp_minigame_t MKDD_MINIGAMES[] =
 {
-  { "Mario Kart: Luigi Circuit",    DR_MINIGAME_4P, MKDD_COURSE_LUIGI_CIRCUIT,    0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Mario Kart: Peach Beach",      DR_MINIGAME_4P, MKDD_COURSE_PEACH_BEACH,      0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Mario Kart: Baby Park",        DR_MINIGAME_4P, MKDD_COURSE_BABY_PARK,        0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Mario Kart: Dry Dry Desert",   DR_MINIGAME_4P, MKDD_COURSE_DRY_DRY_DESERT,   0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Mario Kart: Mushroom Bridge",  DR_MINIGAME_4P, MKDD_COURSE_MUSHROOM_BRIDGE,  0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Mario Kart: Mario Circuit",    DR_MINIGAME_4P, MKDD_COURSE_MARIO_CIRCUIT,    0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Mario Kart: Daisy Cruiser",    DR_MINIGAME_4P, MKDD_COURSE_DAISY_CRUISER,    0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Mario Kart: Waluigi Stadium",  DR_MINIGAME_4P, MKDD_COURSE_WALUIGI_STADIUM,  0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Mario Kart: Sherbet Land",     DR_MINIGAME_4P, MKDD_COURSE_SHERBET_LAND,     0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Mario Kart: Mushroom City",    DR_MINIGAME_4P, MKDD_COURSE_MUSHROOM_CITY,    0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Mario Kart: Yoshi Circuit",    DR_MINIGAME_4P, MKDD_COURSE_YOSHI_CIRCUIT,    0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Mario Kart: DK Mountain",      DR_MINIGAME_4P, MKDD_COURSE_DK_MOUNTAIN,      0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Mario Kart: Wario Colosseum",  DR_MINIGAME_4P, MKDD_COURSE_WARIO_COLOSSEUM,  0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Mario Kart: Dino Dino Jungle", DR_MINIGAME_4P, MKDD_COURSE_DINO_DINO_JUNGLE, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Mario Kart: Bowser's Castle",  DR_MINIGAME_4P, MKDD_COURSE_BOWSERS_CASTLE,   0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Mario Kart: Rainbow Road",     DR_MINIGAME_4P, MKDD_COURSE_RAINBOW_ROAD,     0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Kart: Luigi Circuit", DR_MINIGAME_4P, MKDD_COURSE_LUIGI_CIRCUIT, 1, DR_NO_QUIRKS, DR_FLAG_NO_DIFFICULTY },
+  { "Kart: Peach Beach", DR_MINIGAME_4P, MKDD_COURSE_PEACH_BEACH, 1, DR_NO_QUIRKS, DR_FLAG_NO_DIFFICULTY },
+  { "Kart: Baby Park", DR_MINIGAME_4P, MKDD_COURSE_BABY_PARK, 3, DR_NO_QUIRKS, DR_FLAG_NO_DIFFICULTY },
+  { "Kart: Dry Dry Desert", DR_MINIGAME_4P, MKDD_COURSE_DRY_DRY_DESERT, 1, DR_NO_QUIRKS, DR_FLAG_NO_DIFFICULTY },
+  { "Kart: Mushroom Bridge", DR_MINIGAME_4P, MKDD_COURSE_MUSHROOM_BRIDGE, 1, DR_NO_QUIRKS, DR_FLAG_NO_DIFFICULTY },
+  { "Kart: Mario Circuit", DR_MINIGAME_4P, MKDD_COURSE_MARIO_CIRCUIT, 1, DR_NO_QUIRKS, DR_FLAG_NO_DIFFICULTY },
+  { "Kart: Daisy Cruiser", DR_MINIGAME_4P, MKDD_COURSE_DAISY_CRUISER, 1, DR_NO_QUIRKS, DR_FLAG_NO_DIFFICULTY },
+  { "Kart: Waluigi Stadium", DR_MINIGAME_4P, MKDD_COURSE_WALUIGI_STADIUM, 1, DR_NO_QUIRKS, DR_FLAG_NO_DIFFICULTY },
+  { "Kart: Sherbet Land", DR_MINIGAME_4P, MKDD_COURSE_SHERBET_LAND, 1, DR_NO_QUIRKS, DR_FLAG_NO_DIFFICULTY },
+  { "Kart: Mushroom City", DR_MINIGAME_4P, MKDD_COURSE_MUSHROOM_CITY, 1, DR_NO_QUIRKS, DR_FLAG_NO_DIFFICULTY },
+  { "Kart: Yoshi Circuit", DR_MINIGAME_4P, MKDD_COURSE_YOSHI_CIRCUIT, 1, DR_NO_QUIRKS, DR_FLAG_NO_DIFFICULTY },
+  { "Kart: D.K. Mountain", DR_MINIGAME_4P, MKDD_COURSE_DK_MOUNTAIN, 1, DR_NO_QUIRKS, DR_FLAG_NO_DIFFICULTY },
+  { "Kart: Wario Colosseum", DR_MINIGAME_4P, MKDD_COURSE_WARIO_COLOSSEUM, 1, DR_NO_QUIRKS, DR_FLAG_NO_DIFFICULTY },
+  { "Kart: Dino Dino Jungle", DR_MINIGAME_4P, MKDD_COURSE_DINO_DINO_JUNGLE, 1, DR_NO_QUIRKS, DR_FLAG_NO_DIFFICULTY },
+  { "Kart: GCN Bowser's Castle", DR_MINIGAME_4P, MKDD_COURSE_BOWSERS_CASTLE, 1, DR_NO_QUIRKS, DR_FLAG_NO_DIFFICULTY },
+  { "Kart: GCN Rainbow Road", DR_MINIGAME_4P, MKDD_COURSE_RAINBOW_ROAD, 1, DR_NO_QUIRKS, DR_FLAG_NO_DIFFICULTY },
+  
   { nullptr, DR_MINIGAME_INVALID, 0xFF, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
 };
 
@@ -257,10 +262,11 @@ void MarioKartDoubleDash::run()
     for (unsigned i = 0; i < 4; i++)
     {
       uint32_t laps = 0;
-      if (m_retro->readu32(&laps, MKDD_LAPS_ADDR[i]) == DR_OK && laps >= 3)
+      if (m_retro->readu32(&laps, MKDD_LAPS_ADDR[i]) == DR_OK &&
+          laps == static_cast<uint32_t>(m_laps))
       {
         m_finishPending = true;
-        finishMinigameInFrames(390);
+        finishMinigameInFrames(450);
         break;
       }
     }
@@ -304,6 +310,7 @@ void MarioKartDoubleDash::advanceSetup()
     break;
   case MKDD_SETUP_TRACK:
     m_retro->writes32(m_track, MKDD_TRACK_ADDR);
+    m_retro->writeu16(static_cast<uint16_t>(m_laps), MKDD_TOTAL_LAPS_ADDR);
     pressA();
     m_setupStep = MKDD_SETUP_CONFIRM;
     m_stepDelay = 30;
@@ -337,6 +344,7 @@ void MarioKartDoubleDash::doApplyGameData(const DrGameData &data)
   const int course = data.minigame ? data.minigame->minigame_id : 0;
   m_cup = course / 4;
   m_track = course % 4;
+  m_laps = data.minigame ? data.minigame->scene_id : 1;
 
   for (unsigned i = 0; i < 4; i++)
   {
