@@ -279,6 +279,7 @@ void DrNetplay::requestHardResync()
     m_ResyncStateReady = false;
     m_ResyncState.clear();
     m_Received.clear();
+    m_RngSamples.clear();
     /* Force the resync target to be the live foreground context. runResync only
      * runs for the active, unfrozen context (onFrameBegin early-returns otherwise),
      * so if context activation had drifted -- or the context is frozen mid-load --
@@ -486,6 +487,7 @@ void DrNetplay::resetFrameCounter()
     m_CtxSend[i] = 0;
   }
   m_Received.clear();
+  m_RngSamples.clear();
   m_ResyncActive = false;
   m_ResyncStateReady = false;
   m_ResyncState.clear();
@@ -593,11 +595,25 @@ void DrNetplay::onFrameBegin(int context)
      * drain. The delay therefore gives the network `delay` frames of slack and
      * can be retuned live. */
     sampleLocal();
+
+    /* Stamp the board's RNG onto its packets. It is read here, before the frame
+     * runs, and tagged with the frame it belongs to rather than the (delayed)
+     * frame the input is for, so peers stay comparable under golf mode's uneven
+     * delays. See checkRngSample. */
+    quint32 rng = 0, rngFrame = 0;
+    if (context == 0 && m_RngProbe)
+    {
+      rng = m_RngProbe();
+      rngFrame = static_cast<quint32>(frame);
+    }
+
     const quint64 target = frame + static_cast<quint64>(effectiveDelay());
     while (m_CtxSend[context] <= target)
     {
       DrNetplayPacket mine =
         packetFromJoypad(m_LocalInput.joypads()[0], m_PeerIndex, context, m_CtxSend[context]);
+      mine.rng = rng;
+      mine.rngFrame = rngFrame;
       recordPacket(mine);
       sendInput(mine);
       m_CtxSend[context]++;
@@ -955,6 +971,7 @@ void DrNetplay::handleMessage(QTcpSocket *sock, quint8 type, const QByteArray &p
       m_ResyncStateReady = false;
       m_ResyncState.clear();
       m_Received.clear();
+      m_RngSamples.clear();
       /* Force the resync target live (see requestHardResync): runResync only runs
        * for the active, unfrozen context, so match the host's ctx even if this
        * peer's activation had drifted or the context was frozen mid-load. */
@@ -1152,7 +1169,42 @@ void DrNetplay::recordPacket(const DrNetplayPacket &p)
   FrameInputs &fi = m_Received[frameKey(p.context, p.frame)];
   fi.pkts[p.peerIndex] = p;
   fi.have[p.peerIndex] = true;
+  checkRngSample(p);
   m_FrameReady.wakeAll();
+}
+
+void DrNetplay::checkRngSample(const DrNetplayPacket &p)
+{
+  /* Only the board context carries a sample, and only the server judges them. A
+   * resync already in flight will replace every peer's state anyway. */
+  if (!m_IsServer || p.context != 0 || !p.rngFrame || m_ResyncActive.load())
+    return;
+
+  auto it = m_RngSamples.find(p.rngFrame);
+
+  if (it == m_RngSamples.end())
+  {
+    /* Samples are only useful until every peer has reported the frame, so drop
+     * the whole window rather than tracking which frames are finished with. */
+    if (m_RngSamples.size() > 4 * DR_NETPLAY_RESYNC_MARGIN)
+      m_RngSamples.clear();
+    m_RngSamples.insert(p.rngFrame, { p.rng, p.peerIndex });
+    return;
+  }
+  if (it->rng == p.rng)
+    return;
+
+  emit logMessage(DR_LOG_WARN,
+    QString("Potential desync detected by RNG value, performing hard resync... "
+            "(frame %1: peer %2 has 0x%3, peer %4 has 0x%5)")
+      .arg(p.rngFrame)
+      .arg(it->peer)
+      .arg(it->rng, 8, 16, QChar('0'))
+      .arg(p.peerIndex)
+      .arg(p.rng, 8, 16, QChar('0')));
+
+  m_RngSamples.clear();
+  QMetaObject::invokeMethod(this, [this]() { requestHardResync(); }, Qt::QueuedConnection);
 }
 
 void DrNetplay::sendInput(const DrNetplayPacket &p)
@@ -1294,7 +1346,8 @@ QByteArray DrNetplay::encodePacket(const DrNetplayPacket &p)
   s << static_cast<quint64>(p.frame) << static_cast<quint8>(p.peerIndex)
     << static_cast<quint8>(p.context) << static_cast<quint16>(p.bitmask)
     << static_cast<qint16>(p.leftX) << static_cast<qint16>(p.leftY) << static_cast<qint16>(p.rightX)
-    << static_cast<qint16>(p.rightY) << static_cast<qint16>(p.l2) << static_cast<qint16>(p.r2);
+    << static_cast<qint16>(p.rightY) << static_cast<qint16>(p.l2) << static_cast<qint16>(p.r2)
+    << static_cast<quint32>(p.rng) << static_cast<quint32>(p.rngFrame);
   return b;
 }
 
@@ -1308,7 +1361,9 @@ DrNetplayPacket DrNetplay::decodePacket(const QByteArray &b)
   quint8 context = 0;
   quint16 bitmask = 0;
   qint16 lx = 0, ly = 0, rx = 0, ry = 0, l2 = 0, r2 = 0;
-  s >> frame >> peerIndex >> context >> bitmask >> lx >> ly >> rx >> ry >> l2 >> r2;
+  quint32 rng = 0, rngFrame = 0;
+  s >> frame >> peerIndex >> context >> bitmask >> lx >> ly >> rx >> ry >> l2 >> r2 >> rng
+    >> rngFrame;
   p.frame = frame;
   p.peerIndex = peerIndex;
   p.context = context;
@@ -1319,6 +1374,8 @@ DrNetplayPacket DrNetplay::decodePacket(const QByteArray &b)
   p.rightY = ry;
   p.l2 = l2;
   p.r2 = r2;
+  p.rng = rng;
+  p.rngFrame = rngFrame;
   return p;
 }
 

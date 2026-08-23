@@ -3,7 +3,7 @@
 
 #include <QString>
 
-static const char *const DERAILLEUR_DATE_STRING = "August 14, 2026";
+static const char *const DERAILLEUR_DATE_STRING = "August 23, 2026";
 static const char *const DERAILLEUR_RELEASE_STRING = "r8";
 
 typedef enum

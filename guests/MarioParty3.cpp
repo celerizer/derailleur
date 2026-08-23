@@ -132,6 +132,17 @@ static MpN64Config buildConfig()
   memcpy(config.bonus_result_addr, bonus_result_addr, sizeof(bonus_result_addr));
   memcpy(config.result_addr, result_addr, sizeof(result_addr));
 
+  config.coins[0] = { 0x800d1112, DR_VALUE_TYPE_U16 };
+  config.coins[1] = { 0x800d114a, DR_VALUE_TYPE_U16 };
+  config.coins[2] = { 0x800d1182, DR_VALUE_TYPE_U16 };
+  config.coins[3] = { 0x800d11ba, DR_VALUE_TYPE_U16 };
+  config.stars[0] = { 0x800d1116, DR_VALUE_TYPE_U8 };
+  config.stars[1] = { 0x800d114e, DR_VALUE_TYPE_U8 };
+  config.stars[2] = { 0x800d1186, DR_VALUE_TYPE_U8 };
+  config.stars[3] = { 0x800d11be, DR_VALUE_TYPE_U8 };
+
+  config.battle_pot = { 0x800cc698, DR_VALUE_TYPE_U16 };
+
   config.character_ids = MP3_CHARACTER_IDS;
   config.minigames = MP3_MINIGAMES;
 

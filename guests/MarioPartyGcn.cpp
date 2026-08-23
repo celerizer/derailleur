@@ -129,5 +129,12 @@ void MarioPartyGcn::applyPlayers()
     m_retro->writeu16(mp_difficulty, m_config.difficulty_addr[slot]);
 
     m_retro->writeu16(static_cast<uint16_t>(p.team_id), m_config.team_addr[slot]);
+
+    /* Carry the board totals over, so a mini-game that shows coins/stars shows
+     * the same numbers the host does. */
+    if (m_config.coins[slot].address)
+      m_retro->writeValue(p.coins, m_config.coins[slot]);
+    if (m_config.stars[slot].address)
+      m_retro->writeValue(p.stars, m_config.stars[slot]);
   }
 }

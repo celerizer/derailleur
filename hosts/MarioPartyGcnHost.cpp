@@ -343,7 +343,24 @@ void MarioPartyGcnHost::run(void)
 
   case DR_GCN_HOST_STATE_ROULETTE:
   {
+    int8_t minigame_type = -1;
     int64_t minigame_id = -1;
+
+    /* Watch for minigame_type changes; shouldn't happen but fix and log */
+    reads8(&minigame_type, m_config.host_state_addr + offsetof(dr_host_state_t, minigame_type));
+    if (minigame_type >= 0 && (unsigned)minigame_type < m_config.minigame_type_to_dr_size
+        && m_config.minigame_type_to_dr[minigame_type] != m_MinigameType)
+    {
+      const dr_minigame_type type = m_config.minigame_type_to_dr[minigame_type];
+
+      log(DR_LOG_ERROR,
+        qPrintable(QString("roulette type changed mid-roulette: %1 -> %2 (%3)")
+          .arg(dr_minigame_type_name(m_MinigameType))
+          .arg(dr_minigame_type_name(type)).arg(minigame_type)));
+
+      m_MinigameType = type;
+      stampTitles(type);
+    }
 
     readValue(&minigame_id, m_config.values.minigame_id);
     if (minigame_id > 0)
@@ -409,6 +426,20 @@ void MarioPartyGcnHost::readPlayers(DrPlayerArray &players)
     default:   p.difficulty = DR_DIFFICULTY_NORMAL;    break;
     }
     p.team_id = static_cast<unsigned>(team);
+
+    if (m_config.values.coins[i].address)
+    {
+      int64_t coins = 0;
+      readValue(&coins, m_config.values.coins[i]);
+      p.coins = static_cast<signed>(coins);
+    }
+    if (m_config.values.stars[i].address)
+    {
+      int64_t stars = 0;
+      readValue(&stars, m_config.values.stars[i]);
+      p.stars = static_cast<signed>(stars);
+    }
+
     switch (m_MinigameType)
     {
     case DR_MINIGAME_2V2:
@@ -461,13 +492,8 @@ void MarioPartyGcnHost::writeResults(DrGuest *guest)
   {
     const dr_minigame_result_t result = guest->minigameResult(i);
 
-    /* When the board has a separate bonus field, split the winnings across the two;
-     * otherwise fold the bonus into the single result value. */
-    const int64_t coins = m_config.values.bonus_result[i].address
-      ? result.coins : result.coins + result.bonus_coins;
-    writeValue(coins, m_config.values.result[i]);
-    if (m_config.values.bonus_result[i].address)
-      writeValue(result.bonus_coins, m_config.values.bonus_result[i]);
+    writeValue(result.coins, m_config.values.result[i]);
+    writeValue(result.bonus_coins, m_config.values.bonus_result[i]);
 
     log(DR_LOG_INFO,
       qPrintable(QString("player %1 gets %2 coins (+%3 bonus)")
@@ -480,7 +506,6 @@ void MarioPartyGcnHost::clearResults(void)
   for (unsigned i = 0; i < 4; i++)
   {
     writeValue(0, m_config.values.result[i]);
-    if (m_config.values.bonus_result[i].address)
-      writeValue(0, m_config.values.bonus_result[i]);
+    writeValue(0, m_config.values.bonus_result[i]);
   }
 }

@@ -175,16 +175,33 @@ static DrHostConfig makeConfig()
   config.core = dr_core_path(DR_CORE_MUPEN64PLUSNEXT).toStdString();
   config.game = (dr_roms_directory() + "/Mario Party (USA).z64").toStdString();
 
-  config.scenes.main_menu = 0x69; // Mushroom Village
+  config.char_to_dr = MP1_CHAR_TO_DR;
+  config.char_to_dr_size = sizeof(MP1_CHAR_TO_DR) / sizeof(*MP1_CHAR_TO_DR);
+  config.diff_to_dr = MP1_DIFF_TO_DR;
+  config.diff_to_dr_size = sizeof(MP1_DIFF_TO_DR) / sizeof(*MP1_DIFF_TO_DR);
+
+  config.minigame_type_to_dr = MP1_MINIGAME_TYPE_TO_DR;
+  config.minigame_type_to_dr_size = 4;
+
+  config.cheats.cave = MP1_CAVE;
+  config.cheats.cave_addr = MP1_CAVE_ADDR;
+  config.cheats.cave_size = MP1_CAVE_SIZE;
+  config.cheats.cheat_board = MP1_HOOK_BOARD;
+
   config.scenes.minigame_explain[0] = 0x6F;
   config.scenes.minigame_explain[1] = -1;
-  config.scenes.minigame_results = 0x7C;
-
-  config.values.scene = { 0x800C596C, DR_VALUE_TYPE_U16 }; // u16
 
   static const int mp1_boards[] = { 0x36, 0x37, 0x38, 0x39, 0x3A, 0x3B, 0x3C, 0x3D, -1 };
   memcpy(config.scenes.boards, mp1_boards, sizeof(mp1_boards));
 
+  config.scenes.main_menu = 0x69; // Mushroom Village
+  config.scenes.minigame_results = 0x7C;
+
+  config.stat.board = 0x0092;
+  config.stat.minigame = 0x0094;
+  // stat.duel: no duels in MP1
+
+  config.values.scene = { 0x800C596C, DR_VALUE_TYPE_U16 };
   config.values.character[0] = { 0x800f32b4, DR_VALUE_TYPE_U8 };
   config.values.character[1] = { 0x800f32e4, DR_VALUE_TYPE_U8 };
   config.values.character[2] = { 0x800f3314, DR_VALUE_TYPE_U8 };
@@ -209,46 +226,35 @@ static DrHostConfig makeConfig()
   config.values.result[1] = { 0x800f32ea, DR_VALUE_TYPE_U16 };
   config.values.result[2] = { 0x800f331a, DR_VALUE_TYPE_U16 };
   config.values.result[3] = { 0x800f334a, DR_VALUE_TYPE_U16 };
-  // bonus_result_addr: not available in mp1
+  // bonus_result: not available in mp1
   config.values.panel_color[0] = { 0x800f32c7, DR_VALUE_TYPE_U8 };
   config.values.panel_color[1] = { 0x800f32f7, DR_VALUE_TYPE_U8 };
   config.values.panel_color[2] = { 0x800f3327, DR_VALUE_TYPE_U8 };
   config.values.panel_color[3] = { 0x800f3357, DR_VALUE_TYPE_U8 };
-
+  config.values.coins[0] = { 0x800f32b8, DR_VALUE_TYPE_U16 };
+  config.values.coins[1] = { 0x800f32e8, DR_VALUE_TYPE_U16 };
+  config.values.coins[2] = { 0x800f3318, DR_VALUE_TYPE_U16 };
+  config.values.coins[3] = { 0x800f3348, DR_VALUE_TYPE_U16 };
+  config.values.stars[0] = { 0x800f32bc, DR_VALUE_TYPE_U16 };
+  config.values.stars[1] = { 0x800f32ec, DR_VALUE_TYPE_U16 };
+  config.values.stars[2] = { 0x800f331c, DR_VALUE_TYPE_U16 };
+  config.values.stars[3] = { 0x800f334c, DR_VALUE_TYPE_U16 };
   config.values.minigame_title_color = { 0x800C4DD0, DR_VALUE_TYPE_U8 };
-
-  config.char_to_dr = MP1_CHAR_TO_DR;
-  config.char_to_dr_size = sizeof(MP1_CHAR_TO_DR) / sizeof(*MP1_CHAR_TO_DR);
-  config.diff_to_dr = MP1_DIFF_TO_DR;
-  config.diff_to_dr_size = sizeof(MP1_DIFF_TO_DR) / sizeof(*MP1_DIFF_TO_DR);
-
-  config.values.minigame_type = { 0x800D6459, DR_VALUE_TYPE_U8 }; // u8
-  config.minigame_type_to_dr = MP1_MINIGAME_TYPE_TO_DR;
-  config.minigame_type_to_dr_size = 4;
-
+  config.values.minigame_type = { 0x800D6459, DR_VALUE_TYPE_U8 };
   config.values.minigame_id = { 0x800ED5DE, DR_VALUE_TYPE_S16 };
-
   config.values.title_block = { MP1_TITLE_BLOCK, DR_VALUE_TYPE_POINTER };
   config.values.title_color = { MP1_TITLE_COLORS, DR_VALUE_TYPE_POINTER };
-  config.cheats.cave = MP1_CAVE;
-  config.cheats.cave_addr = MP1_CAVE_ADDR;
-  config.cheats.cave_size = MP1_CAVE_SIZE;
-  config.cheats.cheat_board = MP1_HOOK_BOARD;
-
-  config.values.scene_stack = { 0x800D86B8, DR_VALUE_TYPE_POINTER };       // 5 x { s32 scene, s16 event, s16 stat }
-  config.values.scene_stack_count = { 0x800D86B2, DR_VALUE_TYPE_S16 }; // s16 element count
-  config.stat.board = 0x0092;
-  config.stat.minigame = 0x0094;
-  // stat.duel: no duels in MP1
-
-  config.scene_names = MP1_SCENE_NAMES;
-
-  config.values.turn_total = { 0x800ED5C7, DR_VALUE_TYPE_U8 };   // u8
-  config.values.turn_current = { 0x800ED5C9, DR_VALUE_TYPE_U8 }; // u8
-  config.values.turn_owner = { 0x800ED5DC, DR_VALUE_TYPE_S16 };  // whose turn
-  config.values.space_index = { 0x800ED5E0, DR_VALUE_TYPE_S16 }; // current space index
+  config.values.scene_stack = { 0x800D86B8, DR_VALUE_TYPE_POINTER };
+  config.values.scene_stack_count = { 0x800D86B2, DR_VALUE_TYPE_S16 };
+  config.values.turn_total = { 0x800ED5C7, DR_VALUE_TYPE_U8 };
+  config.values.turn_current = { 0x800ED5C9, DR_VALUE_TYPE_U8 };
+  config.values.turn_owner = { 0x800ED5DC, DR_VALUE_TYPE_S16 };
+  config.values.space_index = { 0x800ED5E0, DR_VALUE_TYPE_S16 };
+  config.values.rng = { 0x800c2ff4, DR_VALUE_TYPE_U32 };
 
   config.host_state_addr = MP1_HOST_STATE;
+
+  config.scene_names = MP1_SCENE_NAMES;
 
   return config;
 }

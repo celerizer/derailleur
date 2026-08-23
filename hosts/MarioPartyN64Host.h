@@ -140,7 +140,7 @@ struct DrHostConfig
     dr_value_t stars[4];              // per-slot current stars
     dr_value_t mg_star[4];            // per-slot mini-game star
     dr_value_t minigame_title_color;  // color array the title trampoline copies into
-    dr_value_t battle;                // total battle coins
+    dr_value_t battle_pot;            // coins collected into the battle pot
     dr_value_t minigame_type;         // mini-game type byte
     dr_value_t minigame_id;           // chosen mini-game id (width per game)
     dr_value_t title_block;           // base of the injected glyph block
@@ -156,6 +156,9 @@ struct DrHostConfig
 
     /// The value that tracks which space the current player is standing on
     dr_value_t space_index;
+
+    /// The game's RNG state
+    dr_value_t rng;
   } values;
 
   size_t host_state_addr;
@@ -170,6 +173,29 @@ class MarioPartyN64Host : public DrHost
 
 public:
   explicit MarioPartyN64Host(const DrHostConfig &config, QObject *parent = nullptr);
+
+  /// The pot is a single global here, holding what the battle actually collected
+  /// (a player short of the ante contributes only what they have).
+  unsigned battlePot(void) override
+  {
+    int64_t value = 0;
+
+    if (!m_config.values.battle_pot.address ||
+        readValue(&value, m_config.values.battle_pot) != DR_OK)
+      return 0;
+
+    return static_cast<unsigned>(value);
+  }
+
+  uint32_t rngValue(void) override
+  {
+    int64_t value = 0;
+
+    if (!m_config.values.rng.address || readValue(&value, m_config.values.rng) != DR_OK)
+      return 0;
+
+    return static_cast<uint32_t>(value);
+  }
 
   void writeResults(DrGuest *guest) override;
   void clearResults() override;

@@ -794,15 +794,15 @@ void MarioPartyN64Host::readPlayers(dr_minigame_type type)
 
     if (m_config.values.coins[i].address)
     {
-      uint16_t coins = 0;
-      readu16(&coins, m_config.values.coins[i].address);
-      p.coins = coins;
+      int64_t coins = 0;
+      readValue(&coins, m_config.values.coins[i]);
+      p.coins = static_cast<signed>(coins);
     }
     if (m_config.values.stars[i].address)
     {
-      uint8_t stars = 0;
-      readu8(&stars, m_config.values.stars[i].address);
-      p.stars = stars;
+      int64_t stars = 0;
+      readValue(&stars, m_config.values.stars[i]);
+      p.stars = static_cast<signed>(stars);
     }
   }
 

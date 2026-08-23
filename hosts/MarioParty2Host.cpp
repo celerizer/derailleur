@@ -160,22 +160,41 @@ static DrHostConfig makeConfig()
   config.core = dr_core_path(DR_CORE_MUPEN64PLUSNEXT).toStdString();
   config.game = (dr_roms_directory() + "/Mario Party 2 (USA).z64").toStdString();
 
-  config.scenes.main_menu = 0x5B; // Information Center
+  config.char_to_dr = MP2_CHAR_TO_DR;
+  config.char_to_dr_size = sizeof(MP2_CHAR_TO_DR) / sizeof(*MP2_CHAR_TO_DR);
+  config.diff_to_dr = MP2_DIFF_TO_DR;
+  config.diff_to_dr_size = sizeof(MP2_DIFF_TO_DR) / sizeof(*MP2_DIFF_TO_DR);
+
+  config.minigame_type_to_dr = MP2_MINIGAME_TYPE_TO_DR;
+  config.minigame_type_to_dr_size = sizeof(MP2_MINIGAME_TYPE_TO_DR) / sizeof(*MP2_MINIGAME_TYPE_TO_DR);
+
+  config.cheats.cave = MP2_CAVE;
+  config.cheats.cave_addr = MP2_CAVE_ADDR;
+  config.cheats.cave_size = MP2_CAVE_SIZE;
+  config.cheats.cheat_board = MP2_HOOK_BOARD;
+
+  static const int mp2_1p_scenes[] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, -1 };
+  memcpy(config.scenes.single_player_ids, mp2_1p_scenes, sizeof(mp2_1p_scenes));
+
   config.scenes.minigame_explain[0] = 0x5F;
   config.scenes.minigame_explain[1] = 0x60;
   config.scenes.minigame_explain[2] = -1;
-  config.scenes.minigame_results = 0x70;
-  config.scenes.minigame_results_battle = 0x6f;
-  // scenes.minigame_results_duel: not available in mp2
-  static const int mp2_1p_scenes[] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, -1 };
-  memcpy(config.scenes.single_player_ids, mp2_1p_scenes, sizeof(mp2_1p_scenes));
-  config.scenes.board_results = 0x52;
-  config.scenes.last_five_turns = 0x40;
-  config.values.scene = { 0x800FA63E, DR_VALUE_TYPE_U16 }; // u16
 
   static const int mp2_boards[] = { 0x3E, 0x41, 0x43, 0x45, 0x47, 0x49, 0x4B, -1 };
   memcpy(config.scenes.boards, mp2_boards, sizeof(mp2_boards));
 
+  config.scenes.main_menu = 0x5B; // Information Center
+  config.scenes.board_results = 0x52;
+  config.scenes.last_five_turns = 0x40;
+  config.scenes.minigame_results = 0x70;
+  config.scenes.minigame_results_battle = 0x6f;
+  // scenes.minigame_results_duel: not available in mp2
+
+  config.stat.board = 0x0192;
+  config.stat.minigame = 0x0094;
+  // stat.duel: no duels in MP2
+
+  config.values.scene = { 0x800FA63E, DR_VALUE_TYPE_U16 };
   config.values.character[0] = { 0x800fd2c4, DR_VALUE_TYPE_U8 };
   config.values.character[1] = { 0x800fd2f8, DR_VALUE_TYPE_U8 };
   config.values.character[2] = { 0x800fd32c, DR_VALUE_TYPE_U8 };
@@ -208,42 +227,31 @@ static DrHostConfig makeConfig()
   config.values.panel_color[1] = { 0x800fd30f, DR_VALUE_TYPE_U8 };
   config.values.panel_color[2] = { 0x800fd343, DR_VALUE_TYPE_U8 };
   config.values.panel_color[3] = { 0x800fd377, DR_VALUE_TYPE_U8 };
-
+  config.values.coins[0] = { 0x800fd2c8, DR_VALUE_TYPE_U16 };
+  config.values.coins[1] = { 0x800fd2fc, DR_VALUE_TYPE_U16 };
+  config.values.coins[2] = { 0x800fd330, DR_VALUE_TYPE_U16 };
+  config.values.coins[3] = { 0x800fd364, DR_VALUE_TYPE_U16 };
+  config.values.stars[0] = { 0x800fd2ce, DR_VALUE_TYPE_U16 };
+  config.values.stars[1] = { 0x800fd302, DR_VALUE_TYPE_U16 };
+  config.values.stars[2] = { 0x800fd336, DR_VALUE_TYPE_U16 };
+  config.values.stars[3] = { 0x800fd36a, DR_VALUE_TYPE_U16 };
   config.values.minigame_title_color = { 0x800C8D78, DR_VALUE_TYPE_U8 };
-
-  config.char_to_dr = MP2_CHAR_TO_DR;
-  config.char_to_dr_size = sizeof(MP2_CHAR_TO_DR) / sizeof(*MP2_CHAR_TO_DR);
-  config.diff_to_dr = MP2_DIFF_TO_DR;
-  config.diff_to_dr_size = sizeof(MP2_DIFF_TO_DR) / sizeof(*MP2_DIFF_TO_DR);
-
-  config.values.battle = { 0x800F9208, DR_VALUE_TYPE_S16 }; // u16
-
-  config.values.turn_total = { 0x800F93AF, DR_VALUE_TYPE_U8 };   // u8
-  config.values.turn_current = { 0x800F93B1, DR_VALUE_TYPE_U8 }; // u8
-  config.values.turn_owner = { 0x800F93C6, DR_VALUE_TYPE_S16 };  // whose turn
-  config.values.space_index = { 0x800F93CA, DR_VALUE_TYPE_S16 }; // current space index
-
-  config.values.minigame_type = { 0x800DF6C5, DR_VALUE_TYPE_U8 }; // u8
-  config.minigame_type_to_dr = MP2_MINIGAME_TYPE_TO_DR;
-  config.minigame_type_to_dr_size = sizeof(MP2_MINIGAME_TYPE_TO_DR) / sizeof(*MP2_MINIGAME_TYPE_TO_DR);
+  config.values.battle_pot = { 0x800f9208, DR_VALUE_TYPE_U16 };
+  config.values.minigame_type = { 0x800DF6C5, DR_VALUE_TYPE_U8 };
   config.values.minigame_id = { 0x800F93C8, DR_VALUE_TYPE_S16 };
-
   config.values.title_block = { MP2_TITLE_BLOCK, DR_VALUE_TYPE_POINTER };
   config.values.title_color = { MP2_TITLE_COLORS, DR_VALUE_TYPE_POINTER };
-  config.cheats.cave = MP2_CAVE;
-  config.cheats.cave_addr = MP2_CAVE_ADDR;
-  config.cheats.cave_size = MP2_CAVE_SIZE;
-  config.cheats.cheat_board = MP2_HOOK_BOARD;
-
-  config.values.scene_stack = { 0x800E1F58, DR_VALUE_TYPE_POINTER };       // 5 x { s32 scene, s16 event, s16 stat }
-  config.values.scene_stack_count = { 0x800E1F52, DR_VALUE_TYPE_S16 }; // s16 element count
-  config.stat.board = 0x0192;
-  config.stat.minigame = 0x0094;
-  // stat.duel: no duels in MP2
-
-  config.scene_names = MP2_SCENE_NAMES;
+  config.values.scene_stack = { 0x800E1F58, DR_VALUE_TYPE_POINTER };
+  config.values.scene_stack_count = { 0x800E1F52, DR_VALUE_TYPE_S16 };
+  config.values.turn_total = { 0x800F93AF, DR_VALUE_TYPE_U8 };
+  config.values.turn_current = { 0x800F93B1, DR_VALUE_TYPE_U8 };
+  config.values.turn_owner = { 0x800F93C6, DR_VALUE_TYPE_S16 };
+  config.values.space_index = { 0x800F93CA, DR_VALUE_TYPE_S16 };
+  config.values.rng = { 0x800c99b4, DR_VALUE_TYPE_U32 };
 
   config.host_state_addr = MP2_HOST_STATE;
+
+  config.scene_names = MP2_SCENE_NAMES;
 
   return config;
 }

@@ -54,7 +54,8 @@ struct DrGcnHostConfig
     dr_value_t stars[4];              // per-slot current stars
     dr_value_t mg_star[4];            // per-slot mini-game star
     dr_value_t minigame_title_color;  // color array the title trampoline copies into
-    dr_value_t battle;                // total battle coins
+    dr_value_t battle_pot;            // coins collected into the battle pot
+    dr_value_t battle_ante[4];        // per-slot contribution, summed into the pot
     dr_value_t minigame_type;         // mini-game type byte
     dr_value_t minigame_id;           // chosen mini-game id (width per game)
     dr_value_t title_block;           // base of the injected glyph block
@@ -70,6 +71,9 @@ struct DrGcnHostConfig
 
     /// The value that tracks which space the current player is standing on
     dr_value_t space_index;
+
+    /// The game's RNG state
+    dr_value_t rng;
   } values;
 
   int scene_miniexplain;  // scene id shown while a mini-game is explained
@@ -98,6 +102,34 @@ class MarioPartyGcnHost : public DrHost
 
 public:
   explicit MarioPartyGcnHost(const DrGcnHostConfig &config, QObject *parent = nullptr);
+
+  /// MP4 keeps no pot global -- TakeCoins() only ever sums it into a local -- so
+  /// rebuild it from what each player actually handed over.
+  unsigned battlePot(void) override
+  {
+    unsigned pot = 0;
+
+    for (unsigned i = 0; i < 4; i++)
+    {
+      int64_t ante = 0;
+
+      if (m_config.values.battle_ante[i].address &&
+          readValue(&ante, m_config.values.battle_ante[i]) == DR_OK)
+        pot += static_cast<unsigned>(ante);
+    }
+
+    return pot;
+  }
+
+  uint32_t rngValue(void) override
+  {
+    int64_t value = 0;
+
+    if (!m_config.values.rng.address || readValue(&value, m_config.values.rng) != DR_OK)
+      return 0;
+
+    return static_cast<uint32_t>(value);
+  }
 
   void writeResults(DrGuest *guest) override;
   void clearResults(void) override;

@@ -169,6 +169,11 @@ DrDebug::DrDebug(QWidget *parent)
       players[i].control_type = dr_control_type(pc.controlType->currentData().toInt());
       players[i].difficulty = dr_difficulty(pc.difficulty->currentData().toInt());
 
+      /* No board to read totals from, so hand out something a mini-game HUD can
+       * plausibly show. */
+      players[i].coins = 100;
+      players[i].stars = 3;
+
       /* team_id is chosen directly now (any 0-3); team_color follows it and team_type
        * follows the minigame's layout for the chosen team. */
       players[i].team_id = pc.teamId->currentData().toInt();

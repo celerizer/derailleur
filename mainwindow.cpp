@@ -75,6 +75,10 @@ namespace
 /* Opaque payload for a debug-menu launch relayed through netplay so every peer runs it
  * on the same gated frame: guest index, mini-game index within that guest's list, then
  * 7 bytes per player. DrNetplay prepends the target frame. */
+/* Per-player bytes in a debug-launch payload: seven enum/id bytes plus the
+ * signed 16-bit coin and star counts. */
+#define DR_DEBUG_LAUNCH_PLAYER_SIZE (7 + 2 + 2)
+
 QByteArray serializeDebugLaunch(int guestIndex, int minigameIndex, const dr_player_t players[4])
 {
   QByteArray b;
@@ -90,6 +94,12 @@ QByteArray serializeDebugLaunch(int guestIndex, int minigameIndex, const dr_play
     b.append(static_cast<char>(p.team_color));
     b.append(static_cast<char>(p.team_type));
     b.append(static_cast<char>(p.team_id));
+    const int16_t coins = static_cast<int16_t>(p.coins);
+    const int16_t stars = static_cast<int16_t>(p.stars);
+    b.append(static_cast<char>(coins & 0xFF));
+    b.append(static_cast<char>((coins >> 8) & 0xFF));
+    b.append(static_cast<char>(stars & 0xFF));
+    b.append(static_cast<char>((stars >> 8) & 0xFF));
   }
   return b;
 }
@@ -749,6 +759,7 @@ void MainWindow::launchMinigame(
       DrGameData data;
       data.minigame = minigame;
       data.type = minigame ? minigame->type : DR_MINIGAME_INVALID;
+      data.battle_pot = m_Host ? m_Host->battlePot() : 0;
       for (unsigned i = 0; i < 4; i++)
         data.players[i] = players[i];
       guest->applyGameData(data);
@@ -799,7 +810,7 @@ void MainWindow::setupNetplay()
    * peer). DrNetplay already froze the active context on the timing thread at that exact
    * frame, so here we only deserialize and launch on the GUI thread. */
   connect(m_Netplay, &DrNetplay::debugLaunchReady, this, [this](QByteArray payload) {
-    if (payload.size() < 2 + 4 * 7)
+    if (payload.size() < 2 + 4 * DR_DEBUG_LAUNCH_PLAYER_SIZE)
       return;
     auto u8 = [&](int i) { return static_cast<uint8_t>(payload.at(i)); };
     DrGuest *guest = m_Guests->guests().value(u8(0), nullptr);
@@ -822,6 +833,10 @@ void MainWindow::setupNetplay()
       players[i].team_color = static_cast<dr_team_color>(u8(off++));
       players[i].team_type = static_cast<dr_team_type>(u8(off++));
       players[i].team_id = u8(off++);
+      players[i].coins = static_cast<int16_t>(u8(off) | (u8(off + 1) << 8));
+      off += 2;
+      players[i].stars = static_cast<int16_t>(u8(off) | (u8(off + 1) << 8));
+      off += 2;
     }
 
     launchMinigame(guest, minigame, players.data());
@@ -864,6 +879,11 @@ void MainWindow::attachNetplay()
    * then install a shared backend on every distinct core so host and guests
    * read identical input from the store. */
   m_Netplay->setLocalSource(m_Host->core()->input()->backend());
+
+  /* The board core is attached first, so it is context 0 -- the one whose RNG
+   * netplay cross-checks between peers (see DrNetplay::setRngProbe). */
+  DrHost *host = m_Host;
+  m_Netplay->setRngProbe([host]() { return host->rngValue(); });
 
   QSet<QRetro *> seen;
   m_Netplay->attachCore(m_Host->core(), QStringLiteral("host"));

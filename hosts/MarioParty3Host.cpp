@@ -177,16 +177,26 @@ static DrHostConfig makeConfig()
   config.core = dr_core_path(DR_CORE_MUPEN64PLUSNEXT).toStdString();
   config.game = (dr_roms_directory() + "/Mario Party 3 (USA).z64").toStdString();
 
-  config.scenes.main_menu = 0x77; // Castle Grounds
-  config.scenes.minigame_explain[0] = 0x70;
-  config.scenes.minigame_explain[1] = -1;
-  config.scenes.minigame_results = 0x71;
-  config.scenes.minigame_results_battle = 0x74;
-  config.scenes.minigame_results_duel = 0x73;
+  config.char_to_dr = MP3_CHAR_TO_DR;
+  config.char_to_dr_size = sizeof(MP3_CHAR_TO_DR) / sizeof(*MP3_CHAR_TO_DR);
+  config.diff_to_dr = MP3_DIFF_TO_DR;
+  config.diff_to_dr_size = sizeof(MP3_DIFF_TO_DR) / sizeof(*MP3_DIFF_TO_DR);
+
+  config.minigame_type_to_dr = MP3_MINIGAME_TYPE_TO_DR;
+  config.minigame_type_to_dr_size = sizeof(MP3_MINIGAME_TYPE_TO_DR) / sizeof(*MP3_MINIGAME_TYPE_TO_DR);
+
+  config.cheats.cave = MP3_CAVE;
+  config.cheats.cave_addr = MP3_CAVE_ADDR;
+  config.cheats.cave_size = MP3_CAVE_SIZE;
+  config.cheats.cheat_board = MP3_HOOK_BOARD;
+  config.cheats.cheat_duel = MP3_HOOK_DUEL;
+
   // item / 1P mini-games (Winner's Wheel .. Swing 'n' Swipe)
   static const int mp3_1p_scenes[] = { 0x3B, 0x3C, 0x3D, 0x3E, 0x3F, 0x40, -1 };
   memcpy(config.scenes.single_player_ids, mp3_1p_scenes, sizeof(mp3_1p_scenes));
-  config.values.scene = { 0x800ce202, DR_VALUE_TYPE_U16 }; // u16
+
+  config.scenes.minigame_explain[0] = 0x70;
+  config.scenes.minigame_explain[1] = -1;
 
   static const int mp3_boards[] = { 0x48, 0x49, 0x4A, 0x4B, 0x4C, 0x4D, -1 };
   memcpy(config.scenes.boards, mp3_boards, sizeof(mp3_boards));
@@ -194,6 +204,18 @@ static DrHostConfig makeConfig()
   static const int mp3_duel_boards[] = { 0x5B, 0x5C, 0x5D, 0x5E, 0x5F, 0x60, -1 };
   memcpy(config.scenes.boards_duel, mp3_duel_boards, sizeof(mp3_duel_boards));
 
+  config.scenes.main_menu = 0x77; // Castle Grounds
+  config.scenes.board_results = 0x4f;
+  config.scenes.last_five_turns = 0x51;
+  config.scenes.minigame_results = 0x71;
+  config.scenes.minigame_results_battle = 0x74;
+  config.scenes.minigame_results_duel = 0x73;
+
+  config.stat.board = 0x0192;
+  config.stat.minigame = 0x0192;
+  config.stat.duel = 0x4190;
+
+  config.values.scene = { 0x800ce202, DR_VALUE_TYPE_U16 };
   config.values.character[0] = { 0x800d110b, DR_VALUE_TYPE_U8 };
   config.values.character[1] = { 0x800d1143, DR_VALUE_TYPE_U8 };
   config.values.character[2] = { 0x800d117b, DR_VALUE_TYPE_U8 };
@@ -230,51 +252,32 @@ static DrHostConfig makeConfig()
   config.values.coins[1] = { 0x800d114a, DR_VALUE_TYPE_U16 };
   config.values.coins[2] = { 0x800d1182, DR_VALUE_TYPE_U16 };
   config.values.coins[3] = { 0x800d11ba, DR_VALUE_TYPE_U16 };
+  config.values.stars[0] = { 0x800d1116, DR_VALUE_TYPE_U8 };
+  config.values.stars[1] = { 0x800d114e, DR_VALUE_TYPE_U8 };
+  config.values.stars[2] = { 0x800d1186, DR_VALUE_TYPE_U8 };
+  config.values.stars[3] = { 0x800d11be, DR_VALUE_TYPE_U8 };
   config.values.mg_star[0] = { 0x800d1130, DR_VALUE_TYPE_S16 };
   config.values.mg_star[1] = { 0x800d1168, DR_VALUE_TYPE_S16 };
   config.values.mg_star[2] = { 0x800d11a0, DR_VALUE_TYPE_S16 };
   config.values.mg_star[3] = { 0x800d11d8, DR_VALUE_TYPE_S16 };
-
   config.values.minigame_title_color = { 0x80100E9C, DR_VALUE_TYPE_U8 };
-
-  config.scenes.board_results = 0x4f;
-  config.scenes.last_five_turns = 0x51;
-
-  config.char_to_dr = MP3_CHAR_TO_DR;
-  config.char_to_dr_size = sizeof(MP3_CHAR_TO_DR) / sizeof(*MP3_CHAR_TO_DR);
-  config.diff_to_dr = MP3_DIFF_TO_DR;
-  config.diff_to_dr_size = sizeof(MP3_DIFF_TO_DR) / sizeof(*MP3_DIFF_TO_DR);
-
-  config.values.battle = { 0x800cc698, DR_VALUE_TYPE_S16 };
-
+  config.values.battle_pot = { 0x800cc698, DR_VALUE_TYPE_U16 };
   config.values.minigame_type = { 0x80102C0D, DR_VALUE_TYPE_U8 };
-  config.minigame_type_to_dr = MP3_MINIGAME_TYPE_TO_DR;
-  config.minigame_type_to_dr_size = sizeof(MP3_MINIGAME_TYPE_TO_DR) / sizeof(*MP3_MINIGAME_TYPE_TO_DR);
   config.values.minigame_id = { 0x800cd068, DR_VALUE_TYPE_S8 };
-
-  config.cheats.cave = MP3_CAVE;
-  config.cheats.cave_addr = MP3_CAVE_ADDR;
-  config.cheats.cave_size = MP3_CAVE_SIZE;
-  config.cheats.cheat_board = MP3_HOOK_BOARD;
-  config.cheats.cheat_duel = MP3_HOOK_DUEL;
-  
-  config.stat.board = 0x0192;
-  config.stat.minigame = 0x0192;
-  config.stat.duel = 0x4190;
-
+  config.values.title_block = { MP3_TITLE_BLOCK, DR_VALUE_TYPE_POINTER };
+  config.values.title_color = { MP3_TITLE_COLORS, DR_VALUE_TYPE_POINTER };
+  config.values.title_type_duel = { 0x80102BAD, DR_VALUE_TYPE_U8 };
   config.values.scene_stack = { 0x800D20F0, DR_VALUE_TYPE_POINTER };
   config.values.scene_stack_count = { 0x800D6B60, DR_VALUE_TYPE_S16 };
   config.values.turn_total = { 0x800CD05Au, DR_VALUE_TYPE_U8 };
   config.values.turn_current = { 0x800CD05Bu, DR_VALUE_TYPE_U8 };
   config.values.turn_owner = { 0x800CD067u, DR_VALUE_TYPE_S8 };
   config.values.space_index = { 0x800CD069u, DR_VALUE_TYPE_S8 };
-  config.values.title_block = { MP3_TITLE_BLOCK, DR_VALUE_TYPE_POINTER };
-  config.values.title_color = { MP3_TITLE_COLORS, DR_VALUE_TYPE_POINTER };
-  config.values.title_type_duel = { 0x80102BAD, DR_VALUE_TYPE_U8 };
-
-  config.scene_names = MP3_SCENE_NAMES;
+  config.values.rng = { 0x80097650, DR_VALUE_TYPE_U32 };
 
   config.host_state_addr = MP3_HOST_STATE;
+
+  config.scene_names = MP3_SCENE_NAMES;
 
   return config;
 }

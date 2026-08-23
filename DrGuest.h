@@ -24,6 +24,10 @@ struct DrGameData
   const dr_mp_minigame_t *minigame = nullptr;
   dr_minigame_type type = DR_MINIGAME_INVALID;
   dr_player_t players[4] = {};
+
+  /// Coins the board collected for a battle mini-game (see DrHost::battlePot).
+  /// 0 for every other mini-game type.
+  unsigned battle_pot = 0;
 };
 
 class DrGuest : public QObject

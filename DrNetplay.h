@@ -12,6 +12,7 @@
 #include <QWaitCondition>
 #include <atomic>
 #include <cstdint>
+#include <functional>
 
 #include "QRetroInput.h"
 
@@ -59,8 +60,8 @@ typedef enum
  * scheduled, so the broadcast reaches every peer before that gated frame arrives. */
 #define DR_NETPLAY_LAUNCH_DELAY 60
 
-/* Input packet payload: quint64 + quint8 + quint8 + quint16 + 6 * qint16. */
-#define DR_NETPLAY_PACKET_PAYLOAD_SIZE (8 + 1 + 1 + 2 + 6 * 2)
+/* Input packet payload: quint64 + quint8 + quint8 + quint16 + 6 * qint16 + 2 * quint32. */
+#define DR_NETPLAY_PACKET_PAYLOAD_SIZE (8 + 1 + 1 + 2 + 6 * 2 + 2 * 4)
 
 /* Fixed, null-padded git short hash exchanged on connect for version checks. */
 #define DR_NETPLAY_VERSION_HASH_LEN 16
@@ -75,6 +76,11 @@ struct DrNetplayPacket
   int16_t leftX, leftY;
   int16_t rightX, rightY;
   int16_t l2, r2;
+  /* Board (context 0) RNG this peer saw at the start of frame `rngFrame`, so the
+   * server can spot a peer whose board state has diverged. Both are 0 on any
+   * other context, or when the host exposes no RNG address. */
+  uint32_t rng;
+  uint32_t rngFrame;
 };
 #pragma pack(pop)
 
@@ -190,6 +196,11 @@ public:
   /// hardware into our private joypad array instead of a core's array.
   void setLocalSource(QRetroInputBackend *backend);
 
+  /// Supplies the board's RNG value, stamped onto every context-0 input packet
+  /// so the server can compare peers frame by frame (see checkRngSample). Called
+  /// on the board core's timing thread, before its frame runs. Unset = no check.
+  void setRngProbe(std::function<quint32()> probe) { m_RngProbe = std::move(probe); }
+
   /// Installs a QRetroInputBackendShared on `core` and gates its frameBegin. `name`
   /// labels the context in logs (e.g. the guest/host name).
   void attachCore(QRetro *core, const QString &name = QString());
@@ -262,6 +273,10 @@ private:
   void handleMessage(QTcpSocket *sock, quint8 type, const QByteArray &payload);
   void dropSession(const QString &reason);
 
+  /// Server: compares `p`'s board RNG against the first sample seen for its frame
+  /// and hard-resyncs on a mismatch. Called from recordPacket with m_RecvMutex held.
+  void checkRngSample(const DrNetplayPacket &p);
+
   static quint64 frameKey(int context, quint64 frame);
   static int payloadLength(quint8 type);
   static QByteArray encodePacket(const DrNetplayPacket &p);
@@ -328,6 +343,16 @@ private:
   QMutex m_RecvMutex;
   QWaitCondition m_FrameReady;
   QHash<quint64, FrameInputs> m_Received;
+
+  // Board RNG cross-check (server only, guarded by m_RecvMutex): the first
+  // sample seen for a frame, which every later peer's sample must match.
+  struct RngSample
+  {
+    quint32 rng;
+    quint8 peer;
+  };
+  std::function<quint32()> m_RngProbe;
+  QHash<quint32, RngSample> m_RngSamples;
 
   // Hard resync. m_ResyncActive is read on the timing thread; the rest is guarded
   // by m_RecvMutex. The host serializes the active core and ships it; clients park

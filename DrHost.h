@@ -85,6 +85,15 @@ public:
   /// has no turn counter.
   virtual void setCurrentTurn(unsigned turn) { (void)turn; }
 
+  /// The board's current RNG state, or 0 when this host has no RNG address
+  /// configured. Netplay samples it every frame to spot a diverged peer.
+  virtual uint32_t rngValue(void) { return 0; }
+
+  /// Coins riding on the current battle mini-game, handed to the guest so it can
+  /// show and pay out the same pot the board collected. 0 when the host has no
+  /// battle mini-games (MP1) or nothing has been collected.
+  virtual unsigned battlePot(void) { return 0; }
+
   /// Which of the four board players is the local human (0-3). In a netplay
   /// session this is our peer index; solo it stays 0. Used by hosts that show
   /// per-player private state (e.g. Sonic Shuffle's VMU hand).

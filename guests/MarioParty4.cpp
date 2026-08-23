@@ -115,6 +115,15 @@ static MpGcnConfig buildConfig()
   memcpy(config.bonus_result_addr, bonus_result_addr, sizeof(bonus_result_addr));
   memcpy(config.result_addr, result_addr, sizeof(result_addr));
 
+  config.coins[0] = { 0x8018fc54, DR_VALUE_TYPE_U16 };
+  config.coins[1] = { 0x8018fc84, DR_VALUE_TYPE_U16 };
+  config.coins[2] = { 0x8018fcb4, DR_VALUE_TYPE_U16 };
+  config.coins[3] = { 0x8018fce4, DR_VALUE_TYPE_U16 };
+  config.stars[0] = { 0x8018fc62, DR_VALUE_TYPE_U16 };
+  config.stars[1] = { 0x8018fc92, DR_VALUE_TYPE_U16 };
+  config.stars[2] = { 0x8018fcc2, DR_VALUE_TYPE_U16 };
+  config.stars[3] = { 0x8018fcf2, DR_VALUE_TYPE_U16 };
+
   config.character_ids = MP4_CHARACTER_IDS;
   config.minigames = MP4_MINIGAMES;
 

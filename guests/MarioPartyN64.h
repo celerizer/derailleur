@@ -16,6 +16,9 @@ struct MpN64Config
   size_t scene_addr;
   size_t minigame_addr;
 
+  /// The game's RNG state, reseeded as each mini-game starts. 0 = don't touch it.
+  size_t rng_addr;
+
   size_t controller_addr[4];
   size_t difficulty_addr[4];
   size_t team_addr[4];
@@ -23,6 +26,16 @@ struct MpN64Config
   size_t character_addr[4];
   size_t bonus_result_addr[4];
   size_t result_addr[4];
+
+  /// Board coins and stars, copied in from the host so the mini-game shows what
+  /// the board has. Read at the width each game declares (stars are a byte in
+  /// some, a halfword in others; coins are signed). 0 address = don't write.
+  dr_value_t coins[4];
+  dr_value_t stars[4];
+
+  /// The battle pot global, copied in from the host so the battle results pay out
+  /// what the board actually collected. 0 address = the game has no battles (MP1).
+  dr_value_t battle_pot;
 
   const uint8_t *character_ids;
   const dr_mp_minigame_t *minigames;
@@ -49,6 +62,9 @@ public:
 
 private:
   void run() override;
+  /// Reseeds the game's RNG from dr_rand, so a mini-game replayed from the same
+  /// savestate doesn't play out identically. No-op without a configured address.
+  void seedRng();
   void doApplyGameData(const DrGameData &data) override;
   DrRetro *m_retro = nullptr;
   MpN64Config m_config;

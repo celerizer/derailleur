@@ -37,7 +37,7 @@ static const dr_mp_minigame_t MP1_MINIGAMES[] = {
   { "Platform Peril", DR_MINIGAME_4P, 0x18, 0x18, DR_NO_QUIRKS, DR_NO_FLAGS },
   { "Teetering Towers", DR_MINIGAME_1P, 0x19, 0x19, DR_NO_QUIRKS, DR_NO_FLAGS },
   { "Mushroom Mix-up", DR_MINIGAME_4P, 0x1A, 0x1A, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Bumper Ball Maze 1", DR_MINIGAME_INVALID, 0x1B, 0x34, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Bumper Ball Maze 1", DR_MINIGAME_SPECIAL, 0x1B, 0x34, DR_NO_QUIRKS, DR_NO_FLAGS },
   { "Grab Bag", DR_MINIGAME_4P, 0x1C, 0x1C, DR_NO_QUIRKS, DR_FLAG_LUCKY },
   { "Bobsled Run", DR_MINIGAME_2V2, 0x1D, 0x1D, DR_NO_QUIRKS, DR_NO_FLAGS },
   { "Bumper Balls", DR_MINIGAME_4P, 0x1E, 0x1E, DR_NO_QUIRKS, DR_NO_FLAGS },
@@ -47,7 +47,7 @@ static const dr_mp_minigame_t MP1_MINIGAMES[] = {
   { "Tipsy Tourney", DR_MINIGAME_4P, 0x21, 0x21, DR_NO_QUIRKS, DR_NO_FLAGS },
   { "Bombs Away", DR_MINIGAME_4P, 0x22, 0x22, DR_NO_QUIRKS, DR_NO_FLAGS },
   { "Crane Game", DR_MINIGAME_1V3, 0x23, 0x23, DR_NO_QUIRKS, DR_FLAG_UNLUCKY },
-  { "Bumper Ball Maze 2", DR_MINIGAME_INVALID, 0x24, 0x34, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Bumper Ball Maze 2", DR_MINIGAME_SPECIAL, 0x24, 0x34, DR_NO_QUIRKS, DR_NO_FLAGS },
   { "Slot Car Derby", DR_MINIGAME_4P, 0x25, 0x25, DR_NO_QUIRKS, DR_NO_FLAGS },
   { "Mario Bandstand", DR_MINIGAME_4P, 0x26, 0x26, DR_NO_QUIRKS, DR_NO_FLAGS },
   { "Desert Dash", DR_MINIGAME_2V2, 0x27, 0x27, DR_NO_QUIRKS, DR_NO_FLAGS },
@@ -65,7 +65,7 @@ static const dr_mp_minigame_t MP1_MINIGAMES[] = {
   { "Piranha's Pursuit", DR_MINIGAME_1V3, 0x32, 0x31, DR_NO_QUIRKS, DR_NO_FLAGS },
   { "Tug o' War", DR_MINIGAME_1V3, 0x33, 0x32, DR_NO_QUIRKS, DR_NO_FLAGS },
   { "Paddle Battle", DR_MINIGAME_1V3, 0x34, 0x33, DR_NO_QUIRKS, DR_FLAG_LUCKY },
-  { "Bumper Ball Maze 3", DR_MINIGAME_INVALID, 0x35, 0x34, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Bumper Ball Maze 3", DR_MINIGAME_SPECIAL, 0x35, 0x34, DR_NO_QUIRKS, DR_NO_FLAGS },
   { "Coin Shower Flower", DR_MINIGAME_1V3, 0x36, 0x24, DR_NO_QUIRKS, DR_FLAG_LUCKY },
   { "Hammer Drop", DR_MINIGAME_4P, 0x37, 0x1B, DR_NO_QUIRKS, DR_FLAG_LUCKY },
   // 38 unused
@@ -87,6 +87,7 @@ static MpN64Config buildConfig()
 
   config.scene_addr = 0x800C596C;    // u16
   config.minigame_addr = 0x800ED5DE; // u16
+  config.rng_addr = 0x800c2ff4;
 
   const size_t controller_addr[4] = { 0x800f32b3, 0x800f32e3, 0x800f3313, 0x800f3343 };
   const size_t difficulty_addr[4] = { 0x800f32b2, 0x800f32e2, 0x800f3312, 0x800f3342 };
@@ -100,6 +101,15 @@ static MpN64Config buildConfig()
   memcpy(config.bot_addr, bot_addr, sizeof(bot_addr));
   memcpy(config.character_addr, character_addr, sizeof(character_addr));
   memcpy(config.result_addr, result_addr, sizeof(result_addr));
+
+  config.coins[0] = { 0x800f32b8, DR_VALUE_TYPE_U16 };
+  config.coins[1] = { 0x800f32e8, DR_VALUE_TYPE_U16 };
+  config.coins[2] = { 0x800f3318, DR_VALUE_TYPE_U16 };
+  config.coins[3] = { 0x800f3348, DR_VALUE_TYPE_U16 };
+  config.stars[0] = { 0x800f32bc, DR_VALUE_TYPE_U16 };
+  config.stars[1] = { 0x800f32ec, DR_VALUE_TYPE_U16 };
+  config.stars[2] = { 0x800f331c, DR_VALUE_TYPE_U16 };
+  config.stars[3] = { 0x800f334c, DR_VALUE_TYPE_U16 };
   // bonus_result_addr: MP1 doesn't separate this (left zero)
 
   config.character_ids = MP1_CHARACTER_IDS;
