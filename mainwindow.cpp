@@ -150,7 +150,7 @@ MainWindow::MainWindow(QWidget *parent)
     addHostButton("Mario Party 1", [this]() -> DrHost * { return new MarioParty1Host(this); });
     addHostButton("Mario Party 2", [this]() -> DrHost * { return new MarioParty2Host(this); });
     addHostButton("Mario Party 3", [this]() -> DrHost * { return new MarioParty3Host(this); });
-    //addHostButton("Mario Party 4", [this]() -> DrHost * { return new MarioParty4Host(this); });
+    addHostButton("Mario Party 4", [this]() -> DrHost * { return new MarioParty4Host(this); });
     layout->addStretch();
 
     m_StartGameTab = startGame;

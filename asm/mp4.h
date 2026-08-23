@@ -56,7 +56,11 @@ static const unsigned char MP4_CAVE[] = {
  * IDs in the cave's idTable, reported as ID 0x11 + slot (0x11..0x15).
  * Forces GWMGAvailGet to return 1 so real titles show instead of the
  * "??????" placeholder, without modifying the save. Only the
- * DetermineMGList sites need the cave.
+ * DetermineMGList sites need the cave. Forces the explanation branch in
+ * ExecMGSetup and ExecBattle down the hidden path so both launch paths
+ * preload the minigame's own data dir instead of the instruction bank; the
+ * flag and the saved option are left alone, so instDll still needs the
+ * option turned off.
  */
 static const unsigned int MP4_HOOK_BOARD[][3] = {
     { 0x8009B6EC, 0x387E0001, 4 },
@@ -69,6 +73,7 @@ static const unsigned int MP4_HOOK_BOARD[][3] = {
     { 0x800A4788, 0x480982B0, 4 },
     { 0x80031084, 0x38600001, 4 },
     { 0x80031088, 0x4E800020, 4 },
+    { 0x800A2040, 0x4800000C, 4 },
+    { 0x8009BBC0, 0x4800000C, 4 },
     { 0, 0, 0 },
 };
-

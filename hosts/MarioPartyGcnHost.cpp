@@ -237,21 +237,9 @@ void MarioPartyGcnHost::run(void)
   if (m_core->frames() % 120 == 0)
   {
     stampCave();
-
-    /* stampCave re-lays the cave's default title block (the built-in trivia text), so
-     * re-apply the rolled names on top -- mirroring the original per-cycle stamp. */
     if (m_MinigameType != DR_MINIGAME_INVALID)
       stampTitles(m_MinigameType);
   }
-
-#if 0
-  writeu32(0x4809A5F4, 0x800A23EC);
-  writeu32(0x38BE0001, 0x800A2504);
-  writeu32(0x60380001, 0x80031084);
-  writeu32(0x4E800020, 0x80031088);
-  writeu32(0x387E0001, 0x8009B6EC); // ExecBattle force picks to 1 and 2
-  writeu32(0x38600000, 0x8009B7E8); // ExecBattle skip verification
-#endif
 
   for (int i = 0; MP4_HOOK_BOARD[i][0] != 0; i++)
   {
