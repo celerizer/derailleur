@@ -44,6 +44,8 @@ static const size_t MT_DIFFICULTY_ADDR[4] = {
 
 // sets won: index 0 = team_id 0 side, index 1 = team_id 1 side
 static const size_t MT_SETS_WON_ADDR[2] = { 0x8015344F, 0x80153450 };
+static const size_t MT_GAMES_WON_ADDR[2] = { 0x8015344D, 0x8015344E };
+static const size_t MT_POINTS_ADDR[2] = { 0x8015344A, 0x8015344B };
 
 static const size_t MT_COURT_ADDR = 0x80065240; // u8: court (0x00-0x0F random, 0x10 bowser)
 static const size_t MT_SETS_ADDR = 0x80065243;  // u8: number of sets
@@ -101,10 +103,10 @@ static const mt_character_t MT_DR_TO_CHAR[DR_CHARACTER_SIZE] = {
 };
 
 static const dr_mp_minigame_t MT_MINIGAMES[] = {
-  { "Tennis: Exhibition", DR_MINIGAME_2V2, 0x03, 0xFF, DR_NO_QUIRKS },
-  { "Tennis: Bowser Stage", DR_MINIGAME_2V2, 0x06, 0xFF, DR_NO_QUIRKS },
-  { "Tennis: Tiebreaker", DR_MINIGAME_DUEL, 0x07, 0xFF, DR_NO_QUIRKS },
-  { nullptr, DR_MINIGAME_INVALID, 0xFF, 0xFF, DR_NO_QUIRKS },
+  { "Tennis: Exhibition", DR_MINIGAME_2V2, 0x03, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Tennis: Bowser Stage", DR_MINIGAME_2V2, 0x06, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Tennis: Tiebreaker", DR_MINIGAME_DUEL, 0x07, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { nullptr, DR_MINIGAME_INVALID, 0xFF, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
 };
 
 MarioTennis::MarioTennis(QObject *parent)
@@ -129,7 +131,7 @@ void MarioTennis::run()
   /* If every player is a CPU, force controller 1 to press A so the game can proceed */
   bool allCpu = true;
   for (unsigned i = 0; i < 4; i++)
-    if (m_players[i].team_type != DR_TEAM_TYPE_INVALID &&
+    if (dr_team_type_participates(m_players[i].team_type) &&
         m_players[i].control_type == DR_CONTROL_TYPE_HUMAN)
     {
       allCpu = false;

@@ -4,19 +4,19 @@
 #include <QRetro.h>
 
 static const dr_mp_minigame_t MPE_MINIGAMES[] = {
-  { "Cast Away Mario!", DR_MINIGAME_INVALID, 1, 0xFF, DR_NO_QUIRKS }, // 1p
-  { "Mario's Mallet", DR_MINIGAME_INVALID, 2, 0xFF, DR_NO_QUIRKS }, // 1p
-  { "Daisy's Rodeo!", DR_MINIGAME_INVALID, 3, 0xFF, DR_NO_QUIRKS }, // 1p
-  { "Lakitu's Luck", DR_MINIGAME_INVALID, 4, 0xFF, DR_NO_QUIRKS }, // board
-  { "Spinister Bowser", DR_MINIGAME_INVALID, 5, 0xFF, DR_NO_QUIRKS }, // board
-  { "Fast Feed Yoshi!", DR_MINIGAME_INVALID, 6, 0xFF, DR_NO_QUIRKS }, // 1p
-  { "Bolt from Boo", DR_MINIGAME_INVALID, 7, 0xFF, DR_NO_QUIRKS }, // 2p
-  { "Balloon Burst!", DR_MINIGAME_INVALID, 8, 0xFF, DR_NO_QUIRKS }, // 2p
-  { "Time Bomb Ticks!", DR_MINIGAME_INVALID, 9, 0xFF, DR_NO_QUIRKS }, // 2p
-  { "Waluigi's Reign", DR_MINIGAME_INVALID, 10, 0xFF, DR_NO_QUIRKS }, // 2p
-  { "Wario's Bluff", DR_MINIGAME_INVALID, 11, 0xFF, DR_NO_QUIRKS }, // 2p
+  { "Cast Away Mario!", DR_MINIGAME_INVALID, 1, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS }, // 1p
+  { "Mario's Mallet", DR_MINIGAME_INVALID, 2, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS }, // 1p
+  { "Daisy's Rodeo!", DR_MINIGAME_INVALID, 3, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS }, // 1p
+  { "Lakitu's Luck", DR_MINIGAME_INVALID, 4, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS }, // board
+  { "Spinister Bowser", DR_MINIGAME_INVALID, 5, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS }, // board
+  { "Fast Feed Yoshi!", DR_MINIGAME_INVALID, 6, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS }, // 1p
+  { "Bolt from Boo", DR_MINIGAME_INVALID, 7, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS }, // 2p
+  { "Balloon Burst!", DR_MINIGAME_INVALID, 8, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS }, // 2p
+  { "Time Bomb Ticks!", DR_MINIGAME_INVALID, 9, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS }, // 2p
+  { "Waluigi's Reign", DR_MINIGAME_INVALID, 10, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS }, // 2p
+  { "Wario's Bluff", DR_MINIGAME_INVALID, 11, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS }, // 2p
 
-  { nullptr, DR_MINIGAME_INVALID, -1, -1, DR_NO_QUIRKS },
+  { nullptr, DR_MINIGAME_INVALID, -1, -1, DR_NO_QUIRKS, DR_NO_FLAGS },
 };
 
 MarioPartyE::MarioPartyE(QObject *parent)

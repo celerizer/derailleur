@@ -3,8 +3,8 @@
 
 #include <QString>
 
-static const char *const DERAILLEUR_DATE_STRING = "July 17, 2026";
-static const char *const DERAILLEUR_RELEASE_STRING = "r7";
+static const char *const DERAILLEUR_DATE_STRING = "August 23, 2026";
+static const char *const DERAILLEUR_RELEASE_STRING = "r8";
 
 typedef enum
 {
@@ -228,6 +228,10 @@ typedef enum
 
   DR_ENDIANNESS_LITTLE,
   DR_ENDIANNESS_BIG,
+
+  /// Mupen64 hack: every 32bit word is flipped and stored as little-endian
+  /// instead of N64 native big-endian. This mode lets the user supply real
+  /// hardware addresses and they will be corrected by the memory interface.
   DR_ENDIANNESS_WORDFLIPPED,
 
   DR_ENDIANNESS_SIZE
@@ -240,6 +244,7 @@ typedef enum
   DR_GAME_MARIOPARTY1,
   DR_GAME_MARIOPARTY2,
   DR_GAME_MARIOPARTY3,
+  DR_GAME_MARIOPARTY4,
 
   DR_GAME_SONICSHUFFLE,
 
@@ -278,6 +283,55 @@ typedef enum
   DR_GUEST_SIZE
 } dr_guest;
 
+typedef union
+{
+  unsigned raw;
+
+  struct
+  {
+    /// A mini-game with no winners or losers where coins are collected, ie.
+    /// Paratroopa Plunge
+    unsigned lucky : 1;
+
+    /// A mini-game that is disastrous to one or more players, ie.
+    /// Bash 'n' Cash
+    unsigned unlucky : 1;
+
+    /// A mini-game that desyncs on netplay. Hint to reroll it during a
+    /// netplay session.
+    unsigned no_netplay : 1;
+
+    /// A mini-game that does not support bots. Hint to not choose it as a
+    /// candidiate in one-player or zero-player games.
+    unsigned no_bots : 1;
+
+    /// A mini-game that does not support dynamic difficulty
+    unsigned no_difficulty : 1;
+
+    /// A mini-game that uses the GameCube microphone
+    unsigned mic : 1;
+
+    /// A mini-game that relies on controller rumble. Hint to not choose it
+    /// unless all players have rumble-supported controllers.
+    unsigned rumble : 1;
+  } flags;
+} dr_minigame_flags_t;
+
+#define DR_FLAG_BITS_LUCKY 0x01u
+#define DR_FLAG_BITS_UNLUCKY 0x02u
+#define DR_FLAG_BITS_NO_NETPLAY 0x04u
+#define DR_FLAG_BITS_NO_BOTS 0x08u
+#define DR_FLAG_BITS_NO_DIFFICULTY 0x10u
+#define DR_FLAG_BITS_MIC 0x20u
+
+#define DR_NO_FLAGS { 0u }
+#define DR_FLAG_LUCKY { DR_FLAG_BITS_LUCKY }
+#define DR_FLAG_UNLUCKY { DR_FLAG_BITS_UNLUCKY }
+#define DR_FLAG_NO_NETPLAY { DR_FLAG_BITS_NO_NETPLAY }
+#define DR_FLAG_NO_BOTS { DR_FLAG_BITS_NO_BOTS }
+#define DR_FLAG_NO_DIFFICULTY { DR_FLAG_BITS_NO_DIFFICULTY }
+#define DR_FLAG_MIC { DR_FLAG_BITS_MIC }
+
 typedef enum
 {
   DR_TEAM_COLOR_INVALID = 0,
@@ -302,8 +356,46 @@ typedef enum
   /* Entirely solo -- used for 1P mini-games, item games, etc. */
   DR_TEAM_TYPE_SOLO,
 
+  /* Duel-board roles: the two duelists -- the initiator who landed on the duel
+   * space and the target they challenged -- plus the bystanders who don't play. */
+  DR_TEAM_TYPE_DUEL_TARGET,
+  DR_TEAM_TYPE_DUEL_INITIATOR,
+  DR_TEAM_TYPE_DUEL_NONPARTICIPANT,
+
   DR_TEAM_TYPE_SIZE
 } dr_team_type;
+
+/// True if a player with this team type actually plays the mini-game, as opposed
+/// to a bystander: an unfilled/spectator slot (INVALID) or a duel nonparticipant.
+static inline bool dr_team_type_participates(dr_team_type type)
+{
+  return type != DR_TEAM_TYPE_INVALID && type != DR_TEAM_TYPE_DUEL_NONPARTICIPANT;
+}
+
+typedef enum
+{
+  DR_VALUE_TYPE_INVALID = 0,
+
+  DR_VALUE_TYPE_S8,
+  DR_VALUE_TYPE_U8,
+  DR_VALUE_TYPE_S16,
+  DR_VALUE_TYPE_U16,
+  DR_VALUE_TYPE_S32,
+  DR_VALUE_TYPE_U32,
+  DR_VALUE_TYPE_S64,
+  DR_VALUE_TYPE_U64,
+  DR_VALUE_TYPE_FLOAT,
+  DR_VALUE_TYPE_DOUBLE,
+  DR_VALUE_TYPE_POINTER,
+
+  DR_VALUE_TYPE_SIZE
+} dr_value_type;
+
+typedef struct
+{
+  size_t address;
+  dr_value_type type;
+} dr_value_t;
 
 typedef struct
 {
@@ -341,11 +433,20 @@ typedef enum
 
   /**
    * Mini-game where all 4 players are against each other
+   * Used in all games
    */
   DR_MINIGAME_4P,
 
+  /**
+   * Mini-game where 1 player is against the other three
+   * Used in all games
+   */
   DR_MINIGAME_1V3,
 
+  /**
+   * Mini-game where 2 groups of two are against each other
+   * Used in all games
+   */
   DR_MINIGAME_2V2,
 
   /**
@@ -386,6 +487,7 @@ typedef struct
   signed minigame_id;
   signed scene_id;
   dr_emulation_quirk_t quirks;
+  dr_minigame_flags_t flags;
 } dr_mp_minigame_t;
 
 typedef enum
@@ -536,9 +638,14 @@ static inline const char *dr_wii_control_name(dr_wii_control c)
 /// instance through dr_settings_get(); load once at startup and save on change.
 struct dr_settings
 {
-  /// Give each GameCube game its own Dolphin instance instead of sharing one and
-  /// hot-swapping discs. Takes effect at startup (instances are built then).
-  bool separate_gamecube_instances = false;
+  /// Share a single Dolphin core across the GameCube games (hot-swapping discs)
+  /// instead of giving each its own instance. Off by default (separate instances);
+  /// only worth enabling to save memory. Takes effect at startup.
+  bool shared_gamecube_core = false;
+
+  /// Show the loading overlay (frozen frame + bouncing icon, see DrOverlay) that
+  /// covers core swaps. On by default; turning it off shows the raw swap instead.
+  bool loading_overlay = true;
 };
 
 dr_settings &dr_settings_get(void);
@@ -560,8 +667,18 @@ QString dr_os_extension(void);
 
 void dr_srand(unsigned seed);
 
+/// Whether a netplay session is currently active. Set by DrNetplay so code without a
+/// DrNetplay handle (e.g. guests) can gate netplay-only behavior.
+bool dr_netplay_active(void);
+void dr_set_netplay_active(bool active);
+
 int dr_rand(void);
 
 unsigned long dr_rand_count(void);
+
+/// Read/restore the raw PRNG state, so a netplay hard resync can realign the shared
+/// dr_rand sequence (which is not part of the emulator savestate).
+unsigned dr_rand_state(void);
+void dr_set_rand_state(unsigned state, unsigned long count);
 
 #endif

@@ -58,15 +58,10 @@ void DrDownloader::runBlocking(
       .arg(QSslSocket::supportsSsl() ? "yes" : "no",
         QSslSocket::sslLibraryBuildVersionString(), QSslSocket::sslLibraryVersionString()));
 
-  /* Saves: always fetched, overwriting local files so peers stay identical. */
-  {
-    emit progressStarted(tr("Downloading saves..."));
-    QCoreApplication::processEvents();
-    Validator got;
-    bool notModified = false;
-    fetchAndExtract(
-      nam, base.arg("saves"), saveDir, stateDir, Validator{}, got, notModified, timeoutMs);
-  }
+  /* Saves: fetched once on first boot, then left alone so local progress and peer
+   * syncs persist. The user can force a re-download from Settings. */
+  if (!settings.value("downloads/saves_downloaded", false).toBool())
+    fetchSaves(nam, settings, saveDir, stateDir);
 
   /* Data (states + anything that lives in the cwd): conditional on the stored
    * validator; only re-applied when the server copy is newer. */
@@ -90,6 +85,31 @@ void DrDownloader::runBlocking(
   }
 
   emit progressFinished();
+}
+
+void DrDownloader::downloadSaves(
+  QSettings &settings, const QString &saveDir, const QString &stateDir)
+{
+  QNetworkAccessManager nam;
+  fetchSaves(nam, settings, saveDir, stateDir);
+  emit progressFinished();
+}
+
+void DrDownloader::fetchSaves(
+  QNetworkAccessManager &nam, QSettings &settings, const QString &saveDir, const QString &stateDir)
+{
+  const QString base = settings.value("downloads/base_url", k_DefaultBaseUrl).toString();
+  const int timeoutMs = settings.value("downloads/timeout_ms", 15000).toInt();
+
+  emit progressStarted(tr("Downloading saves..."));
+  QCoreApplication::processEvents();
+  Validator got;
+  bool notModified = false;
+  fetchAndExtract(
+    nam, base.arg("saves"), saveDir, stateDir, Validator{}, got, notModified, timeoutMs);
+
+  settings.setValue("downloads/saves_downloaded", true);
+  settings.sync();
 }
 
 bool DrDownloader::fetchAndExtract(QNetworkAccessManager &nam, const QString &url,

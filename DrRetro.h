@@ -100,6 +100,9 @@ public:
   dr_error writeu32(uint32_t val, size_t addr, dr_endianness endianness = DR_ENDIANNESS_INVALID);
   dr_error writes32(int32_t val, size_t addr, dr_endianness endianness = DR_ENDIANNESS_INVALID);
 
+  dr_error readValue(int64_t *out, const dr_value_t &value, dr_endianness endianness = DR_ENDIANNESS_INVALID);
+  dr_error writeValue(int64_t val, const dr_value_t &value, dr_endianness endianness = DR_ENDIANNESS_INVALID);
+
   void log(unsigned level, const char *message);
   void writeForFrames(
     size_t addr, const void *value, unsigned bytes, unsigned frames, dr_endianness endianness = DR_ENDIANNESS_INVALID);

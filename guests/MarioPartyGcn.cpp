@@ -26,6 +26,8 @@ void MarioPartyGcn::run()
   {
     log(DR_LOG_INFO, qPrintable(QString("%1 scene: 0x%2").arg(name()).arg(val, 4, 16, QChar('0'))));
     m_lastScene = val;
+    if (!m_minigameActive && val == m_config.scene_miniexplain)
+      startMinigame();
     if (m_minigameActive && m_minigameFrames >= 60 &&
         val != m_config.scene_miniexplain && val != m_minigame->scene_id &&
         val != -1)
@@ -52,7 +54,6 @@ void MarioPartyGcn::doApplyGameData(const DrGameData &data)
   int16_t id = static_cast<int16_t>(data.minigame->minigame_id);
   m_retro->writeForFrames(m_config.minigame_addr, &id, sizeof(id), 120);
   applyPlayers();
-  startMinigame();
 }
 
 dr_minigame_result_t MarioPartyGcn::minigameResult(unsigned index)
@@ -82,10 +83,10 @@ void MarioPartyGcn::applyPlayers()
   {
     int slot = 0;
     for (unsigned i = 0; i < 4; i++)
-      if (m_players[i].team_type != DR_TEAM_TYPE_INVALID)
+      if (dr_team_type_participates(m_players[i].team_type))
         m_slotOf[i] = slot++;
     for (unsigned i = 0; i < 4; i++)
-      if (m_players[i].team_type == DR_TEAM_TYPE_INVALID)
+      if (!dr_team_type_participates(m_players[i].team_type))
         m_slotOf[i] = slot++;
   }
 
@@ -128,5 +129,12 @@ void MarioPartyGcn::applyPlayers()
     m_retro->writeu16(mp_difficulty, m_config.difficulty_addr[slot]);
 
     m_retro->writeu16(static_cast<uint16_t>(p.team_id), m_config.team_addr[slot]);
+
+    /* Carry the board totals over, so a mini-game that shows coins/stars shows
+     * the same numbers the host does. */
+    if (m_config.coins[slot].address)
+      m_retro->writeValue(p.coins, m_config.coins[slot]);
+    if (m_config.stars[slot].address)
+      m_retro->writeValue(p.stars, m_config.stars[slot]);
   }
 }

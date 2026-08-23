@@ -29,7 +29,6 @@ public:
   /// after the host's window container is created), mirroring the guest.
   void startCore(void) override;
 
-  void setCandidates(std::array<DrMinigameCandidate, 5> candidates) override;
   void writeResults(DrGuest *guest) override;
   void clearResults(void) override;
 

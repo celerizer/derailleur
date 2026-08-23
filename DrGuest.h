@@ -24,6 +24,10 @@ struct DrGameData
   const dr_mp_minigame_t *minigame = nullptr;
   dr_minigame_type type = DR_MINIGAME_INVALID;
   dr_player_t players[4] = {};
+
+  /// Coins the board collected for a battle mini-game (see DrHost::battlePot).
+  /// 0 for every other mini-game type.
+  unsigned battle_pot = 0;
 };
 
 class DrGuest : public QObject
@@ -196,6 +200,9 @@ signals:
   /// The guest suspects its just-started state may differ across netplay peers
   /// (e.g. a non-deterministic setup that couldn't be gated). Prompts a hard resync.
   void desyncSuspected();
+  /// Proactively asks for a hard resync (e.g. on the frame a mini-game begins), to
+  /// realign peers after the non-deterministic boot/practice. May fire repeatedly.
+  void hardResyncRequested();
   /// Requests netplay "golf mode": `authorityPlayer` (a player index 0-3) gets 0
   /// input delay, everyone else `highDelay` frames. -1 disables it. See setGolfMode.
   void golfModeRequested(int authorityPlayer, int highDelay);

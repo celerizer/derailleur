@@ -53,6 +53,7 @@ private:
   int m_aReleaseDelay = 0;
   int m_cup = 0;
   int m_track = 0;
+  int m_laps = 1;
 };
 
 #endif

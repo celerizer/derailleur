@@ -10,6 +10,7 @@
 #include <QHostAddress>
 #include <QKeyEvent>
 #include <QRandomGenerator>
+#include <QRegularExpression>
 #include <QTcpServer>
 #include <QTcpSocket>
 #include <QWidget>
@@ -32,17 +33,41 @@
 /* Serializes every file under `root` (recursively) into one compressed blob of
  * [u32 count]{ QString relPath, QByteArray data }..., so the host's save
  * directory can be shipped to clients. */
-static QByteArray dr_bundle_directory(const QString &root)
+static QByteArray dr_bundle_directory(
+  const QString &root, const QStringList &fileFilters = QStringList())
 {
+  QList<QRegularExpression> filters;
+  for (const QString &filter : fileFilters)
+    filters.append(QRegularExpression(QRegularExpression::wildcardToRegularExpression(filter)));
+
   QList<QPair<QString, QByteArray>> files;
   QDir base(root);
   QDirIterator it(root, QDir::Files, QDirIterator::Subdirectories);
   while (it.hasNext())
   {
     it.next();
+    const QString rel = base.relativeFilePath(it.filePath());
+    /* When filters are given, ship only the files they select, not the whole save
+     * folder. Each is a wildcard tried against the file name (e.g.
+     * "Mario Party 3 (USA).*", matching that save wherever it sits) and against the
+     * path relative to the save dir, so a filter can also pin a subdirectory. */
+    if (!filters.isEmpty())
+    {
+      bool keep = false;
+      for (const QRegularExpression &re : filters)
+      {
+        if (re.match(it.fileName()).hasMatch() || re.match(rel).hasMatch())
+        {
+          keep = true;
+          break;
+        }
+      }
+      if (!keep)
+        continue;
+    }
     QFile f(it.filePath());
     if (f.open(QIODevice::ReadOnly))
-      files.append({ base.relativeFilePath(it.filePath()), f.readAll() });
+      files.append({ rel, f.readAll() });
   }
 
   QByteArray out;
@@ -127,7 +152,7 @@ void DrNetplay::hostSession(quint16 port, int playerCount)
   emit peerCountChanged(1, m_PeerCount);
 }
 
-void DrNetplay::startGame(int gameId)
+void DrNetplay::startGame(int gameId, const QStringList &saveFilters)
 {
   if (!m_IsServer)
     return;
@@ -150,14 +175,18 @@ void DrNetplay::startGame(int gameId)
    * front-to-back, so the filter is applied first. (Delivered at least once.) */
   broadcastVar(DR_NETPLAY_PACKET_MINIGAME_FILTER, m_MinigameFilter);
 
-  /* Ship our save directory so every client plays off the host's save (same
-   * unlocks / SRAM). Sent before START so clients redirect their save dir before
-   * building the host and loading content. */
+  /* Ship the host game's save so every client plays off it (same unlocks / SRAM).
+   * Only the files the host asked for are sent, not the whole save folder. Sent
+   * before START so clients redirect their save dir before building the host and
+   * loading content. */
   {
-    const QByteArray bundle = dr_bundle_directory(dr_save_directory());
+    const QByteArray bundle = dr_bundle_directory(dr_save_directory(), saveFilters);
     broadcastVar(DR_NETPLAY_PACKET_SAVE, bundle);
     emit logMessage(DR_LOG_INFO,
-      QString("netplay: sent save (%1 KiB) from %2").arg(bundle.size() / 1024).arg(dr_save_directory()));
+      QString("netplay: sent save (%1 KiB) for %2 from %3")
+        .arg(bundle.size() / 1024)
+        .arg(saveFilters.isEmpty() ? QStringLiteral("(all)") : saveFilters.join(", "))
+        .arg(dr_save_directory()));
   }
 
   broadcast(DR_NETPLAY_PACKET_START, payload);
@@ -168,6 +197,7 @@ void DrNetplay::startGame(int gameId)
   broadcast(DR_NETPLAY_PACKET_SET_DELAY, delayPayload);
 
   m_Active = true;
+  dr_set_netplay_active(true);
   resetFrameCounter();
   emit logMessage(DR_LOG_INFO,
     QString("netplay: server starting game %1, peers=%2, sockets=%3")
@@ -249,6 +279,7 @@ void DrNetplay::requestHardResync()
     m_ResyncStateReady = false;
     m_ResyncState.clear();
     m_Received.clear();
+    m_RngSamples.clear();
     /* Force the resync target to be the live foreground context. runResync only
      * runs for the active, unfrozen context (onFrameBegin early-returns otherwise),
      * so if context activation had drifted -- or the context is frozen mid-load --
@@ -289,6 +320,71 @@ void DrNetplay::broadcastCancelMinigame()
     broadcast(DR_NETPLAY_PACKET_CANCEL, QByteArray());
   else if (!m_Sockets.isEmpty())
     writeMessage(m_Sockets.first(), DR_NETPLAY_PACKET_CANCEL, QByteArray());
+}
+
+void DrNetplay::requestDebugLaunch(const QByteArray &payload)
+{
+  if (!m_Active)
+    return;
+  /* The server owns the frame clock, so it picks the target frame. A client forwards
+   * the opaque request (frame 0 = "please schedule") and gets the scheduled command
+   * back in the broadcast. */
+  if (m_IsServer)
+    scheduleLaunch(payload);
+  else if (!m_Sockets.isEmpty())
+  {
+    QByteArray msg;
+    {
+      QDataStream s(&msg, QIODevice::WriteOnly);
+      s.setByteOrder(QDataStream::LittleEndian);
+      s << static_cast<quint64>(0);
+    }
+    msg.append(payload);
+    writeVarMessage(m_Sockets.first(), DR_NETPLAY_PACKET_LAUNCH, msg);
+  }
+}
+
+void DrNetplay::scheduleLaunch(const QByteArray &payload)
+{
+  quint64 frame = 0;
+  {
+    QMutexLocker lock(&m_RecvMutex);
+    if (m_ActiveContext < 0 || m_ActiveContext >= DR_NETPLAY_MAX_CONTEXTS)
+      return;
+    frame = m_CtxFrame[m_ActiveContext] + DR_NETPLAY_LAUNCH_DELAY;
+    m_PendingLaunchFrame = static_cast<qint64>(frame);
+    m_PendingLaunchData = payload;
+  }
+  QByteArray msg;
+  {
+    QDataStream s(&msg, QIODevice::WriteOnly);
+    s.setByteOrder(QDataStream::LittleEndian);
+    s << frame;
+  }
+  msg.append(payload);
+  broadcastVar(DR_NETPLAY_PACKET_LAUNCH, msg);
+  emit logMessage(DR_LOG_INFO,
+    QString("netplay: scheduled debug launch for ctx %1 frame %2")
+      .arg(ctxLabel(m_ActiveContext)).arg(frame));
+}
+
+void DrNetplay::maybeFireLaunch(quint64 frame)
+{
+  QByteArray data;
+  {
+    QMutexLocker lock(&m_RecvMutex);
+    if (m_PendingLaunchFrame < 0 || frame != static_cast<quint64>(m_PendingLaunchFrame))
+      return;
+    data = m_PendingLaunchData;
+    m_PendingLaunchFrame = -1;
+    m_PendingLaunchData.clear();
+  }
+  /* Freeze the active context right here, synchronously on the timing thread -- exactly
+   * as the host launch does via its DirectConnection to freezeActiveContext -- so every
+   * peer stops the host on this same frame. The queued debugLaunchReady handler then only
+   * does the GUI-thread launch (not the freeze, which must not race to a later frame). */
+  freezeActiveContext();
+  emit debugLaunchReady(data);
 }
 
 void DrNetplay::setMinigameFilter(const QByteArray &payload)
@@ -391,6 +487,7 @@ void DrNetplay::resetFrameCounter()
     m_CtxSend[i] = 0;
   }
   m_Received.clear();
+  m_RngSamples.clear();
   m_ResyncActive = false;
   m_ResyncStateReady = false;
   m_ResyncState.clear();
@@ -416,8 +513,17 @@ QString DrNetplay::ctxLabel(int ctx) const
 
 void DrNetplay::attachCore(QRetro *core, const QString &name)
 {
-  if (!core || m_ContextIds.contains(core) || m_ContextCount >= DR_NETPLAY_MAX_CONTEXTS)
+  if (!core || m_ContextIds.contains(core))
     return;
+  if (m_ContextCount >= DR_NETPLAY_MAX_CONTEXTS)
+  {
+    /* Out of context slots: this core would run ungated (it shows as ctx -1 in logs and
+     * never syncs). Raise DR_NETPLAY_MAX_CONTEXTS rather than let it fail silently. */
+    emit logMessage(DR_LOG_ERROR,
+      QString("netplay: out of context slots (%1); '%2' will not sync -- raise "
+              "DR_NETPLAY_MAX_CONTEXTS").arg(DR_NETPLAY_MAX_CONTEXTS).arg(name));
+    return;
+  }
 
   const int ctx = m_ContextCount++;
   m_ContextIds.insert(core, ctx);
@@ -489,11 +595,25 @@ void DrNetplay::onFrameBegin(int context)
      * drain. The delay therefore gives the network `delay` frames of slack and
      * can be retuned live. */
     sampleLocal();
+
+    /* Stamp the board's RNG onto its packets. It is read here, before the frame
+     * runs, and tagged with the frame it belongs to rather than the (delayed)
+     * frame the input is for, so peers stay comparable under golf mode's uneven
+     * delays. See checkRngSample. */
+    quint32 rng = 0, rngFrame = 0;
+    if (context == 0 && m_RngProbe)
+    {
+      rng = m_RngProbe();
+      rngFrame = static_cast<quint32>(frame);
+    }
+
     const quint64 target = frame + static_cast<quint64>(effectiveDelay());
     while (m_CtxSend[context] <= target)
     {
       DrNetplayPacket mine =
         packetFromJoypad(m_LocalInput.joypads()[0], m_PeerIndex, context, m_CtxSend[context]);
+      mine.rng = rng;
+      mine.rngFrame = rngFrame;
       recordPacket(mine);
       sendInput(mine);
       m_CtxSend[context]++;
@@ -506,6 +626,7 @@ void DrNetplay::onFrameBegin(int context)
         emit logMessage(DR_LOG_INFO,
           QString("netplay: ctx %1 passed barrier frame %2").arg(ctxLabel(context)).arg(frame));
       m_CtxFrame[context] = frame + 1;
+      maybeFireLaunch(frame);
       return;
     }
 
@@ -664,7 +785,7 @@ void DrNetplay::onSocketReadyRead()
 
     /* Variable-length messages are framed [type][u32 len][payload]. */
     if (type == DR_NETPLAY_PACKET_RESYNC_STATE || type == DR_NETPLAY_PACKET_MINIGAME_FILTER ||
-        type == DR_NETPLAY_PACKET_SAVE)
+        type == DR_NETPLAY_PACKET_SAVE || type == DR_NETPLAY_PACKET_LAUNCH)
     {
       if (buf.size() < 1 + 4)
         break;
@@ -764,6 +885,7 @@ void DrNetplay::handleMessage(QTcpSocket *sock, quint8 type, const QByteArray &p
     }
     dr_srand(seed);
     m_Active = true;
+    dr_set_netplay_active(true);
     resetFrameCounter();
     emit logMessage(DR_LOG_INFO,
       QString("netplay: client received start, game %1, peers=%2").arg(gameId).arg(m_PeerCount));
@@ -802,6 +924,32 @@ void DrNetplay::handleMessage(QTcpSocket *sock, quint8 type, const QByteArray &p
     break;
   }
 
+  case DR_NETPLAY_PACKET_LAUNCH:
+  {
+    if (payload.size() < 8)
+      break;
+    const QByteArray opaque = payload.mid(8);
+    if (m_IsServer)
+    {
+      /* A client's launch request: (re)assign the frame and broadcast to everyone. */
+      scheduleLaunch(opaque);
+    }
+    else
+    {
+      /* The server's scheduled command: adopt its target frame. */
+      quint64 frame = 0;
+      {
+        QDataStream s(payload.left(8));
+        s.setByteOrder(QDataStream::LittleEndian);
+        s >> frame;
+      }
+      QMutexLocker lock(&m_RecvMutex);
+      m_PendingLaunchFrame = static_cast<qint64>(frame);
+      m_PendingLaunchData = opaque;
+    }
+    break;
+  }
+
   case DR_NETPLAY_PACKET_GOLF:
   {
     const int authority = payload.size() >= 1 ? static_cast<int8_t>(payload.at(0)) : -1;
@@ -823,6 +971,7 @@ void DrNetplay::handleMessage(QTcpSocket *sock, quint8 type, const QByteArray &p
       m_ResyncStateReady = false;
       m_ResyncState.clear();
       m_Received.clear();
+      m_RngSamples.clear();
       /* Force the resync target live (see requestHardResync): runResync only runs
        * for the active, unfrozen context, so match the host's ctx even if this
        * peer's activation had drifted or the context was frozen mid-load. */
@@ -839,14 +988,18 @@ void DrNetplay::handleMessage(QTcpSocket *sock, quint8 type, const QByteArray &p
   case DR_NETPLAY_PACKET_RESYNC_STATE:
   {
     quint64 frame = 0;
+    quint32 randState = 0;
+    quint64 randCount = 0;
     {
-      QDataStream s(payload.left(8));
+      QDataStream s(payload.left(20));
       s.setByteOrder(QDataStream::LittleEndian);
-      s >> frame;
+      s >> frame >> randState >> randCount;
     }
-    const QByteArray raw = qUncompress(payload.mid(8));
+    const QByteArray raw = qUncompress(payload.mid(20));
     QMutexLocker lock(&m_RecvMutex);
     m_ResyncFrame = frame;
+    m_ResyncRandState = randState;
+    m_ResyncRandCount = randCount;
     m_ResyncState = raw;
     m_ResyncStateReady = true;
     m_FrameReady.wakeAll();
@@ -942,6 +1095,10 @@ void DrNetplay::runResync(int context)
       QDataStream s(&payload, QIODevice::WriteOnly);
       s.setByteOrder(QDataStream::LittleEndian);
       s << static_cast<quint64>(newFrame);
+      /* Ship the shared PRNG state too -- it lives outside the savestate, so peers must
+       * realign it to stay in lockstep after the resync. */
+      s << static_cast<quint32>(dr_rand_state());
+      s << static_cast<quint64>(dr_rand_count());
     }
     payload.append(qCompress(raw));
     QMetaObject::invokeMethod(
@@ -966,6 +1123,8 @@ void DrNetplay::runResync(int context)
      * host's frame and re-prime so the next gate is a clean barrier. */
     QByteArray state;
     quint64 frame = 0;
+    quint32 randState = 0;
+    quint64 randCount = 0;
     {
       QMutexLocker lock(&m_RecvMutex);
       while (!m_ResyncStateReady && m_Active && !m_Abort && m_ResyncActive.load())
@@ -977,6 +1136,8 @@ void DrNetplay::runResync(int context)
       }
       state = m_ResyncState;
       frame = m_ResyncFrame;
+      randState = m_ResyncRandState;
+      randCount = m_ResyncRandCount;
       m_ResyncStateReady = false;
       m_ResyncState.clear();
     }
@@ -984,6 +1145,9 @@ void DrNetplay::runResync(int context)
     if (state.isEmpty() ||
         !core->unserialize(state.constData(), static_cast<size_t>(state.size())))
       emit logMessage(DR_LOG_ERROR, "netplay: hard resync unserialize failed");
+
+    /* Realign the shared PRNG to the host's, alongside the loaded state. */
+    dr_set_rand_state(randState, randCount);
 
     {
       QMutexLocker lock(&m_RecvMutex);
@@ -1005,7 +1169,42 @@ void DrNetplay::recordPacket(const DrNetplayPacket &p)
   FrameInputs &fi = m_Received[frameKey(p.context, p.frame)];
   fi.pkts[p.peerIndex] = p;
   fi.have[p.peerIndex] = true;
+  checkRngSample(p);
   m_FrameReady.wakeAll();
+}
+
+void DrNetplay::checkRngSample(const DrNetplayPacket &p)
+{
+  /* Only the board context carries a sample, and only the server judges them. A
+   * resync already in flight will replace every peer's state anyway. */
+  if (!m_IsServer || p.context != 0 || !p.rngFrame || m_ResyncActive.load())
+    return;
+
+  auto it = m_RngSamples.find(p.rngFrame);
+
+  if (it == m_RngSamples.end())
+  {
+    /* Samples are only useful until every peer has reported the frame, so drop
+     * the whole window rather than tracking which frames are finished with. */
+    if (m_RngSamples.size() > 4 * DR_NETPLAY_RESYNC_MARGIN)
+      m_RngSamples.clear();
+    m_RngSamples.insert(p.rngFrame, { p.rng, p.peerIndex });
+    return;
+  }
+  if (it->rng == p.rng)
+    return;
+
+  emit logMessage(DR_LOG_WARN,
+    QString("Potential desync detected by RNG value, performing hard resync... "
+            "(frame %1: peer %2 has 0x%3, peer %4 has 0x%5)")
+      .arg(p.rngFrame)
+      .arg(it->peer)
+      .arg(it->rng, 8, 16, QChar('0'))
+      .arg(p.peerIndex)
+      .arg(p.rng, 8, 16, QChar('0')));
+
+  m_RngSamples.clear();
+  QMetaObject::invokeMethod(this, [this]() { requestHardResync(); }, Qt::QueuedConnection);
 }
 
 void DrNetplay::sendInput(const DrNetplayPacket &p)
@@ -1066,6 +1265,7 @@ void DrNetplay::dropSession(const QString &reason)
     return;
 
   m_Active = false;
+  dr_set_netplay_active(false);
 
   for (QTcpSocket *sock : m_Sockets)
   {
@@ -1146,7 +1346,8 @@ QByteArray DrNetplay::encodePacket(const DrNetplayPacket &p)
   s << static_cast<quint64>(p.frame) << static_cast<quint8>(p.peerIndex)
     << static_cast<quint8>(p.context) << static_cast<quint16>(p.bitmask)
     << static_cast<qint16>(p.leftX) << static_cast<qint16>(p.leftY) << static_cast<qint16>(p.rightX)
-    << static_cast<qint16>(p.rightY) << static_cast<qint16>(p.l2) << static_cast<qint16>(p.r2);
+    << static_cast<qint16>(p.rightY) << static_cast<qint16>(p.l2) << static_cast<qint16>(p.r2)
+    << static_cast<quint32>(p.rng) << static_cast<quint32>(p.rngFrame);
   return b;
 }
 
@@ -1160,7 +1361,9 @@ DrNetplayPacket DrNetplay::decodePacket(const QByteArray &b)
   quint8 context = 0;
   quint16 bitmask = 0;
   qint16 lx = 0, ly = 0, rx = 0, ry = 0, l2 = 0, r2 = 0;
-  s >> frame >> peerIndex >> context >> bitmask >> lx >> ly >> rx >> ry >> l2 >> r2;
+  quint32 rng = 0, rngFrame = 0;
+  s >> frame >> peerIndex >> context >> bitmask >> lx >> ly >> rx >> ry >> l2 >> r2 >> rng
+    >> rngFrame;
   p.frame = frame;
   p.peerIndex = peerIndex;
   p.context = context;
@@ -1171,6 +1374,8 @@ DrNetplayPacket DrNetplay::decodePacket(const QByteArray &b)
   p.rightY = ry;
   p.l2 = l2;
   p.r2 = r2;
+  p.rng = rng;
+  p.rngFrame = rngFrame;
   return p;
 }
 

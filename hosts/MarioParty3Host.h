@@ -1,7 +1,7 @@
 #ifndef DR_HOST_MARIO_PARTY_3_H
 #define DR_HOST_MARIO_PARTY_3_H
 
-#include "../MarioPartyN64Host.h"
+#include "MarioPartyN64Host.h"
 
 class MarioParty3Host : public MarioPartyN64Host
 {

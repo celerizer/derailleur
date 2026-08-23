@@ -72,6 +72,8 @@ private:
   QStackedWidget *m_Stack = nullptr;
   DrLogger *m_Logger = nullptr;
   DrOverlay *m_Overlay = nullptr;
+  /// The loading overlay, or null when the user has turned it off (see DrSettings).
+  DrOverlay *overlay(void) { return dr_settings_get().loading_overlay ? m_Overlay : nullptr; }
   DrDebug *m_Debug = nullptr;
   DrChallenge *m_Challenge = nullptr;
   DrMinigameFilter *m_Filter = nullptr;

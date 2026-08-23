@@ -20,14 +20,17 @@ dr_settings &dr_settings_get(void)
 void dr_settings_load(void)
 {
   QSettings s(settings_ini_path(), QSettings::IniFormat);
-  g_settings.separate_gamecube_instances =
-    s.value("settings/separate_gamecube_instances", g_settings.separate_gamecube_instances).toBool();
+  g_settings.shared_gamecube_core =
+    s.value("settings/shared_gamecube_core", g_settings.shared_gamecube_core).toBool();
+  g_settings.loading_overlay =
+    s.value("settings/loading_overlay", g_settings.loading_overlay).toBool();
 }
 
 void dr_settings_save(void)
 {
   QSettings s(settings_ini_path(), QSettings::IniFormat);
-  s.setValue("settings/separate_gamecube_instances", g_settings.separate_gamecube_instances);
+  s.setValue("settings/shared_gamecube_core", g_settings.shared_gamecube_core);
+  s.setValue("settings/loading_overlay", g_settings.loading_overlay);
   s.sync();
 }
 
@@ -35,6 +38,17 @@ static QString roms_dir = "roms";
 static QString cores_dir = "cores";
 static QString state_dir = "state";
 static QString save_dir = "save";
+static bool netplay_active = false;
+
+bool dr_netplay_active(void)
+{
+  return netplay_active;
+}
+
+void dr_set_netplay_active(bool active)
+{
+  netplay_active = active;
+}
 
 QString dr_roms_directory(void)
 {
@@ -125,4 +139,15 @@ int dr_rand(void)
 unsigned long dr_rand_count(void)
 {
   return rand_count;
+}
+
+unsigned dr_rand_state(void)
+{
+  return rand_state;
+}
+
+void dr_set_rand_state(unsigned state, unsigned long count)
+{
+  rand_state = static_cast<uint32_t>(state);
+  rand_count = count;
 }

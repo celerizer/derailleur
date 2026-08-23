@@ -8,9 +8,11 @@
 #include <QObject>
 #include <QPair>
 #include <QString>
+#include <QStringList>
 #include <QWaitCondition>
 #include <atomic>
 #include <cstdint>
+#include <functional>
 
 #include "QRetroInput.h"
 
@@ -36,22 +38,30 @@ typedef enum
   DR_NETPLAY_PACKET_RESYNC_REQUEST  = 0x0A, /* client -> server: I timed out, please hard-resync */
   DR_NETPLAY_PACKET_SAVE            = 0x0B, /* server -> clients: var-length save-directory bundle */
   DR_NETPLAY_PACKET_CANCEL          = 0x0C, /* any peer (relayed): cancel the active mini-game */
-  DR_NETPLAY_PACKET_GOLF            = 0x0D  /* any peer (relayed): { s8 authority, u8 highDelay } */
+  DR_NETPLAY_PACKET_GOLF            = 0x0D, /* any peer (relayed): { s8 authority, u8 highDelay } */
+  DR_NETPLAY_PACKET_LAUNCH          = 0x0E  /* var: [u64 frame][opaque]; frame 0 = client request */
 } dr_netplay_packet_type;
 
 /* Maximum peers in a session (also the per-frame input array width). */
 #define DR_NETPLAY_MAX_PEERS 4
 
-/* Maximum QRetro contexts (host + guests) tracked per peer. */
-#define DR_NETPLAY_MAX_CONTEXTS 16
+/* Maximum QRetro contexts (host + guests) tracked per peer. Must exceed the number of
+ * distinct cores attached (host + every non-Dolphin guest + each shared Dolphin core);
+ * a guest past this limit silently fails attachCore, runs ungated, and shows as context
+ * -1 in logs. The wire `context` field is a uint8_t, so anything up to 255 is safe. */
+#define DR_NETPLAY_MAX_CONTEXTS 48
 
 /* A hard resync jumps the per-context frame counter forward by this margin so
  * the post-resync timeline can never collide with stale in-flight packets from
  * before the resync (which sit within a few frames of the old counter). */
 #define DR_NETPLAY_RESYNC_MARGIN 600
 
-/* Input packet payload: quint64 + quint8 + quint8 + quint16 + 6 * qint16. */
-#define DR_NETPLAY_PACKET_PAYLOAD_SIZE (8 + 1 + 1 + 2 + 6 * 2)
+/* How many frames ahead of the current active-context frame a debug-menu launch is
+ * scheduled, so the broadcast reaches every peer before that gated frame arrives. */
+#define DR_NETPLAY_LAUNCH_DELAY 60
+
+/* Input packet payload: quint64 + quint8 + quint8 + quint16 + 6 * qint16 + 2 * quint32. */
+#define DR_NETPLAY_PACKET_PAYLOAD_SIZE (8 + 1 + 1 + 2 + 6 * 2 + 2 * 4)
 
 /* Fixed, null-padded git short hash exchanged on connect for version checks. */
 #define DR_NETPLAY_VERSION_HASH_LEN 16
@@ -66,6 +76,11 @@ struct DrNetplayPacket
   int16_t leftX, leftY;
   int16_t rightX, rightY;
   int16_t l2, r2;
+  /* Board (context 0) RNG this peer saw at the start of frame `rngFrame`, so the
+   * server can spot a peer whose board state has diverged. Both are 0 on any
+   * other context, or when the host exposes no RNG address. */
+  uint32_t rng;
+  uint32_t rngFrame;
 };
 #pragma pack(pop)
 
@@ -136,14 +151,26 @@ public:
   void changeInputDelay(int frames);
 
   bool isServer() const { return m_IsServer; }
+  bool active() const { return m_Active; }
+
+  /// Schedules a debug-menu mini-game launch so every peer runs it on the same gated
+  /// frame. `payload` is an opaque blob (the app serializes guest/mini-game/players);
+  /// the server assigns a target frame DR_NETPLAY_LAUNCH_DELAY ahead and broadcasts it,
+  /// a client forwards the request to the server. Every peer emits debugLaunchReady when
+  /// its active context reaches that frame. No-op outside a session (caller launches
+  /// directly instead).
+  void requestDebugLaunch(const QByteArray &payload);
 
   /// Wakes any timing thread parked in waitForFrame so it can exit. Call before
   /// tearing down cores (e.g. on window close) to avoid blocking shutdown.
   void abort();
 
   /// Server only: tells every connected client which game to start (a dr_game
-  /// value), then begins lockstep locally.
-  void startGame(int gameId);
+  /// value), then begins lockstep locally. `saveFilters` are the host game's save
+  /// file wildcards (see DrHost::saveFilePatterns, e.g. "Mario Party 3 (USA).*");
+  /// only the files they select are shipped to clients, not the whole save folder.
+  /// Empty ships the entire folder (legacy fallback).
+  void startGame(int gameId, const QStringList &saveFilters = QStringList());
 
   /// Server only: forces a hard resync of the active context — every client
   /// stops, receives the host's (compressed) savestate, loads it and resumes
@@ -169,6 +196,11 @@ public:
   /// hardware into our private joypad array instead of a core's array.
   void setLocalSource(QRetroInputBackend *backend);
 
+  /// Supplies the board's RNG value, stamped onto every context-0 input packet
+  /// so the server can compare peers frame by frame (see checkRngSample). Called
+  /// on the board core's timing thread, before its frame runs. Unset = no check.
+  void setRngProbe(std::function<quint32()> probe) { m_RngProbe = std::move(probe); }
+
   /// Installs a QRetroInputBackendShared on `core` and gates its frameBegin. `name`
   /// labels the context in logs (e.g. the guest/host name).
   void attachCore(QRetro *core, const QString &name = QString());
@@ -193,6 +225,11 @@ signals:
   /// A peer cancelled the active mini-game; the app should cancel locally and
   /// return to the board. Emitted only for cancels received from the network.
   void cancelMinigameReceived();
+  /// A scheduled debug launch has reached its gated frame on this peer (emitted in
+  /// lockstep across peers). The active context has already been frozen synchronously on
+  /// the timing thread (like the host launch's DirectConnection freeze), so the handler
+  /// only deserializes `payload` and launches the mini-game on the GUI thread.
+  void debugLaunchReady(QByteArray payload);
   /// Diagnostic log; level matches DrLogger::message (DR_LOG_*).
   void logMessage(unsigned level, const QString &msg);
 
@@ -217,6 +254,8 @@ private:
 
   // Frame coordination (timing thread).
   void onFrameBegin(int context);
+  void scheduleLaunch(const QByteArray &payload); // server: pick target frame + broadcast
+  void maybeFireLaunch(quint64 frame); // fire a due launch after committing (active ctx)
   void runResync(int context);
   void sampleLocal();
   bool isFrameCompleteLocked(int context, quint64 frame) const;
@@ -233,6 +272,10 @@ private:
   void broadcastVar(quint8 type, const QByteArray &payload, QTcpSocket *except = nullptr);
   void handleMessage(QTcpSocket *sock, quint8 type, const QByteArray &payload);
   void dropSession(const QString &reason);
+
+  /// Server: compares `p`'s board RNG against the first sample seen for its frame
+  /// and hard-resyncs on a mismatch. Called from recordPacket with m_RecvMutex held.
+  void checkRngSample(const DrNetplayPacket &p);
 
   static quint64 frameKey(int context, quint64 frame);
   static int payloadLength(quint8 type);
@@ -262,7 +305,7 @@ private:
   /* "Golf mode": the authority peer sends with 0 delay, everyone else with
    * m_GolfHighDelay. -1 = off (use m_InputDelay for everyone). See effectiveDelay. */
   std::atomic<int> m_GolfAuthority{ -1 };
-  std::atomic<int> m_GolfHighDelay{ 30 };
+  std::atomic<int> m_GolfHighDelay{ 15 };
   int m_TimeoutMs = 5000; /* stall this long before requesting a hard resync */
 
   bool m_Active = false;
@@ -285,6 +328,11 @@ private:
   quint64 m_CtxBarrier[DR_NETPLAY_MAX_CONTEXTS] = {}; // per-context sync-point frame (waits w/o timeout)
   quint64 m_CtxSend[DR_NETPLAY_MAX_CONTEXTS] = {};    // next local frame to send per context (delay pipeline)
 
+  // Debug-menu launch scheduled for a specific active-context frame (guarded by
+  // m_RecvMutex). -1 when none pending; m_PendingLaunchData is the opaque app payload.
+  qint64 m_PendingLaunchFrame = -1;
+  QByteArray m_PendingLaunchData;
+
   quint64 m_LocalFrame = 0; // singleplayer frame counter
 
   struct FrameInputs
@@ -296,6 +344,16 @@ private:
   QWaitCondition m_FrameReady;
   QHash<quint64, FrameInputs> m_Received;
 
+  // Board RNG cross-check (server only, guarded by m_RecvMutex): the first
+  // sample seen for a frame, which every later peer's sample must match.
+  struct RngSample
+  {
+    quint32 rng;
+    quint8 peer;
+  };
+  std::function<quint32()> m_RngProbe;
+  QHash<quint32, RngSample> m_RngSamples;
+
   // Hard resync. m_ResyncActive is read on the timing thread; the rest is guarded
   // by m_RecvMutex. The host serializes the active core and ships it; clients park
   // until the state arrives, load it, and resume from m_ResyncFrame.
@@ -303,6 +361,8 @@ private:
   int m_ResyncCtx = -1;
   bool m_ResyncStateReady = false;
   quint64 m_ResyncFrame = 0;
+  quint32 m_ResyncRandState = 0; // host's dr_rand state to restore alongside the savestate
+  quint64 m_ResyncRandCount = 0;
   QByteArray m_ResyncState; // decompressed savestate awaiting load (client)
 };
 

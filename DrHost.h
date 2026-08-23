@@ -3,6 +3,7 @@
 
 #include "DrGuest.h"
 #include "DrRetro.h"
+#include <QStringList>
 #include <array>
 
 struct DrMinigameCandidate
@@ -10,10 +11,46 @@ struct DrMinigameCandidate
   DrGuest *guest;
   const dr_mp_minigame_t *minigame;
 };
+
+typedef struct
+{
+  /// The type of mini-game being rolled in the roulette, doubling as a signal
+  /// that a mini-game is being rolled for at all.
+  /// The board context game will write to this value when the mini-game
+  /// roulette appears, using the game's internal mini-game type.
+  /// derailleur will monitor this value and reset it to -1 after the roulette
+  /// lifecycle has completed.
+  int8_t minigame_type;
+
+  /// Reserved for future use and alignment
+  int8_t reserved[3];
+} dr_host_state_t;
+
 Q_DECLARE_METATYPE(DrMinigameCandidate)
 Q_DECLARE_METATYPE(dr_minigame_type)
 using DrPlayerArray = std::array<dr_player_t, 4>;
 Q_DECLARE_METATYPE(DrPlayerArray)
+
+/// The program's mini-game pool, seen from a host game. It caches five rolled
+/// candidates for every mini-game type; a host queries a type to read its five,
+/// or asks for a fresh reroll of all of them. Implemented by DrGuestList.
+///
+/// The cache starts empty and is not filled until the first query (or reroll).
+/// Because that first fill happens inside the host's lockstepped state machine,
+/// every netplay peer rolls from the shared PRNG at the same logical point and
+/// stays in sync -- no per-candidate network round-trip.
+class DrMinigameSource
+{
+public:
+  virtual ~DrMinigameSource() = default;
+
+  /// The five cached candidates for `type`. Fills the cache on the first-ever
+  /// query. Returns a zeroed array for an out-of-range type.
+  virtual const std::array<DrMinigameCandidate, 5> &minigameCandidates(dr_minigame_type type) = 0;
+
+  /// Re-roll the five cached candidates for every type.
+  virtual void rerollMinigames(void) = 0;
+};
 
 /// Abstract base for a "host" game: a randomizer board that runs its own core,
 /// asks for mini-game candidates, launches guest mini-games, and writes their
@@ -29,8 +66,13 @@ public:
   /// Which host game this is (used for netplay/session identity).
   virtual dr_game game(void) const = 0;
 
-  /// Inject the five chosen mini-game candidates for the pending roulette.
-  virtual void setCandidates(std::array<DrMinigameCandidate, 5> candidates) = 0;
+  /// Wildcard patterns selecting which files under the save directory are shipped
+  /// to netplay clients at session start, so every peer plays off the host's save.
+  virtual QStringList saveFilePatterns(void) const;
+
+  /// The pool a host queries for its mini-game candidates. Set once by the owner
+  /// (MainWindow) after both the host and the guest list exist.
+  void setMinigameSource(DrMinigameSource *source) { m_MinigameSource = source; }
 
   /// Write a finished guest mini-game's results back into the host.
   virtual void writeResults(DrGuest *guest) = 0;
@@ -43,6 +85,15 @@ public:
   /// has no turn counter.
   virtual void setCurrentTurn(unsigned turn) { (void)turn; }
 
+  /// The board's current RNG state, or 0 when this host has no RNG address
+  /// configured. Netplay samples it every frame to spot a diverged peer.
+  virtual uint32_t rngValue(void) { return 0; }
+
+  /// Coins riding on the current battle mini-game, handed to the guest so it can
+  /// show and pay out the same pot the board collected. 0 when the host has no
+  /// battle mini-games (MP1) or nothing has been collected.
+  virtual unsigned battlePot(void) { return 0; }
+
   /// Which of the four board players is the local human (0-3). In a netplay
   /// session this is our peer index; solo it stays 0. Used by hosts that show
   /// per-player private state (e.g. Sonic Shuffle's VMU hand).
@@ -51,13 +102,15 @@ public:
 
 protected:
   int m_LocalPlayer = 0;
+  DrMinigameSource *m_MinigameSource = nullptr;
 
 signals:
-  /// The host is about to open its roulette and needs candidates of `type`.
-  void candidatesNeeded(dr_minigame_type type);
-
   /// A guest mini-game should be launched for `candidate` with these players.
   void minigameRequested(DrMinigameCandidate candidate, DrPlayerArray players);
+
+  /// Request netplay "golf mode": `authorityPlayer` (a peer index) gets 0 input delay,
+  /// everyone else `highDelay` frames. -1 disables it. See DrNetplay::setGolfMode.
+  void golfModeRequested(int authorityPlayer, int highDelay);
 };
 
 #endif

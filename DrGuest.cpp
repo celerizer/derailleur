@@ -183,6 +183,12 @@ void DrGuest::startMinigame()
     connect(core(), &QRetro::frameBegin, this, [this]() {
       if (m_minigameActive && ++m_minigameFrameCount >= DR_MINIGAME_TIMEOUT_FRAMES)
       {
+        /* Only auto-abort a stuck mini-game when every player is a bot -- a human may
+         * just be taking their time. */
+        for (unsigned i = 0; i < 4; i++)
+          if (m_players[i].control_type == DR_CONTROL_TYPE_HUMAN)
+            return;
+
         const char *mg = (m_minigame && m_minigame->name) ? m_minigame->name : "minigame";
         log(DR_LOG_WARN,
           qPrintable(QString("%1: \"%2\" ran %3 frames without finishing; aborting")

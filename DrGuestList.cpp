@@ -34,11 +34,12 @@ DrGuest *DrGuestList::pickMinigame(dr_minigame_type type, const dr_mp_minigame_t
   struct EligibleGroup
   {
     DrGuest *guest;
-    int guestIndex;
     const char *name;
     QList<const dr_mp_minigame_t *> minigames;
   };
   QList<EligibleGroup> eligible;
+
+  const bool netplay = dr_netplay_active();
 
   for (int i = 0; i < m_guests.size(); i++)
   {
@@ -49,16 +50,14 @@ DrGuest *DrGuestList::pickMinigame(dr_minigame_type type, const dr_mp_minigame_t
       for (const dr_mp_minigame_t *mg : group.minigames)
       {
         const quint32 key = (static_cast<quint32>(i) << 16) | ord++;
-        if (mg->type == type && mg->minigame_id != 0xFF && !m_disabled.contains(key))
+        if (mg->type == type && mg->minigame_id != 0xFF && !m_disabled.contains(key)
+            && !(netplay && mg->flags.flags.no_netplay))
           minigames.append(mg);
       }
       if (!minigames.isEmpty())
-        eligible.append({ m_guests[i], i, group.name, minigames });
+        eligible.append({ m_guests[i], group.name, minigames });
     }
   }
-
-  log(DR_LOG_INFO, qPrintable(QString("pick type=%1 eligible=%2 randcount=%3")
-                       .arg((int)type).arg(eligible.size()).arg(dr_rand_count())));
 
   if (eligible.isEmpty())
     return nullptr;
@@ -67,14 +66,51 @@ DrGuest *DrGuestList::pickMinigame(dr_minigame_type type, const dr_mp_minigame_t
   const auto &picked = eligible[dr_rand() % eligible.size()];
   outMinigame = picked.minigames[dr_rand() % picked.minigames.size()];
 
-  log(DR_LOG_INFO, qPrintable(QString("guest: %1").arg(picked.name)));
-  log(DR_LOG_INFO, qPrintable(QString("minigame: %1 (0x%2)")
-                       .arg(outMinigame->name)
-                       .arg(outMinigame->minigame_id, 2, 16, QChar('0'))));
-
-  m_activeGuest = picked.guest;
-  setCurrentIndex(picked.guestIndex);
   return picked.guest;
+}
+
+void DrGuestList::rerollMinigames(void)
+{
+  for (unsigned t = 1; t < DR_MINIGAME_SIZE; t++)
+  {
+    QStringList entries;
+
+    for (DrMinigameCandidate &c : m_candidates[t])
+    {
+      const dr_mp_minigame_t *mg = nullptr;
+      c.guest = pickMinigame((dr_minigame_type)t, mg);
+      c.minigame = mg;
+
+      if (c.guest && c.minigame)
+      {
+        entries.append(QString("%1 -> %2 (0x%3)")
+                       .arg(c.guest->name())
+                       .arg(c.minigame->name)
+                       .arg(c.minigame->minigame_id, 2, 16, QChar('0')));
+      }
+    }
+
+    if (!entries.isEmpty())
+    {
+      log(DR_LOG_INFO, qPrintable(QString("%1 mini-games: %2")
+                           .arg(dr_minigame_type_name((dr_minigame_type)t))
+                           .arg(entries.join(", "))));
+    }
+  }
+  m_rolled = true;
+}
+
+const std::array<DrMinigameCandidate, 5> &DrGuestList::minigameCandidates(dr_minigame_type type)
+{
+  /* The first query rolls the whole cache; do it here so the roll lands on the
+   * host's lockstepped frame and every netplay peer stays in sync. */
+  if (!m_rolled)
+    rerollMinigames();
+
+  static const std::array<DrMinigameCandidate, 5> empty = {};
+  if (type <= DR_MINIGAME_INVALID || type >= DR_MINIGAME_SIZE)
+    return empty;
+  return m_candidates[type];
 }
 
 void DrGuestList::applyFilter(const QByteArray &payload)
@@ -91,6 +127,14 @@ void DrGuestList::applyFilter(const QByteArray &payload)
     m_disabled.insert(key);
   }
   log(DR_LOG_INFO, qPrintable(QString("minigame filter: %1 disabled").arg(m_disabled.size())));
+
+  /* The cached candidates were rolled against the old filter, so they may now be
+   * disabled (or a freshly-enabled game may be missing). Invalidate the cache
+   * rather than reroll here: applyFilter arrives on an async control packet, not
+   * a lockstepped frame, so rerolling now could desync the shared PRNG. Clearing
+   * m_rolled defers the reroll to the next query, which happens inside the host's
+   * lockstepped run() -- so every netplay peer rerolls together. */
+  m_rolled = false;
 }
 
 bool DrGuestList::guestHasCandidate(DrGuest *guest) const

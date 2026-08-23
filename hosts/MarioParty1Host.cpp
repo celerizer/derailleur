@@ -2,6 +2,8 @@
 
 #include <cstring>
 
+#include <asm/mp1.h>
+
 #include <QRetroDirectories.h>
 
 static const dr_character MP1_CHAR_TO_DR[] = {
@@ -14,22 +16,10 @@ static const dr_character MP1_CHAR_TO_DR[] = {
 };
 
 static const dr_difficulty MP1_DIFF_TO_DR[] = {
-  DR_DIFFICULTY_EASY, // 0x00 TODO verify
-  DR_DIFFICULTY_NORMAL, // 0x01 TODO verify
-  DR_DIFFICULTY_HARD, // 0x02 TODO verify
-};
-
-static const dr_team_color MP1_PANEL_COLOR_TO_DR[] = {
-  DR_TEAM_COLOR_INVALID, // 0x00
-  DR_TEAM_COLOR_BLUE, // 0x01
-  DR_TEAM_COLOR_RED, // 0x02
-  DR_TEAM_COLOR_YELLOW, // 0x03
-  DR_TEAM_COLOR_GREEN, // 0x04
-};
-
-static const size_t MP1_MINIGAME_TITLE_ADDRS[6] = {
-  0xB0FDBE54, 0xB0FDBE92, 0xB0FDBED6, 0xB0FDBF1C, 0xB0FDBF5A,
-  0xB0FDBF98, // sentinel — TODO: verify
+  DR_DIFFICULTY_EASY, // 0x00
+  DR_DIFFICULTY_NORMAL, // 0x01
+  DR_DIFFICULTY_HARD, // 0x02
+  DR_DIFFICULTY_VERY_HARD // 0x03
 };
 
 static const dr_minigame_type MP1_MINIGAME_TYPE_TO_DR[] = {
@@ -41,7 +31,7 @@ static const dr_minigame_type MP1_MINIGAME_TYPE_TO_DR[] = {
 
 static const dr_scene_name_t MP1_SCENE_NAMES[] =
 {
-  { 0x00, "Memory Match" },
+  { 0x00, "Memory Match", false },
   { 0x01, "Chance Time" },
   { 0x02, "Slot Machine" },
   { 0x03, "Buried Treasure" },
@@ -49,7 +39,7 @@ static const dr_scene_name_t MP1_SCENE_NAMES[] =
   { 0x05, "Shell Game" },
   { 0x06, "Same Game" }, // unused
   { 0x07, "Hot Bob-omb" },
-  { 0x08, "Yoshi no Shita Awase" }, // unused
+  { 0x08, "Yoshi no Shita Awase", false }, // unused
   { 0x09, "Pipe Maze" },
   { 0x0a, "Ghost Guess" },
   { 0x0b, "Musical Mushroom" },
@@ -110,40 +100,40 @@ static const dr_scene_name_t MP1_SCENE_NAMES[] =
   // { 0x41, "" },
   // { 0x42, "" },
   // { 0x43, "" },
-  // { 0x44, "" },
+  { 0x44, "Visiting Toad" }, // generic
   // { 0x45, "" },
-  // { 0x46, "" },
+  { 0x46, "Visiting Bowser" }, // generic
   { 0x47, "DK's Jungle Adventure" }, // talking to whomp
   // { 0x48, "" },
-  // { 0x49, "" },
+  { 0x49, "Peach's Birthday Cake" }, // bowser visit
   // { 0x4a, "" },
-  // { 0x4b, "" },
+  { 0x4b, "Peach's Birthday Cake" }, // goomba visit
   // { 0x4c, "" },
-  // { 0x4d, "" },
-  // { 0x4e, "" },
-  // { 0x4f, "" },
+  { 0x4d, "Yoshi's Tropical Island" }, // thwomp visit
+  { 0x4e, "Yoshi's Tropical Island" }, // bubba event
+  { 0x4f, "Yoshi's Tropical Island" }, // bowser visit
   // { 0x50, "" },
   // { 0x51, "" },
   // { 0x52, "" },
   // { 0x53, "" },
   // { 0x54, "" },
   // { 0x55, "" },
-  { 0x56, "Board event" },
-  // { 0x57, "" },
+  // { 0x56, "" },
+  { 0x57, "Mario's Rainbow Castle" }, // talking to toad/bowser
   // { 0x58, "" },
-  // { 0x59, "" },
+  { 0x59, "Bowser's Magma Mountain" }, // junction
   // { 0x5a, "" },
   // { 0x5b, "" },
   // { 0x5c, "" },
   // { 0x5d, "" },
-  // { 0x5e, "" },
-  // { 0x5f, "" },
+  { 0x5e, "Eternal Star" }, // baby bowser visit
+  { 0x5f, "Visiting Koopa Troopa" },
   // { 0x60, "" },
   { 0x61, "Intro" },
   { 0x62, "Board intro" },
   // { 0x63, "" },
   // { 0x64, "" },
-  // { 0x65, "" },
+  { 0x65, "Visiting Boo" },
   { 0x66, "Booting up" },
   { 0x67, "Booting up" },
   { 0x68, "Save data corrupted" },
@@ -185,73 +175,86 @@ static DrHostConfig makeConfig()
   config.core = dr_core_path(DR_CORE_MUPEN64PLUSNEXT).toStdString();
   config.game = (dr_roms_directory() + "/Mario Party (USA).z64").toStdString();
 
-  config.scene_miniexplain[0] = 0x6F; // TODO: verify, may have multiple
-  config.scene_miniexplain_count = 1;
-  config.scene_miniresults = 0x7C;
-  // scene_miniresults_battle / scene_miniresults_duel: not available in mp1
-  config.scene_addr = 0x800C596C; // u16
-
-  static const uint8_t mp1_boards[] = { 0x36, 0x37, 0x38, 0x39, 0x3A, 0x3B, 0x3C, 0x3D };
-  memcpy(config.scene_board_ids, mp1_boards, sizeof(mp1_boards));
-  config.scene_board_id_count = sizeof(mp1_boards) / sizeof(*mp1_boards);
-
-  config.character_addr[0] = 0x800f32b4;
-  config.character_addr[1] = 0x800f32e4;
-  config.character_addr[2] = 0x800f3314;
-  config.character_addr[3] = 0x800f3344;
-  config.controller_addr[0] = 0x800f32b3;
-  config.controller_addr[1] = 0x800f32e3;
-  config.controller_addr[2] = 0x800f3313;
-  config.controller_addr[3] = 0x800f3343;
-  config.difficulty_addr[0] = 0x800f32b2;
-  config.difficulty_addr[1] = 0x800f32e2;
-  config.difficulty_addr[2] = 0x800f3312;
-  config.difficulty_addr[3] = 0x800f3342;
-  config.team_addr[0] = 0x800f32b0;
-  config.team_addr[1] = 0x800f32e0;
-  config.team_addr[2] = 0x800f3310;
-  config.team_addr[3] = 0x800f3340;
-  config.bot_addr[0] = 0x800f32b7;
-  config.bot_addr[1] = 0x800f32e7;
-  config.bot_addr[2] = 0x800f3317;
-  config.bot_addr[3] = 0x800f3347;
-  config.result_addr[0] = 0x800f32ba;
-  config.result_addr[1] = 0x800f32ea;
-  config.result_addr[2] = 0x800f331a;
-  config.result_addr[3] = 0x800f334a;
-  // bonus_result_addr: not available in mp1
-  config.panel_color_addr[0] = 0x800f32c7;
-  config.panel_color_addr[1] = 0x800f32f7;
-  config.panel_color_addr[2] = 0x800f3327;
-  config.panel_color_addr[3] = 0x800f3357;
-
   config.char_to_dr = MP1_CHAR_TO_DR;
   config.char_to_dr_size = sizeof(MP1_CHAR_TO_DR) / sizeof(*MP1_CHAR_TO_DR);
   config.diff_to_dr = MP1_DIFF_TO_DR;
   config.diff_to_dr_size = sizeof(MP1_DIFF_TO_DR) / sizeof(*MP1_DIFF_TO_DR);
 
-  config.panel_color_to_dr = MP1_PANEL_COLOR_TO_DR;
-  config.panel_color_to_dr_size = sizeof(MP1_PANEL_COLOR_TO_DR) / sizeof(*MP1_PANEL_COLOR_TO_DR);
-
-  config.minigame_type_addr = 0x800D6459; // u8
   config.minigame_type_to_dr = MP1_MINIGAME_TYPE_TO_DR;
   config.minigame_type_to_dr_size = 4;
 
-  config.next_scene_addr = 0x800F09F4; // unused
-  config.minigame_id_addr = 0x800ED5DE; // u16 (minigame_id_is_8bit == false)
-  config.minigame_id_is_8bit = false;
+  config.cheats.cave = MP1_CAVE;
+  config.cheats.cave_addr = MP1_CAVE_ADDR;
+  config.cheats.cave_size = MP1_CAVE_SIZE;
+  config.cheats.cheat_board = MP1_HOOK_BOARD;
 
-  config.title_addrs = MP1_MINIGAME_TITLE_ADDRS;
-  config.title_id_base = 0x01;
-  config.title_id_step = 4;
-  config.title_len_offset = 2;
+  config.scenes.minigame_explain[0] = 0x6F;
+  config.scenes.minigame_explain[1] = -1;
 
-  config.scene_trampoline_addr = 0x800CA9A0;
+  static const int mp1_boards[] = { 0x36, 0x37, 0x38, 0x39, 0x3A, 0x3B, 0x3C, 0x3D, -1 };
+  memcpy(config.scenes.boards, mp1_boards, sizeof(mp1_boards));
+
+  config.scenes.main_menu = 0x69; // Mushroom Village
+  config.scenes.minigame_results = 0x7C;
+
+  config.stat.board = 0x0092;
+  config.stat.minigame = 0x0094;
+  // stat.duel: no duels in MP1
+
+  config.values.scene = { 0x800C596C, DR_VALUE_TYPE_U16 };
+  config.values.character[0] = { 0x800f32b4, DR_VALUE_TYPE_U8 };
+  config.values.character[1] = { 0x800f32e4, DR_VALUE_TYPE_U8 };
+  config.values.character[2] = { 0x800f3314, DR_VALUE_TYPE_U8 };
+  config.values.character[3] = { 0x800f3344, DR_VALUE_TYPE_U8 };
+  config.values.controller[0] = { 0x800f32b3, DR_VALUE_TYPE_U8 };
+  config.values.controller[1] = { 0x800f32e3, DR_VALUE_TYPE_U8 };
+  config.values.controller[2] = { 0x800f3313, DR_VALUE_TYPE_U8 };
+  config.values.controller[3] = { 0x800f3343, DR_VALUE_TYPE_U8 };
+  config.values.difficulty[0] = { 0x800f32b2, DR_VALUE_TYPE_U8 };
+  config.values.difficulty[1] = { 0x800f32e2, DR_VALUE_TYPE_U8 };
+  config.values.difficulty[2] = { 0x800f3312, DR_VALUE_TYPE_U8 };
+  config.values.difficulty[3] = { 0x800f3342, DR_VALUE_TYPE_U8 };
+  config.values.team[0] = { 0x800f32b0, DR_VALUE_TYPE_U8 };
+  config.values.team[1] = { 0x800f32e0, DR_VALUE_TYPE_U8 };
+  config.values.team[2] = { 0x800f3310, DR_VALUE_TYPE_U8 };
+  config.values.team[3] = { 0x800f3340, DR_VALUE_TYPE_U8 };
+  config.values.bot[0] = { 0x800f32b7, DR_VALUE_TYPE_U8 };
+  config.values.bot[1] = { 0x800f32e7, DR_VALUE_TYPE_U8 };
+  config.values.bot[2] = { 0x800f3317, DR_VALUE_TYPE_U8 };
+  config.values.bot[3] = { 0x800f3347, DR_VALUE_TYPE_U8 };
+  config.values.result[0] = { 0x800f32ba, DR_VALUE_TYPE_U16 };
+  config.values.result[1] = { 0x800f32ea, DR_VALUE_TYPE_U16 };
+  config.values.result[2] = { 0x800f331a, DR_VALUE_TYPE_U16 };
+  config.values.result[3] = { 0x800f334a, DR_VALUE_TYPE_U16 };
+  // bonus_result: not available in mp1
+  config.values.panel_color[0] = { 0x800f32c7, DR_VALUE_TYPE_U8 };
+  config.values.panel_color[1] = { 0x800f32f7, DR_VALUE_TYPE_U8 };
+  config.values.panel_color[2] = { 0x800f3327, DR_VALUE_TYPE_U8 };
+  config.values.panel_color[3] = { 0x800f3357, DR_VALUE_TYPE_U8 };
+  config.values.coins[0] = { 0x800f32b8, DR_VALUE_TYPE_U16 };
+  config.values.coins[1] = { 0x800f32e8, DR_VALUE_TYPE_U16 };
+  config.values.coins[2] = { 0x800f3318, DR_VALUE_TYPE_U16 };
+  config.values.coins[3] = { 0x800f3348, DR_VALUE_TYPE_U16 };
+  config.values.stars[0] = { 0x800f32bc, DR_VALUE_TYPE_U16 };
+  config.values.stars[1] = { 0x800f32ec, DR_VALUE_TYPE_U16 };
+  config.values.stars[2] = { 0x800f331c, DR_VALUE_TYPE_U16 };
+  config.values.stars[3] = { 0x800f334c, DR_VALUE_TYPE_U16 };
+  config.values.minigame_title_color = { 0x800C4DD0, DR_VALUE_TYPE_U8 };
+  config.values.minigame_type = { 0x800D6459, DR_VALUE_TYPE_U8 };
+  config.values.minigame_id = { 0x800ED5DE, DR_VALUE_TYPE_S16 };
+  config.values.title_block = { MP1_TITLE_BLOCK, DR_VALUE_TYPE_POINTER };
+  config.values.title_color = { MP1_TITLE_COLORS, DR_VALUE_TYPE_POINTER };
+  config.values.scene_stack = { 0x800D86B8, DR_VALUE_TYPE_POINTER };
+  config.values.scene_stack_count = { 0x800D86B2, DR_VALUE_TYPE_S16 };
+  config.values.turn_total = { 0x800ED5C7, DR_VALUE_TYPE_U8 };
+  config.values.turn_current = { 0x800ED5C9, DR_VALUE_TYPE_U8 };
+  config.values.turn_owner = { 0x800ED5DC, DR_VALUE_TYPE_S16 };
+  config.values.space_index = { 0x800ED5E0, DR_VALUE_TYPE_S16 };
+  config.values.rng = { 0x800c2ff4, DR_VALUE_TYPE_U32 };
+
+  config.host_state_addr = MP1_HOST_STATE;
 
   config.scene_names = MP1_SCENE_NAMES;
-
-  config.turn_total_addr = 0x800ED5C7;   // u8
-  config.turn_current_addr = 0x800ED5C9; // u8
 
   return config;
 }
@@ -267,57 +270,8 @@ MarioParty1Host::MarioParty1Host(QObject *parent)
         called = true;
         m_core->cheatReset();
 
-        // Scene transition trampoline: data cell at 0x800CA9A0, code at 0x800CA9A4
-        m_core->cheatSet(0, true,
-          // Trampoline at 0x800CA9A0
-          "810CA9A4 3C08"  // LUI  T0, 0x800D
-          "+810CA9A6 800D"
-          "+810CA9A8 8D08"  // LW   T0, 0xA9A0(T0)   — T0 = *0x800CA9A0
-          "+810CA9AA A9A0"
-          "+810CA9AC 1100"  // BEQ  T0, ZERO, +7     — if 0, passthrough
-          "+810CA9AE 0007"
-          "+810CA9B0 0000"  // NOP                   — (delay slot)
-          "+810CA9B2 0000"
-          // Override path
-          "+810CA9B4 0008"  // SRL  A0, T0, 16       — A0 = scene
-          "+810CA9B6 2402"
-          "+810CA9B8 3105"  // ANDI A1, T0, 0xFFFF   — A1 = modifier
-          "+810CA9BA FFFF"
-          "+810CA9BC 0080"  // ADDU S1, A0, ZERO     — save scene to S1
-          "+810CA9BE 8821"
-          "+810CA9C0 3C04"  // LUI  A0, 0x800F       — load game state pointer
-          "+810CA9C2 800F"
-          "+810CA9C4 0801"  // J    0x8005E05C       — return
-          "+810CA9C6 7817"
-          "+810CA9C8 0000"  // NOP                   — (delay slot)
-          "+810CA9CA 0000"
-          // Passthrough path
-          "+810CA9CC 0080"  // ADDU S1, A0, ZERO     — save scene arg to S1
-          "+810CA9CE 8821"
-          "+810CA9D0 3C04"  // LUI  A0, 0x800F       — load game state pointer
-          "+810CA9D2 800F"
-          "+810CA9D4 0801"  // J    0x8005E05C       — return
-          "+810CA9D6 7817"
-          "+810CA9D8 0000"  // NOP                   — (delay slot)
-          "+810CA9DA 0000"
-          // Hook at 0x8005E054: J 0x800CA9A4 + NOP
-          "+8105E054 0803"  // J    0x800CA9A4
-          "+8105E056 2A69"
-          "+8105E058 2400"  // NOP                   — (delay slot, displaces LUI A0, 0x800F)
-        );
-
-        // Force Mini-Game Roulette IDs
-        m_core->cheatSet(1, true,
-          "81043AB4 0010"  // SLL  V0, S0, 2      — roulette ID offset = slot_index * 4 (step=4)
-          "+81043AB6 1080"
-          "+81043AB8 2442"  // ADDIU V0, V0, BASE  — roulette ID = offset + base
-          "+81043ABA 0001"
-          "+81043B08 2400" // NOP
-          "+81043B74 2400"  // NOP
-        );
-
         // Recommended Codes
-        m_core->cheatSet(2, true,
+        m_core->cheatSet(0, true,
           /* Board speed? */
           "81057852 4218"
 
@@ -327,14 +281,6 @@ MarioParty1Host::MarioParty1Host(QObject *parent)
           /* ...except for Mini-Game Stadium */
           "+D10F09F6 007F"
           "+800ED5E2 0000"
-
-          /* Don't proceed on results? */
-          "+D10F09F6 0064"
-          "+810FB1AC 2400"
-
-          /* Don't proceed on results */
-          "+D10F09F6 0040"
-          "+810FB1AC 2400"
 
           /* Advance "START" prompt */
           "+81046DDC 2400"

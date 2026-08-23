@@ -81,7 +81,7 @@ static QString writePatchedDolphinCore(const QString &originalPath, const QStrin
   return destPath;
 }
 
-CoreDolphin::CoreDolphin(const QString &subdir, QObject *parent)
+CoreDolphin::CoreDolphin(const QString &subdir, bool ownDirs, QObject *parent)
   : DrGuest(parent)
 {
   m_subdir = subdir;
@@ -97,10 +97,24 @@ CoreDolphin::CoreDolphin(const QString &subdir, QObject *parent)
   /* Pretend to not support gyro/accel so we can use the sticks */
   core()->setEnvironmentCallbackSupported(RETRO_ENVIRONMENT_GET_SENSOR_INTERFACE, false);
 
-  /* All Dolphin instances share the default system/save dirs; only the disc-list
-   * needs to stay per-instance, e.g. system/discs-gcn.m3u. */
-  const QString system =
-    QString::fromUtf8(core()->directories()->get(QRetroDirectories::System));
+  /* GameCube instances share the default system/save dirs. A Wii one takes its
+   * own so each game keeps a separate NAND rather than fighting over one. The
+   * disc-list is per-instance either way, e.g. system/discs-gcn.m3u. */
+  QRetroDirectories *dirs = core()->directories();
+  QString system = QString::fromUtf8(dirs->get(QRetroDirectories::System));
+
+  if (ownDirs)
+  {
+    const QString save =
+      QString::fromUtf8(dirs->get(QRetroDirectories::Save)) + "/" + subdir;
+
+    system += "/" + subdir;
+    QDir().mkpath(system);
+    QDir().mkpath(save);
+    dirs->set(QRetroDirectories::System, system);
+    dirs->set(QRetroDirectories::Save, save);
+  }
+
   m_m3uPath = system + "/discs-" + subdir + ".m3u";
 }
 
@@ -115,6 +129,19 @@ bool CoreDolphin::loadCore()
   const bool ok = core() && core()->loadCore(loadPath.toUtf8().constData());
   if (!ok)
     log(DR_LOG_ERROR, qPrintable(QString("failed to load core: %1").arg(loadPath)));
+  else
+  {
+    // Apply Dolphin settings we will need
+    // See: https://github.com/classicslive/QRetro/blob/master/docs/Cores.md#Dolphin
+
+    // Core > Dual Core Mode
+    // Needs to be disabled for serialization to work.
+    core()->options()->setOptionValue("dolphin_main_cpu_thread", "disabled");
+
+    // Core > Fastmem
+    // Needs to be disabled for multi-instancing to work.
+    core()->options()->setOptionValue("dolphin_fastmem", "disabled");
+  }
 
   if (!patchedPath.isEmpty())
     QFile::remove(patchedPath);
@@ -147,27 +174,14 @@ void CoreDolphin::addGame(DolphinGuest *game)
   }
 
   if (m_games.isEmpty())
-  {
-    // Apply Dolphin settings we will need
-    // See: https://github.com/classicslive/QRetro/blob/master/docs/Cores.md#Dolphin
-
-    // Core > Dual Core Mode
-    // Needs to be disabled for serialization to work.
-    core()->options()->setOptionValue("dolphin_main_cpu_thread", "disabled");
-
-    // Core > Fastmem
-    // Needs to be disabled for multi-instancing to work.
-    core()->options()->setOptionValue("dolphin_fastmem", "disabled");
-
-    /* The library is dlopen'd lazily on the first launch; see loadCore(). */
     m_baseCorePath = QString::fromStdString(game->corePath());
-  }
 
   m_games.append(game);
   m_discPaths.append(discPath);
 
   connect(game, &DrGuest::minigameFinished, this, [this]() { finishMinigame(); });
   connect(game, &DrGuest::logMessage, this, &DrGuest::logMessage);
+  connect(game, &DrGuest::hardResyncRequested, this, &DrGuest::hardResyncRequested);
 
   // Collect all mini-games from this game
   for (const dr_mp_minigame_t *mg = game->minigames(); mg && mg->name; mg++)
@@ -178,9 +192,6 @@ void CoreDolphin::addGame(DolphinGuest *game)
 
 void CoreDolphin::finalizeGames()
 {
-  /* Only write the disc-list m3u here; the base loads it lazily on the first
-   * launch (gamePath() returns m_m3uPath) so the two Dolphin cores don't both
-   * boot at startup. */
   QFile m3u(m_m3uPath);
   if (m3u.open(QIODevice::WriteOnly | QIODevice::Text))
   {
@@ -341,11 +352,15 @@ void CoreDolphin::doApplyGameData(const DrGameData &data)
                    .arg(setupFrames)
                    .arg(owner->minigameActive() ? "" : " (timed out)")));
 
-  /* Latch the core at this exact frame boundary for netplay. Running pause() as a
-   * timing-thread action (rather than from this GUI thread) makes it land on a
-   * deterministic frame instead of racing the free-running timing thread -- without
-   * it peers can end up exactly one frame apart. setActiveContext then gates from
-   * here and mainwindow's minigameStarted handler unpauses. */
+  /* A timed-out delegate means our setup diverged from the peers'; ask for a hard
+   * resync (once) so we realign. Only meaningful during a netplay session. */
+  if (dr_netplay_active() && !owner->minigameActive() && !m_resyncRequested)
+  {
+    m_resyncRequested = true;
+    emit desyncSuspected();
+  }
+
+  /* Stop on an exact frame gate */
   core()->execOnTimingThread([c = core()]() { c->pause(); });
 
   log(DR_LOG_INFO, "disc change: starting minigame");

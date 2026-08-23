@@ -47,11 +47,29 @@ void MarioPartyN64::run()
     log(DR_LOG_INFO,
       qPrintable(QString("MP_SCENE_ADDR: 0x%1").arg((uint16_t)val, 4, 16, QChar('0'))));
     m_lastScene = val;
+    if (!m_minigameActive &&
+        (val == m_config.scene_miniexplain[0] || val == m_config.scene_miniexplain[1]))
+    {
+      seedRng();
+      startMinigame();
+    }
     if (m_minigameActive && m_minigameFrames >= 60 &&
         val != m_config.scene_miniexplain[0] && val != m_config.scene_miniexplain[1] &&
         val != m_minigame->scene_id)
       finishMinigame();
   }
+}
+
+void MarioPartyN64::seedRng()
+{
+  if (!m_config.rng_addr)
+    return;
+
+  /* dr_rand is shared and lockstepped, so netplay peers seed identically. */
+  const uint32_t seed = static_cast<uint32_t>(dr_rand());
+
+  m_retro->writeu32(seed, m_config.rng_addr);
+  log(DR_LOG_INFO, qPrintable(QString("RNG seed: 0x%1").arg(seed, 8, 16, QChar('0'))));
 }
 
 const dr_mp_minigame_t *MarioPartyN64::minigames() const
@@ -99,9 +117,18 @@ void MarioPartyN64::doApplyGameData(const DrGameData &data)
 
     m_retro->writeu8(mpN64Difficulty(p.difficulty), m_config.difficulty_addr[i]);
     m_retro->writeu8(static_cast<uint8_t>(p.team_id), m_config.team_addr[i]);
+
+    /* Carry the board totals over, so a mini-game that shows coins/stars shows
+     * the same numbers the host does. */
+    if (m_config.coins[i].address)
+      m_retro->writeValue(p.coins, m_config.coins[i]);
+    if (m_config.stars[i].address)
+      m_retro->writeValue(p.stars, m_config.stars[i]);
   }
 
-  startMinigame();
+  /* The pot the board collected, for the battle results to pay back out. */
+  if (m_config.battle_pot.address)
+    m_retro->writeValue(data.battle_pot, m_config.battle_pot);
 }
 
 dr_minigame_result_t MarioPartyN64::minigameResult(unsigned index)

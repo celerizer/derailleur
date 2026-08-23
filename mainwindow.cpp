@@ -5,6 +5,7 @@
 #include <QDateTime>
 #include <QDir>
 #include <QFile>
+#include <QFileInfo>
 #include <QGuiApplication>
 #include <QLabel>
 #include <QLineEdit>
@@ -28,6 +29,7 @@
 #include "hosts/MarioParty1Host.h"
 #include "hosts/MarioParty2Host.h"
 #include "hosts/MarioParty3Host.h"
+#include "hosts/MarioParty4Host.h"
 #include "hosts/SonicShuffleHost.h"
 #include "guests/MarioKart64.h"
 #include "guests/MarioParty1.h"
@@ -67,6 +69,41 @@
 #endif
 #define DR_STRINGIZE_(x) #x
 #define DR_STRINGIZE(x) DR_STRINGIZE_(x)
+
+namespace
+{
+/* Opaque payload for a debug-menu launch relayed through netplay so every peer runs it
+ * on the same gated frame: guest index, mini-game index within that guest's list, then
+ * 7 bytes per player. DrNetplay prepends the target frame. */
+/* Per-player bytes in a debug-launch payload: seven enum/id bytes plus the
+ * signed 16-bit coin and star counts. */
+#define DR_DEBUG_LAUNCH_PLAYER_SIZE (7 + 2 + 2)
+
+QByteArray serializeDebugLaunch(int guestIndex, int minigameIndex, const dr_player_t players[4])
+{
+  QByteArray b;
+  b.append(static_cast<char>(guestIndex));
+  b.append(static_cast<char>(minigameIndex));
+  for (unsigned i = 0; i < 4; i++)
+  {
+    const dr_player_t &p = players[i];
+    b.append(static_cast<char>(p.character));
+    b.append(static_cast<char>(p.control_port));
+    b.append(static_cast<char>(p.control_type));
+    b.append(static_cast<char>(p.difficulty));
+    b.append(static_cast<char>(p.team_color));
+    b.append(static_cast<char>(p.team_type));
+    b.append(static_cast<char>(p.team_id));
+    const int16_t coins = static_cast<int16_t>(p.coins);
+    const int16_t stars = static_cast<int16_t>(p.stars);
+    b.append(static_cast<char>(coins & 0xFF));
+    b.append(static_cast<char>((coins >> 8) & 0xFF));
+    b.append(static_cast<char>(stars & 0xFF));
+    b.append(static_cast<char>((stars >> 8) & 0xFF));
+  }
+  return b;
+}
+}
 
 MainWindow::MainWindow(QWidget *parent)
   : QMainWindow(parent)
@@ -113,6 +150,7 @@ MainWindow::MainWindow(QWidget *parent)
     addHostButton("Mario Party 1", [this]() -> DrHost * { return new MarioParty1Host(this); });
     addHostButton("Mario Party 2", [this]() -> DrHost * { return new MarioParty2Host(this); });
     addHostButton("Mario Party 3", [this]() -> DrHost * { return new MarioParty3Host(this); });
+    addHostButton("Mario Party 4", [this]() -> DrHost * { return new MarioParty4Host(this); });
     layout->addStretch();
 
     m_StartGameTab = startGame;
@@ -187,13 +225,13 @@ MainWindow::MainWindow(QWidget *parent)
   m_Netplay = new DrNetplay(m_InputStore, this);
   setupNetplay();
 
-  if (dr_settings_get().separate_gamecube_instances)
+  if (!dr_settings_get().shared_gamecube_core)
   {
     /* One single-disc Dolphin per GameCube game (like the Wii ones), so no disc
-     * swapping happens at all. Each needs a unique subdir for its own system/save
-     * dir and arena tag. They still load lazily -- only games launched ever boot. */
+     * swapping happens at all. Each needs a unique subdir for its arena tag and
+     * disc list. They still load lazily -- only games launched ever boot. */
     auto addSoloGcn = [this](const QString &subdir, DolphinGuest *(*make)(QRetro *, QObject *)) {
-      auto *core = new CoreDolphin(subdir, this);
+      auto *core = new CoreDolphin(subdir, false, this);
       core->addGame(make(core->core(), core));
       core->finalizeGames();
       if (core->isValid())
@@ -207,7 +245,7 @@ MainWindow::MainWindow(QWidget *parent)
   }
   else
   {
-    auto *dolphin = new CoreDolphin("gcn", this);
+    auto *dolphin = new CoreDolphin("gcn", false, this);
     dolphin->addGame(new MarioParty4(dolphin->core(), dolphin));
     dolphin->addGame(new MarioParty5(dolphin->core(), dolphin));
     dolphin->addGame(new MarioParty6(dolphin->core(), dolphin));
@@ -220,15 +258,16 @@ MainWindow::MainWindow(QWidget *parent)
   }
 
   /* The Wii core cannot survive a disc swap, so give each Wii game its own
-   * Dolphin instance with a single disc. They still load lazily, so only the
-   * ones actually launched ever boot. */
-  auto *dolphinMp8 = new CoreDolphin("wii-mp8", this);
+   * Dolphin instance with a single disc, and its own system/save dirs so the two
+   * NANDs stay apart. They still load lazily, so only the ones actually launched
+   * ever boot. */
+  auto *dolphinMp8 = new CoreDolphin("wii-mp8", true, this);
   dolphinMp8->addGame(new MarioParty8(dolphinMp8->core(), dolphinMp8));
   dolphinMp8->finalizeGames();
   if (dolphinMp8->isValid())
     m_Guests->add(dolphinMp8);
 
-  auto *dolphinMp9 = new CoreDolphin("wii-mp9", this);
+  auto *dolphinMp9 = new CoreDolphin("wii-mp9", true, this);
   dolphinMp9->addGame(new MarioParty9(dolphinMp9->core(), dolphinMp9));
   dolphinMp9->finalizeGames();
   if (dolphinMp9->isValid())
@@ -312,7 +351,19 @@ MainWindow::MainWindow(QWidget *parent)
    * before a host has been chosen (launchMinigame tolerates a null host). */
   connect(m_Debug, &DrDebug::minigameRequested, this,
     [this](DrGuest *guest, const dr_mp_minigame_t *minigame, std::array<dr_player_t, 4> players) {
-      launchMinigame(guest, minigame, players.data());
+      /* In netplay a debug launch is async on one peer, so route it through netplay to
+       * start on the same gated frame everywhere; the actual launch runs from the
+       * debugLaunchReady handler. Outside a session, launch directly. */
+      if (m_Netplay && m_Netplay->active())
+      {
+        const int guestIndex = m_Guests->guests().indexOf(guest);
+        int minigameIndex = 0;
+        for (const dr_mp_minigame_t *mg = guest->minigames(); mg && mg->name && mg != minigame; mg++)
+          minigameIndex++;
+        m_Netplay->requestDebugLaunch(serializeDebugLaunch(guestIndex, minigameIndex, players.data()));
+      }
+      else
+        launchMinigame(guest, minigame, players.data());
     });
 #endif
 
@@ -330,7 +381,19 @@ MainWindow::MainWindow(QWidget *parent)
 #endif
 
   /* Settings: user-facing options backed by the global dr_settings. */
-  m_Tools->addTool(tr("Settings"), new DrSettings());
+  DrSettings *settingsTool = new DrSettings();
+  m_Tools->addTool(tr("Settings"), settingsTool);
+  connect(settingsTool, &DrSettings::redownloadSavesRequested, this, [this]() {
+    QSettings s(QDir::current().filePath("derailleur.ini"), QSettings::IniFormat);
+    DrDownloader downloader;
+#if SHOW_LOGGER
+    connect(&downloader, &DrDownloader::logMessage, m_Logger, &DrLogger::message);
+    connect(&downloader, &DrDownloader::progressStarted, m_Logger, &DrLogger::showProgress);
+    connect(&downloader, &DrDownloader::progressFinished, m_Logger, &DrLogger::hideProgress);
+    connect(&downloader, &DrDownloader::progressUpdated, m_Logger, &DrLogger::setProgress);
+#endif
+    downloader.downloadSaves(s, dr_save_directory(), dr_state_directory());
+  });
 
   connect(m_Stack, &QStackedWidget::currentChanged, this, [this](int index) {
     if (QWidget *page = m_Stack->widget(index))
@@ -459,9 +522,10 @@ void MainWindow::startWithHost(DrHost *host)
   m_Host->setLocalPlayer(m_NetplayPeerIndex);
 
 #if SHOW_OVERLAY
+  if (DrOverlay *ov = overlay())
   {
     QPixmap loading(":/assets/loading.png");
-    m_Overlay->hold(loading);
+    ov->hold(loading);
   }
 #endif
 
@@ -476,7 +540,9 @@ void MainWindow::startWithHost(DrHost *host)
    * game. (On a client this is a no-op; the client got here via the server's
    * startGameRequested signal.) */
   if (m_Netplay->isServer())
-    m_Netplay->startGame(static_cast<int>(host->game()));
+  {
+    m_Netplay->startGame(static_cast<int>(host->game()), host->saveFilePatterns());
+  }
 
   /* Only load guests that have at least one allowed mini-game; the rest never
    * boot (e.g. disabling every Dolphin mini-game skips the Dolphin core load
@@ -527,20 +593,11 @@ void MainWindow::startWithHost(DrHost *host)
     [this](int turn) { m_Host->setCurrentTurn(turn); });
 #endif
 
-  /* Every peer rolls its own candidates locally from the shared seeded PRNG
-   * (dr_rand), so the picks are identical without a network round-trip. This
-   * keeps the host state machine in lockstep — the client reaches ROULETTE on
-   * the same frame as the server instead of waiting for candidates to arrive. */
-  connect(m_Host, &DrHost::candidatesNeeded, this, [this](dr_minigame_type type) {
-    std::array<DrMinigameCandidate, 5> candidates = {};
-    for (auto &c : candidates)
-    {
-      const dr_mp_minigame_t *mg = nullptr;
-      c.guest = m_Guests->pickMinigame(type, mg);
-      c.minigame = mg;
-    }
-    m_Host->setCandidates(candidates);
-  });
+  /* The host pulls its own candidates straight from the guest list's cache when
+   * it opens the roulette. Every peer rolls locally from the shared seeded PRNG
+   * (dr_rand) at the same lockstepped frame, so the picks match without a network
+   * round-trip and the client reaches ROULETTE alongside the server. */
+  m_Host->setMinigameSource(m_Guests);
 
   /* Freeze the active context to wait for all netplay peers when a mini-game is started... */
   connect(m_Host, &DrHost::minigameRequested, m_Netplay,
@@ -557,10 +614,17 @@ void MainWindow::startWithHost(DrHost *host)
   for (DrGuest *guest : m_Guests->guests())
     connect(guest, &DrGuest::desyncSuspected, m_Netplay, &DrNetplay::requestResync);
 
+  /* A guest can also proactively request a hard resync (e.g. entering a mini-game). */
+  for (DrGuest *guest : m_Guests->guests())
+    connect(guest, &DrGuest::hardResyncRequested, m_Netplay, &DrNetplay::requestResync);
+
   /* A guest (e.g. a golf mini-game) can request netplay "golf mode" -- one player
    * gets 0 input delay, the rest a high delay for turn-based priority. */
   for (DrGuest *guest : m_Guests->guests())
     connect(guest, &DrGuest::golfModeRequested, m_Netplay, &DrNetplay::setGolfMode);
+
+  /* The host can too (e.g. an item mini-game where only one player participates). */
+  connect(m_Host, &DrHost::golfModeRequested, m_Netplay, &DrNetplay::setGolfMode);
 
   connect(m_Host, &DrHost::minigameRequested, this,
     [this](DrMinigameCandidate candidate, std::array<dr_player_t, 4> players) {
@@ -619,6 +683,7 @@ void MainWindow::launchMinigame(
     return;
 
 #if SHOW_OVERLAY
+  if (DrOverlay *ov = overlay())
   {
     /* Between continuous-play challenge mini-games, show the loading card with the
      * last result and what is coming up instead of the frozen frame. */
@@ -633,7 +698,7 @@ void MainWindow::launchMinigame(
         for (const dr_mp_minigame_t *mg : group.minigames)
           if (mg == minigame)
             game = QString::fromUtf8(group.name);
-      m_Overlay->showLoadingCard(
+      ov->showLoadingCard(
         result, game, minigame ? QString::fromUtf8(minigame->name) : QString());
     }
     else
@@ -643,7 +708,7 @@ void MainWindow::launchMinigame(
       /* Freeze what is on screen to cover the core swap. With no host chosen
        * (challenge mode, or a debug launch) grab this window instead. */
       const WId source = (m_Host && m_Host->core()) ? m_Host->core()->winId() : winId();
-      m_Overlay->hold(screen->grabWindow(source));
+      ov->hold(screen->grabWindow(source));
     }
   }
 #endif
@@ -681,7 +746,8 @@ void MainWindow::launchMinigame(
          * core runs is the (input-synced) barrier frame. */
         guest->unpause();
 #if SHOW_OVERLAY
-        m_Overlay->fadeOut();
+        if (m_Overlay)
+          m_Overlay->fadeOut();
 #endif
         if (auto *a = guest->core()->audio())
           a->setMute(false);
@@ -693,6 +759,7 @@ void MainWindow::launchMinigame(
       DrGameData data;
       data.minigame = minigame;
       data.type = minigame ? minigame->type : DR_MINIGAME_INVALID;
+      data.battle_pot = m_Host ? m_Host->battlePot() : 0;
       for (unsigned i = 0; i < 4; i++)
         data.players[i] = players[i];
       guest->applyGameData(data);
@@ -739,6 +806,42 @@ void MainWindow::setupNetplay()
   /* A peer cancelled the mini-game -- cancel here too and return to the board. */
   connect(m_Netplay, &DrNetplay::cancelMinigameReceived, this, &MainWindow::cancelActiveMinigame);
 
+  /* A debug-menu launch has reached its scheduled gated frame (in lockstep on every
+   * peer). DrNetplay already froze the active context on the timing thread at that exact
+   * frame, so here we only deserialize and launch on the GUI thread. */
+  connect(m_Netplay, &DrNetplay::debugLaunchReady, this, [this](QByteArray payload) {
+    if (payload.size() < 2 + 4 * DR_DEBUG_LAUNCH_PLAYER_SIZE)
+      return;
+    auto u8 = [&](int i) { return static_cast<uint8_t>(payload.at(i)); };
+    DrGuest *guest = m_Guests->guests().value(u8(0), nullptr);
+    if (!guest)
+      return;
+    const dr_mp_minigame_t *minigame = guest->minigames();
+    for (int k = 0; k < u8(1) && minigame && minigame->name; k++)
+      minigame++;
+    if (!minigame || !minigame->name)
+      return;
+
+    std::array<dr_player_t, 4> players{};
+    int off = 2;
+    for (unsigned i = 0; i < 4; i++)
+    {
+      players[i].character = static_cast<dr_character>(u8(off++));
+      players[i].control_port = static_cast<dr_control_port>(u8(off++));
+      players[i].control_type = static_cast<dr_control_type>(u8(off++));
+      players[i].difficulty = static_cast<dr_difficulty>(u8(off++));
+      players[i].team_color = static_cast<dr_team_color>(u8(off++));
+      players[i].team_type = static_cast<dr_team_type>(u8(off++));
+      players[i].team_id = u8(off++);
+      players[i].coins = static_cast<int16_t>(u8(off) | (u8(off + 1) << 8));
+      off += 2;
+      players[i].stars = static_cast<int16_t>(u8(off) | (u8(off + 1) << 8));
+      off += 2;
+    }
+
+    launchMinigame(guest, minigame, players.data());
+  });
+
   /* A client follows the server's game choice: build the matching host and
    * start it locally. */
   connect(m_Netplay, &DrNetplay::startGameRequested, this, [this](int gameId) {
@@ -755,6 +858,9 @@ void MainWindow::setupNetplay()
       break;
     case DR_GAME_MARIOPARTY3:
       host = new MarioParty3Host(this);
+      break;
+    case DR_GAME_MARIOPARTY4:
+      host = new MarioParty4Host(this);
       break;
     case DR_GAME_SONICSHUFFLE:
       host = new SonicShuffleHost(this);
@@ -773,6 +879,11 @@ void MainWindow::attachNetplay()
    * then install a shared backend on every distinct core so host and guests
    * read identical input from the store. */
   m_Netplay->setLocalSource(m_Host->core()->input()->backend());
+
+  /* The board core is attached first, so it is context 0 -- the one whose RNG
+   * netplay cross-checks between peers (see DrNetplay::setRngProbe). */
+  DrHost *host = m_Host;
+  m_Netplay->setRngProbe([host]() { return host->rngValue(); });
 
   QSet<QRetro *> seen;
   m_Netplay->attachCore(m_Host->core(), QStringLiteral("host"));
@@ -799,9 +910,13 @@ void MainWindow::showChooser()
 #if SHOW_OVERLAY
   if (DrGuest *guest = m_Guests->currentGuest())
   {
-    QScreen *screen = windowHandle() ? windowHandle()->screen() : QGuiApplication::primaryScreen();
-    if (guest->core())
-      m_Overlay->hold(screen->grabWindow(guest->core()->winId()));
+    DrOverlay *ov = overlay();
+    if (guest->core() && ov)
+    {
+      QScreen *screen =
+        windowHandle() ? windowHandle()->screen() : QGuiApplication::primaryScreen();
+      ov->hold(screen->grabWindow(guest->core()->winId()));
+    }
   }
 #endif
 
@@ -811,7 +926,8 @@ void MainWindow::showChooser()
       guest->pause();
     m_Stack->setCurrentIndex(0);
 #if SHOW_OVERLAY
-    m_Overlay->fadeOut();
+    if (m_Overlay)
+      m_Overlay->fadeOut();
 #endif
   });
 }
@@ -827,9 +943,10 @@ void MainWindow::showHost()
 {
 
 #if SHOW_OVERLAY
+  if (DrOverlay *ov = overlay())
   {
     QScreen *screen = windowHandle() ? windowHandle()->screen() : QGuiApplication::primaryScreen();
-    m_Overlay->hold(screen->grabWindow(m_Guests->currentGuest()->core()->winId()));
+    ov->hold(screen->grabWindow(m_Guests->currentGuest()->core()->winId()));
   }
 #endif
 
@@ -843,7 +960,8 @@ void MainWindow::showHost()
     m_Host->unpause();
     m_Stack->setCurrentWidget(m_HostContainer);
 #if SHOW_OVERLAY
-    m_Overlay->fadeOut();
+    if (m_Overlay)
+      m_Overlay->fadeOut();
 #endif
   });
 }
@@ -851,8 +969,11 @@ void MainWindow::showHost()
 void MainWindow::showGuests()
 {
 #if SHOW_OVERLAY
-  QScreen *screen = windowHandle() ? windowHandle()->screen() : QGuiApplication::primaryScreen();
-  m_Overlay->hold(screen->grabWindow(m_Host->core()->winId()));
+  if (DrOverlay *ov = overlay())
+  {
+    QScreen *screen = windowHandle() ? windowHandle()->screen() : QGuiApplication::primaryScreen();
+    ov->hold(screen->grabWindow(m_Host->core()->winId()));
+  }
 #endif
 
   QTimer::singleShot(32, this, [this]() {

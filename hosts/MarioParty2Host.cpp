@@ -2,6 +2,8 @@
 
 #include <cstring>
 
+#include <asm/mp2.h>
+
 #include <QRetroDirectories.h>
 
 
@@ -27,26 +29,6 @@ static const dr_minigame_type MP2_MINIGAME_TYPE_TO_DR[] = {
   DR_MINIGAME_2V2, // 0x02
   DR_MINIGAME_INVALID, // 0x03?
   DR_MINIGAME_BATTLE, // 0x04
-};
-
-static const dr_team_color MP2_PANEL_COLOR_TO_DR[] = {
-  DR_TEAM_COLOR_INVALID, // 0x00
-  DR_TEAM_COLOR_BLUE, // 0x01
-  DR_TEAM_COLOR_RED, // 0x02
-  DR_TEAM_COLOR_YELLOW, // 0x03
-  DR_TEAM_COLOR_GREEN, // 0x04
-};
-
-static const size_t MP2_SLOT_ADDRS[5] = {
-  0x800df6c4,
-  0x800df6c0,
-  0x800df6c1,
-  0x800df6c2,
-  0x800df6c3,
-};
-
-static const size_t MP2_MINIGAME_TITLE_ADDRS[6] = {
-  0xB1157363, 0xB1157389, 0xB11573AF, 0xB11573D1, 0xB11573F7, 0xB115741D,
 };
 
 static const dr_scene_name_t MP2_SCENE_NAMES[] =
@@ -178,84 +160,96 @@ static DrHostConfig makeConfig()
   config.core = dr_core_path(DR_CORE_MUPEN64PLUSNEXT).toStdString();
   config.game = (dr_roms_directory() + "/Mario Party 2 (USA).z64").toStdString();
 
-  config.scene_miniexplain[0] = 0x5F;
-  config.scene_miniexplain[1] = 0x60;
-  config.scene_miniexplain_count = 2;
-  config.scene_miniresults = 0x70;
-  config.scene_miniresults_battle = 0x6f;
-  // scene_miniresults_duel: not available in mp2
-  config.scene_board_results = 0x52;
-  config.scene_last_five_turns = 0x40;
-  config.scene_addr = 0x800FA63E; // u16
-
-  static const uint8_t mp2_boards[] = { 0x3E, 0x41, 0x43, 0x45, 0x47, 0x49, 0x4B };
-  memcpy(config.scene_board_ids, mp2_boards, sizeof(mp2_boards));
-  config.scene_board_id_count = sizeof(mp2_boards) / sizeof(*mp2_boards);
-
-  config.character_addr[0] = 0x800fd2c4;
-  config.character_addr[1] = 0x800fd2f8;
-  config.character_addr[2] = 0x800fd32c;
-  config.character_addr[3] = 0x800fd360;
-  config.controller_addr[0] = 0x800fd2c3;
-  config.controller_addr[1] = 0x800fd2f7;
-  config.controller_addr[2] = 0x800fd32b;
-  config.controller_addr[3] = 0x800fd35f;
-  config.difficulty_addr[0] = 0x800fd2c2;
-  config.difficulty_addr[1] = 0x800fd2f6;
-  config.difficulty_addr[2] = 0x800fd32a;
-  config.difficulty_addr[3] = 0x800fd35e;
-  config.team_addr[0] = 0x800fd2c0;
-  config.team_addr[1] = 0x800fd2f4;
-  config.team_addr[2] = 0x800fd328;
-  config.team_addr[3] = 0x800fd35c;
-  config.bot_addr[0] = 0x800fd2c7;
-  config.bot_addr[1] = 0x800fd2fb;
-  config.bot_addr[2] = 0x800fd32f;
-  config.bot_addr[3] = 0x800fd363;
-  config.result_addr[0] = 0x800fd2cc;
-  config.result_addr[1] = 0x800fd300;
-  config.result_addr[2] = 0x800fd334;
-  config.result_addr[3] = 0x800fd368;
-  config.bonus_result_addr[0] = 0x800fd2ca;
-  config.bonus_result_addr[1] = 0x800fd2fe;
-  config.bonus_result_addr[2] = 0x800fd332;
-  config.bonus_result_addr[3] = 0x800fd366;
-  config.panel_color_addr[0] = 0x800fd2db;
-  config.panel_color_addr[1] = 0x800fd30f;
-  config.panel_color_addr[2] = 0x800fd343;
-  config.panel_color_addr[3] = 0x800fd377;
-
   config.char_to_dr = MP2_CHAR_TO_DR;
   config.char_to_dr_size = sizeof(MP2_CHAR_TO_DR) / sizeof(*MP2_CHAR_TO_DR);
   config.diff_to_dr = MP2_DIFF_TO_DR;
   config.diff_to_dr_size = sizeof(MP2_DIFF_TO_DR) / sizeof(*MP2_DIFF_TO_DR);
 
-  config.battle_addr = 0x800F9208; // u16
-
-  config.turn_total_addr = 0x800F93AF;   // u8
-  config.turn_current_addr = 0x800F93B1; // u8
-
-  config.panel_color_to_dr = MP2_PANEL_COLOR_TO_DR;
-  config.panel_color_to_dr_size = sizeof(MP2_PANEL_COLOR_TO_DR) / sizeof(*MP2_PANEL_COLOR_TO_DR);
-
-  config.minigame_type_addr = 0x800DF6C5; // u8
   config.minigame_type_to_dr = MP2_MINIGAME_TYPE_TO_DR;
   config.minigame_type_to_dr_size = sizeof(MP2_MINIGAME_TYPE_TO_DR) / sizeof(*MP2_MINIGAME_TYPE_TO_DR);
-  config.next_scene_addr = 0x800fdc0b; // unused
-  config.minigame_id_addr = 0x800F93C8; // u16 (minigame_id_is_8bit == false)
-  config.minigame_id_is_8bit = false;
 
-  static const uint8_t blacklist[] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06 };
-  memcpy(config.minigame_blacklist, blacklist, sizeof(blacklist));
-  config.minigame_blacklist_count = 6;
+  config.cheats.cave = MP2_CAVE;
+  config.cheats.cave_addr = MP2_CAVE_ADDR;
+  config.cheats.cave_size = MP2_CAVE_SIZE;
+  config.cheats.cheat_board = MP2_HOOK_BOARD;
 
-  config.title_addrs = MP2_MINIGAME_TITLE_ADDRS;
-  config.title_id_base = 0x25;
-  config.title_id_step = 2;
-  config.title_len_offset = 2;
+  static const int mp2_1p_scenes[] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, -1 };
+  memcpy(config.scenes.single_player_ids, mp2_1p_scenes, sizeof(mp2_1p_scenes));
 
-  config.slot_addrs = MP2_SLOT_ADDRS;
-  config.scene_trampoline_addr = 0x800D34E0;
+  config.scenes.minigame_explain[0] = 0x5F;
+  config.scenes.minigame_explain[1] = 0x60;
+  config.scenes.minigame_explain[2] = -1;
+
+  static const int mp2_boards[] = { 0x3E, 0x41, 0x43, 0x45, 0x47, 0x49, 0x4B, -1 };
+  memcpy(config.scenes.boards, mp2_boards, sizeof(mp2_boards));
+
+  config.scenes.main_menu = 0x5B; // Information Center
+  config.scenes.board_results = 0x52;
+  config.scenes.last_five_turns = 0x40;
+  config.scenes.minigame_results = 0x70;
+  config.scenes.minigame_results_battle = 0x6f;
+  // scenes.minigame_results_duel: not available in mp2
+
+  config.stat.board = 0x0192;
+  config.stat.minigame = 0x0094;
+  // stat.duel: no duels in MP2
+
+  config.values.scene = { 0x800FA63E, DR_VALUE_TYPE_U16 };
+  config.values.character[0] = { 0x800fd2c4, DR_VALUE_TYPE_U8 };
+  config.values.character[1] = { 0x800fd2f8, DR_VALUE_TYPE_U8 };
+  config.values.character[2] = { 0x800fd32c, DR_VALUE_TYPE_U8 };
+  config.values.character[3] = { 0x800fd360, DR_VALUE_TYPE_U8 };
+  config.values.controller[0] = { 0x800fd2c3, DR_VALUE_TYPE_U8 };
+  config.values.controller[1] = { 0x800fd2f7, DR_VALUE_TYPE_U8 };
+  config.values.controller[2] = { 0x800fd32b, DR_VALUE_TYPE_U8 };
+  config.values.controller[3] = { 0x800fd35f, DR_VALUE_TYPE_U8 };
+  config.values.difficulty[0] = { 0x800fd2c2, DR_VALUE_TYPE_U8 };
+  config.values.difficulty[1] = { 0x800fd2f6, DR_VALUE_TYPE_U8 };
+  config.values.difficulty[2] = { 0x800fd32a, DR_VALUE_TYPE_U8 };
+  config.values.difficulty[3] = { 0x800fd35e, DR_VALUE_TYPE_U8 };
+  config.values.team[0] = { 0x800fd2c0, DR_VALUE_TYPE_U8 };
+  config.values.team[1] = { 0x800fd2f4, DR_VALUE_TYPE_U8 };
+  config.values.team[2] = { 0x800fd328, DR_VALUE_TYPE_U8 };
+  config.values.team[3] = { 0x800fd35c, DR_VALUE_TYPE_U8 };
+  config.values.bot[0] = { 0x800fd2c7, DR_VALUE_TYPE_U8 };
+  config.values.bot[1] = { 0x800fd2fb, DR_VALUE_TYPE_U8 };
+  config.values.bot[2] = { 0x800fd32f, DR_VALUE_TYPE_U8 };
+  config.values.bot[3] = { 0x800fd363, DR_VALUE_TYPE_U8 };
+  config.values.result[0] = { 0x800fd2cc, DR_VALUE_TYPE_U16 };
+  config.values.result[1] = { 0x800fd300, DR_VALUE_TYPE_U16 };
+  config.values.result[2] = { 0x800fd334, DR_VALUE_TYPE_U16 };
+  config.values.result[3] = { 0x800fd368, DR_VALUE_TYPE_U16 };
+  config.values.bonus_result[0] = { 0x800fd2ca, DR_VALUE_TYPE_S16 };
+  config.values.bonus_result[1] = { 0x800fd2fe, DR_VALUE_TYPE_S16 };
+  config.values.bonus_result[2] = { 0x800fd332, DR_VALUE_TYPE_S16 };
+  config.values.bonus_result[3] = { 0x800fd366, DR_VALUE_TYPE_S16 };
+  config.values.panel_color[0] = { 0x800fd2db, DR_VALUE_TYPE_U8 };
+  config.values.panel_color[1] = { 0x800fd30f, DR_VALUE_TYPE_U8 };
+  config.values.panel_color[2] = { 0x800fd343, DR_VALUE_TYPE_U8 };
+  config.values.panel_color[3] = { 0x800fd377, DR_VALUE_TYPE_U8 };
+  config.values.coins[0] = { 0x800fd2c8, DR_VALUE_TYPE_U16 };
+  config.values.coins[1] = { 0x800fd2fc, DR_VALUE_TYPE_U16 };
+  config.values.coins[2] = { 0x800fd330, DR_VALUE_TYPE_U16 };
+  config.values.coins[3] = { 0x800fd364, DR_VALUE_TYPE_U16 };
+  config.values.stars[0] = { 0x800fd2ce, DR_VALUE_TYPE_U16 };
+  config.values.stars[1] = { 0x800fd302, DR_VALUE_TYPE_U16 };
+  config.values.stars[2] = { 0x800fd336, DR_VALUE_TYPE_U16 };
+  config.values.stars[3] = { 0x800fd36a, DR_VALUE_TYPE_U16 };
+  config.values.minigame_title_color = { 0x800C8D78, DR_VALUE_TYPE_U8 };
+  config.values.battle_pot = { 0x800f9208, DR_VALUE_TYPE_U16 };
+  config.values.minigame_type = { 0x800DF6C5, DR_VALUE_TYPE_U8 };
+  config.values.minigame_id = { 0x800F93C8, DR_VALUE_TYPE_S16 };
+  config.values.title_block = { MP2_TITLE_BLOCK, DR_VALUE_TYPE_POINTER };
+  config.values.title_color = { MP2_TITLE_COLORS, DR_VALUE_TYPE_POINTER };
+  config.values.scene_stack = { 0x800E1F58, DR_VALUE_TYPE_POINTER };
+  config.values.scene_stack_count = { 0x800E1F52, DR_VALUE_TYPE_S16 };
+  config.values.turn_total = { 0x800F93AF, DR_VALUE_TYPE_U8 };
+  config.values.turn_current = { 0x800F93B1, DR_VALUE_TYPE_U8 };
+  config.values.turn_owner = { 0x800F93C6, DR_VALUE_TYPE_S16 };
+  config.values.space_index = { 0x800F93CA, DR_VALUE_TYPE_S16 };
+  config.values.rng = { 0x800c99b4, DR_VALUE_TYPE_U32 };
+
+  config.host_state_addr = MP2_HOST_STATE;
 
   config.scene_names = MP2_SCENE_NAMES;
 
@@ -273,52 +267,8 @@ MarioParty2Host::MarioParty2Host(QObject *parent)
         called = true;
         m_core->cheatReset();
 
-        // Scene transition trampoline: hook at 0x8007712C, data cell at 0x800D34E0
-        m_core->cheatSet(2, true,
-          // Hook: J 0x800D34E4 + NOP at 0x8007712C
-          "8107712C 0803"
-          "+8107712E 4D39"
-          "+81077130 0000"  // NOP displaces original instruction at 0x80077130
-          "+81077132 0000"
-          // Trampoline at 0x800D34E4
-          "+810D34E4 3C08"  // LUI  T0, 0x800D
-          "+810D34E6 800D"
-          "+810D34E8 8D08"  // LW   T0, 0x34E0(T0)   — T0 = *scene_trampoline_addr
-          "+810D34EA 34E0"
-          "+810D34EC 1100"  // BEQ  T0, ZERO, +5     — if 0, passthrough
-          "+810D34EE 0005"
-          "+810D34F0 0000"  // NOP                   — (delay slot)
-          "+810D34F2 0000"
-          "+810D34F4 0008"  // SRL  A0, T0, 16       — A0 = scene
-          "+810D34F6 2402"
-          "+810D34F8 3107"  // ANDI A3, T0, 0xFFFF   — A3 = modifier
-          "+810D34FA FFFF"
-          "+810D34FC 0801"  // J    0x80077134       — return with overridden scene
-          "+810D34FE DC4D"
-          "+810D3500 0000"  // NOP                   — (delay slot)
-          "+810D3502 0000"
-          // Passthrough: displaced original instructions from 0x8007712C + 0x80077130
-          "+810D3504 AC44"  // TODO: displaced instruction from 0x8007712C
-          "+810D3506 0000"
-          "+810D3508 A447"  // TODO: displaced instruction from 0x80077130
-          "+810D350A 0000"
-          "+810D350C 0801"  // J    0x80077134       — return passthrough
-          "+810D350E DC4D"
-          "+810D3510 0000"  // NOP                   — (delay slot)
-          "+810D3512 0000");
-
-        // Force Mini-Game Roulette IDs
-        m_core->cheatSet(0, true,
-          "8104AF98 0010"  // SLL  V0, S0, 1      — roulette ID offset = slot_index * 2 (step=2)
-          "+8104AF9A 1040"
-          "+8104AF9C 2442"  // ADDIU V0, V0, 0x25  — roulette ID = offset + 0x25 (base)
-          "+8104AF9E 0025"
-          "+8104AFA8 A022"  // SB   V0, X(AT)      — store injected ID (upper half: patch source reg to V0)
-          "+8104B020 2400"  // NOP                 — suppress downstream overwrite of injected ID
-        );
-
         // Recommended Codes
-        m_core->cheatSet(1, true,
+        m_core->cheatSet(0, true,
           /* Force always save on... */
           "800F93CC 0000"
           "+800F93CE 0000"
@@ -329,26 +279,9 @@ MarioParty2Host::MarioParty2Host(QObject *parent)
           /* Advance "START" prompt */
           "+8104F0FC 2400"
 
-          /* Save check -- no longer needed
-          "+D10D8BE8 2E03"
-          "+800C3C92 00CE"
-          "+D30D8BE8 2E03"
-          "+800C3C92 0000"
-          "+D10FA63E 005B"
-          "+800C3C93 001E"
-          "+D10C3C92 CE1E"
-          "+81113068 0008"
-          "+D10C3C92 CE1E"
-          "+8111306A 0031"
-          */
-
           /* Honestly don't remember. These may both be speed */
           "+810657EE 0005"
-          "+81062D8C 1000"
-
-          /* Disable proceed on board results */
-          "+D10FA63E 0051"
-          "+811072A0 2400");
+          "+81062D8C 1000");
       }
     },
     Qt::DirectConnection);

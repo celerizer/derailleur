@@ -2,12 +2,14 @@
 #define DR_GUEST_LIST_H
 
 #include "DrGuest.h"
+#include "DrHost.h"
 #include <QByteArray>
 #include <QList>
 #include <QSet>
 #include <QStackedWidget>
+#include <array>
 
-class DrGuestList : public QStackedWidget
+class DrGuestList : public QStackedWidget, public DrMinigameSource
 {
   Q_OBJECT
 
@@ -17,6 +19,12 @@ public:
   void add(DrGuest *guest);
   const QList<DrGuest *> &guests() const { return m_guests; }
   DrGuest *currentGuest() const { return m_guests.value(currentIndex()); }
+
+  /// DrMinigameSource: the cached candidates for a type, and a full reroll. The
+  /// cache is empty until the first query (see rerollMinigames), which keeps
+  /// netplay peers rolling in lockstep. See DrMinigameSource for the contract.
+  const std::array<DrMinigameCandidate, 5> &minigameCandidates(dr_minigame_type type) override;
+  void rerollMinigames(void) override;
 
   DrGuest *pickMinigame(dr_minigame_type type, const dr_mp_minigame_t *&outMinigame);
   bool activateGuest(DrGuest *guest);
@@ -47,6 +55,11 @@ private:
   QList<DrGuest *> m_guests;
   DrGuest *m_activeGuest = nullptr;
   QSet<quint32> m_disabled; // disabled mini-game keys: (guestIndex << 16) | ordinal
+
+  /* Rolled candidate cache, indexed by dr_minigame_type. Empty (m_rolled false)
+   * until the first query or reroll. */
+  std::array<std::array<DrMinigameCandidate, 5>, DR_MINIGAME_SIZE> m_candidates = {};
+  bool m_rolled = false;
 };
 
 #endif

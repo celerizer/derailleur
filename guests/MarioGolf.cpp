@@ -34,13 +34,18 @@ typedef enum
 // input latency (priority) while everyone else waits.
 static const size_t MG_TURN_ADDR = 0x800FBE74;
 
-// u8 per-player controller port (0-3), 0xB8-strided (same per-player block as shots/
-// sunk). Maps an in-game slot to its controller port for golf-mode/scoring routing.
+// u8 per-player controller port (0-3), 0xB8-strided. The block defaults to 0 (all
+// golfers read controller 0), so we write each golfer its own port for local + netplay.
 static const size_t MG_PLAYER_PORT_ADDR[4] = { 0x801B71F7, 0x801B72AF, 0x801B7367, 0x801B741F };
 
 // Per-player hole state, 0xB8-strided (P1 0x801B71F0, P3 0x801B7360, P4 0x801B7418).
 static const size_t MG_SHOTS_ADDR[4] = { 0x801B71F0, 0x801B72A8, 0x801B7360, 0x801B7418 }; // u32 strokes
 static const size_t MG_SUNK_ADDR[4]  = { 0x801B71F6, 0x801B72AE, 0x801B7366, 0x801B741E }; // u8 ball sunk
+
+// u8 bool: is a ball currently in flight? The stroke counter increments the moment the
+// swing is made, so a hole can't be judged off the counter alone -- wait for this to
+// pulse back to 0, meaning the ball that stroke launched has come to rest.
+static const size_t MG_IN_FLIGHT_ADDR = 0x801061CB;
 
 // u8 par for the current hole.
 static const size_t MG_PAR_ADDR = 0x800BAA04;
@@ -112,7 +117,7 @@ MarioGolf::MarioGolf(QObject *parent)
     for (int hole = 0; hole < MG_HOLE_COUNT; hole++, n++)
     {
       const QByteArray label =
-        QString("Mini-Golf: %1 Hole %2").arg(courses[c].name).arg(hole + 1).toUtf8();
+        QString("Golf: %1 %2").arg(courses[c].name).arg(hole + 1).toUtf8();
       qstrncpy(m_minigameNames[n], label.constData(), sizeof(m_minigameNames[n]));
       m_minigames[n] = { m_minigameNames[n], DR_MINIGAME_4P, courses[c].id, hole, DR_NO_QUIRKS };
     }
@@ -137,6 +142,8 @@ void MarioGolf::doApplyGameData(const DrGameData &data)
     m_prevSunk[i] = false;
     m_holeStrokes[i] = -1;
   }
+  m_prevInFlight = false;
+  m_shotPending = false;
 
   loadState(state());
 
@@ -172,9 +179,6 @@ void MarioGolf::doApplyGameData(const DrGameData &data)
     m_retro->writeForFrames(MG_BOT_ADDR[slot], &bot, 1, 300);
   }
 
-  /* TEST (remove): verify the port write stuck by logging the block 5s later. */
-  m_portLogDelay = 300;
-
   /* Don't reveal yet. Wait 60 frames for the loaded state to settle, force an A press
    * on P1 to advance past the intro, then reveal (startMinigame) once the game state
    * reaches MG_STATE_FINISHED -- see run(). */
@@ -185,16 +189,6 @@ void MarioGolf::doApplyGameData(const DrGameData &data)
 void MarioGolf::run()
 {
   m_retro->tickFrameWrites();
-
-  /* TEST (remove): confirm the port write stuck by logging the block 5s after setup. */
-  if (m_portLogDelay > 0 && --m_portLogDelay == 0)
-  {
-    uint8_t p[4] = {};
-    for (unsigned i = 0; i < 4; i++)
-      m_retro->readu8(&p[i], MG_PLAYER_PORT_ADDR[i]);
-    log(DR_LOG_INFO, qPrintable(QString("Mario Golf: ports +5s = %1 %2 %3 %4")
-      .arg(p[0]).arg(p[1]).arg(p[2]).arg(p[3])));
-  }
 
   /* Release the forced P1 A press a few frames after it was applied. */
   if (m_aReleaseDelay > 0 && --m_aReleaseDelay == 0)
@@ -253,6 +247,21 @@ void MarioGolf::run()
     log(DR_LOG_INFO, qPrintable(QString("Mario Golf: par is now %1").arg(par)));
   }
 
+  /* A stroke's outcome isn't known until its ball settles: the counter increments at the
+   * swing, but the ball can still sink (or not) while it's in flight. Clear the pending
+   * stroke on the in-flight falling edge, before the loop below can flag a new one. */
+  uint8_t inFlightRaw = 0;
+  if (m_retro->readu8(&inFlightRaw, MG_IN_FLIGHT_ADDR) == DR_OK)
+  {
+    const bool inFlight = (inFlightRaw != 0);
+    if (m_prevInFlight && !inFlight)
+      m_shotPending = false;
+    m_prevInFlight = inFlight;
+  }
+
+  /* First pass: sample every slot and latch hole-outs. A stroke that appeared this frame
+   * flags the ball as pending, so it must run to completion before anything below reads
+   * m_shotPending -- an in-flight ball can still sink. */
   uint32_t shots[4] = {};
   bool sunk[4] = {};
   for (unsigned slot = 0; slot < 4; slot++)
@@ -265,8 +274,11 @@ void MarioGolf::run()
     sunk[slot] = (s != 0);
 
     if (shots[slot] > m_prevShots[slot])
+    {
+      m_shotPending = true;
       log(DR_LOG_INFO, qPrintable(QString("Mario Golf: player %1 stroke %2")
         .arg(m_slotToIndex[slot]).arg(shots[slot])));
+    }
     if (sunk[slot] && !m_prevSunk[slot])
     {
       log(DR_LOG_INFO, qPrintable(QString("Mario Golf: player %1 sunk it in %2 strokes")
@@ -280,6 +292,24 @@ void MarioGolf::run()
 
     m_prevShots[slot] = shots[slot];
     m_prevSunk[slot] = sunk[slot];
+  }
+
+  /* Nothing is decided while a ball is still in the air -- not the mercy rule, and not
+   * the hole itself. A player who has just swung can still tie or beat the leader. */
+  if (m_shotPending)
+    return;
+
+  /* Mercy rule: if their par-stroke came to rest without sinking, max them out (9) so
+   * the game gives up on the hole and moves on instead of letting them keep putting. */
+  for (unsigned slot = 0; slot < 4; slot++)
+  {
+    if (m_slotToIndex[slot] < 0 || sunk[slot] || shots[slot] < par || shots[slot] >= 9)
+      continue;
+    m_retro->writeu32(9, MG_SHOTS_ADDR[slot]);
+    shots[slot] = 9;
+    m_prevShots[slot] = 9;
+    log(DR_LOG_INFO, qPrintable(QString("Mario Golf: player %1 mercy-ruled (missed par)")
+      .arg(m_slotToIndex[slot])));
   }
 
   /* A sink only counts if it is par or better; find the lowest such latched hole-out. */

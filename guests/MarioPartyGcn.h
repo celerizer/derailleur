@@ -28,6 +28,11 @@ struct MpGcnConfig
   /// The primary coin amount gained from a mini-game, usually 0 or 10
   size_t result_addr[4];
 
+  /// Board coins and stars, copied in from the host so the mini-game shows what
+  /// the board has. Read at the width each game declares. 0 address = don't write.
+  dr_value_t coins[4];
+  dr_value_t stars[4];
+
   const uint16_t *character_ids;
   const dr_mp_minigame_t *minigames;
 };

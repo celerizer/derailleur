@@ -33,9 +33,10 @@ private:
   bool m_finishPending = false;
   uint32_t m_prevShots[4] = {};              // last-frame strokes per slot (for logging)
   bool m_prevSunk[4] = {};                   // last-frame sunk flag per slot (for logging)
+  bool m_prevInFlight = false;               // last-frame ball-in-flight flag
+  bool m_shotPending = false;                // a stroke is taken but its ball hasn't settled
   int m_holeStrokes[4] = { -1, -1, -1, -1 }; // latched strokes at hole-out per slot, else -1
   int m_prevPar = -1;                        // last-logged par (diagnostic)
-  int m_portLogDelay = -1;                    // TEST (remove): frames until the +5s port log
   int m_startupDelay = 0;                    // frames to wait after loadState before the A press
   int m_aReleaseDelay = 0;                   // frames until the forced P1 A press releases
 

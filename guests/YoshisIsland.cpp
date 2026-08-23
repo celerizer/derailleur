@@ -4,7 +4,7 @@
 
 static const dr_mp_minigame_t YI_MINIGAMES[] = {
   /* @todo fill in real mini-games (e.g. one of the bonus mini-games). */
-  { nullptr, DR_MINIGAME_INVALID, 0xFF, 0xFF, DR_NO_QUIRKS },
+  { nullptr, DR_MINIGAME_INVALID, 0xFF, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
 };
 
 YoshisIsland::YoshisIsland(QObject *parent)

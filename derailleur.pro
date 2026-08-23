@@ -26,6 +26,8 @@ CONFIG += QRETRO_CONFIG_NO_SYSTEMINFO
 
 include(QRetro/QRetro.pri)
 
+INCLUDEPATH += $$PWD
+
 SOURCES += \
     DrChallenge.cpp \
     DrCommon.cpp \
@@ -34,7 +36,6 @@ SOURCES += \
     DrDownloader.cpp \
     DrGuest.cpp \
     DrHost.cpp \
-    MarioPartyN64Host.cpp \
     DrInputStore.cpp \
     DrMinigameFilter.cpp \
     DrNetplay.cpp \
@@ -45,9 +46,12 @@ SOURCES += \
     DrLogger.cpp \
     DrRetro.cpp \
     QRetroInputBackendShared.cpp \
+    hosts/MarioPartyN64Host.cpp \
     hosts/MarioParty1Host.cpp \
     hosts/MarioParty2Host.cpp \
     hosts/MarioParty3Host.cpp \
+    hosts/MarioPartyGcnHost.cpp \
+    hosts/MarioParty4Host.cpp \
     hosts/SonicShuffleHand.cpp \
     hosts/SonicShuffleHost.cpp \
     guests/BanjoTooie.cpp \
@@ -89,7 +93,6 @@ HEADERS += \
     DrGuest.h \
     DrGuestList.h \
     DrHost.h \
-    MarioPartyN64Host.h \
     DrInputStore.h \
     DrMinigameFilter.h \
     DrNetplay.h \
@@ -99,9 +102,12 @@ HEADERS += \
     DrToolWindow.h \
     DrRetro.h \
     QRetroInputBackendShared.h \
+    hosts/MarioPartyN64Host.h \
     hosts/MarioParty1Host.h \
     hosts/MarioParty2Host.h \
     hosts/MarioParty3Host.h \
+    hosts/MarioPartyGcnHost.h \
+    hosts/MarioParty4Host.h \
     hosts/SonicShuffleHand.h \
     hosts/SonicShuffleHost.h \
     guests/BanjoTooie.h \

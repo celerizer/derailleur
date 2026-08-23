@@ -2,9 +2,10 @@
 
 #include <cstring>
 
+#include <asm/mp3.h>
+
 #include <QRetro.h>
 #include <QRetroDirectories.h>
-
 
 static const dr_character MP3_CHAR_TO_DR[] = {
   DR_CHARACTER_MARIO, // 0x00
@@ -31,55 +32,6 @@ static const dr_minigame_type MP3_MINIGAME_TYPE_TO_DR[] = {
   DR_MINIGAME_BATTLE, // 0x04
   DR_MINIGAME_DUEL, // 0x05
 };
-
-static const dr_team_color MP3_PANEL_COLOR_TO_DR[] = {
-  DR_TEAM_COLOR_INVALID, // 0x00
-  DR_TEAM_COLOR_BLUE, // 0x01
-  DR_TEAM_COLOR_RED, // 0x02
-  DR_TEAM_COLOR_YELLOW, // 0x03
-  DR_TEAM_COLOR_GREEN, // 0x04
-};
-
-static const char MP3_CHEAT_REGULAR_BOARD[] =
-  "810DFE80 0010"
-  "+810DFE82 1040"
-  "+810DFE84 2442"
-  "+810DFE86 0002"
-  "+810DFE90 A022"
-  "+810DFEBC 2400"
-  "+810DFF28 2400";
-
-static const char MP3_CHEAT_DUEL_BOARD[] =
-  "810DFE70 0010"
-  "+810DFE72 1040"
-  "+810DFE74 2442"
-  "+810DFE76 0002"
-  "+810DFE80 A022"
-  "+810DFEC4 2400"
-  "+810DE2AC 2400";
-
-// Hardware addresses (accessed wordflipped via MarioPartyN64Host). u8 fields unflip ^3.
-static const size_t MP3_SLOT_ADDRS[5] = {
-  0x80102C08, // slot 0
-  0x80102C09, // slot 1
-  0x80102C0A, // slot 2
-  0x80102C0B, // slot 3
-  0x80102C0C, // slot 4
-};
-
-// TABLE_BASE=0xB122D74A, HEADER=0x124 (0x48 entries), ENTRY=0x30
-// Slots use odd entries (1,3,5,7,9), each spanning into the next entry for capacity
-static const size_t MP3_MINIGAME_TITLE_ADDRS[6] = {
-  0xB122D89F, // entry  1 len byte
-  0xB122D8FF, // entry  3 len byte
-  0xB122D95F, // entry  5 len byte
-  0xB122D9BF, // entry  7 len byte
-  0xB122DA1F, // entry  9 len byte
-  0xB122DA7F, // entry 11 len byte (sentinel)
-};
-
-// 72 game guy results
-/* duel results on duel map scene 0x73 */
 
 static const dr_scene_name_t MP3_SCENE_NAMES[] =
 {
@@ -176,7 +128,7 @@ static const dr_scene_name_t MP3_SCENE_NAMES[] =
   { 0x58, "Booting up" }, // Nintendo/Hudson logos
   { 0x59, "sldebug" }, // unused
 
-  { 0x5a, "Loading" },
+  { 0x5a, "Loading (duel)" },
   { 0x5b, "Gate Guy" },
   { 0x5c, "Arrowhead" },
   { 0x5d, "Pipesqueak" },
@@ -186,7 +138,7 @@ static const dr_scene_name_t MP3_SCENE_NAMES[] =
   // { 0x61, "" },
   // { 0x62, "" },
   // { 0x63, "" },
-  // { 0x64, "" },
+  { 0x64, "Duel Board intro", true },
   // { 0x65, "" },
   // { 0x66, "" },
   { 0x67, "Initializing save file" },
@@ -225,100 +177,105 @@ static DrHostConfig makeConfig()
   config.core = dr_core_path(DR_CORE_MUPEN64PLUSNEXT).toStdString();
   config.game = (dr_roms_directory() + "/Mario Party 3 (USA).z64").toStdString();
 
-  config.scene_miniexplain[0] = 0x70;
-  config.scene_miniexplain_count = 1;
-  config.scene_miniresults = 0x71;
-  config.scene_miniresults_battle = 0x74;
-  config.scene_miniresults_duel = 0x73;
-  config.scene_addr = 0x800ce202; // u16
-
-  static const uint8_t mp3_boards[] = { 0x48, 0x49, 0x4A, 0x4B, 0x4C, 0x4D };
-  memcpy(config.scene_board_ids, mp3_boards, sizeof(mp3_boards));
-  config.scene_board_id_count = sizeof(mp3_boards) / sizeof(*mp3_boards);
-
-  static const uint8_t mp3_duel_boards[] = { 0x5B, 0x5C, 0x5D, 0x5E, 0x5F, 0x60 };
-  memcpy(config.scene_duel_board_ids, mp3_duel_boards, sizeof(mp3_duel_boards));
-  config.scene_duel_board_id_count = sizeof(mp3_duel_boards) / sizeof(*mp3_duel_boards);
-
-  config.character_addr[0] = 0x800d110b;
-  config.character_addr[1] = 0x800d1143;
-  config.character_addr[2] = 0x800d117b;
-  config.character_addr[3] = 0x800d11b3;
-  config.controller_addr[0] = 0x800d110a;
-  config.controller_addr[1] = 0x800d1142;
-  config.controller_addr[2] = 0x800d117a;
-  config.controller_addr[3] = 0x800d11b2;
-  config.difficulty_addr[0] = 0x800d1109;
-  config.difficulty_addr[1] = 0x800d1141;
-  config.difficulty_addr[2] = 0x800d1179;
-  config.difficulty_addr[3] = 0x800d11b1;
-  config.team_addr[0] = 0x800d1108;
-  config.team_addr[1] = 0x800d1140;
-  config.team_addr[2] = 0x800d1178;
-  config.team_addr[3] = 0x800d11b0;
-  config.bot_addr[0] = 0x800d110c;
-  config.bot_addr[1] = 0x800d1144;
-  config.bot_addr[2] = 0x800d117c;
-  config.bot_addr[3] = 0x800d11b4;
-  config.result_addr[0] = 0x800d1110;
-  config.result_addr[1] = 0x800d1148;
-  config.result_addr[2] = 0x800d1180;
-  config.result_addr[3] = 0x800d11b8;
-  config.bonus_result_addr[0] = 0x800d110e;
-  config.bonus_result_addr[1] = 0x800d1146;
-  config.bonus_result_addr[2] = 0x800d117e;
-  config.bonus_result_addr[3] = 0x800d11b6;
-  config.panel_color_addr[0] = 0x800d1124;
-  config.panel_color_addr[1] = 0x800d115c;
-  config.panel_color_addr[2] = 0x800d1194;
-  config.panel_color_addr[3] = 0x800d11cc;
-  config.coins_addr[0] = 0x800d1112;
-  config.coins_addr[1] = 0x800d114a;
-  config.coins_addr[2] = 0x800d1182;
-  config.coins_addr[3] = 0x800d11ba;
-  config.mg_star_addr[0] = 0x800d1130;
-  config.mg_star_addr[1] = 0x800d1168;
-  config.mg_star_addr[2] = 0x800d11a0;
-  config.mg_star_addr[3] = 0x800d11d8;
-  /* MP3 sometimes doesn't credit the mini-game star; the host adds it (bandaid). */
-  config.fixup_mg_star = true;
-
-  config.scene_board_results = 0x4f;
-  config.scene_last_five_turns = 0x51;
-
   config.char_to_dr = MP3_CHAR_TO_DR;
   config.char_to_dr_size = sizeof(MP3_CHAR_TO_DR) / sizeof(*MP3_CHAR_TO_DR);
   config.diff_to_dr = MP3_DIFF_TO_DR;
   config.diff_to_dr_size = sizeof(MP3_DIFF_TO_DR) / sizeof(*MP3_DIFF_TO_DR);
 
-  config.battle_addr = 0x800cc698; // u16
-
-  config.panel_color_to_dr = MP3_PANEL_COLOR_TO_DR;
-  config.panel_color_to_dr_size = sizeof(MP3_PANEL_COLOR_TO_DR) / sizeof(*MP3_PANEL_COLOR_TO_DR);
-
-  config.minigame_type_addr = 0x80102C0D; // u8
   config.minigame_type_to_dr = MP3_MINIGAME_TYPE_TO_DR;
   config.minigame_type_to_dr_size = sizeof(MP3_MINIGAME_TYPE_TO_DR) / sizeof(*MP3_MINIGAME_TYPE_TO_DR);
-  config.next_scene_addr = 0x800D2032; // u16, unused
-  config.next_scene_modifier_addr = 0x800D2034; // u16, unused
-  config.minigame_id_addr = 0x800cd068; // u8 (minigame_id_is_8bit == true)
-  config.minigame_id_is_8bit = true;
 
-  static const uint8_t blacklist[] = { 0x43, 0x44, 0x45 }; // ignore game guy
-  memcpy(config.minigame_blacklist, blacklist, sizeof(blacklist));
-  config.minigame_blacklist_count = 3;
+  config.cheats.cave = MP3_CAVE;
+  config.cheats.cave_addr = MP3_CAVE_ADDR;
+  config.cheats.cave_size = MP3_CAVE_SIZE;
+  config.cheats.cheat_board = MP3_HOOK_BOARD;
+  config.cheats.cheat_duel = MP3_HOOK_DUEL;
 
-  config.title_addrs = MP3_MINIGAME_TITLE_ADDRS;
-  config.title_id_base = 2;
-  config.title_id_step = 2;
-  config.title_len_offset = 3;
-  config.slot_addrs = MP3_SLOT_ADDRS;
-  config.scene_trampoline_addr = 0x800A7A54;
-  config.turn_total_addr = 0x800CD05Au; // u8
-  config.turn_current_addr = 0x800CD05Bu; // u8
-  config.scene_duel_slot0_addr = 0x80102BA8u; // u8
-  config.cheat_regular_board = MP3_CHEAT_REGULAR_BOARD;
-  config.cheat_duel_board = MP3_CHEAT_DUEL_BOARD;
+  // item / 1P mini-games (Winner's Wheel .. Swing 'n' Swipe)
+  static const int mp3_1p_scenes[] = { 0x3B, 0x3C, 0x3D, 0x3E, 0x3F, 0x40, -1 };
+  memcpy(config.scenes.single_player_ids, mp3_1p_scenes, sizeof(mp3_1p_scenes));
+
+  config.scenes.minigame_explain[0] = 0x70;
+  config.scenes.minigame_explain[1] = -1;
+
+  static const int mp3_boards[] = { 0x48, 0x49, 0x4A, 0x4B, 0x4C, 0x4D, -1 };
+  memcpy(config.scenes.boards, mp3_boards, sizeof(mp3_boards));
+
+  static const int mp3_duel_boards[] = { 0x5B, 0x5C, 0x5D, 0x5E, 0x5F, 0x60, -1 };
+  memcpy(config.scenes.boards_duel, mp3_duel_boards, sizeof(mp3_duel_boards));
+
+  config.scenes.main_menu = 0x77; // Castle Grounds
+  config.scenes.board_results = 0x4f;
+  config.scenes.last_five_turns = 0x51;
+  config.scenes.minigame_results = 0x71;
+  config.scenes.minigame_results_battle = 0x74;
+  config.scenes.minigame_results_duel = 0x73;
+
+  config.stat.board = 0x0192;
+  config.stat.minigame = 0x0192;
+  config.stat.duel = 0x4190;
+
+  config.values.scene = { 0x800ce202, DR_VALUE_TYPE_U16 };
+  config.values.character[0] = { 0x800d110b, DR_VALUE_TYPE_U8 };
+  config.values.character[1] = { 0x800d1143, DR_VALUE_TYPE_U8 };
+  config.values.character[2] = { 0x800d117b, DR_VALUE_TYPE_U8 };
+  config.values.character[3] = { 0x800d11b3, DR_VALUE_TYPE_U8 };
+  config.values.controller[0] = { 0x800d110a, DR_VALUE_TYPE_U8 };
+  config.values.controller[1] = { 0x800d1142, DR_VALUE_TYPE_U8 };
+  config.values.controller[2] = { 0x800d117a, DR_VALUE_TYPE_U8 };
+  config.values.controller[3] = { 0x800d11b2, DR_VALUE_TYPE_U8 };
+  config.values.difficulty[0] = { 0x800d1109, DR_VALUE_TYPE_U8 };
+  config.values.difficulty[1] = { 0x800d1141, DR_VALUE_TYPE_U8 };
+  config.values.difficulty[2] = { 0x800d1179, DR_VALUE_TYPE_U8 };
+  config.values.difficulty[3] = { 0x800d11b1, DR_VALUE_TYPE_U8 };
+  config.values.team[0] = { 0x800d1108, DR_VALUE_TYPE_U8 };
+  config.values.team[1] = { 0x800d1140, DR_VALUE_TYPE_U8 };
+  config.values.team[2] = { 0x800d1178, DR_VALUE_TYPE_U8 };
+  config.values.team[3] = { 0x800d11b0, DR_VALUE_TYPE_U8 };
+  config.values.bot[0] = { 0x800d110c, DR_VALUE_TYPE_U8 };
+  config.values.bot[1] = { 0x800d1144, DR_VALUE_TYPE_U8 };
+  config.values.bot[2] = { 0x800d117c, DR_VALUE_TYPE_U8 };
+  config.values.bot[3] = { 0x800d11b4, DR_VALUE_TYPE_U8 };
+  config.values.result[0] = { 0x800d1110, DR_VALUE_TYPE_U16 };
+  config.values.result[1] = { 0x800d1148, DR_VALUE_TYPE_U16 };
+  config.values.result[2] = { 0x800d1180, DR_VALUE_TYPE_U16 };
+  config.values.result[3] = { 0x800d11b8, DR_VALUE_TYPE_U16 };
+  config.values.bonus_result[0] = { 0x800d110e, DR_VALUE_TYPE_S16 };
+  config.values.bonus_result[1] = { 0x800d1146, DR_VALUE_TYPE_S16 };
+  config.values.bonus_result[2] = { 0x800d117e, DR_VALUE_TYPE_S16 };
+  config.values.bonus_result[3] = { 0x800d11b6, DR_VALUE_TYPE_S16 };
+  config.values.panel_color[0] = { 0x800d1124, DR_VALUE_TYPE_U8 };
+  config.values.panel_color[1] = { 0x800d115c, DR_VALUE_TYPE_U8 };
+  config.values.panel_color[2] = { 0x800d1194, DR_VALUE_TYPE_U8 };
+  config.values.panel_color[3] = { 0x800d11cc, DR_VALUE_TYPE_U8 };
+  config.values.coins[0] = { 0x800d1112, DR_VALUE_TYPE_U16 };
+  config.values.coins[1] = { 0x800d114a, DR_VALUE_TYPE_U16 };
+  config.values.coins[2] = { 0x800d1182, DR_VALUE_TYPE_U16 };
+  config.values.coins[3] = { 0x800d11ba, DR_VALUE_TYPE_U16 };
+  config.values.stars[0] = { 0x800d1116, DR_VALUE_TYPE_U8 };
+  config.values.stars[1] = { 0x800d114e, DR_VALUE_TYPE_U8 };
+  config.values.stars[2] = { 0x800d1186, DR_VALUE_TYPE_U8 };
+  config.values.stars[3] = { 0x800d11be, DR_VALUE_TYPE_U8 };
+  config.values.mg_star[0] = { 0x800d1130, DR_VALUE_TYPE_S16 };
+  config.values.mg_star[1] = { 0x800d1168, DR_VALUE_TYPE_S16 };
+  config.values.mg_star[2] = { 0x800d11a0, DR_VALUE_TYPE_S16 };
+  config.values.mg_star[3] = { 0x800d11d8, DR_VALUE_TYPE_S16 };
+  config.values.minigame_title_color = { 0x80100E9C, DR_VALUE_TYPE_U8 };
+  config.values.battle_pot = { 0x800cc698, DR_VALUE_TYPE_U16 };
+  config.values.minigame_type = { 0x80102C0D, DR_VALUE_TYPE_U8 };
+  config.values.minigame_id = { 0x800cd068, DR_VALUE_TYPE_S8 };
+  config.values.title_block = { MP3_TITLE_BLOCK, DR_VALUE_TYPE_POINTER };
+  config.values.title_color = { MP3_TITLE_COLORS, DR_VALUE_TYPE_POINTER };
+  config.values.title_type_duel = { 0x80102BAD, DR_VALUE_TYPE_U8 };
+  config.values.scene_stack = { 0x800D20F0, DR_VALUE_TYPE_POINTER };
+  config.values.scene_stack_count = { 0x800D6B60, DR_VALUE_TYPE_S16 };
+  config.values.turn_total = { 0x800CD05Au, DR_VALUE_TYPE_U8 };
+  config.values.turn_current = { 0x800CD05Bu, DR_VALUE_TYPE_U8 };
+  config.values.turn_owner = { 0x800CD067u, DR_VALUE_TYPE_S8 };
+  config.values.space_index = { 0x800CD069u, DR_VALUE_TYPE_S8 };
+  config.values.rng = { 0x80097650, DR_VALUE_TYPE_U32 };
+
+  config.host_state_addr = MP3_HOST_STATE;
 
   config.scene_names = MP3_SCENE_NAMES;
 
@@ -336,220 +293,10 @@ MarioParty3Host::MarioParty3Host(QObject *parent)
         called = true;
         m_core->cheatReset();
 
-        // Hook decompressor at 0x8000B004: if A0 == 0x0122D74A (title table),
-        // set A3 = 0 to skip decompression and use our patched copy in place
-        m_core->cheatSet(0, true,
-          // Hook: J 0x800A7A30 + NOP at 0x8000B004
-          "8100B004 0802"
-          "+8100B006 9E8C"
-          "+8100B008 0000"
-          "+8100B00A 0000"
-          // Trampoline at 0x800A7A30
-          "+810A7A30 AFBF"  // SW   RA, 32(SP)          — displaced original insn from 0x8000B004
-          "+810A7A32 0020"
-          "+810A7A34 AFA4"  // SW   A0, 20(SP)          — displaced original insn from 0x8000B008
-          "+810A7A36 0014"
-          "+810A7A38 3C01"  // LUI  AT, 0x0123          — AT = 0x01230000
-          "+810A7A3A 0123"
-          "+810A7A3C 2421"  // ADDIU AT, AT, -0x28B6    — AT = 0x0122D74A (title table ROM offset)
-          "+810A7A3E D74A"
-          "+810A7A40 1481"  // BNE  A0, AT, +2          — if A0 != title table, skip A3 = 0
-          "+810A7A42 0002"
-          "+810A7A44 0000"  // NOP                      — (delay slot)
-          "+810A7A46 0000"
-          "+810A7A48 0000"  // OR   A3, R0, R0          — A3 = 0: signal decompressor to skip
-          "+810A7A4A 3825"
-          "+810A7A4C 0800"  // J    0x8000B00C          — return past the hooked instructions
-          "+810A7A4E 2C03"
-          "+810A7A50 0000"  // NOP                      — (delay slot)
-          "+810A7A52 0000"
-          
-          // This code intercepts the "next scene" value change to load them
-          // instead from our owned memory if nonzero, otherwise use the
-          // unmodified function.
-
-          // Hook at 80048168 to 800A7A58
-          "+81048168 0802"
-          "+8104816A 9E96"
-          "+8104816C 2400"
-          // Trampoline at 0x800A7A58
-          "+810A7A58 3C08"  // LUI  T0, 0x800A
-          "+810A7A5A 800A"
-          "+810A7A5C 8D08"  // LW   T0, 0x7A54(T0)
-          "+810A7A5E 7A54"
-          "+810A7A60 1100"  // BEQ  T0, ZERO, 5
-          "+810A7A62 0005"
-          "+810A7A64 0000"  // NOP
-          "+810A7A66 0000"
-          "+810A7A68 0008"  // SRL  A0, T0, 16
-          "+810A7A6A 2402"
-          "+810A7A6C 3107"  // ANDI A3, T0, 0xFFFF
-          "+810A7A6E FFFF"
-          "+810A7A70 0801"  // J    0x80048170
-          "+810A7A72 205C"
-          "+810A7A74 0000"  // NOP
-          "+810A7A76 0000"
-          "+810A7A78 AC44"  // SW   A0, 0(V0)
-          "+810A7A7A 0000"
-          "+810A7A7C A447"  // SH   A3, 4(V0)
-          "+810A7A7E 0004"
-          "+810A7A80 0801"  // J    0x80048170
-          "+810A7A82 205C"
-          "+810A7A84 0000"  // NOP
-          "+810A7A86 0000");
-
-        // Unlock all minigames
-        m_core->cheatSet(3, true,
-          "81035C00 2404"
-          "+81035C02 00FF"
-          "+D110AE18 1040"
-          "+8111B75E 0041"
-          "+D110AE18 1040"
-          "+8011B761 0047");
-
-        // Recommended Codes
-        m_core->cheatSet(4, true,
-          "810A12D6 0000"
-          
-          "+81009C10 080F"
-          "+81009C12 FC00"
-          "+81009C14 27BD"
-          "+81009C16 FFE8"
-
-          "+813FF000 3C05"
-          "+813FF002 0013"
-          "+813FF004 24A5"
-          "+813FF006 0046"
-          "+813FF008 1485"
-          "+813FF00A 000B"
-          "+813FF00C 2400"
-          "+813FF010 3C04"
-          "+813FF012 0013"
-          "+813FF014 2484"
-          "+813FF016 001C"
-          "+813FF018 3C1B"
-          "+813FF01A 800D"
-          "+813FF01C 8365"
-          "+813FF01E D058"
-          "+813FF020 8366"
-          "+813FF022 D059"
-          "+813FF024 30A5"
-          "+813FF026 0001"
-          "+813FF028 1405"
-          "+813FF02A 0002"
-          "+813FF02C 2400"
-          "+813FF030 2484"
-          "+813FF032 000C"
-          "+813FF034 0086"
-          "+813FF036 2021"
-          "+813FF038 0800"
-          "+813FF03A 2706"
-          "+813FF03C AFBF"
-          "+813FF03E 0014"
-
-          "+D11095AA 2484"
-          "+81109348 2400");
-
-        m_core->cheatSet(1, false, MP3_CHEAT_REGULAR_BOARD);
-        m_core->cheatSet(2, false, MP3_CHEAT_DUEL_BOARD);
-
-        // Write the minigame-title table to ROM at 0xB122D74A. Entries are indexed
-        // by (minigame_id - 1); MarioParty3.cpp uses ids 0x01-0x48, so the table
-        // needs 0x48 entries (strings 0x00-0x47).
-        //   0x00-0x0F : 48-byte roulette slots (names injected at runtime)
-        //   named     : item + special names, each at its (id - 1) string index
-        //   all others: share one 6-byte filler entry
-        static constexpr size_t   TABLE_BASE        = 0xB122D74A;
-        static constexpr uint32_t ENTRY_COUNT       = 0x48; // strings 0x00-0x47
-        static constexpr uint32_t FULL_COUNT        = 16;
-        static constexpr uint32_t ENTRY_SIZE        = 48;
-        static constexpr uint32_t SMALL_ENTRY_SIZE  = 6;  // single shared filler
-        static constexpr uint32_t NAMED_ENTRY_SIZE  = 24; // longest name is 20 chars + 3
-        static constexpr uint32_t HEADER_SIZE       = 4 + ENTRY_COUNT * 4;
-        static constexpr uint32_t FULL_AREA_SIZE    = FULL_COUNT * ENTRY_SIZE;
-        static constexpr uint32_t FILLER_OFFSET     = HEADER_SIZE + FULL_AREA_SIZE;
-        static constexpr uint32_t NAMED_AREA_OFFSET = FULL_AREA_SIZE + SMALL_ENTRY_SIZE;
-
-        // Static (non-roulette) names, placed at string index = minigame_id - 1.
-        struct NamedEntry { uint32_t index; const char *name; };
-        static const NamedEntry NAMED[] = {
-          { 0x3A, "Winner's Wheel" },       // id 0x3B
-          { 0x3B, "Hey, Batter, Batter!" }, // id 0x3C
-          { 0x3C, "Bobbing Bow-loons" },    // id 0x3D
-          { 0x3D, "Dorrie Dip" },           // id 0x3E
-          { 0x3E, "Swinging with Sharks" }, // id 0x3F
-          { 0x3F, "Swing 'n' Swipe" },      // id 0x40
-          { 0x41, "Stardust Battle" },      // id 0x42
-        };
-        static constexpr uint32_t NAMED_COUNT = sizeof(NAMED) / sizeof(*NAMED);
-
-        auto xw = [this](uint8_t val, size_t addr) {
-          writeu8(val, addr);
-        };
-        auto xw32 = [&xw](uint32_t val, size_t addr) {
-          xw(uint8_t(val >> 24), addr);
-          xw(uint8_t(val >> 16), addr + 1);
-          xw(uint8_t(val >>  8), addr + 2);
-          xw(uint8_t(val      ), addr + 3);
-        };
-
-        xw32(ENTRY_COUNT, TABLE_BASE);
-        for (uint32_t i = 0; i < FULL_COUNT; i++)
-          xw32(HEADER_SIZE + i * ENTRY_SIZE, TABLE_BASE + 4 + i * 4);
-        for (uint32_t i = FULL_COUNT; i < ENTRY_COUNT; i++)
-          xw32(FILLER_OFFSET, TABLE_BASE + 4 + i * 4); // default: shared filler
-        for (uint32_t n = 0; n < NAMED_COUNT; n++)
-          xw32(HEADER_SIZE + NAMED_AREA_OFFSET + n * NAMED_ENTRY_SIZE,
-               TABLE_BASE + 4 + NAMED[n].index * 4);
-
-        for (uint32_t i = 0; i < FULL_COUNT; i++)
-        {
-          size_t base = TABLE_BASE + HEADER_SIZE + i * ENTRY_SIZE;
-          xw(0x00, base);     // alignment
-          xw(0x03, base + 1); // len (empty: strlen 0 + offset 3)
-          xw(0x0B, base + 2); // marker
-          for (uint32_t j = 3; j < ENTRY_SIZE; j++)
-            xw(0x00, base + j);
-        }
-
-        {
-          // One filler entry shared by every unnamed id.
-          size_t base = TABLE_BASE + FILLER_OFFSET;
-          xw(0x00, base);     // alignment
-          xw(0x04, base + 1); // len (offset 3 + strlen 1)
-          xw(0x0B, base + 2); // marker
-          xw('A',  base + 3);
-          xw(0x00, base + 4);
-          xw(0x00, base + 5);
-        }
-
-        for (uint32_t n = 0; n < NAMED_COUNT; n++)
-        {
-          size_t base = TABLE_BASE + HEADER_SIZE + NAMED_AREA_OFFSET + n * NAMED_ENTRY_SIZE;
-          const char *name = NAMED[n].name;
-          uint8_t encoded[32] = {};
-          uint8_t nameLen = 0;
-          for (size_t k = 0, srcLen = strlen(name); k < srcLen && nameLen < NAMED_ENTRY_SIZE - 3; k++)
-          {
-            char c = name[k];
-            uint8_t enc;
-            if (isalpha((unsigned char)c) || isdigit((unsigned char)c) || c == ' ')
-              enc = (uint8_t)c;
-            else if (c == '\'') enc = 0x5C;
-            else if (c == '-')  enc = 0x3D;
-            else if (c == ',')  enc = 0x82;
-            else if (c == '!')  enc = 0xC2;
-            else continue;
-            encoded[nameLen++] = enc;
-          }
-          xw(0x00, base);
-          xw(nameLen + 3, base + 1); // len = offset 3 + strlen
-          xw(0x0B, base + 2);        // marker
-          for (uint32_t j = 0; j < NAMED_ENTRY_SIZE - 3; j++)
-            xw(j < nameLen ? encoded[j] : 0, base + 3 + j);
-        }
+        // Recommended Codes -- none!
+        // m_core->cheatSet(0, true,
+        //   );
       }
     },
     Qt::DirectConnection);
 }
-

@@ -42,17 +42,17 @@ typedef enum
 } smb3_vs_map;
 
 static const dr_mp_minigame_t SMB3_MINIGAMES[] = {
-  { "SMB3: Vs. Spinies", DR_MINIGAME_DUEL, SMB3_VS_MAP_SPINY, 0x00, DR_NO_QUIRKS },
-  { "SMB3: Vs. Fighter Flies", DR_MINIGAME_DUEL, SMB3_VS_MAP_FIGHTER_FLY, 0x00, DR_NO_QUIRKS },
-  { "SMB3: Vs. Spinies & Flies", DR_MINIGAME_DUEL, SMB3_VS_MAP_SPINY_FIGHTER_FLY, 0x00, DR_NO_QUIRKS },
-  { "SMB3: Get the Coins", DR_MINIGAME_DUEL, SMB3_VS_MAP_STATIC_COINS, 0x00, DR_NO_QUIRKS },
-  { "SMB3: Vs. Spinies & Crabs", DR_MINIGAME_DUEL, SMB3_VS_MAP_SPINY_SIDESTEPPER, 0x00, DR_NO_QUIRKS },
-  { "SMB3: Vs. Flies & Crabs", DR_MINIGAME_DUEL, SMB3_VS_MAP_FIGHTER_FLY_SIDESTEPPER, 0x00, DR_NO_QUIRKS },
-  { "SMB3: Vs. Crabs", DR_MINIGAME_DUEL, SMB3_VS_MAP_SIDESTEPPER, 0x00, DR_NO_QUIRKS },
-  { "SMB3: Avoid the Flames", DR_MINIGAME_DUEL, SMB3_VS_MAP_COIN_FOUNTAIN, 0x00, DR_NO_QUIRKS },
-  { "SMB3: Hidden Blocks", DR_MINIGAME_DUEL, SMB3_VS_MAP_LADDERS, 0x00, DR_NO_QUIRKS },
+  { "SMB3: Vs. Spinies", DR_MINIGAME_DUEL, SMB3_VS_MAP_SPINY, 0x00, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "SMB3: Vs. Fighter Flies", DR_MINIGAME_DUEL, SMB3_VS_MAP_FIGHTER_FLY, 0x00, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "SMB3: Vs. Spinies & Flies", DR_MINIGAME_DUEL, SMB3_VS_MAP_SPINY_FIGHTER_FLY, 0x00, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "SMB3: Get the Coins", DR_MINIGAME_DUEL, SMB3_VS_MAP_STATIC_COINS, 0x00, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "SMB3: Vs. Spinies & Crabs", DR_MINIGAME_DUEL, SMB3_VS_MAP_SPINY_SIDESTEPPER, 0x00, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "SMB3: Vs. Flies & Crabs", DR_MINIGAME_DUEL, SMB3_VS_MAP_FIGHTER_FLY_SIDESTEPPER, 0x00, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "SMB3: Vs. Crabs", DR_MINIGAME_DUEL, SMB3_VS_MAP_SIDESTEPPER, 0x00, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "SMB3: Avoid the Flames", DR_MINIGAME_DUEL, SMB3_VS_MAP_COIN_FOUNTAIN, 0x00, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "SMB3: Hidden Blocks", DR_MINIGAME_DUEL, SMB3_VS_MAP_LADDERS, 0x00, DR_NO_QUIRKS, DR_NO_FLAGS },
 
-  { nullptr, DR_MINIGAME_INVALID, 0xFF, 0xFF, DR_NO_QUIRKS },
+  { nullptr, DR_MINIGAME_INVALID, 0xFF, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
 };
 
 SuperMarioBros3::SuperMarioBros3(QObject *parent)
@@ -111,15 +111,15 @@ void SuperMarioBros3::doApplyGameData(const DrGameData &data)
   m_retro->writeForFrames(SMB3_VS_MAP_ADDR, &map, sizeof(map), 30);
 
   /* Recolor the two Vs. duelists to match their characters. The participating
-   * players (team_type != invalid) fill the Mario and Luigi sprite slots; hold the
-   * write for 30 frames so it sticks as the match spins up. */
+   * players fill the Mario and Luigi sprite slots; hold the write for 30 frames so
+   * it sticks as the match spins up. */
   const size_t ppuAddr[2] = { SMB3_VS_MARIO_PPU_ADDR, SMB3_VS_LUIGI_PPU_ADDR };
   m_slotToPlayer[0] = m_slotToPlayer[1] = -1;
   core()->input()->clearPortRoutes();
   unsigned slot = 0;
   for (unsigned i = 0; i < 4 && slot < 2; i++)
   {
-    if (m_players[i].team_type == DR_TEAM_TYPE_INVALID)
+    if (!dr_team_type_participates(m_players[i].team_type))
       continue;
     smb3_player_colors_t colors = smb3ColorsFor(m_players[i].character);
     m_retro->writeForFrames(ppuAddr[slot], &colors, sizeof(colors), 30);

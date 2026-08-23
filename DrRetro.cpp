@@ -120,6 +120,38 @@ dr_error DrRetro::writes32(int32_t val, size_t addr, dr_endianness endianness)
   return writeu32(static_cast<uint32_t>(val), addr, endianness);
 }
 
+dr_error DrRetro::readValue(int64_t *out, const dr_value_t &value, dr_endianness endianness)
+{
+  dr_error err = DR_OK;
+  switch (value.type)
+  {
+  case DR_VALUE_TYPE_S8:  { int8_t   v = 0; err = reads8(&v, value.address, endianness);  *out = v; break; }
+  case DR_VALUE_TYPE_U8:  { uint8_t  v = 0; err = readu8(&v, value.address, endianness);  *out = v; break; }
+  case DR_VALUE_TYPE_S16: { int16_t  v = 0; err = reads16(&v, value.address, endianness); *out = v; break; }
+  case DR_VALUE_TYPE_U16: { uint16_t v = 0; err = readu16(&v, value.address, endianness); *out = v; break; }
+  case DR_VALUE_TYPE_S32: { int32_t  v = 0; err = reads32(&v, value.address, endianness); *out = v; break; }
+  case DR_VALUE_TYPE_U32:
+  case DR_VALUE_TYPE_POINTER: { uint32_t v = 0; err = readu32(&v, value.address, endianness); *out = v; break; }
+  default: return DR_ERR_INVALID_PARAMETER;
+  }
+  return err;
+}
+
+dr_error DrRetro::writeValue(int64_t val, const dr_value_t &value, dr_endianness endianness)
+{
+  switch (value.type)
+  {
+  case DR_VALUE_TYPE_S8:  return writes8(static_cast<int8_t>(val), value.address, endianness);
+  case DR_VALUE_TYPE_U8:  return writeu8(static_cast<uint8_t>(val), value.address, endianness);
+  case DR_VALUE_TYPE_S16: return writes16(static_cast<int16_t>(val), value.address, endianness);
+  case DR_VALUE_TYPE_U16: return writeu16(static_cast<uint16_t>(val), value.address, endianness);
+  case DR_VALUE_TYPE_S32: return writes32(static_cast<int32_t>(val), value.address, endianness);
+  case DR_VALUE_TYPE_U32:
+  case DR_VALUE_TYPE_POINTER: return writeu32(static_cast<uint32_t>(val), value.address, endianness);
+  default: return DR_ERR_INVALID_PARAMETER;
+  }
+}
+
 void DrRetro::writeForFrames(
   size_t addr, const void *value, unsigned bytes, unsigned frames, dr_endianness endianness)
 {

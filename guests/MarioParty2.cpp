@@ -10,72 +10,72 @@ static const uint8_t MP2_CHARACTER_IDS[DR_CHARACTER_SIZE] = {
 
 static const dr_mp_minigame_t MP2_MINIGAMES[] = {
   // item
-  { "Bowser Slots", DR_MINIGAME_ITEM, 0x01, 0x01, DR_NO_QUIRKS },
-  { "Roll Out the Barrels", DR_MINIGAME_ITEM, 0x02, 0x02, DR_NO_QUIRKS },
-  { "Coffin Congestion", DR_MINIGAME_ITEM, 0x03, 0x03, DR_NO_QUIRKS },
-  { "Hammer Slammer", DR_MINIGAME_ITEM, 0x04, 0x04, DR_NO_QUIRKS },
-  { "Give Me a Brake!", DR_MINIGAME_ITEM, 0x05, 0x05, DR_NO_QUIRKS },
-  { "Mallet-Go-Round", DR_MINIGAME_ITEM, 0x06, 0x06, DR_NO_QUIRKS },
+  { "Bowser Slots", DR_MINIGAME_ITEM, 0x01, 0x01, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Roll Out the Barrels", DR_MINIGAME_ITEM, 0x02, 0x02, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Coffin Congestion", DR_MINIGAME_ITEM, 0x03, 0x03, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Hammer Slammer", DR_MINIGAME_ITEM, 0x04, 0x04, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Give Me a Brake!", DR_MINIGAME_ITEM, 0x05, 0x05, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Mallet-Go-Round", DR_MINIGAME_ITEM, 0x06, 0x06, DR_NO_QUIRKS, DR_NO_FLAGS },
 
   // battle
-  { "Grab Bag", DR_MINIGAME_BATTLE, 0x07, 0x07, DR_NO_QUIRKS },
-  { "Bumper Balloon Cars", DR_MINIGAME_BATTLE, 0x08, 0x09, DR_NO_QUIRKS },
-  { "Rakin' 'em In", DR_MINIGAME_BATTLE, 0x09, 0x0A, DR_NO_QUIRKS },
+  { "Grab Bag", DR_MINIGAME_BATTLE, 0x07, 0x07, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Bumper Balloon Cars", DR_MINIGAME_BATTLE, 0x08, 0x09, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Rakin' 'em In", DR_MINIGAME_BATTLE, 0x09, 0x0A, DR_NO_QUIRKS, DR_NO_FLAGS },
   // 0A unused
-  { "Day at the Races", DR_MINIGAME_BATTLE, 0x0B, 0x0B, DR_NO_QUIRKS },
-  { "Face Lift", DR_MINIGAME_BATTLE, 0x0C, 0x21, DR_NO_QUIRKS },
-  { "Crazy Cutters", DR_MINIGAME_BATTLE, 0x0D, 0x23, DR_NO_QUIRKS },
-  { "Hot Bob-omb", DR_MINIGAME_BATTLE, 0x0E, 0x0D, DR_NO_QUIRKS },
+  { "Day at the Races", DR_MINIGAME_BATTLE, 0x0B, 0x0B, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Face Lift", DR_MINIGAME_BATTLE, 0x0C, 0x21, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Crazy Cutters", DR_MINIGAME_BATTLE, 0x0D, 0x23, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Hot Bob-omb", DR_MINIGAME_BATTLE, 0x0E, 0x0D, DR_NO_QUIRKS, DR_NO_FLAGS },
 
   // 1v3
-  { "Bowl Over", DR_MINIGAME_1V3, 0x0F, 0x0E, DR_NO_QUIRKS },
-  { "Rainbow Run", DR_MINIGAME_1V3, 0x10, 0x0F, DR_NO_QUIRKS },
-  { "Crane Game", DR_MINIGAME_1V3, 0x11, 0x10, DR_NO_QUIRKS },
-  { "Move to the Music", DR_MINIGAME_1V3, 0x12, 0x11, DR_NO_QUIRKS },
-  { "Bob-omb Barrage", DR_MINIGAME_1V3, 0x13, 0x12, DR_NO_QUIRKS },
-  { "Look Away", DR_MINIGAME_1V3, 0x14, 0x13, DR_NO_QUIRKS },
-  { "Shock, Drop or Roll", DR_MINIGAME_1V3, 0x15, 0x14, DR_NO_QUIRKS },
-  { "Lights Out", DR_MINIGAME_1V3, 0x16, 0x15, DR_QUIRK_NATIVE_BOUNDARIES },
-  { "Filet Relay", DR_MINIGAME_1V3, 0x17, 0x16, DR_NO_QUIRKS },
-  { "Archer-ival", DR_MINIGAME_1V3, 0x18, 0x17, DR_NO_QUIRKS },
+  { "Bowl Over", DR_MINIGAME_1V3, 0x0F, 0x0E, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Rainbow Run", DR_MINIGAME_1V3, 0x10, 0x0F, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Crane Game", DR_MINIGAME_1V3, 0x11, 0x10, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Move to the Music", DR_MINIGAME_1V3, 0x12, 0x11, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Bob-omb Barrage", DR_MINIGAME_1V3, 0x13, 0x12, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Look Away", DR_MINIGAME_1V3, 0x14, 0x13, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Shock, Drop or Roll", DR_MINIGAME_1V3, 0x15, 0x14, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Lights Out", DR_MINIGAME_1V3, 0x16, 0x15, DR_QUIRK_NATIVE_BOUNDARIES, DR_NO_FLAGS },
+  { "Filet Relay", DR_MINIGAME_1V3, 0x17, 0x16, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Archer-ival", DR_MINIGAME_1V3, 0x18, 0x17, DR_NO_QUIRKS, DR_NO_FLAGS },
   // 19 unused
 
   // 2v2
-  { "Toad Bandstand", DR_MINIGAME_2V2, 0x1A, 0x18, DR_NO_QUIRKS },
-  { "Bobsled Run", DR_MINIGAME_2V2, 0x1B, 0x19, DR_NO_QUIRKS },
-  { "Handcar Havoc", DR_MINIGAME_2V2, 0x1C, 0x1A, DR_NO_QUIRKS },
+  { "Toad Bandstand", DR_MINIGAME_2V2, 0x1A, 0x18, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Bobsled Run", DR_MINIGAME_2V2, 0x1B, 0x19, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Handcar Havoc", DR_MINIGAME_2V2, 0x1C, 0x1A, DR_NO_QUIRKS, DR_NO_FLAGS },
   // 1D unused
-  { "Balloon Burst", DR_MINIGAME_2V2, 0x1E, 0x1B, DR_NO_QUIRKS },
-  { "Sky Pilots", DR_MINIGAME_2V2, 0x1F, 0x1C, DR_NO_QUIRKS },
-  { "Speed Hockey", DR_MINIGAME_2V2, 0x20, 0x1D, DR_NO_QUIRKS },
-  { "Cake Factory", DR_MINIGAME_2V2, 0x21, 0x1E, DR_NO_QUIRKS },
+  { "Balloon Burst", DR_MINIGAME_2V2, 0x1E, 0x1B, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Sky Pilots", DR_MINIGAME_2V2, 0x1F, 0x1C, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Speed Hockey", DR_MINIGAME_2V2, 0x20, 0x1D, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Cake Factory", DR_MINIGAME_2V2, 0x21, 0x1E, DR_NO_QUIRKS, DR_NO_FLAGS },
   // 22 unused
-  { "Dungeon Dash", DR_MINIGAME_2V2, 0x23, 0x1F, DR_NO_QUIRKS },
-  { "Magnet Carta", DR_MINIGAME_2V2, 0x24, 0x20, DR_NO_QUIRKS },
+  { "Dungeon Dash", DR_MINIGAME_2V2, 0x23, 0x1F, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Magnet Carta", DR_MINIGAME_2V2, 0x24, 0x20, DR_NO_QUIRKS, DR_FLAG_LUCKY },
 
   // 4p
-  { "Lava Tile Isle", DR_MINIGAME_4P, 0x25, 0x08, DR_NO_QUIRKS },
-  { "Hot Rope Jump", DR_MINIGAME_4P, 0x26, 0x0C, DR_NO_QUIRKS },
-  { "Shell Shocked", DR_MINIGAME_4P, 0x27, 0x22, DR_NO_QUIRKS },
-  { "Toad in the Box", DR_MINIGAME_4P, 0x28, 0x24, DR_NO_QUIRKS },
-  { "Mecha-Marathon", DR_MINIGAME_4P, 0x29, 0x25, DR_NO_QUIRKS },
-  { "Roll Call", DR_MINIGAME_4P, 0x2A, 0x26, DR_NO_QUIRKS },
-  { "Abandon Ship", DR_MINIGAME_4P, 0x2B, 0x27, DR_NO_QUIRKS },
-  { "Platform Peril", DR_MINIGAME_4P, 0x2C, 0x28, DR_NO_QUIRKS },
-  { "Totem Pole Pound", DR_MINIGAME_4P, 0x2D, 0x29, DR_NO_QUIRKS },
-  { "Bumper Balls", DR_MINIGAME_4P, 0x2E, 0x2A, DR_NO_QUIRKS },
+  { "Lava Tile Isle", DR_MINIGAME_4P, 0x25, 0x08, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Hot Rope Jump", DR_MINIGAME_4P, 0x26, 0x0C, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Shell Shocked", DR_MINIGAME_4P, 0x27, 0x22, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Toad in the Box", DR_MINIGAME_4P, 0x28, 0x24, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Mecha-Marathon", DR_MINIGAME_4P, 0x29, 0x25, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Roll Call", DR_MINIGAME_4P, 0x2A, 0x26, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Abandon Ship", DR_MINIGAME_4P, 0x2B, 0x27, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Platform Peril", DR_MINIGAME_4P, 0x2C, 0x28, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Totem Pole Pound", DR_MINIGAME_4P, 0x2D, 0x29, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Bumper Balls", DR_MINIGAME_4P, 0x2E, 0x2A, DR_NO_QUIRKS, DR_NO_FLAGS },
   // 2F unused
-  { "Bombs Away", DR_MINIGAME_4P, 0x30, 0x2B, DR_NO_QUIRKS },
-  { "Tipsy Tourney", DR_MINIGAME_4P, 0x31, 0x2C, DR_NO_QUIRKS },
-  { "Honeycomb Havoc", DR_MINIGAME_4P, 0x32, 0x2D, DR_NO_QUIRKS },
-  { "Hexagon Heat", DR_MINIGAME_4P, 0x33, 0x2E, DR_NO_QUIRKS },
-  { "Skateboard Scamper", DR_MINIGAME_4P, 0x34, 0x2F, DR_NO_QUIRKS },
-  { "Slot Car Derby", DR_MINIGAME_4P, 0x35, 0x30, DR_NO_QUIRKS },
-  { "Shy Guy Says", DR_MINIGAME_4P, 0x36, 0x31, DR_NO_QUIRKS },
-  { "Sneak 'n' Snore", DR_MINIGAME_4P, 0x37, 0x32, DR_NO_QUIRKS },
+  { "Bombs Away", DR_MINIGAME_4P, 0x30, 0x2B, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Tipsy Tourney", DR_MINIGAME_4P, 0x31, 0x2C, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Honeycomb Havoc", DR_MINIGAME_4P, 0x32, 0x2D, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Hexagon Heat", DR_MINIGAME_4P, 0x33, 0x2E, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Skateboard Scamper", DR_MINIGAME_4P, 0x34, 0x2F, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Slot Car Derby", DR_MINIGAME_4P, 0x35, 0x30, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Shy Guy Says", DR_MINIGAME_4P, 0x36, 0x31, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Sneak 'n' Snore", DR_MINIGAME_4P, 0x37, 0x32, DR_NO_QUIRKS, DR_NO_FLAGS },
 
   // 38 unused
-  { "Driver's Ed", DR_MINIGAME_SPECIAL, 0x39, 0x33, DR_NO_QUIRKS },
+  { "Driver's Ed", DR_MINIGAME_SPECIAL, 0x39, 0x33, DR_NO_QUIRKS, DR_NO_FLAGS },
   // 3A Chance Time (scene 34)
 
   // duel
@@ -90,16 +90,16 @@ static const dr_mp_minigame_t MP2_MINIGAMES[] = {
   */
 
   // leftovers
-  { "Bowser's Big Blast", DR_MINIGAME_BATTLE, 0x41, 0x39, DR_NO_QUIRKS },
-  { "Looney Lumberjacks", DR_MINIGAME_2V2, 0x42, 0x35, DR_NO_QUIRKS },
-  { "Torpedo Targets", DR_MINIGAME_2V2, 0x43, 0x3A, DR_NO_QUIRKS },
-  { "Destruction Duet", DR_MINIGAME_2V2, 0x44, 0x3B, DR_NO_QUIRKS },
-  { "Dizzy Dancing", DR_MINIGAME_4P, 0x45, 0x36, DR_NO_QUIRKS },
-  { "Tile Driver", DR_MINIGAME_4P, 0x46, 0x37, DR_NO_QUIRKS },
-  { "Quicksand Cache", DR_MINIGAME_1V3, 0x47, 0x38, DR_NO_QUIRKS },
-  { "Deep Sea Salvage", DR_MINIGAME_4P, 0x48, 0x3C, DR_NO_QUIRKS },
+  { "Bowser's Big Blast", DR_MINIGAME_BATTLE, 0x41, 0x39, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Looney Lumberjacks", DR_MINIGAME_2V2, 0x42, 0x35, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Torpedo Targets", DR_MINIGAME_2V2, 0x43, 0x3A, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Destruction Duet", DR_MINIGAME_2V2, 0x44, 0x3B, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Dizzy Dancing", DR_MINIGAME_4P, 0x45, 0x36, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Tile Driver", DR_MINIGAME_4P, 0x46, 0x37, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Quicksand Cache", DR_MINIGAME_1V3, 0x47, 0x38, DR_NO_QUIRKS, DR_FLAG_LUCKY },
+  { "Deep Sea Salvage", DR_MINIGAME_4P, 0x48, 0x3C, DR_NO_QUIRKS, DR_FLAG_LUCKY },
 
-  { nullptr, DR_MINIGAME_INVALID, -1, -1, DR_NO_QUIRKS },
+  { nullptr, DR_MINIGAME_INVALID, -1, -1, DR_NO_QUIRKS, DR_NO_FLAGS },
 };
 
 /// @todo mini-game variant is s16 at hardware 800cafee
@@ -133,6 +133,17 @@ static MpN64Config buildConfig()
   memcpy(config.character_addr, character_addr, sizeof(character_addr));
   memcpy(config.bonus_result_addr, bonus_result_addr, sizeof(bonus_result_addr));
   memcpy(config.result_addr, result_addr, sizeof(result_addr));
+
+  config.coins[0] = { 0x800fd2c8, DR_VALUE_TYPE_U16 };
+  config.coins[1] = { 0x800fd2fc, DR_VALUE_TYPE_U16 };
+  config.coins[2] = { 0x800fd330, DR_VALUE_TYPE_U16 };
+  config.coins[3] = { 0x800fd364, DR_VALUE_TYPE_U16 };
+  config.stars[0] = { 0x800fd2ce, DR_VALUE_TYPE_U16 };
+  config.stars[1] = { 0x800fd302, DR_VALUE_TYPE_U16 };
+  config.stars[2] = { 0x800fd336, DR_VALUE_TYPE_U16 };
+  config.stars[3] = { 0x800fd36a, DR_VALUE_TYPE_U16 };
+
+  config.battle_pot = { 0x800f9208, DR_VALUE_TYPE_U16 };
 
   config.character_ids = MP2_CHARACTER_IDS;
   config.minigames = MP2_MINIGAMES;

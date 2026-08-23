@@ -15,11 +15,15 @@ class DrDownloader : public QObject
 public:
   explicit DrDownloader(QObject *parent = nullptr);
 
-  /// Runs the save (always) and state (conditional) downloads, blocking on a
-  /// local event loop. Progress is reported via progressStarted/progressFinished
+  /// Runs the save (first boot only) and state (conditional) downloads, blocking on
+  /// a local event loop. Progress is reported via progressStarted/progressFinished
   /// so a host (e.g. the log window) can show a bar. Config and the persisted
-  /// state validator live in `settings` under the [downloads] section.
+  /// validators live in `settings` under the [downloads] section.
   void runBlocking(QSettings &settings, const QString &saveDir, const QString &stateDir);
+
+  /// Forces a fresh save download regardless of the first-boot flag (the manual
+  /// "re-download saves" action), then re-arms the flag. Blocks like runBlocking.
+  void downloadSaves(QSettings &settings, const QString &saveDir, const QString &stateDir);
 
 signals:
   /// Diagnostic log; level matches DrLogger::message (DR_LOG_*).
@@ -38,6 +42,11 @@ private:
     QByteArray etag;
     QByteArray lastModified;
   };
+
+  /// Fetches and extracts the save archive (overwriting local saves) and marks the
+  /// first-boot flag done. Uses the caller's network manager.
+  void fetchSaves(QNetworkAccessManager &nam, QSettings &settings, const QString &saveDir,
+    const QString &stateDir);
 
   /// GETs `url` (conditional if `have` is non-empty), and on 200 extracts the
   /// zip, routing its entries to `saveDir`/`stateDir`/`<cwd>/system`. Returns
