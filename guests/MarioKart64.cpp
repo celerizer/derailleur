@@ -18,6 +18,12 @@ static const size_t MK64_PLAYER_STATUS_ADDR = 0x800F6990;
 static const size_t MK64_PLAYER_STRIDE = 0xDD8;
 static const int16_t MK64_STATUS_BOT = 0x1000;
 
+static const char MK64_CHEAT_MULTIPLAYER_MUSIC[] =
+  "8128EC9C 240E"
+  "+8128EC9E 0001"
+  "+8128F9C4 2409"
+  "+8128F9C6 0001";
+
 static const dr_mp_minigame_t MK64_MINIGAMES[] = {
   { "Kart: Luigi Raceway", DR_MINIGAME_4P, 0x00, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
   { "Kart: Moo Moo Farm", DR_MINIGAME_4P, 0x01, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
@@ -74,6 +80,9 @@ static const mk64_character_t MK64_CHARACTER_ID[] = {
 
   { DR_CHARACTER_DAISY, 0x04, 0x03 }, // Toad
   { DR_CHARACTER_WALUIGI, 0x08, 0x07 }, // Bowser
+
+  { DR_CHARACTER_TOAD, 0x04, 0x03 }, // Toad
+  { DR_CHARACTER_KOOPA_KID, 0x08, 0x07 }, // Bowser
 };
 
 MarioKart64::MarioKart64(QObject *parent)
@@ -144,6 +153,11 @@ void MarioKart64::doApplyGameData(const DrGameData &data)
   signed id = data.minigame->minigame_id;
   startMinigame();
   loadState(state());
+
+  /* Re-armed per race: the cheat lives in the core, not in the savestate. */
+  if (auto *c = core())
+    c->cheatSet(0, true, MK64_CHEAT_MULTIPLAYER_MUSIC);
+
   m_retro->writeu8(id % 4, MK64_COURSE_ADDR);
   m_retro->writeu8(id / 4, MK64_CUP_ADDR);
 
