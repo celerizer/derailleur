@@ -123,7 +123,7 @@ static const size_t PS2_SCORES[][4] = {
   { 0x8017DFB0, 0x8017E00C, 0x8017E068, 0x8017E0C4 }, // Rampage Rollout
   { 0x80181228, 0x8018122C, 0x80181230, 0x80181234 }, // Streaming Stampede
   { 0x8018B0EC, 0x8018B198, 0x8018B244, 0x8018B2F0 }, // Tumbling Togepi
-  { 0x801AC168, 0x801AC16C, 0x801AC170, 0x801AC174 }, // Delibird's Delivery
+  { 0x801AB404, 0x801AB408, 0x801AB40C, 0x801AB410 }, // Delibird's Delivery
   { 0x80191ADC, 0x80191C00, 0x80191D24, 0x80191E48 }, // Egg Emergency
   { 0x8017EB54, 0x8017EB58, 0x8017EB5C, 0x8017EB60 }, // Eager Eevee
 };
