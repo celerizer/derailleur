@@ -2,10 +2,73 @@
 
 #include <cstring>
 
-// DONKEY_KONG maps to 0x08 (Boo) as MP5 has no DK.
-static const uint16_t MP5_CHARACTER_IDS[DR_CHARACTER_SIZE] = {
-  0xFF, 0x00, 0x01, 0x02, 0x03, 0x04, 0x08, 0x06, 0x05,
-};
+/* Mario Party 5's playable roster, in native id order. */
+typedef enum
+{
+  MP5_CHARACTER_MARIO = 0x0,
+  MP5_CHARACTER_LUIGI = 0x1,
+  MP5_CHARACTER_PEACH = 0x2,
+  MP5_CHARACTER_YOSHI = 0x3,
+  MP5_CHARACTER_WARIO = 0x4,
+  MP5_CHARACTER_DAISY = 0x5,
+  MP5_CHARACTER_WALUIGI = 0x6,
+  MP5_CHARACTER_TOAD = 0x7,
+  MP5_CHARACTER_BOO = 0x8,
+  MP5_CHARACTER_KOOPA_KID = 0x9,
+  MP5_CHARACTER_KOOPA_KID_R = 0xA,
+  MP5_CHARACTER_KOOPA_KID_G = 0xB,
+  MP5_CHARACTER_KOOPA_KID_B = 0xC
+} mp5_character;
+
+static dr_character_id_t mp5_char_from_dr(dr_character character)
+{
+  switch (character)
+  {
+  /* Supported characters */
+  case DR_CHARACTER_MARIO:
+    return { MP5_CHARACTER_MARIO, true };
+  case DR_CHARACTER_LUIGI:
+    return { MP5_CHARACTER_LUIGI, true };
+  case DR_CHARACTER_PEACH:
+    return { MP5_CHARACTER_PEACH, true };
+  case DR_CHARACTER_YOSHI:
+    return { MP5_CHARACTER_YOSHI, true };
+  case DR_CHARACTER_WARIO:
+    return { MP5_CHARACTER_WARIO, true };
+  case DR_CHARACTER_DAISY:
+    return { MP5_CHARACTER_DAISY, true };
+  case DR_CHARACTER_WALUIGI:
+    return { MP5_CHARACTER_WALUIGI, true };
+  case DR_CHARACTER_TOAD:
+    return { MP5_CHARACTER_TOAD, true };
+  case DR_CHARACTER_BOO:
+    return { MP5_CHARACTER_BOO, true };
+  case DR_CHARACTER_KOOPA_KID:
+    return { MP5_CHARACTER_KOOPA_KID, true };
+  case DR_CHARACTER_KOOPA_KID_R:
+    return { MP5_CHARACTER_KOOPA_KID_R, true };
+  case DR_CHARACTER_KOOPA_KID_G:
+    return { MP5_CHARACTER_KOOPA_KID_G, true };
+  case DR_CHARACTER_KOOPA_KID_B:
+    return { MP5_CHARACTER_KOOPA_KID_B, true };
+
+  /* Character replacements */
+  case DR_CHARACTER_DONKEY_KONG:
+    return { MP5_CHARACTER_BOO, false };
+  case DR_CHARACTER_TOADETTE:
+    return { MP5_CHARACTER_PEACH, false };
+  case DR_CHARACTER_BIRDO:
+    return { MP5_CHARACTER_YOSHI, false };
+  case DR_CHARACTER_DRY_BONES:
+    return { MP5_CHARACTER_BOO, false };
+  case DR_CHARACTER_BLOOPER:
+    return { MP5_CHARACTER_PEACH, false };
+  case DR_CHARACTER_HAMMER_BRO:
+    return { MP5_CHARACTER_MARIO, false };
+  default:
+    return { MP5_CHARACTER_MARIO, false };
+  }
+}
 
 static const dr_mp_minigame_t MP5_MINIGAMES[] = {
   // 4-Player
@@ -86,17 +149,17 @@ static const dr_mp_minigame_t MP5_MINIGAMES[] = {
   { "Wind Wavers", DR_MINIGAME_DUEL, 0x35, 0x44, DR_NO_QUIRKS, DR_NO_FLAGS },
   { "Sky Survivor", DR_MINIGAME_DUEL, 0x36, 0x45, DR_NO_QUIRKS, DR_NO_FLAGS },
 
-  // Bowser minigames (not selectable)
-  { "Rain of Fire", DR_MINIGAME_INVALID, 0x3A, 0x46, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Cage-in Cookin'", DR_MINIGAME_INVALID, 0x3B, 0x47, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Scaldin' Cauldron", DR_MINIGAME_INVALID, 0x3C, 0x48, DR_NO_QUIRKS, DR_NO_FLAGS },
+  // Bowser minigames
+  { "Rain of Fire", DR_MINIGAME_BOWSER, 0x3A, 0x46, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Cage-in Cookin'", DR_MINIGAME_BOWSER, 0x3B, 0x47, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Scaldin' Cauldron", DR_MINIGAME_BOWSER, 0x3C, 0x48, DR_NO_QUIRKS, DR_NO_FLAGS },
 
-  // DK minigames (not selectable)
-  { "Banana Punch", DR_MINIGAME_INVALID, 0x46, 0x52, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Da Vine Climb", DR_MINIGAME_INVALID, 0x47, 0x53, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Mass A-peel", DR_MINIGAME_INVALID, 0x48, 0x54, DR_NO_QUIRKS, DR_NO_FLAGS },
+  // DK minigames
+  { "Banana Punch", DR_MINIGAME_DK, 0x46, 0x52, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Da Vine Climb", DR_MINIGAME_DK, 0x47, 0x53, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Mass A-peel", DR_MINIGAME_DK, 0x48, 0x54, DR_NO_QUIRKS, DR_NO_FLAGS },
 
-  // Story / Bonus (not selectable)
+  // Story / Bonus
   { "Frightmare", DR_MINIGAME_SPECIAL, 0x3D, 0x49, DR_NO_QUIRKS, DR_NO_FLAGS },
   { "Beach Volleyball", DR_MINIGAME_SPECIAL, 0x4D, 0x0B, DR_NO_QUIRKS, DR_NO_FLAGS },
   { "Ice Hockey", DR_MINIGAME_SPECIAL, 0x4F, 0x5A, DR_NO_QUIRKS, DR_NO_FLAGS },
@@ -133,7 +196,8 @@ static MpGcnConfig buildConfig()
   memcpy(config.bonus_result_addr, bonus_result_addr, sizeof(bonus_result_addr));
   memcpy(config.result_addr, result_addr, sizeof(result_addr));
 
-  config.character_ids = MP5_CHARACTER_IDS;
+  config.char_from_dr = mp5_char_from_dr;
+  config.roster_size = 13;
   config.minigames = MP5_MINIGAMES;
 
   return config;

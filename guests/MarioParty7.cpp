@@ -2,10 +2,75 @@
 
 #include <cstring>
 
-// DONKEY_KONG maps to 0x08 (Boo) as MP7 has no DK.
-static const uint16_t MP7_CHARACTER_IDS[DR_CHARACTER_SIZE] = {
-  0xFF, 0x00, 0x01, 0x02, 0x03, 0x04, 0x08, 0x06, 0x05,
-};
+/* Mario Party 7's playable roster, in native id order. */
+typedef enum
+{
+  MP7_CHARACTER_MARIO = 0x0,
+  MP7_CHARACTER_LUIGI = 0x1,
+  MP7_CHARACTER_PEACH = 0x2,
+  MP7_CHARACTER_YOSHI = 0x3,
+  MP7_CHARACTER_WARIO = 0x4,
+  MP7_CHARACTER_DAISY = 0x5,
+  MP7_CHARACTER_WALUIGI = 0x6,
+  MP7_CHARACTER_TOAD = 0x7,
+  MP7_CHARACTER_BOO = 0x8,
+  MP7_CHARACTER_TOADETTE = 0x9,
+  MP7_CHARACTER_BIRDO = 0xA,
+  MP7_CHARACTER_DRY_BONES = 0xB,
+  MP7_CHARACTER_KOOPA_KID_R = 0xC,
+  MP7_CHARACTER_KOOPA_KID_G = 0xD,
+  MP7_CHARACTER_KOOPA_KID_B = 0xE
+} mp7_character;
+
+static dr_character_id_t mp7_char_from_dr(dr_character character)
+{
+  switch (character)
+  {
+  /* Supported characters */
+  case DR_CHARACTER_MARIO:
+    return { MP7_CHARACTER_MARIO, true };
+  case DR_CHARACTER_LUIGI:
+    return { MP7_CHARACTER_LUIGI, true };
+  case DR_CHARACTER_PEACH:
+    return { MP7_CHARACTER_PEACH, true };
+  case DR_CHARACTER_YOSHI:
+    return { MP7_CHARACTER_YOSHI, true };
+  case DR_CHARACTER_WARIO:
+    return { MP7_CHARACTER_WARIO, true };
+  case DR_CHARACTER_DAISY:
+    return { MP7_CHARACTER_DAISY, true };
+  case DR_CHARACTER_WALUIGI:
+    return { MP7_CHARACTER_WALUIGI, true };
+  case DR_CHARACTER_TOAD:
+    return { MP7_CHARACTER_TOAD, true };
+  case DR_CHARACTER_BOO:
+    return { MP7_CHARACTER_BOO, true };
+  case DR_CHARACTER_TOADETTE:
+    return { MP7_CHARACTER_TOADETTE, true };
+  case DR_CHARACTER_BIRDO:
+    return { MP7_CHARACTER_BIRDO, true };
+  case DR_CHARACTER_DRY_BONES:
+    return { MP7_CHARACTER_DRY_BONES, true };
+  case DR_CHARACTER_KOOPA_KID_R:
+    return { MP7_CHARACTER_KOOPA_KID_R, true };
+  case DR_CHARACTER_KOOPA_KID_G:
+    return { MP7_CHARACTER_KOOPA_KID_G, true };
+  case DR_CHARACTER_KOOPA_KID_B:
+    return { MP7_CHARACTER_KOOPA_KID_B, true };
+
+  /* Character replacements */
+  case DR_CHARACTER_DONKEY_KONG:
+    return { MP7_CHARACTER_BOO, false };
+  case DR_CHARACTER_KOOPA_KID:
+    return { MP7_CHARACTER_WARIO, false };
+  case DR_CHARACTER_BLOOPER:
+    return { MP7_CHARACTER_PEACH, false };
+  case DR_CHARACTER_HAMMER_BRO:
+    return { MP7_CHARACTER_MARIO, false };
+  default:
+    return { MP7_CHARACTER_MARIO, false };
+  }
+}
 
 static const dr_mp_minigame_t MP7_MINIGAMES[] = {
   /* 4-Player */
@@ -83,29 +148,29 @@ static const dr_mp_minigame_t MP7_MINIGAMES[] = {
   { "Camp Ukiki", DR_MINIGAME_DUEL, 0x3D, 0x43, DR_NO_QUIRKS, DR_NO_FLAGS },
 
   /* DK minigames (single-player) */
-  { "Jump, Man", DR_MINIGAME_INVALID, 0x47, 0x4D, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Vine Country", DR_MINIGAME_INVALID, 0x48, 0x4E, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "A Bridge Too Short", DR_MINIGAME_INVALID, 0x49, 0x4F, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Jump, Man", DR_MINIGAME_DK, 0x47, 0x4D, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Vine Country", DR_MINIGAME_DK, 0x48, 0x4E, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "A Bridge Too Short", DR_MINIGAME_DK, 0x49, 0x4F, DR_NO_QUIRKS, DR_NO_FLAGS },
 
   /* Bowser minigames (single-player) */
-  { "Tunnel of Lava!", DR_MINIGAME_INVALID, 0x41, 0x47, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Treasure Dome!", DR_MINIGAME_INVALID, 0x42, 0x48, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Slot-O-Whirl!", DR_MINIGAME_INVALID, 0x43, 0x49, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Tunnel of Lava!", DR_MINIGAME_BOWSER, 0x41, 0x47, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Treasure Dome!", DR_MINIGAME_BOWSER, 0x42, 0x48, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Slot-O-Whirl!", DR_MINIGAME_BOWSER, 0x43, 0x49, DR_NO_QUIRKS, DR_NO_FLAGS },
 
   /* DK minigames (multiplayer) */
-  { "Peel Out", DR_MINIGAME_INVALID, 0x44, 0x4A, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Bananas Faster", DR_MINIGAME_INVALID, 0x45, 0x4B, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Stump Change", DR_MINIGAME_INVALID, 0x46, 0x4C, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Peel Out", DR_MINIGAME_SPECIAL, 0x44, 0x4A, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Bananas Faster", DR_MINIGAME_SPECIAL, 0x45, 0x4B, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Stump Change", DR_MINIGAME_SPECIAL, 0x46, 0x4C, DR_NO_QUIRKS, DR_NO_FLAGS },
 
   /* Bowser minigames (multiplayer) */
-  { "Funstacle Course!", DR_MINIGAME_INVALID, 0x3E, 0x44, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Funderwall!", DR_MINIGAME_INVALID, 0x3F, 0x45, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Magmagical Journey!", DR_MINIGAME_INVALID, 0x40, 0x46, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Funstacle Course!", DR_MINIGAME_BOWSER, 0x3E, 0x44, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Funderwall!", DR_MINIGAME_BOWSER, 0x3F, 0x45, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Magmagical Journey!", DR_MINIGAME_BOWSER, 0x40, 0x46, DR_NO_QUIRKS, DR_NO_FLAGS },
 
   /* Rare / Boss */
-  { "Ice Moves", DR_MINIGAME_INVALID, 0x25, 0x2B, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Stick and Spin", DR_MINIGAME_INVALID, 0x4B, 0x51, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Bowser's Lovely Lift!", DR_MINIGAME_INVALID, 0x55, 0x5B, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Ice Moves", DR_MINIGAME_SPECIAL, 0x25, 0x2B, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Stick and Spin", DR_MINIGAME_SPECIAL, 0x4B, 0x51, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Bowser's Lovely Lift!", DR_MINIGAME_SPECIAL, 0x55, 0x5B, DR_NO_QUIRKS, DR_NO_FLAGS },
 
   { nullptr, DR_MINIGAME_INVALID, 0xFF, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
 };
@@ -139,7 +204,8 @@ static MpGcnConfig buildConfig()
   memcpy(config.bonus_result_addr, bonus_result_addr, sizeof(bonus_result_addr));
   memcpy(config.result_addr, result_addr, sizeof(result_addr));
 
-  config.character_ids = MP7_CHARACTER_IDS;
+  config.char_from_dr = mp7_char_from_dr;
+  config.roster_size = 15;
   config.minigames = MP7_MINIGAMES;
 
   return config;

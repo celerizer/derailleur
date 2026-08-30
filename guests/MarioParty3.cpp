@@ -4,9 +4,68 @@
 
 #include <QRetroDirectories.h>
 
-static const uint8_t MP3_CHARACTER_IDS[DR_CHARACTER_SIZE] = {
-  0xFF, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
-};
+/* Mario Party 3's playable roster, in native id order. */
+typedef enum
+{
+  MP3_CHARACTER_MARIO = 0x0,
+  MP3_CHARACTER_LUIGI = 0x1,
+  MP3_CHARACTER_PEACH = 0x2,
+  MP3_CHARACTER_YOSHI = 0x3,
+  MP3_CHARACTER_WARIO = 0x4,
+  MP3_CHARACTER_DONKEY_KONG = 0x5,
+  MP3_CHARACTER_WALUIGI = 0x6,
+  MP3_CHARACTER_DAISY = 0x7
+} mp3_character;
+
+static dr_character_id_t mp3_char_from_dr(dr_character character)
+{
+  switch (character)
+  {
+  /* Supported characters */
+  case DR_CHARACTER_MARIO:
+    return { MP3_CHARACTER_MARIO, true };
+  case DR_CHARACTER_LUIGI:
+    return { MP3_CHARACTER_LUIGI, true };
+  case DR_CHARACTER_PEACH:
+    return { MP3_CHARACTER_PEACH, true };
+  case DR_CHARACTER_YOSHI:
+    return { MP3_CHARACTER_YOSHI, true };
+  case DR_CHARACTER_WARIO:
+    return { MP3_CHARACTER_WARIO, true };
+  case DR_CHARACTER_DONKEY_KONG:
+    return { MP3_CHARACTER_DONKEY_KONG, true };
+  case DR_CHARACTER_WALUIGI:
+    return { MP3_CHARACTER_WALUIGI, true };
+  case DR_CHARACTER_DAISY:
+    return { MP3_CHARACTER_DAISY, true };
+
+  /* Character replacements */
+  case DR_CHARACTER_TOAD:
+    return { MP3_CHARACTER_MARIO, false };
+  case DR_CHARACTER_BOO:
+    return { MP3_CHARACTER_DONKEY_KONG, false };
+  case DR_CHARACTER_KOOPA_KID:
+    return { MP3_CHARACTER_WARIO, false };
+  case DR_CHARACTER_KOOPA_KID_R:
+    return { MP3_CHARACTER_MARIO, false };
+  case DR_CHARACTER_KOOPA_KID_G:
+    return { MP3_CHARACTER_LUIGI, false };
+  case DR_CHARACTER_KOOPA_KID_B:
+    return { MP3_CHARACTER_WARIO, false };
+  case DR_CHARACTER_TOADETTE:
+    return { MP3_CHARACTER_PEACH, false };
+  case DR_CHARACTER_BIRDO:
+    return { MP3_CHARACTER_YOSHI, false };
+  case DR_CHARACTER_DRY_BONES:
+    return { MP3_CHARACTER_DONKEY_KONG, false };
+  case DR_CHARACTER_BLOOPER:
+    return { MP3_CHARACTER_PEACH, false };
+  case DR_CHARACTER_HAMMER_BRO:
+    return { MP3_CHARACTER_MARIO, false };
+  default:
+    return { MP3_CHARACTER_MARIO, false };
+  }
+}
 
 static const dr_mp_minigame_t MP3_MINIGAMES[] =
 {
@@ -143,7 +202,8 @@ static MpN64Config buildConfig()
 
   config.battle_pot = { 0x800cc698, DR_VALUE_TYPE_U16 };
 
-  config.character_ids = MP3_CHARACTER_IDS;
+  config.char_from_dr = mp3_char_from_dr;
+  config.roster_size = 8;
   config.minigames = MP3_MINIGAMES;
 
   return config;

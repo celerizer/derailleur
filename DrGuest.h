@@ -25,6 +25,10 @@ struct DrGameData
   dr_minigame_type type = DR_MINIGAME_INVALID;
   dr_player_t players[4] = {};
 
+  /// The console family of the host this launch came from, so a guest drawing
+  /// the board's players picks the matching art set (see dr_player_icon_32px).
+  dr_host_platform host_platform = DR_HOST_PLATFORM_INVALID;
+
   /// Coins the board collected for a battle mini-game (see DrHost::battlePot).
   /// 0 for every other mini-game type.
   unsigned battle_pot = 0;
@@ -176,6 +180,10 @@ protected:
   /* The four players for the current launch, copied from the launch data by
    * applyGameData() before doApplyGameData()/onBeforeBoot() run. */
   dr_player_t m_players[4] = {};
+
+  /* The host's console family for the current launch, copied alongside the
+   * players. Guests that draw the board's characters read it to pick an art set. */
+  dr_host_platform m_hostPlatform = DR_HOST_PLATFORM_INVALID;
 
   /// Resize the core's window to fill its container. Must run on the GUI thread;
   /// the base queues it after a deferred boot (the core sizes itself to the game's

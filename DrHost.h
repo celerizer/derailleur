@@ -66,6 +66,10 @@ public:
   /// Which host game this is (used for netplay/session identity).
   virtual dr_game game(void) const = 0;
 
+  /// The console family this host runs on, handed to guests with the launch data
+  /// so they can pick artwork that matches the board (see dr_player_icon_32px).
+  virtual dr_host_platform platform(void) const { return DR_HOST_PLATFORM_INVALID; }
+
   /// Wildcard patterns selecting which files under the save directory are shipped
   /// to netplay clients at session start, so every peer plays off the host's save.
   virtual QStringList saveFilePatterns(void) const;
@@ -85,6 +89,17 @@ public:
   /// has no turn counter.
   virtual void setCurrentTurn(unsigned turn) { (void)turn; }
 
+  /// Debug helper: read the four board slots' player setup (character, controller
+  /// port, human/CPU, team and difficulty) out of the running host game. Fields the
+  /// host doesn't track are left as they are. Returns false if this host can't read
+  /// its player setup at all.
+  virtual bool readPlayerSetup(DrPlayerArray &players) { (void)players; return false; }
+
+  /// Debug helper: stamp `players` into the four board slots of the running host
+  /// game, the inverse of readPlayerSetup. Only the fields readPlayerSetup returns
+  /// are written. Returns false if this host can't write its player setup.
+  virtual bool writePlayerSetup(const DrPlayerArray &players) { (void)players; return false; }
+
   /// The board's current RNG state, or 0 when this host has no RNG address
   /// configured. Netplay samples it every frame to spot a diverged peer.
   virtual uint32_t rngValue(void) { return 0; }
@@ -93,6 +108,18 @@ public:
   /// show and pay out the same pot the board collected. 0 when the host has no
   /// battle mini-games (MP1) or nothing has been collected.
   virtual unsigned battlePot(void) { return 0; }
+
+  /// The one line both hosts log a mini-game's per-player payout in, e.g.
+  /// "Player 1 (Mario): 0 result + 0 bonus".
+  static QString resultLogLine(unsigned index, dr_character character,
+    const dr_minigame_result_t &result)
+  {
+    return QString("Player %1 (%2): %3 result + %4 bonus")
+      .arg(index + 1)
+      .arg(dr_character_name(character))
+      .arg(result.coins)
+      .arg(result.bonus_coins);
+  }
 
   /// Which of the four board players is the local human (0-3). In a netplay
   /// session this is our peer index; solo it stays 0. Used by hosts that show

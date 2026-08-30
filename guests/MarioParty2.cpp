@@ -4,9 +4,66 @@
 
 #include <QRetroDirectories.h>
 
-static const uint8_t MP2_CHARACTER_IDS[DR_CHARACTER_SIZE] = {
-  0xFF, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05,
-};
+/* Mario Party 2's playable roster, in native id order. */
+typedef enum
+{
+  MP2_CHARACTER_MARIO = 0x0,
+  MP2_CHARACTER_LUIGI = 0x1,
+  MP2_CHARACTER_PEACH = 0x2,
+  MP2_CHARACTER_YOSHI = 0x3,
+  MP2_CHARACTER_WARIO = 0x4,
+  MP2_CHARACTER_DONKEY_KONG = 0x5
+} mp2_character;
+
+static dr_character_id_t mp2_char_from_dr(dr_character character)
+{
+  switch (character)
+  {
+  /* Supported characters */
+  case DR_CHARACTER_MARIO:
+    return { MP2_CHARACTER_MARIO, true };
+  case DR_CHARACTER_LUIGI:
+    return { MP2_CHARACTER_LUIGI, true };
+  case DR_CHARACTER_PEACH:
+    return { MP2_CHARACTER_PEACH, true };
+  case DR_CHARACTER_YOSHI:
+    return { MP2_CHARACTER_YOSHI, true };
+  case DR_CHARACTER_WARIO:
+    return { MP2_CHARACTER_WARIO, true };
+  case DR_CHARACTER_DONKEY_KONG:
+    return { MP2_CHARACTER_DONKEY_KONG, true };
+
+  /* Character replacements */
+  case DR_CHARACTER_WALUIGI:
+    return { MP2_CHARACTER_LUIGI, false };
+  case DR_CHARACTER_DAISY:
+    return { MP2_CHARACTER_PEACH, false };
+  case DR_CHARACTER_TOAD:
+    return { MP2_CHARACTER_MARIO, false };
+  case DR_CHARACTER_BOO:
+    return { MP2_CHARACTER_DONKEY_KONG, false };
+  case DR_CHARACTER_KOOPA_KID:
+    return { MP2_CHARACTER_WARIO, false };
+  case DR_CHARACTER_KOOPA_KID_R:
+    return { MP2_CHARACTER_MARIO, false };
+  case DR_CHARACTER_KOOPA_KID_G:
+    return { MP2_CHARACTER_LUIGI, false };
+  case DR_CHARACTER_KOOPA_KID_B:
+    return { MP2_CHARACTER_WARIO, false };
+  case DR_CHARACTER_TOADETTE:
+    return { MP2_CHARACTER_PEACH, false };
+  case DR_CHARACTER_BIRDO:
+    return { MP2_CHARACTER_YOSHI, false };
+  case DR_CHARACTER_DRY_BONES:
+    return { MP2_CHARACTER_DONKEY_KONG, false };
+  case DR_CHARACTER_BLOOPER:
+    return { MP2_CHARACTER_PEACH, false };
+  case DR_CHARACTER_HAMMER_BRO:
+    return { MP2_CHARACTER_MARIO, false };
+  default:
+    return { MP2_CHARACTER_MARIO, false };
+  }
+}
 
 static const dr_mp_minigame_t MP2_MINIGAMES[] = {
   // item
@@ -145,7 +202,14 @@ static MpN64Config buildConfig()
 
   config.battle_pot = { 0x800f9208, DR_VALUE_TYPE_U16 };
 
-  config.character_ids = MP2_CHARACTER_IDS;
+  config.char_from_dr = mp2_char_from_dr;
+  config.roster_size = 6;
+
+  /* Shell Shocked runs Koopa Kid off character id 6; nothing else in the game does. */
+  config.hidden.character = DR_CHARACTER_KOOPA_KID;
+  config.hidden.native_id = 0x06;
+  config.hidden.minigame_ids[0] = 0x27;
+  config.hidden.minigame_ids[1] = -1;
   config.minigames = MP2_MINIGAMES;
 
   return config;

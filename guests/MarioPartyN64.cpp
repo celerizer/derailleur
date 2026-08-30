@@ -44,6 +44,8 @@ void MarioPartyN64::run()
   int16_t val;
   if (m_retro->reads16(&val, m_config.scene_addr) == DR_OK && val != m_lastScene)
   {
+    const int16_t last = m_lastScene;
+
     log(DR_LOG_INFO,
       qPrintable(QString("MP_SCENE_ADDR: 0x%1").arg((uint16_t)val, 4, 16, QChar('0'))));
     m_lastScene = val;
@@ -53,6 +55,13 @@ void MarioPartyN64::run()
       seedRng();
       startMinigame();
     }
+
+    /* MP1 puts the characters back the way it likes them somewhere in the
+     * explanation, so the hidden character only sticks if he goes in on the
+     * hand-off into the mini-game itself. */
+    if (m_hiddenSlots && m_minigameActive && m_minigame && val == m_minigame->scene_id &&
+        (last == m_config.scene_miniexplain[0] || last == m_config.scene_miniexplain[1]))
+      writeHiddenCharacters();
     if (m_minigameActive && m_minigameFrames >= 60 &&
         val != m_config.scene_miniexplain[0] && val != m_config.scene_miniexplain[1] &&
         val != m_minigame->scene_id)
@@ -70,6 +79,40 @@ void MarioPartyN64::seedRng()
 
   m_retro->writeu32(seed, m_config.rng_addr);
   log(DR_LOG_INFO, qPrintable(QString("RNG seed: 0x%1").arg(seed, 8, 16, QChar('0'))));
+}
+
+bool MarioPartyN64::hiddenCharacterPlayable(const dr_mp_minigame_t *minigame) const
+{
+  unsigned i;
+
+  if (!minigame || m_config.hidden.character == DR_CHARACTER_INVALID)
+    return false;
+
+  for (i = 0; i < sizeof(m_config.hidden.minigame_ids) / sizeof(m_config.hidden.minigame_ids[0]);
+       i++)
+  {
+    if (m_config.hidden.minigame_ids[i] == -1)
+      break;
+    else if (m_config.hidden.minigame_ids[i] == minigame->minigame_id)
+      return true;
+  }
+
+  return false;
+}
+
+void MarioPartyN64::writeHiddenCharacters(void)
+{
+  unsigned i;
+
+  for (i = 0; i < 4; i++)
+  {
+    if (!(m_hiddenSlots & (1 << i)))
+      continue;
+    m_retro->writeu8(m_config.hidden.native_id, m_config.character_addr[i]);
+    log(DR_LOG_INFO, qPrintable(QString("hidden character: forced P%1 to 0x%2 entering %3")
+      .arg(i + 1).arg(m_config.hidden.native_id, 2, 16, QChar('0'))
+      .arg(m_minigame ? m_minigame->name : "mini-game")));
+  }
 }
 
 const dr_mp_minigame_t *MarioPartyN64::minigames() const
@@ -97,17 +140,38 @@ static uint8_t mpN64Difficulty(dr_difficulty difficulty)
 
 void MarioPartyN64::doApplyGameData(const DrGameData &data)
 {
+  unsigned characters[4] = { 0, 0, 0, 0 };
+
   /* Load the state first, then write the players on top of it. */
   core()->unserializeFromFile(m_config.state.c_str());
   m_lastScene = -1;
   m_minigameFrames = 0;
   int16_t id = static_cast<int16_t>(data.minigame->minigame_id);
+  const bool hidden = hiddenCharacterPlayable(data.minigame);
   m_retro->writeForFrames(m_config.minigame_addr, &id, sizeof(id), 120);
+  m_hiddenSlots = 0;
+
+  /* Anyone the game doesn't have takes a free slot rather than doubling up on
+   * whoever their stand-in points at. */
+  dr_resolve_characters(m_config.char_from_dr, data.players, m_config.roster_size, characters);
 
   for (unsigned i = 0; i < 4; i++)
   {
     const dr_player_t &p = data.players[i];
-    m_retro->writeu8(m_config.character_ids[p.character], m_config.character_addr[i]);
+    uint8_t chr = static_cast<uint8_t>(characters[i]);
+
+    /* This mini-game can play the hidden character, so send him in as himself
+     * rather than as the stand-in the rest of the game gives him. */
+    if (hidden && p.character == m_config.hidden.character)
+    {
+      chr = m_config.hidden.native_id;
+      m_hiddenSlots |= 1 << i;
+      log(DR_LOG_INFO, qPrintable(QString("hidden character: P%1 %2 as 0x%3 in %4")
+        .arg(i + 1).arg(dr_character_name(p.character))
+        .arg(chr, 2, 16, QChar('0')).arg(data.minigame->name)));
+    }
+
+    m_retro->writeu8(chr, m_config.character_addr[i]);
     m_retro->writeu8(static_cast<uint8_t>(p.control_port - 1), m_config.controller_addr[i]);
 
     uint8_t bot = 0;

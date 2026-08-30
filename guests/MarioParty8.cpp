@@ -219,47 +219,72 @@ typedef enum
   MP8_CHARACTER_FLUTTER = 0x1D,
 } mp8_character;
 
-static int32_t mp8Character(dr_character c, bool moped = false)
+/// How many characters MP8's board roster holds, numbered from 0 (see mp8_character).
+static const unsigned MP8_ROSTER_SIZE = 14;
+
+static dr_character_id_t mp8_char_from_dr(dr_character character)
 {
-  switch (c)
+  switch (character)
   {
+  /* Supported characters */
   case DR_CHARACTER_MARIO:
-    return MP8_CHARACTER_MARIO;
+    return { MP8_CHARACTER_MARIO, true };
   case DR_CHARACTER_LUIGI:
-    return MP8_CHARACTER_LUIGI;
+    return { MP8_CHARACTER_LUIGI, true };
   case DR_CHARACTER_PEACH:
-    return MP8_CHARACTER_PEACH;
+    return { MP8_CHARACTER_PEACH, true };
   case DR_CHARACTER_YOSHI:
-    return MP8_CHARACTER_YOSHI;
+    return { MP8_CHARACTER_YOSHI, true };
   case DR_CHARACTER_WARIO:
-    return MP8_CHARACTER_WARIO;
+    return { MP8_CHARACTER_WARIO, true };
   case DR_CHARACTER_DAISY:
-    return MP8_CHARACTER_DAISY;
+    return { MP8_CHARACTER_DAISY, true };
   case DR_CHARACTER_WALUIGI:
-    return MP8_CHARACTER_WALUIGI;
+    return { MP8_CHARACTER_WALUIGI, true };
   case DR_CHARACTER_TOAD:
-    return MP8_CHARACTER_TOAD;
+    return { MP8_CHARACTER_TOAD, true };
   case DR_CHARACTER_BOO:
-    return MP8_CHARACTER_BOO;
+    return { MP8_CHARACTER_BOO, true };
   case DR_CHARACTER_TOADETTE:
-    return MP8_CHARACTER_TOADETTE;
+    return { MP8_CHARACTER_TOADETTE, true };
   case DR_CHARACTER_BIRDO:
-    return MP8_CHARACTER_BIRDO;
+    return { MP8_CHARACTER_BIRDO, true };
   case DR_CHARACTER_DRY_BONES:
-    return MP8_CHARACTER_DRY_BONES;
+    return { MP8_CHARACTER_DRY_BONES, true };
   case DR_CHARACTER_BLOOPER:
-    return MP8_CHARACTER_BLOOPER;
+    return { MP8_CHARACTER_BLOOPER, true };
   case DR_CHARACTER_HAMMER_BRO:
-    return MP8_CHARACTER_HAMMER_BRO;
+    return { MP8_CHARACTER_HAMMER_BRO, true };
 
-  /* Not in MP8 */
+  /* Character replacements */
   case DR_CHARACTER_DONKEY_KONG:
-    return moped ? MP8_CHARACTER_DONKEY_KONG : MP8_CHARACTER_BOO;
+    return { MP8_CHARACTER_BOO, false };
   case DR_CHARACTER_KOOPA_KID:
-    return moped ? MP8_CHARACTER_BOWSER : MP8_CHARACTER_HAMMER_BRO;
-
+    return { MP8_CHARACTER_WARIO, false };
+  case DR_CHARACTER_KOOPA_KID_R:
+    return { MP8_CHARACTER_MARIO, false };
+  case DR_CHARACTER_KOOPA_KID_G:
+    return { MP8_CHARACTER_LUIGI, false };
+  case DR_CHARACTER_KOOPA_KID_B:
+    return { MP8_CHARACTER_WARIO, false };
   default:
-    return MP8_CHARACTER_MARIO;
+    return { MP8_CHARACTER_MARIO, false };
+  }
+}
+
+static int32_t mp8_moped_char_from_dr(dr_character character)
+{
+  switch (character)
+  {
+  case DR_CHARACTER_DONKEY_KONG:
+    return MP8_CHARACTER_DONKEY_KONG;
+  case DR_CHARACTER_KOOPA_KID:
+  case DR_CHARACTER_KOOPA_KID_R:
+  case DR_CHARACTER_KOOPA_KID_G:
+  case DR_CHARACTER_KOOPA_KID_B:
+    return MP8_CHARACTER_BOWSER;
+  default:
+    return static_cast<int32_t>(mp8_char_from_dr(character).id);
   }
 }
 
@@ -426,8 +451,8 @@ void MarioParty8::run()
   /* In Moped Mayhem, write the character every frame */
   if (m_minigame && m_minigame->minigame_id == 0x44)
   {
-    const int16_t p1 = static_cast<int16_t>(mp8Character(m_players[0].character, true));
-    const int16_t p2 = static_cast<int16_t>(mp8Character(m_players[1].character, true));
+    const int16_t p1 = static_cast<int16_t>(mp8_moped_char_from_dr(m_players[0].character));
+    const int16_t p2 = static_cast<int16_t>(mp8_moped_char_from_dr(m_players[1].character));
     m_retro->writes16(p1, MP8_CHARACTER_ADDR[0]);
     m_retro->writes16(p2, MP8_CHARACTER_ADDR[1]);
   }
@@ -438,19 +463,34 @@ const dr_mp_minigame_t *MarioParty8::minigames() const
   return MP8_MINIGAMES;
 }
 
+void MarioParty8::onBeforeBoot(const DrGameData &data)
+{
+  (void)data;
+
+  /* System Configuration > Widescreen (Wii). The board host forces this off, so
+   * a mini-game has to match or the picture changes shape on the way in. */
+  if (auto *c = core())
+    c->options()->setOptionValue("dolphin_widescreen", "disabled");
+}
+
 void MarioParty8::doApplyGameData(const DrGameData &data)
 {
+  unsigned characters[4] = { 0, 0, 0, 0 };
+
   m_minigameFrames = 0;
   m_lastScene = -1;
 
   int16_t id = static_cast<int16_t>(data.minigame->minigame_id);
   m_retro->writes16(id, MP8_MINIGAME_TO_LOAD_ADDR);
 
+  /* Anyone MP8 doesn't have takes a free slot rather than doubling up on whoever
+   * their stand-in points at. Moped Mayhem writes its own two every frame. */
+  dr_resolve_characters(mp8_char_from_dr, m_players, MP8_ROSTER_SIZE, characters);
+
   for (unsigned i = 0; i < 4; i++)
   {
     const unsigned slot = dr_player_slot(m_players[i], i);
-    m_retro->writeu16(static_cast<uint16_t>(mp8Character(m_players[i].character)),
-      MP8_CHARACTER_ADDR[slot]);
+    m_retro->writeu16(static_cast<uint16_t>(characters[i]), MP8_CHARACTER_ADDR[slot]);
     m_retro->writeu16(static_cast<uint16_t>(mp8Difficulty(m_players[i].difficulty)),
       MP8_CPU_DIFFICULTY_ADDR[slot]);
     m_retro->writeu16(m_players[i].control_type == DR_CONTROL_TYPE_CPU ? 1 : 0,
@@ -466,9 +506,8 @@ void MarioParty8::doApplyGameData(const DrGameData &data)
       flags &= ~0xA000;
     m_retro->writeu16(flags, MP8_CPU_FLAGS_ADDR[slot]);
 
-    /* Continuous write -- the game overwrites the team as the match spins up. */
     uint16_t team = static_cast<uint16_t>(m_players[i].team_id);
-    m_retro->writeForFrames(MP8_TEAM_ADDR[slot], &team, sizeof(team), 60);
+    m_retro->writeu16(team, MP8_TEAM_ADDR[slot]);
   }
 
   applyControlRemap(data.minigame->quirks, m_players);

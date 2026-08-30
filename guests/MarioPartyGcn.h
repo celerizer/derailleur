@@ -33,7 +33,13 @@ struct MpGcnConfig
   dr_value_t coins[4];
   dr_value_t stars[4];
 
-  const uint16_t *character_ids;
+  /// dr_character -> the game's own character id, flagged with whether the game
+  /// really has that character or is only lending a slot (see dr_character_id_t).
+  dr_character_id_t (*char_from_dr)(dr_character character);
+
+  /// How many characters the game has, numbered from 0. Bounds the search for a
+  /// free slot when a stand-in's preferred character is already taken.
+  unsigned roster_size;
   const dr_mp_minigame_t *minigames;
 };
 

@@ -37,14 +37,44 @@
         <file>assets/char/33.png</file>
         <file>assets/char/34.png</file>
         <file>assets/char/35.png</file>
-        <file>assets/player-32px/1.png</file>
-        <file>assets/player-32px/2.png</file>
-        <file>assets/player-32px/3.png</file>
-        <file>assets/player-32px/4.png</file>
-        <file>assets/player-32px/5.png</file>
-        <file>assets/player-32px/6.png</file>
-        <file>assets/player-32px/7.png</file>
-        <file>assets/player-32px/8.png</file>
+        <file>assets/char/36.png</file>
+        <file>assets/char/37.png</file>
+        <file>assets/char/38.png</file>
+        <file>assets/titlescreen/marioparty1.png</file>
+        <file>assets/titlescreen/marioparty2.png</file>
+        <file>assets/titlescreen/marioparty3.png</file>
+        <file>assets/titlescreen/marioparty4.png</file>
+        <file>assets/titlescreen/marioparty5.png</file>
+        <file>assets/titlescreen/marioparty6.png</file>
+        <file>assets/titlescreen/marioparty7.png</file>
+        <file>assets/titlescreen/marioparty8.png</file>
+        <file>assets/player-32px/n64/1.png</file>
+        <file>assets/player-32px/n64/2.png</file>
+        <file>assets/player-32px/n64/3.png</file>
+        <file>assets/player-32px/n64/4.png</file>
+        <file>assets/player-32px/n64/5.png</file>
+        <file>assets/player-32px/n64/6.png</file>
+        <file>assets/player-32px/n64/7.png</file>
+        <file>assets/player-32px/n64/8.png</file>
+        <file>assets/player-32px/gcwii/1.png</file>
+        <file>assets/player-32px/gcwii/2.png</file>
+        <file>assets/player-32px/gcwii/3.png</file>
+        <file>assets/player-32px/gcwii/4.png</file>
+        <file>assets/player-32px/gcwii/5.png</file>
+        <file>assets/player-32px/gcwii/6.png</file>
+        <file>assets/player-32px/gcwii/7.png</file>
+        <file>assets/player-32px/gcwii/8.png</file>
+        <file>assets/player-32px/gcwii/9.png</file>
+        <file>assets/player-32px/gcwii/10.png</file>
+        <file>assets/player-32px/gcwii/11.png</file>
+        <file>assets/player-32px/gcwii/12.png</file>
+        <file>assets/player-32px/gcwii/13.png</file>
+        <file>assets/player-32px/gcwii/14.png</file>
+        <file>assets/player-32px/gcwii/15.png</file>
+        <file>assets/player-32px/gcwii/16.png</file>
+        <file>assets/player-32px/gcwii/17.png</file>
+        <file>assets/player-32px/gcwii/18.png</file>
+        <file>assets/player-32px/gcwii/19.png</file>
         <file>assets/player-50px/1.png</file>
         <file>assets/player-50px/2.png</file>
         <file>assets/player-50px/3.png</file>

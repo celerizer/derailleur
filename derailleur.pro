@@ -52,6 +52,10 @@ SOURCES += \
     hosts/MarioParty3Host.cpp \
     hosts/MarioPartyGcnHost.cpp \
     hosts/MarioParty4Host.cpp \
+    hosts/MarioParty5Host.cpp \
+    hosts/MarioParty6Host.cpp \
+    hosts/MarioParty7Host.cpp \
+    hosts/MarioParty8Host.cpp \
     hosts/SonicShuffleHand.cpp \
     hosts/SonicShuffleHost.cpp \
     guests/BanjoTooie.cpp \
@@ -108,6 +112,10 @@ HEADERS += \
     hosts/MarioParty3Host.h \
     hosts/MarioPartyGcnHost.h \
     hosts/MarioParty4Host.h \
+    hosts/MarioParty5Host.h \
+    hosts/MarioParty6Host.h \
+    hosts/MarioParty7Host.h \
+    hosts/MarioParty8Host.h \
     hosts/SonicShuffleHand.h \
     hosts/SonicShuffleHost.h \
     guests/BanjoTooie.h \

@@ -37,7 +37,16 @@ struct DrGcnHostConfig
 
     /// A list of Gecko codes for hooking functions into our assembly
     const char *cheat_board;
+
+    /// Board hooks stamped every frame: { address, value, width } rows ending in
+    /// an all-zero row (e.g. MP4_HOOK_BOARD). nullptr = no hooks.
+    const unsigned int (*hooks)[3];
   } cheats;
+
+  /// Core options forced for this game, applied after the core loads and before
+  /// content does, so they beat whatever the user's Dolphin config carries.
+  /// Terminated by a row with a null key. nullptr = leave the core alone.
+  const dr_core_option_t *options;
 
   struct
   {
@@ -79,9 +88,13 @@ struct DrGcnHostConfig
   int scene_miniexplain;  // scene id shown while a mini-game is explained
   int scene_miniresults;  // scene id shown on the mini-game results screen
 
-  /// dr_character -> native character id table (DR_CHARACTER_SIZE entries),
-  /// read in reverse to resolve a board slot's character
-  const uint16_t *character_ids;
+  /// Scene id -> descriptive name, terminated by a scene_id of -1. Used to log
+  /// scene changes and to spot ids the table doesn't cover yet. nullptr = no table.
+  const dr_scene_name_t *scene_names;
+
+  /// Native character id -> dr_character, DR_CHARACTER_INVALID for ids the game
+  /// doesn't use. nullptr = no mapping.
+  dr_character (*char_to_dr)(unsigned chr);
 
   /// Native roulette type byte -> dr_minigame_type (e.g. 0=4P, 1=1v3, 2=2v2)
   const dr_minigame_type *minigame_type_to_dr;
@@ -131,17 +144,19 @@ public:
     return static_cast<uint32_t>(value);
   }
 
+  bool readPlayerSetup(DrPlayerArray &players) override;
+  bool writePlayerSetup(const DrPlayerArray &players) override;
+
   void writeResults(DrGuest *guest) override;
   void clearResults(void) override;
   QStringList saveFilePatterns(void) const override;
+
+  dr_host_platform platform(void) const override { return DR_HOST_PLATFORM_GCWII; }
 
   void run(void);
 
 private:
   void stampCave(void);
-
-  /// Reroll the shared mini-game pool (kept lockstepped across netplay peers).
-  void rollMinigames(void);
 
   /// Redraw MP4's two battle mini-game candidate icons as their names, for
   /// Dolphin's custom texture loader to pick up.
@@ -157,10 +172,37 @@ private:
   void readPlayers(DrPlayerArray &players);
 
   int32_t m_PreviousScene = -1;
-  dr_minigame_type m_MinigameType = DR_MINIGAME_INVALID;
   std::array<DrMinigameCandidate, 5> m_Candidates = {};
 
+  /// For MP8, frames counted between "after roulette" and "mini-game" state
+  unsigned m_AfterRouletteTimer = 0;
+
 protected:
+  /// Last chance to change what the guest reported for slot `index` before it is
+  /// written to the board. Returns it untouched unless a game overrides this.
+  virtual dr_minigame_result_t adjustResult(unsigned index, const dr_minigame_result_t &result)
+  {
+    (void)index;
+
+    return result;
+  }
+
+  /// The type the roulette named for the mini-game being played, kept until the
+  /// next roulette so writeResults can still tell what was launched.
+  dr_minigame_type m_MinigameType = DR_MINIGAME_INVALID;
+
+  /// Reroll the shared mini-game pool (kept lockstepped across netplay peers).
+  void rollMinigames(void);
+
+  /// Stamps one { address, value, width } hook table, up to its all-zero row.
+  /// Does nothing when `hooks` is null.
+  void applyHooks(const unsigned int (*hooks)[3]);
+
+  /// Per-frame patching a single game needs on top of its board hooks, called
+  /// once the frame's scene id is known. MP8 uses it to install the roulette
+  /// hook belonging to whichever board overlay is loaded.
+  virtual void applyGameHooks(int32_t scene) { (void)scene; }
+
   DrGcnHostConfig m_config;
   dr_gcn_host_state m_State = DR_GCN_HOST_STATE_INVALID;
 };

@@ -6,14 +6,20 @@
 
 #include <QRetroDirectories.h>
 
-static const dr_character MP1_CHAR_TO_DR[] = {
-  DR_CHARACTER_MARIO, // 0x00
-  DR_CHARACTER_LUIGI, // 0x01
-  DR_CHARACTER_PEACH, // 0x02
-  DR_CHARACTER_YOSHI, // 0x03
-  DR_CHARACTER_WARIO, // 0x04
-  DR_CHARACTER_DONKEY_KONG, // 0x05
-};
+static dr_character mp1_char_to_dr(unsigned chr)
+{
+  switch (chr)
+  {
+  case 0x00: return DR_CHARACTER_MARIO;
+  case 0x01: return DR_CHARACTER_LUIGI;
+  case 0x02: return DR_CHARACTER_PEACH;
+  case 0x03: return DR_CHARACTER_YOSHI;
+  case 0x04: return DR_CHARACTER_WARIO;
+  case 0x05: return DR_CHARACTER_DONKEY_KONG;
+  }
+
+  return DR_CHARACTER_INVALID;
+}
 
 static const dr_difficulty MP1_DIFF_TO_DR[] = {
   DR_DIFFICULTY_EASY, // 0x00
@@ -32,86 +38,86 @@ static const dr_minigame_type MP1_MINIGAME_TYPE_TO_DR[] = {
 static const dr_scene_name_t MP1_SCENE_NAMES[] =
 {
   { 0x00, "Memory Match", false },
-  { 0x01, "Chance Time" },
-  { 0x02, "Slot Machine" },
-  { 0x03, "Buried Treasure" },
-  { 0x04, "Treasure Divers" },
-  { 0x05, "Shell Game" },
-  { 0x06, "Same Game" }, // unused
-  { 0x07, "Hot Bob-omb" },
+  { 0x01, "Chance Time", false },
+  { 0x02, "Slot Machine", false },
+  { 0x03, "Buried Treasure", false },
+  { 0x04, "Treasure Divers", false },
+  { 0x05, "Shell Game", false },
+  { 0x06, "Same Game", false }, // unused
+  { 0x07, "Hot Bob-omb", false },
   { 0x08, "Yoshi no Shita Awase", false }, // unused
-  { 0x09, "Pipe Maze" },
-  { 0x0a, "Ghost Guess" },
-  { 0x0b, "Musical Mushroom" },
-  { 0x0c, "Pedal Power" },
-  { 0x0d, "Crazy Cutter" },
-  { 0x0e, "Face Lift" },
-  { 0x0f, "Whack-a-Plant" },
-  { 0x10, "Bash 'n' Cash" },
-  { 0x11, "Bowl Over" },
-  { 0x12, "Ground Pound" },
-  { 0x13, "Balloon Burst" },
-  { 0x14, "Coin Block Blitz" },
-  { 0x15, "Coin Block Bash" },
-  { 0x16, "Skateboard Scamper" },
-  { 0x17, "Box Mountain Mayhem" },
-  { 0x18, "Platform Peril" },
-  { 0x19, "Teetering Towers" },
-  { 0x1a, "Mushroom Mix-up" },
-  { 0x1b, "Hammer Drop" },
-  { 0x1c, "Grab Bag" },
-  { 0x1d, "Bobsled Run" },
-  { 0x1e, "Bumper Balls" },
-  { 0x1f, "Tightrope Treachery" },
-  { 0x20, "Knock Block Tower" },
-  { 0x21, "Tipsy Tourney" },
-  { 0x22, "Bombs Away" },
-  { 0x23, "Crane Game" },
-  { 0x24, "Coin Shower Flower" },
-  { 0x25, "Slot Car Derby" },
-  { 0x26, "Mario Bandstand" },
-  { 0x27, "Desert Dash" },
-  { 0x28, "Shy Guy Says" },
-  { 0x29, "Limbo Dance" },
-  { 0x2a, "Bombsketball" },
-  { 0x2b, "Cast Aways" },
-  { 0x2c, "Key-pa-way" },
-  { 0x2d, "Running of the Bulb" },
-  { 0x2e, "Hot Rope Jump" },
-  { 0x2f, "Handcar Havoc" },
-  { 0x30, "Deep Sea Divers" },
-  { 0x31, "Piranha's Pursuit" },
-  { 0x32, "Tug o' War" },
-  { 0x33, "Paddle Battle" },
-  { 0x34, "Bumper Ball Maze" },
+  { 0x09, "Pipe Maze", false },
+  { 0x0a, "Ghost Guess", false },
+  { 0x0b, "Musical Mushroom", false },
+  { 0x0c, "Pedal Power", false },
+  { 0x0d, "Crazy Cutter", false },
+  { 0x0e, "Face Lift", false },
+  { 0x0f, "Whack-a-Plant", false },
+  { 0x10, "Bash 'n' Cash", false },
+  { 0x11, "Bowl Over", false },
+  { 0x12, "Ground Pound", false },
+  { 0x13, "Balloon Burst", false },
+  { 0x14, "Coin Block Blitz", false },
+  { 0x15, "Coin Block Bash", false },
+  { 0x16, "Skateboard Scamper", false },
+  { 0x17, "Box Mountain Mayhem", false },
+  { 0x18, "Platform Peril", false },
+  { 0x19, "Teetering Towers", false },
+  { 0x1a, "Mushroom Mix-up", false },
+  { 0x1b, "Hammer Drop", false },
+  { 0x1c, "Grab Bag", false },
+  { 0x1d, "Bobsled Run", false },
+  { 0x1e, "Bumper Balls", false },
+  { 0x1f, "Tightrope Treachery", false },
+  { 0x20, "Knock Block Tower", false },
+  { 0x21, "Tipsy Tourney", false },
+  { 0x22, "Bombs Away", false },
+  { 0x23, "Crane Game", false },
+  { 0x24, "Coin Shower Flower", false },
+  { 0x25, "Slot Car Derby", false },
+  { 0x26, "Mario Bandstand", false },
+  { 0x27, "Desert Dash", false },
+  { 0x28, "Shy Guy Says", false },
+  { 0x29, "Limbo Dance", false },
+  { 0x2a, "Bombsketball", false },
+  { 0x2b, "Cast Aways", false },
+  { 0x2c, "Key-pa-way", false },
+  { 0x2d, "Running of the Bulb", false },
+  { 0x2e, "Hot Rope Jump", false },
+  { 0x2f, "Handcar Havoc", false },
+  { 0x30, "Deep Sea Divers", false },
+  { 0x31, "Piranha's Pursuit", false },
+  { 0x32, "Tug o' War", false },
+  { 0x33, "Paddle Battle", false },
+  { 0x34, "Bumper Ball Maze", false },
 
-  { 0x35, "Loading" },
-  { 0x36, "DK's Jungle Adventure" },
-  { 0x37, "Peach's Birthday Cake" },
-  { 0x38, "Yoshi's Tropical Island" },
-  { 0x39, "Wario's Battle Canyon" },
-  { 0x3a, "Luigi's Engine Room" },
-  { 0x3b, "Mario's Rainbow Castle" },
-  { 0x3c, "Bowser's Magma Mountain" },
-  { 0x3d, "Eternal Star" },
-  { 0x3e, "First Map" }, // "rules" map
-  { 0x3f, "Last 5 Turns" },
+  { 0x35, "Loading", true },
+  { 0x36, "DK's Jungle Adventure", false },
+  { 0x37, "Peach's Birthday Cake", false },
+  { 0x38, "Yoshi's Tropical Island", false },
+  { 0x39, "Wario's Battle Canyon", false },
+  { 0x3a, "Luigi's Engine Room", false },
+  { 0x3b, "Mario's Rainbow Castle", false },
+  { 0x3c, "Bowser's Magma Mountain", false },
+  { 0x3d, "Eternal Star", false },
+  { 0x3e, "First Map", false }, // "rules" map
+  { 0x3f, "Last 5 Turns", true },
   // { 0x40, "" },
   // { 0x41, "" },
   // { 0x42, "" },
   // { 0x43, "" },
-  { 0x44, "Visiting Toad" }, // generic
+  { 0x44, "Visiting Toad", true }, // generic
   // { 0x45, "" },
-  { 0x46, "Visiting Bowser" }, // generic
-  { 0x47, "DK's Jungle Adventure" }, // talking to whomp
+  { 0x46, "Visiting Bowser", true }, // generic
+  { 0x47, "DK's Jungle Adventure", true }, // talking to whomp
   // { 0x48, "" },
-  { 0x49, "Peach's Birthday Cake" }, // bowser visit
+  { 0x49, "Peach's Birthday Cake", true }, // bowser visit
   // { 0x4a, "" },
-  { 0x4b, "Peach's Birthday Cake" }, // goomba visit
+  { 0x4b, "Peach's Birthday Cake", true }, // goomba visit
   // { 0x4c, "" },
-  { 0x4d, "Yoshi's Tropical Island" }, // thwomp visit
-  { 0x4e, "Yoshi's Tropical Island" }, // bubba event
-  { 0x4f, "Yoshi's Tropical Island" }, // bowser visit
+  { 0x4d, "Yoshi's Tropical Island", true }, // thwomp visit
+  { 0x4e, "Yoshi's Tropical Island", true }, // bubba event
+  { 0x4f, "Yoshi's Tropical Island", true }, // bowser visit
   // { 0x50, "" },
   // { 0x51, "" },
   // { 0x52, "" },
@@ -119,51 +125,51 @@ static const dr_scene_name_t MP1_SCENE_NAMES[] =
   // { 0x54, "" },
   // { 0x55, "" },
   // { 0x56, "" },
-  { 0x57, "Mario's Rainbow Castle" }, // talking to toad/bowser
+  { 0x57, "Mario's Rainbow Castle", true }, // talking to toad/bowser
   // { 0x58, "" },
-  { 0x59, "Bowser's Magma Mountain" }, // junction
+  { 0x59, "Bowser's Magma Mountain", true }, // junction
   // { 0x5a, "" },
   // { 0x5b, "" },
   // { 0x5c, "" },
   // { 0x5d, "" },
-  { 0x5e, "Eternal Star" }, // baby bowser visit
-  { 0x5f, "Visiting Koopa Troopa" },
+  { 0x5e, "Eternal Star", true }, // baby bowser visit
+  { 0x5f, "Visiting Koopa Troopa", true },
   // { 0x60, "" },
-  { 0x61, "Intro" },
-  { 0x62, "Board intro" },
+  { 0x61, "Intro", true },
+  { 0x62, "Board intro", true },
   // { 0x63, "" },
   // { 0x64, "" },
-  { 0x65, "Visiting Boo" },
-  { 0x66, "Booting up" },
-  { 0x67, "Booting up" },
-  { 0x68, "Save data corrupted" },
-  { 0x69, "Mushroom Village" },
-  { 0x6a, "Traveling the Warp Pipe" },
-  { 0x6b, "Mini-Game House" },
-  { 0x6c, "Mushroom Shop" },
-  { 0x6d, "Mushroom Bank" },
-  { 0x6e, "Option House" },
-  { 0x6f, "Mini-Game Explanation" },
-  { 0x70, "Test" }, // unused
-  { 0x71, "Mini-Game Island loading" },
-  { 0x72, "Mini-Game Island" },
+  { 0x65, "Visiting Boo", true },
+  { 0x66, "Booting up", true },
+  { 0x67, "Booting up", true },
+  { 0x68, "Save data corrupted", true },
+  { 0x69, "Mushroom Village", false },
+  { 0x6a, "Traveling the Warp Pipe", false },
+  { 0x6b, "Mini-Game House", false },
+  { 0x6c, "Mushroom Shop", false },
+  { 0x6d, "Mushroom Bank", false },
+  { 0x6e, "Option House", false },
+  { 0x6f, "Mini-Game Explanation", true },
+  { 0x70, "Test", true }, // unused
+  { 0x71, "Mini-Game Island loading", true },
+  { 0x72, "Mini-Game Island", false },
   // { 0x73, "" },
   // { 0x74, "" },
   // { 0x75, "" },
   // { 0x76, "" },
-  { 0x77, "Mini-Game Island ending" },
-  { 0x78, "Mini-Game Island intro" },
-  { 0x79, "Mini-Game Island save space" },
-  { 0x7a, "Random Play" }, // unused
-  { 0x7b, "Mini-Game results" }, // stadium
-  { 0x7c, "Mini-Game results" },
-  { 0x7d, "Mini-Game Island results" },
-  { 0x7e, "Sequential Play" }, // unused
-  { 0x7f, "Mini-Game Stadium intro" },
-  { 0x80, "Mini-Game Stadium results" },
-  { 0x81, "Title Screen" },
-  { 0x82, "Mini-Game Stadium intro" }, // again?
-  { 0x83, "Debug menu" }, // unused
+  { 0x77, "Mini-Game Island ending", true },
+  { 0x78, "Mini-Game Island intro", true },
+  { 0x79, "Mini-Game Island save space", true },
+  { 0x7a, "Random Play", true }, // unused
+  { 0x7b, "Mini-Game results", true }, // stadium
+  { 0x7c, "Mini-Game results", true },
+  { 0x7d, "Mini-Game Island results", true },
+  { 0x7e, "Sequential Play", true }, // unused
+  { 0x7f, "Mini-Game Stadium intro", true },
+  { 0x80, "Mini-Game Stadium results", true },
+  { 0x81, "Title Screen", true },
+  { 0x82, "Mini-Game Stadium intro", true }, // again?
+  { 0x83, "Debug menu", true }, // unused
 
   { -1, nullptr },
 };
@@ -175,8 +181,7 @@ static DrHostConfig makeConfig()
   config.core = dr_core_path(DR_CORE_MUPEN64PLUSNEXT).toStdString();
   config.game = (dr_roms_directory() + "/Mario Party (USA).z64").toStdString();
 
-  config.char_to_dr = MP1_CHAR_TO_DR;
-  config.char_to_dr_size = sizeof(MP1_CHAR_TO_DR) / sizeof(*MP1_CHAR_TO_DR);
+  config.char_to_dr = mp1_char_to_dr;
   config.diff_to_dr = MP1_DIFF_TO_DR;
   config.diff_to_dr_size = sizeof(MP1_DIFF_TO_DR) / sizeof(*MP1_DIFF_TO_DR);
 

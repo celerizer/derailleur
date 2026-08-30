@@ -82,6 +82,7 @@ static const mk64_character_t MK64_CHARACTER_ID[] = {
   { DR_CHARACTER_WALUIGI, 0x08, 0x07 }, // Bowser
 
   { DR_CHARACTER_TOAD, 0x04, 0x03 }, // Toad
+  { DR_CHARACTER_BOO, 0x06, 0x04 }, // Donkey Kong
   { DR_CHARACTER_KOOPA_KID, 0x08, 0x07 }, // Bowser
 };
 

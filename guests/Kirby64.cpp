@@ -371,7 +371,7 @@ void Kirby64::writePlayerIcons(const DrGameData &data)
   {
     const unsigned slot = dr_player_slot(data.players[i], i);
     int characterId = static_cast<int>(data.players[i].character);
-    srcImages[slot] = QImage(QString(":/assets/player-32px/%1.png").arg(characterId));
+    srcImages[slot] = QImage(dr_player_icon_32px(data.host_platform, data.players[i].character));
     if (srcImages[slot].isNull())
       log(DR_LOG_WARN, qPrintable(QString("no 32px player icon for character %1").arg(characterId)));
   }

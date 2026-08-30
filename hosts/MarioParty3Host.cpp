@@ -7,16 +7,23 @@
 #include <QRetro.h>
 #include <QRetroDirectories.h>
 
-static const dr_character MP3_CHAR_TO_DR[] = {
-  DR_CHARACTER_MARIO, // 0x00
-  DR_CHARACTER_LUIGI, // 0x01
-  DR_CHARACTER_PEACH, // 0x02
-  DR_CHARACTER_YOSHI, // 0x03
-  DR_CHARACTER_WARIO, // 0x04
-  DR_CHARACTER_DONKEY_KONG, // 0x05
-  DR_CHARACTER_WALUIGI, // 0x06
-  DR_CHARACTER_DAISY, // 0x07
-};
+/* Native character id -> dr_character */
+static dr_character mp3_char_to_dr(unsigned chr)
+{
+  switch (chr)
+  {
+  case 0x00: return DR_CHARACTER_MARIO;
+  case 0x01: return DR_CHARACTER_LUIGI;
+  case 0x02: return DR_CHARACTER_PEACH;
+  case 0x03: return DR_CHARACTER_YOSHI;
+  case 0x04: return DR_CHARACTER_WARIO;
+  case 0x05: return DR_CHARACTER_DONKEY_KONG;
+  case 0x06: return DR_CHARACTER_WALUIGI;
+  case 0x07: return DR_CHARACTER_DAISY;
+  }
+
+  return DR_CHARACTER_INVALID;
+}
 
 static const dr_difficulty MP3_DIFF_TO_DR[] = {
   DR_DIFFICULTY_EASY, // 0x00
@@ -35,137 +42,137 @@ static const dr_minigame_type MP3_MINIGAME_TYPE_TO_DR[] = {
 
 static const dr_scene_name_t MP3_SCENE_NAMES[] =
 {
-  { 0x00, "Booting up" },
+  { 0x00, "Booting up", true },
 
-  { 0x01, "Hand, Line and Sinker" },
-  { 0x02, "Coconut Conk" },
-  { 0x03, "Spotlight Swim" },
-  { 0x04, "Boulder Ball" },
-  { 0x05, "Crazy Cogs" },
-  { 0x06, "Hide and Sneak" },
-  { 0x07, "Ridiculous Relay" },
-  { 0x08, "Thwomp Pull" },
-  { 0x09, "River Raiders" },
-  { 0x0a, "Tidal Toss" },
-  { 0x0b, "Eatsa Pizza" },
-  { 0x0c, "Baby Bowser Broadside" },
-  { 0x0d, "Pump, Pump and Away" },
-  { 0x0e, "Hyper Hydrants" },
-  { 0x0f, "Picking Panic" },
-  { 0x10, "Cosmic Coaster" },
-  { 0x11, "Puddle Paddle" },
-  { 0x12, "Etch 'n' Catch" },
-  { 0x13, "Log Jam" },
-  { 0x14, "Slot Synch" },
-  { 0x15, "Treadmill Grill" },
-  { 0x16, "Toadstool Titan" },
-  { 0x17, "Aces High" },
-  { 0x18, "Bounce 'n' Trounce" },
-  { 0x19, "Ice Rink Risk" },
-  { 0x1a, "Locked Out" },
-  { 0x1b, "Chip Shot Challenge" },
-  { 0x1c, "Parasol Plummet" },
-  { 0x1d, "Messy Memory" },
-  { 0x1e, "Picture Imperfect" },
-  { 0x1f, "Mario's Puzzle Party" },
-  { 0x20, "The Beat Goes On" },
-  { 0x21, "M.P.I.Q." },
-  { 0x22, "Curtain Call" },
-  { 0x23, "Water Whirled" },
-  { 0x24, "Frigid Bridges" },
-  { 0x25, "Awful Tower" },
-  { 0x26, "Cheep Cheep Chase" },
-  { 0x27, "Pipe Cleaners" },
-  { 0x28, "Snowball Summit" },
-  { 0x29, "All Fired Up" },
-  { 0x2a, "Stacked Deck" },
-  { 0x2b, "Three Door Monty" },
-  { 0x2c, "Rockin' Raceway" },
-  { 0x2d, "Merry-Go-Chomp" },
-  { 0x2e, "Slap Down" },
-  { 0x2f, "Storm Chasers" },
-  { 0x30, "Eye Sore" },
-  { 0x31, "Vine With Me" },
-  { 0x32, "Popgun Pick-Off" },
-  { 0x33, "End of the Line" },
-  { 0x34, "Bowser Toss" },
-  { 0x35, "Baby Bowser Bonkers" },
-  { 0x36, "Motor Rooter" },
-  { 0x37, "Silly Screws" },
-  { 0x38, "Crowd Cover" },
-  { 0x39, "Tick Tock Hop" },
-  { 0x3a, "Fowl Play" },
-  { 0x3b, "Winner's Wheel" },
-  { 0x3c, "Hey, Batter, Batter!" },
-  { 0x3d, "Bobbing Bow-loons" },
-  { 0x3e, "Dorrie Dip" },
-  { 0x3f, "Swinging with Sharks" },
-  { 0x40, "Swing 'n' Swipe" },
-  { 0x41, "Stardust Battle" },
-  { 0x42, "Game Guy's Roulette" },
-  { 0x43, "Game Guy's Lucky 7" },
-  { 0x44, "Game Guy's Magic Boxes" },
-  { 0x45, "Game Guy's Sweet Surprise" },
-  { 0x46, "Dizzy Dinghies" },
+  { 0x01, "Hand, Line and Sinker", false },
+  { 0x02, "Coconut Conk", false },
+  { 0x03, "Spotlight Swim", false },
+  { 0x04, "Boulder Ball", false },
+  { 0x05, "Crazy Cogs", false },
+  { 0x06, "Hide and Sneak", false },
+  { 0x07, "Ridiculous Relay", false },
+  { 0x08, "Thwomp Pull", false },
+  { 0x09, "River Raiders", false },
+  { 0x0a, "Tidal Toss", false },
+  { 0x0b, "Eatsa Pizza", false },
+  { 0x0c, "Baby Bowser Broadside", false },
+  { 0x0d, "Pump, Pump and Away", false },
+  { 0x0e, "Hyper Hydrants", false },
+  { 0x0f, "Picking Panic", false },
+  { 0x10, "Cosmic Coaster", false },
+  { 0x11, "Puddle Paddle", false },
+  { 0x12, "Etch 'n' Catch", false },
+  { 0x13, "Log Jam", false },
+  { 0x14, "Slot Synch", false },
+  { 0x15, "Treadmill Grill", false },
+  { 0x16, "Toadstool Titan", false },
+  { 0x17, "Aces High", false },
+  { 0x18, "Bounce 'n' Trounce", false },
+  { 0x19, "Ice Rink Risk", false },
+  { 0x1a, "Locked Out", false },
+  { 0x1b, "Chip Shot Challenge", false },
+  { 0x1c, "Parasol Plummet", false },
+  { 0x1d, "Messy Memory", false },
+  { 0x1e, "Picture Imperfect", false },
+  { 0x1f, "Mario's Puzzle Party", false },
+  { 0x20, "The Beat Goes On", false },
+  { 0x21, "M.P.I.Q.", false },
+  { 0x22, "Curtain Call", false },
+  { 0x23, "Water Whirled", false },
+  { 0x24, "Frigid Bridges", false },
+  { 0x25, "Awful Tower", false },
+  { 0x26, "Cheep Cheep Chase", false },
+  { 0x27, "Pipe Cleaners", false },
+  { 0x28, "Snowball Summit", false },
+  { 0x29, "All Fired Up", false },
+  { 0x2a, "Stacked Deck", false },
+  { 0x2b, "Three Door Monty", false },
+  { 0x2c, "Rockin' Raceway", false },
+  { 0x2d, "Merry-Go-Chomp", false },
+  { 0x2e, "Slap Down", false },
+  { 0x2f, "Storm Chasers", false },
+  { 0x30, "Eye Sore", false },
+  { 0x31, "Vine With Me", false },
+  { 0x32, "Popgun Pick-Off", false },
+  { 0x33, "End of the Line", false },
+  { 0x34, "Bowser Toss", false },
+  { 0x35, "Baby Bowser Bonkers", false },
+  { 0x36, "Motor Rooter", false },
+  { 0x37, "Silly Screws", false },
+  { 0x38, "Crowd Cover", false },
+  { 0x39, "Tick Tock Hop", false },
+  { 0x3a, "Fowl Play", false },
+  { 0x3b, "Winner's Wheel", false },
+  { 0x3c, "Hey, Batter, Batter!", false },
+  { 0x3d, "Bobbing Bow-loons", false },
+  { 0x3e, "Dorrie Dip", false },
+  { 0x3f, "Swinging with Sharks", false },
+  { 0x40, "Swing 'n' Swipe", false },
+  { 0x41, "Stardust Battle", false },
+  { 0x42, "Game Guy's Roulette", false },
+  { 0x43, "Game Guy's Lucky 7", false },
+  { 0x44, "Game Guy's Magic Boxes", false },
+  { 0x45, "Game Guy's Sweet Surprise", false },
+  { 0x46, "Dizzy Dinghies", false },
 
-  { 0x47, "Loading" },
-  { 0x48, "Chilly Waters" },
-  { 0x49, "Deep Bloober Sea" },
-  { 0x4a, "Spiny Desert" },
-  { 0x4b, "Woody Woods" },
-  { 0x4c, "Creepy Cavern" },
-  { 0x4d, "Waluigi's Island" },
-  { 0x4e, "Battle Royal Rule Map" },
-  { 0x4f, "Board result" }, // result cutscene
-  { 0x50, "Bowser Event" },
-  { 0x51, "Last 5 Turns" },
-  { 0x52, "Mushroom Genie" },
-  { 0x53, "Board intro" },
-  { 0x54, "Battle Royal Rule Map intro" },
-  { 0x55, "Board result" }, // result screen
-  { 0x56, "mchar" },
-  { 0x57, "mchar2" }, // unused
-  { 0x58, "Booting up" }, // Nintendo/Hudson logos
-  { 0x59, "sldebug" }, // unused
+  { 0x47, "Loading", true },
+  { 0x48, "Chilly Waters", false },
+  { 0x49, "Deep Bloober Sea", false },
+  { 0x4a, "Spiny Desert", false },
+  { 0x4b, "Woody Woods", false },
+  { 0x4c, "Creepy Cavern", false },
+  { 0x4d, "Waluigi's Island", false },
+  { 0x4e, "Battle Royal Rule Map", false },
+  { 0x4f, "Board result", false }, // result cutscene
+  { 0x50, "Bowser Event", true },
+  { 0x51, "Last 5 Turns", true },
+  { 0x52, "Mushroom Genie", true },
+  { 0x53, "Board intro", false },
+  { 0x54, "Battle Royal Rule Map intro", false },
+  { 0x55, "Board result", false }, // result screen
+  { 0x56, "mchar", true },
+  { 0x57, "mchar2", true }, // unused
+  { 0x58, "Booting up", false }, // Nintendo/Hudson logos
+  { 0x59, "sldebug", true }, // unused
 
-  { 0x5a, "Loading (duel)" },
-  { 0x5b, "Gate Guy" },
-  { 0x5c, "Arrowhead" },
-  { 0x5d, "Pipesqueak" },
-  { 0x5e, "Blowhard" },
-  { 0x5f, "Mr. Mover" },
-  { 0x60, "Backtrack" },
+  { 0x5a, "Loading (duel)", true },
+  { 0x5b, "Gate Guy", false },
+  { 0x5c, "Arrowhead", false },
+  { 0x5d, "Pipesqueak", false },
+  { 0x5e, "Blowhard", false },
+  { 0x5f, "Mr. Mover", false },
+  { 0x60, "Backtrack", false },
   // { 0x61, "" },
   // { 0x62, "" },
   // { 0x63, "" },
-  { 0x64, "Duel Board intro", true },
+  { 0x64, "Duel Board intro", false },
   // { 0x65, "" },
   // { 0x66, "" },
-  { 0x67, "Initializing save file" },
+  { 0x67, "Initializing save file", true },
   // { 0x68, "" },
-  { 0x69, "Mini-Game Room" },
-  { 0x6a, "Chance Time" },
+  { 0x69, "Mini-Game Room", false },
+  { 0x6a, "Chance Time", false },
   // { 0x6b, "" },
   // { 0x6c, "" },
   // { 0x6d, "" },
   // { 0x6e, "" },
   // { 0x6f, "" },
-  { 0x70, "Mini-Game explanation" },
-  { 0x71, "Mini-Game results" },
-  { 0x72, "Game Guy results" },
-  { 0x73, "Duel Game results" },
-  { 0x74, "Battle Game results" },
+  { 0x70, "Mini-Game explanation", true },
+  { 0x71, "Mini-Game results", true },
+  { 0x72, "Game Guy results", true },
+  { 0x73, "Duel Game results", true },
+  { 0x74, "Battle Game results", true },
   // { 0x75, "" },
   // { 0x76, "" },
-  { 0x77, "Castle Grounds" },
-  { 0x78, "Star Lift" },
-  { 0x79, "File select" },
-  { 0x7a, "Cutscene" },
-  { 0x7b, "Princess Peach's Castle" },
-  { 0x7c, "Credits" },
-  { 0x7d, "Story Mode result" },
+  { 0x77, "Castle Grounds", false },
+  { 0x78, "Star Lift", false },
+  { 0x79, "File select", false },
+  { 0x7a, "Cutscene", false },
+  { 0x7b, "Princess Peach's Castle", false },
+  { 0x7c, "Credits", false },
+  { 0x7d, "Story Mode result", false },
   // { 0x7e, "" },
-  { 0x7f, "selmenu" }, // unused
+  { 0x7f, "selmenu", true }, // unused
 
   { -1, nullptr },
 };
@@ -177,8 +184,7 @@ static DrHostConfig makeConfig()
   config.core = dr_core_path(DR_CORE_MUPEN64PLUSNEXT).toStdString();
   config.game = (dr_roms_directory() + "/Mario Party 3 (USA).z64").toStdString();
 
-  config.char_to_dr = MP3_CHAR_TO_DR;
-  config.char_to_dr_size = sizeof(MP3_CHAR_TO_DR) / sizeof(*MP3_CHAR_TO_DR);
+  config.char_to_dr = mp3_char_to_dr;
   config.diff_to_dr = MP3_DIFF_TO_DR;
   config.diff_to_dr_size = sizeof(MP3_DIFF_TO_DR) / sizeof(*MP3_DIFF_TO_DR);
 

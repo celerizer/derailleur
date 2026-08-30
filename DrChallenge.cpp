@@ -87,7 +87,7 @@ DrChallenge::DrChallenge(QWidget *parent)
   for (int c = k_FirstCharacter; c < k_FirstCharacter + k_CharacterCount; c++)
   {
     /* The player art is indexed by the raw dr_character value. */
-    m_character->addItem(QIcon(QString(":/assets/player-32px/%1.png").arg(c)),
+    m_character->addItem(QIcon(QString(":/assets/player-32px/gcwii/%1.png").arg(c)),
       QString::fromUtf8(dr_character_name(static_cast<dr_character>(c))), c);
   }
   row->addWidget(m_character);

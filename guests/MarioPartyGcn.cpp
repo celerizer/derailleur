@@ -75,6 +75,8 @@ dr_minigame_result_t MarioPartyGcn::minigameResult(unsigned index)
  * slot remap can see every player's team type together. */
 void MarioPartyGcn::applyPlayers()
 {
+  unsigned characters[4] = { 0, 0, 0, 0 };
+
   for (unsigned i = 0; i < 4; i++)
     m_slotOf[i] = static_cast<int>(i);
 
@@ -90,13 +92,16 @@ void MarioPartyGcn::applyPlayers()
         m_slotOf[i] = slot++;
   }
 
+  /* Anyone the game doesn't have takes a free slot rather than doubling up on
+   * whoever their stand-in points at. */
+  dr_resolve_characters(m_config.char_from_dr, m_players, m_config.roster_size, characters);
+
   for (unsigned i = 0; i < 4; i++)
   {
     const dr_player_t &p = m_players[i];
     unsigned slot = static_cast<unsigned>(m_slotOf[i]);
 
-    if (p.character < DR_CHARACTER_SIZE)
-      m_retro->writeu16(m_config.character_ids[p.character], m_config.character_addr[slot]);
+    m_retro->writeu16(static_cast<uint16_t>(characters[i]), m_config.character_addr[slot]);
 
     if (p.control_port != DR_CONTROL_PORT_INVALID && p.control_port < DR_CONTROL_PORT_SIZE)
       m_retro->writeu16(static_cast<uint16_t>(p.control_port - 1), m_config.controller_addr[slot]);

@@ -2,10 +2,73 @@
 
 #include <cstring>
 
-// DONKEY_KONG maps to 0x08 (Boo) as MP6 has no DK.
-static const uint16_t MP6_CHARACTER_IDS[DR_CHARACTER_SIZE] = {
-  0xFF, 0x00, 0x01, 0x02, 0x03, 0x04, 0x08, 0x06, 0x05,
-};
+/* Mario Party 6's playable roster, in native id order. */
+typedef enum
+{
+  MP6_CHARACTER_MARIO = 0x0,
+  MP6_CHARACTER_LUIGI = 0x1,
+  MP6_CHARACTER_PEACH = 0x2,
+  MP6_CHARACTER_YOSHI = 0x3,
+  MP6_CHARACTER_WARIO = 0x4,
+  MP6_CHARACTER_DAISY = 0x5,
+  MP6_CHARACTER_WALUIGI = 0x6,
+  MP6_CHARACTER_TOAD = 0x7,
+  MP6_CHARACTER_BOO = 0x8,
+  MP6_CHARACTER_KOOPA_KID = 0x9,
+  MP6_CHARACTER_KOOPA_KID_R = 0xA,
+  MP6_CHARACTER_KOOPA_KID_G = 0xB,
+  MP6_CHARACTER_KOOPA_KID_B = 0xC
+} mp6_character;
+
+static dr_character_id_t mp6_char_from_dr(dr_character character)
+{
+  switch (character)
+  {
+  /* Supported characters */
+  case DR_CHARACTER_MARIO:
+    return { MP6_CHARACTER_MARIO, true };
+  case DR_CHARACTER_LUIGI:
+    return { MP6_CHARACTER_LUIGI, true };
+  case DR_CHARACTER_PEACH:
+    return { MP6_CHARACTER_PEACH, true };
+  case DR_CHARACTER_YOSHI:
+    return { MP6_CHARACTER_YOSHI, true };
+  case DR_CHARACTER_WARIO:
+    return { MP6_CHARACTER_WARIO, true };
+  case DR_CHARACTER_DAISY:
+    return { MP6_CHARACTER_DAISY, true };
+  case DR_CHARACTER_WALUIGI:
+    return { MP6_CHARACTER_WALUIGI, true };
+  case DR_CHARACTER_TOAD:
+    return { MP6_CHARACTER_TOAD, true };
+  case DR_CHARACTER_BOO:
+    return { MP6_CHARACTER_BOO, true };
+  case DR_CHARACTER_KOOPA_KID:
+    return { MP6_CHARACTER_KOOPA_KID, true };
+  case DR_CHARACTER_KOOPA_KID_R:
+    return { MP6_CHARACTER_KOOPA_KID_R, true };
+  case DR_CHARACTER_KOOPA_KID_G:
+    return { MP6_CHARACTER_KOOPA_KID_G, true };
+  case DR_CHARACTER_KOOPA_KID_B:
+    return { MP6_CHARACTER_KOOPA_KID_B, true };
+
+  /* Character replacements */
+  case DR_CHARACTER_DONKEY_KONG:
+    return { MP6_CHARACTER_BOO, false };
+  case DR_CHARACTER_TOADETTE:
+    return { MP6_CHARACTER_PEACH, false };
+  case DR_CHARACTER_BIRDO:
+    return { MP6_CHARACTER_YOSHI, false };
+  case DR_CHARACTER_DRY_BONES:
+    return { MP6_CHARACTER_BOO, false };
+  case DR_CHARACTER_BLOOPER:
+    return { MP6_CHARACTER_PEACH, false };
+  case DR_CHARACTER_HAMMER_BRO:
+    return { MP6_CHARACTER_MARIO, false };
+  default:
+    return { MP6_CHARACTER_MARIO, false };
+  }
+}
 
 static const dr_mp_minigame_t MP6_MINIGAMES[] = {
   // 4-Player
@@ -32,6 +95,7 @@ static const dr_mp_minigame_t MP6_MINIGAMES[] = {
   { "Money Belt", DR_MINIGAME_4P, 0x15, 0x1B, DR_NO_QUIRKS, DR_FLAG_LUCKY },
   { "Sunday Drivers", DR_MINIGAME_4P, 0x2F, 0x35, DR_NO_QUIRKS, DR_NO_FLAGS },
   { "Throw Me a Bone", DR_MINIGAME_4P, 0x31, 0x37, DR_NO_QUIRKS, DR_NO_FLAGS },
+  
   // 1-vs-3
   { "Cash Flow", DR_MINIGAME_1V3, 0x16, 0x1C, DR_NO_QUIRKS, DR_FLAG_LUCKY },
   { "Sink or Swim", DR_MINIGAME_1V3, 0x18, 0x1E, DR_NO_QUIRKS, DR_NO_FLAGS },
@@ -44,12 +108,12 @@ static const dr_mp_minigame_t MP6_MINIGAMES[] = {
   { "Crate and Peril", DR_MINIGAME_1V3, 0x1F, 0x25, DR_NO_QUIRKS, DR_NO_FLAGS },
   { "Ray of Fright", DR_MINIGAME_1V3, 0x20, 0x26, DR_NO_QUIRKS, DR_NO_FLAGS },
   { "Dust 'til Dawn", DR_MINIGAME_1V3, 0x21, 0x27, DR_NO_QUIRKS, DR_NO_FLAGS },
+  
   // 2-vs-2
   { "Garden Grab", DR_MINIGAME_2V2, 0x22, 0x28, DR_NO_QUIRKS, DR_NO_FLAGS },
   { "Pixel Perfect", DR_MINIGAME_2V2, 0x23, 0x29, DR_NO_QUIRKS, DR_NO_FLAGS },
   { "Slot Trot", DR_MINIGAME_2V2, 0x24, 0x2A, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Gondola Glide", DR_MINIGAME_2V2, 0x25, 0x2B,
-    DR_NO_QUIRKS, DR_NO_FLAGS }, // sets av info to be widescreen at the end??
+  { "Gondola Glide", DR_MINIGAME_2V2, 0x25, 0x2B, DR_NO_QUIRKS, DR_NO_FLAGS }, // sets av info to be widescreen at the end??
   { "Light Breeze", DR_MINIGAME_2V2, 0x26, 0x2C, DR_NO_QUIRKS, DR_NO_FLAGS },
   { "Body Builder", DR_MINIGAME_2V2, 0x27, 0x2D, DR_NO_QUIRKS, DR_NO_FLAGS },
   { "Mole-it!", DR_MINIGAME_2V2, 0x28, 0x2E, DR_NO_QUIRKS, DR_NO_FLAGS },
@@ -58,6 +122,7 @@ static const dr_mp_minigame_t MP6_MINIGAMES[] = {
   { "Rocky Road", DR_MINIGAME_2V2, 0x2B, 0x31, DR_NO_QUIRKS, DR_NO_FLAGS },
   { "Clean Team", DR_MINIGAME_2V2, 0x2C, 0x32, DR_NO_QUIRKS, DR_NO_FLAGS },
   { "Burnstile", DR_MINIGAME_2V2, 0x43, 0x49, DR_NO_QUIRKS, DR_NO_FLAGS },
+  
   // Battle
   { "Hyper Sniper", DR_MINIGAME_BATTLE, 0x2D, 0x33, DR_NO_QUIRKS, DR_NO_FLAGS },
   { "Insectiride", DR_MINIGAME_BATTLE, 0x2E, 0x34, DR_NO_QUIRKS, DR_NO_FLAGS },
@@ -65,6 +130,7 @@ static const dr_mp_minigame_t MP6_MINIGAMES[] = {
   { "Wrasslin' Rapids", DR_MINIGAME_BATTLE, 0x3F, 0x45, DR_NO_QUIRKS, DR_NO_FLAGS },
   { "Strawberry Shortfuse", DR_MINIGAME_BATTLE, 0x4F, 0x55, DR_NO_QUIRKS, DR_NO_FLAGS },
   { "Control Shtick", DR_MINIGAME_BATTLE, 0x50, 0x56, DR_NO_QUIRKS, DR_NO_FLAGS },
+
   // Duel
   { "Light Up My Night", DR_MINIGAME_DUEL, 0x10, 0x16, DR_NO_QUIRKS, DR_NO_FLAGS },
   { "Cog Jog", DR_MINIGAME_DUEL, 0x17, 0x1D, DR_NO_QUIRKS, DR_NO_FLAGS },
@@ -81,25 +147,30 @@ static const dr_mp_minigame_t MP6_MINIGAMES[] = {
   { "Boonanza!", DR_MINIGAME_DUEL, 0x3C, 0x42, DR_NO_QUIRKS, DR_NO_FLAGS },
   { "Trick or Tree", DR_MINIGAME_DUEL, 0x3D, 0x43, DR_NO_QUIRKS, DR_NO_FLAGS },
   { "Something's Amist", DR_MINIGAME_DUEL, 0x3E, 0x44, DR_NO_QUIRKS, DR_NO_FLAGS },
-  // Mic minigames (not selectable)
-  { "Verbal Assault", DR_MINIGAME_INVALID, 0x40, 0x46, DR_NO_QUIRKS, DR_FLAG_MIC },
-  { "Shoot Yer Mouth Off", DR_MINIGAME_INVALID, 0x41, 0x4A, DR_NO_QUIRKS, DR_FLAG_MIC },
-  { "Talkie Walkie", DR_MINIGAME_INVALID, 0x42, 0x4B, DR_NO_QUIRKS, DR_FLAG_MIC },
-  { "Word Herd", DR_MINIGAME_INVALID, 0x44, 0x47, DR_NO_QUIRKS, DR_FLAG_MIC },
-  { "Fruit Talktail", DR_MINIGAME_INVALID, 0x45, 0x48, DR_NO_QUIRKS, DR_FLAG_MIC },
-  // Bowser minigames (not selectable)
-  { "Pit Boss", DR_MINIGAME_INVALID, 0x46, 0x4C, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Dizzy Rotisserie", DR_MINIGAME_INVALID, 0x47, 0x4D, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Dark 'n Crispy", DR_MINIGAME_INVALID, 0x48, 0x4E, DR_NO_QUIRKS, DR_NO_FLAGS },
-  // DK minigames (not selectable)
-  { "Tally Me Banana", DR_MINIGAME_INVALID, 0x49, 0x4F, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Banana Shake", DR_MINIGAME_INVALID, 0x4A, 0x50, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Pier Factor", DR_MINIGAME_INVALID, 0x4B, 0x51, DR_NO_QUIRKS, DR_NO_FLAGS },
-  // Rare minigames (not selectable)
-  { "Seer Terror", DR_MINIGAME_INVALID, 0x4C, 0x52, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Block Star", DR_MINIGAME_INVALID, 0x4D, 0x53, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Lab Brats", DR_MINIGAME_INVALID, 0x4E, 0x54, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Dunk Bros.", DR_MINIGAME_INVALID, 0x51, 0x57, DR_NO_QUIRKS, DR_NO_FLAGS },
+  
+  // Mic minigames
+  { "Verbal Assault", DR_MINIGAME_SPECIAL, 0x40, 0x46, DR_NO_QUIRKS, DR_FLAG_MIC },
+  { "Shoot Yer Mouth Off", DR_MINIGAME_SPECIAL, 0x41, 0x4A, DR_NO_QUIRKS, DR_FLAG_MIC },
+  { "Talkie Walkie", DR_MINIGAME_SPECIAL, 0x42, 0x4B, DR_NO_QUIRKS, DR_FLAG_MIC },
+  { "Word Herd", DR_MINIGAME_SPECIAL, 0x44, 0x47, DR_NO_QUIRKS, DR_FLAG_MIC },
+  { "Fruit Talktail", DR_MINIGAME_SPECIAL, 0x45, 0x48, DR_NO_QUIRKS, DR_FLAG_MIC },
+  
+  /* Bowser */
+  { "Pit Boss", DR_MINIGAME_BOWSER, 0x46, 0x4C, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Dizzy Rotisserie", DR_MINIGAME_BOWSER, 0x47, 0x4D, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Dark 'n Crispy", DR_MINIGAME_BOWSER, 0x48, 0x4E, DR_NO_QUIRKS, DR_NO_FLAGS },
+  
+  /* DK */
+  { "Tally Me Banana", DR_MINIGAME_DK, 0x49, 0x4F, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Banana Shake", DR_MINIGAME_DK, 0x4A, 0x50, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Pier Factor", DR_MINIGAME_DK, 0x4B, 0x51, DR_NO_QUIRKS, DR_NO_FLAGS },
+  
+  /* Rare */
+  { "Seer Terror", DR_MINIGAME_SPECIAL, 0x4C, 0x52, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Block Star", DR_MINIGAME_SPECIAL, 0x4D, 0x53, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Lab Brats", DR_MINIGAME_SPECIAL, 0x4E, 0x54, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Dunk Bros.", DR_MINIGAME_SPECIAL, 0x51, 0x57, DR_NO_QUIRKS, DR_NO_FLAGS },
+
   { nullptr, DR_MINIGAME_INVALID, 0xFF, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
 };
 
@@ -132,7 +203,8 @@ static MpGcnConfig buildConfig()
   memcpy(config.bonus_result_addr, bonus_result_addr, sizeof(bonus_result_addr));
   memcpy(config.result_addr, result_addr, sizeof(result_addr));
 
-  config.character_ids = MP6_CHARACTER_IDS;
+  config.char_from_dr = mp6_char_from_dr;
+  config.roster_size = 13;
   config.minigames = MP6_MINIGAMES;
 
   return config;

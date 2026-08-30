@@ -96,7 +96,10 @@ static const mt_character_t MT_DR_TO_CHAR[DR_CHARACTER_SIZE] = {
   { 0x0B, 0x00 }, // DR_CHARACTER_DAISY
   { 0x07, 0x00 }, // DR_CHARACTER_TOAD
   { 0x04, 0x00 }, // DR_CHARACTER_BOO
-  { 0x0F, 0x01 }, // DR_CHARACTER_KOOPA_KID (Paratroopa, Green)
+  { 0x03, 0x00 }, // DR_CHARACTER_KOOPA_KID (Bowser)
+  { 0x03, 0x00 }, // DR_CHARACTER_KOOPA_KID_R (Bowser)
+  { 0x03, 0x00 }, // DR_CHARACTER_KOOPA_KID_G (Bowser)
+  { 0x03, 0x01 }, // DR_CHARACTER_KOOPA_KID_B (Bowser, alternate colour)
   { 0x13, 0x01 }, // DR_CHARACTER_TOADETTE
   { 0x0C, 0x00 }, // DR_CHARACTER_BIRDO
   { 0xFF, 0x00 }, // DR_CHARACTER_DRY_BONES

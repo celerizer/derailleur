@@ -281,7 +281,7 @@ void BanjoTooie::writePlayerIcon(unsigned slot, dr_character character)
   const int c = static_cast<int>(character);
   const QString destDir = QString::fromUtf8(BT_HIRES_DIR);
   QDir().mkpath(destDir);
-  const QString src = QString(":/assets/player-32px/%1.png").arg(c);
+  const QString src = dr_player_icon_32px(m_hostPlatform, character);
 
   auto saveTo = [&](const QImage &img, const char *file) {
     if (img.isNull())

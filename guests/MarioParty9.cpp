@@ -37,42 +37,73 @@ static const size_t MP9_MINIGAME_STARTED_ADDR = 0x81752520;
 /// u32 - partner index in Bowser Jr. mini-games. Unused for now; noted here in case we ever support those.
 static const size_t MP9_BOWSER_JR_PARTNER_ADDR = 0x8175261C;
 
-/* dr_character -> MP9 roster id. MP9 lacks DK/Boo/Toadette/Dry Bones, so those
- * fall back to the nearest available character. */
-static int32_t mp9Character(dr_character c)
+/* MP9's playable roster, in native id order. */
+typedef enum
 {
-  switch (c)
+  MP9_CHARACTER_MARIO = 0x0,
+  MP9_CHARACTER_LUIGI = 0x1,
+  MP9_CHARACTER_PEACH = 0x2,
+  MP9_CHARACTER_DAISY = 0x3,
+  MP9_CHARACTER_WARIO = 0x4,
+  MP9_CHARACTER_WALUIGI = 0x5,
+  MP9_CHARACTER_YOSHI = 0x6,
+  MP9_CHARACTER_BIRDO = 0x7,
+  MP9_CHARACTER_TOAD = 0x8,
+  MP9_CHARACTER_KOOPA_TROOPA = 0x9,
+  MP9_CHARACTER_SHY_GUY = 0xA,
+  MP9_CHARACTER_KAMEK = 0xB
+} mp9_character;
+
+/// How many characters MP9's roster holds, numbered from 0 (see mp9_character).
+static const unsigned MP9_ROSTER_SIZE = 12;
+
+static dr_character_id_t mp9_char_from_dr(dr_character character)
+{
+  switch (character)
   {
+  /* Supported characters */
   case DR_CHARACTER_MARIO:
-    return 0x0;
+    return { MP9_CHARACTER_MARIO, true };
   case DR_CHARACTER_LUIGI:
-    return 0x1;
+    return { MP9_CHARACTER_LUIGI, true };
   case DR_CHARACTER_PEACH:
-    return 0x2;
+    return { MP9_CHARACTER_PEACH, true };
   case DR_CHARACTER_DAISY:
-    return 0x3;
+    return { MP9_CHARACTER_DAISY, true };
   case DR_CHARACTER_WARIO:
-    return 0x4;
+    return { MP9_CHARACTER_WARIO, true };
   case DR_CHARACTER_WALUIGI:
-    return 0x5;
+    return { MP9_CHARACTER_WALUIGI, true };
   case DR_CHARACTER_YOSHI:
-    return 0x6;
+    return { MP9_CHARACTER_YOSHI, true };
   case DR_CHARACTER_BIRDO:
-    return 0x7;
+    return { MP9_CHARACTER_BIRDO, true };
   case DR_CHARACTER_TOAD:
-    return 0x8;
-  case DR_CHARACTER_TOADETTE:
-    return 0x8; // Toad
-  case DR_CHARACTER_KOOPA_KID:
-    return 0x9; // Koopa
-  case DR_CHARACTER_DRY_BONES:
-    return 0x9; // Koopa
-  case DR_CHARACTER_BOO:
-    return 0xA; // Shy Guy
+    return { MP9_CHARACTER_TOAD, true };
+
+  /* Character replacements */
   case DR_CHARACTER_DONKEY_KONG:
-    return 0xB; // Kamek
+    return { MP9_CHARACTER_KAMEK, false };
+  case DR_CHARACTER_BOO:
+    return { MP9_CHARACTER_SHY_GUY, false };
+  case DR_CHARACTER_KOOPA_KID:
+    return { MP9_CHARACTER_WARIO, false };
+  case DR_CHARACTER_KOOPA_KID_R:
+    return { MP9_CHARACTER_MARIO, false };
+  case DR_CHARACTER_KOOPA_KID_G:
+    return { MP9_CHARACTER_LUIGI, false };
+  case DR_CHARACTER_KOOPA_KID_B:
+    return { MP9_CHARACTER_WARIO, false };
+  case DR_CHARACTER_TOADETTE:
+    return { MP9_CHARACTER_PEACH, false };
+  case DR_CHARACTER_DRY_BONES:
+    return { MP9_CHARACTER_KOOPA_TROOPA, false };
+  case DR_CHARACTER_BLOOPER:
+    return { MP9_CHARACTER_PEACH, false };
+  case DR_CHARACTER_HAMMER_BRO:
+    return { MP9_CHARACTER_MARIO, false };
   default:
-    return 0x0;
+    return { MP9_CHARACTER_MARIO, false };
   }
 }
 
@@ -255,6 +286,8 @@ const dr_mp_minigame_t *MarioParty9::minigames() const
 
 void MarioParty9::doApplyGameData(const DrGameData &data)
 {
+  unsigned characters[4] = { 0, 0, 0, 0 };
+
   m_minigameFrames = 0;
   m_finishScheduled = false;
   m_resyncCountdown = 0;
@@ -265,12 +298,15 @@ void MarioParty9::doApplyGameData(const DrGameData &data)
   int32_t id = static_cast<int32_t>(data.minigame->minigame_id);
   m_retro->writes32(id, MP9_MINIGAME_TO_LOAD_ADDR);
 
+  /* Anyone MP9 doesn't have takes a free slot rather than doubling up on whoever
+   * their stand-in points at. */
+  dr_resolve_characters(mp9_char_from_dr, m_players, MP9_ROSTER_SIZE, characters);
+
   for (unsigned i = 0; i < 4; i++)
   {
     const unsigned slot = dr_player_slot(m_players[i], i);
 
-    int32_t chr = mp9Character(m_players[i].character);
-    m_retro->writes32(chr, MP9_CHARACTER_ADDR[slot]);
+    m_retro->writes32(static_cast<int32_t>(characters[i]), MP9_CHARACTER_ADDR[slot]);
 
     int32_t diff = mp9Difficulty(m_players[i].difficulty);
     m_retro->writes32(diff, MP9_CPU_DIFFICULTY_ADDR[slot]);

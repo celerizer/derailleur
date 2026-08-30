@@ -16,6 +16,11 @@ class MarioParty4Host : public MarioPartyGcnHost
 public:
   explicit MarioParty4Host(QObject *parent = nullptr);
   dr_game game(void) const override { return DR_GAME_MARIOPARTY4; }
+
+protected:
+  /// MP4's board scores a Bowser mini-game the other way round to every other
+  /// type, so the guest's result is flipped back before it is written.
+  dr_minigame_result_t adjustResult(unsigned index, const dr_minigame_result_t &result) override;
 };
 
 #endif

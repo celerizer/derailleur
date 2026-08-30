@@ -28,6 +28,11 @@ public:
 
 protected:
   void run() override;
+
+  /// Pins the core to 4:3 before it boots, so the mini-games keep the shape the
+  /// board is running in (see MP8_CORE_OPTIONS in MarioParty8Host).
+  void onBeforeBoot(const DrGameData &data) override;
+
   void doApplyGameData(const DrGameData &data) override;
 
 private:

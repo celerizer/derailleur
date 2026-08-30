@@ -1,10 +1,11 @@
 #ifndef DR_COMMON_H
 #define DR_COMMON_H
 
+#include <QFile>
 #include <QString>
 
-static const char *const DERAILLEUR_DATE_STRING = "August 23, 2026";
-static const char *const DERAILLEUR_RELEASE_STRING = "r8";
+static const char *const DERAILLEUR_DATE_STRING = "August 30, 2026";
+static const char *const DERAILLEUR_RELEASE_STRING = "r9";
 
 typedef enum
 {
@@ -23,6 +24,9 @@ typedef enum
   DR_CHARACTER_TOAD,
   DR_CHARACTER_BOO,
   DR_CHARACTER_KOOPA_KID,
+  DR_CHARACTER_KOOPA_KID_R,
+  DR_CHARACTER_KOOPA_KID_G,
+  DR_CHARACTER_KOOPA_KID_B,
 
   DR_CHARACTER_TOADETTE,
 
@@ -237,6 +241,68 @@ typedef enum
   DR_ENDIANNESS_SIZE
 } dr_endianness;
 
+/// The most characters any one game's roster can hold, bounding dr_resolve_characters.
+#define DR_ROSTER_MAX 32
+
+/**
+ * One game's answer for a dr_character: the native id to put in a player slot,
+ * and whether the game actually has that character.
+ *
+ * An unsupported character is borrowing somebody else's slot, so its id is only
+ * a preference -- dr_resolve_characters hands it to the next free one when the
+ * preferred slot is already spoken for.
+ */
+typedef struct
+{
+  unsigned id;
+  bool supported;
+} dr_character_id_t;
+
+/// One libretro core option to force, as a { key, value } pair. Tables of these
+/// end in a row with a null key.
+typedef struct
+{
+  const char *key;
+  const char *value;
+} dr_core_option_t;
+
+/**
+ * Which console family a host game belongs to. The player artwork ships in one
+ * set per family (assets/player-32px/n64 and .../gcwii), so a guest drawing the
+ * board's players picks the set that matches the host it was launched from.
+ */
+typedef enum
+{
+  DR_HOST_PLATFORM_INVALID = 0,
+
+  DR_HOST_PLATFORM_N64,
+  DR_HOST_PLATFORM_GCWII,
+
+  DR_HOST_PLATFORM_SIZE
+} dr_host_platform;
+
+/// The art-set directory name for `platform`. Anything but the N64 family uses
+/// the GameCube/Wii set, which is the one that covers every dr_character.
+static inline const char *dr_host_platform_dir(dr_host_platform platform)
+{
+  return platform == DR_HOST_PLATFORM_N64 ? "n64" : "gcwii";
+}
+
+/// Resource path for a player's 32px icon in `platform`'s art set. The N64 set
+/// only draws the characters those games have, so anyone it is missing falls
+/// back to the GameCube/Wii art rather than coming out blank.
+static inline QString dr_player_icon_32px(dr_host_platform platform, dr_character character)
+{
+  const QString path = QString(":/assets/player-32px/%1/%2.png")
+    .arg(QString::fromUtf8(dr_host_platform_dir(platform)))
+    .arg(static_cast<int>(character));
+
+  if (QFile::exists(path))
+    return path;
+
+  return QString(":/assets/player-32px/gcwii/%1.png").arg(static_cast<int>(character));
+}
+
 typedef enum
 {
   DR_GAME_INVALID = 0,
@@ -245,8 +311,14 @@ typedef enum
   DR_GAME_MARIOPARTY2,
   DR_GAME_MARIOPARTY3,
   DR_GAME_MARIOPARTY4,
+  DR_GAME_MARIOPARTY5,
+  DR_GAME_MARIOPARTY6,
+  DR_GAME_MARIOPARTY7,
 
   DR_GAME_SONICSHUFFLE,
+
+  /* Appended rather than kept in order: the values go over the wire in netplay. */
+  DR_GAME_MARIOPARTY8,
 
   DR_GAME_SIZE
 } dr_game;
@@ -421,6 +493,59 @@ static inline unsigned dr_player_slot(const dr_player_t &p, unsigned fallback)
   return slot < 4 ? slot : fallback;
 }
 
+/**
+ * Resolves the four players' characters to the native ids to write.
+ *
+ * Players whose character the game really has come in as themselves and claim
+ * that id first. Everyone else takes their preferred stand-in if it is still
+ * free, and otherwise the next free id in roster order (wrapping), so two
+ * players never turn up wearing the same face. `roster_size` is how many
+ * characters the game has, numbered from 0.
+ */
+static inline void dr_resolve_characters(dr_character_id_t (*char_from_dr)(dr_character),
+  const dr_player_t players[4], unsigned roster_size, unsigned out[4])
+{
+  bool taken[DR_ROSTER_MAX] = { false };
+  unsigned i, n;
+
+  if (!char_from_dr || !roster_size)
+    return;
+  else if (roster_size > DR_ROSTER_MAX)
+    roster_size = DR_ROSTER_MAX;
+
+  /* Everyone the game has, first: their id is theirs and nobody may borrow it. */
+  for (i = 0; i < 4; i++)
+  {
+    const dr_character_id_t native = char_from_dr(players[i].character);
+
+    out[i] = native.id;
+    if (native.supported && native.id < roster_size)
+      taken[native.id] = true;
+  }
+
+  for (i = 0; i < 4; i++)
+  {
+    const dr_character_id_t native = char_from_dr(players[i].character);
+
+    /* A slot with nobody in it keeps its fallback and claims nothing, so an
+     * empty seat can't push a real player off their stand-in. */
+    if (native.supported || players[i].character == DR_CHARACTER_INVALID)
+      continue;
+
+    for (n = 0; n < roster_size; n++)
+    {
+      const unsigned id = (native.id + n) % roster_size;
+
+      if (!taken[id])
+      {
+        out[i] = id;
+        taken[id] = true;
+        break;
+      }
+    }
+  }
+}
+
 typedef struct
 {
   signed coins;
@@ -471,6 +596,11 @@ typedef enum
 
   DR_MINIGAME_GAME_GUY,
 
+  /* Board-event mini-games: the ones a Bowser or DK space fires off, rolled from
+   * their own pools rather than the regular roulette. */
+  DR_MINIGAME_BOWSER,
+  DR_MINIGAME_DK,
+
   /**
    * A special mini-game that doesn't fit any of the categories and will
    * probably stay unsupported
@@ -489,6 +619,28 @@ typedef struct
   dr_emulation_quirk_t quirks;
   dr_minigame_flags_t flags;
 } dr_mp_minigame_t;
+
+/// One entry in a host's scene-name table. Tables are terminated by an entry
+/// whose scene_id is -1 (scene_id is signed so the sentinel can't collide with
+/// any real 0x00-0xFF scene).
+typedef struct
+{
+  int scene_id;
+  const char *name;
+  bool ignore;
+} dr_scene_name_t;
+
+/// Returns the descriptive name for `scene_id` by scanning `scenes` until a
+/// match or the -1 terminator, or nullptr if there is no table or no match.
+static inline const char *dr_scene_name(const dr_scene_name_t *scenes, int scene_id)
+{
+  if (!scenes)
+    return nullptr;
+  for (; scenes->scene_id != -1; scenes++)
+    if (scenes->scene_id == scene_id)
+      return scenes->name;
+  return nullptr;
+}
 
 typedef enum
 {
@@ -546,6 +698,10 @@ static inline const char *dr_minigame_type_name(dr_minigame_type t)
     return "Duel";
   case DR_MINIGAME_GAME_GUY:
     return "Game Guy";
+  case DR_MINIGAME_BOWSER:
+    return "Bowser";
+  case DR_MINIGAME_DK:
+    return "DK";
   case DR_MINIGAME_SPECIAL:
     return "Special";
   default:
@@ -579,6 +735,12 @@ static inline const char *dr_character_name(dr_character c)
     return "Boo";
   case DR_CHARACTER_KOOPA_KID:
     return "Koopa Kid";
+  case DR_CHARACTER_KOOPA_KID_R:
+    return "Koopa Kid R";
+  case DR_CHARACTER_KOOPA_KID_G:
+    return "Koopa Kid G";
+  case DR_CHARACTER_KOOPA_KID_B:
+    return "Koopa Kid B";
   case DR_CHARACTER_TOADETTE:
     return "Toadette";
   case DR_CHARACTER_BIRDO:

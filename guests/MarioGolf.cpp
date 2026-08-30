@@ -9,7 +9,8 @@ static const size_t MG_MENU_CHARACTER_ADDR[4] = { 0x8012F480, 0x8012F484, 0x8012
 // u8 per-player (true, in-game) character (raw per-player addresses).
 static const size_t MG_CHARACTER_ADDR[4] = { 0x801B71ED, 0x801B72A5, 0x801B735D, 0x801B7415 };
 
-// u8 per-player color (raw per-player addresses, 0xB8 stride).
+// u8 per-player color (raw per-player addresses, 0xB8 stride). 0=default color, 1=c-left
+// 2=c-down, 3=c-right
 static const size_t MG_COLOR_ADDR[4] = { 0x801B724B, 0x801B7303, 0x801B73BB, 0x801B7473 };
 
 // u8 bool per-player: is this golfer a bot? (0xB8-strided from P1).
@@ -82,15 +83,50 @@ static mg_char_pick mgCharFor(dr_character character)
 {
   switch (character)
   {
-  case DR_CHARACTER_MARIO:       return { MG_CHARACTER_MARIO, 0 };
-  case DR_CHARACTER_LUIGI:       return { MG_CHARACTER_LUIGI, 0 };
-  case DR_CHARACTER_PEACH:       return { MG_CHARACTER_PEACH, 0 };
-  case DR_CHARACTER_YOSHI:       return { MG_CHARACTER_YOSHI, 0 };
-  case DR_CHARACTER_WARIO:       return { MG_CHARACTER_WARIO, 0 };
-  case DR_CHARACTER_DONKEY_KONG: return { MG_CHARACTER_DONKEY_KONG, 0 };
-  case DR_CHARACTER_DAISY:       return { MG_CHARACTER_AZALEA, 0 };
-  case DR_CHARACTER_WALUIGI:     return { MG_CHARACTER_HARRY, 0 };
-  default:                       return { MG_CHARACTER_MARIO, 0 };
+  case DR_CHARACTER_MARIO: 
+    return { MG_CHARACTER_MARIO, 0 };
+  case DR_CHARACTER_LUIGI:
+    return { MG_CHARACTER_LUIGI, 0 };
+  case DR_CHARACTER_PEACH:
+    return { MG_CHARACTER_PEACH, 0 };
+  case DR_CHARACTER_YOSHI:
+    return { MG_CHARACTER_YOSHI, 0 };
+  case DR_CHARACTER_WARIO:
+    return { MG_CHARACTER_WARIO, 0 };
+  case DR_CHARACTER_DONKEY_KONG:
+    return { MG_CHARACTER_DONKEY_KONG, 0 };
+  case DR_CHARACTER_DAISY:
+    return { MG_CHARACTER_AZALEA, 0 };
+  case DR_CHARACTER_WALUIGI:
+    return { MG_CHARACTER_HARRY, 0 };
+
+  case DR_CHARACTER_TOAD:
+    return { MG_CHARACTER_BABY_MARIO, 3 };
+  case DR_CHARACTER_BOO:
+    return { MG_CHARACTER_METAL_MARIO, 3 };
+  case DR_CHARACTER_KOOPA_KID:
+    return { MG_CHARACTER_BOWSER, 0 };
+
+  case DR_CHARACTER_TOADETTE:
+    return { MG_CHARACTER_PLUM, 2 };
+  case DR_CHARACTER_BIRDO:
+    return { MG_CHARACTER_YOSHI, 3 };
+  case DR_CHARACTER_DRY_BONES:
+    return { MG_CHARACTER_DONKEY_KONG, 2 };
+  case DR_CHARACTER_HAMMER_BRO:
+    return { MG_CHARACTER_HARRY, 1 };
+  case DR_CHARACTER_BLOOPER:
+    return { MG_CHARACTER_MAPLE, 2 };
+
+  case DR_CHARACTER_KOOPA_KID_R:
+    return { MG_CHARACTER_BOWSER, 1 };
+  case DR_CHARACTER_KOOPA_KID_G:
+    return { MG_CHARACTER_BOWSER, 3 };
+  case DR_CHARACTER_KOOPA_KID_B:
+    return { MG_CHARACTER_BOWSER, 2 };
+
+  default:
+    return { MG_CHARACTER_MARIO, 0 };
   }
 }
 

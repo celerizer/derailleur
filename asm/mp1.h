@@ -4,7 +4,7 @@
 #define MP1_TITLE_COLORS     0x800B8FFC
 
 /**
- * Custom code and data placed in the debug-font region
+ * Custom code and data placed in the cave region
  *
  * Trampolines the hooks below jump into. memcpy this to CAVE_ADDR before
  * enabling any hook. The data block that follows it is reserved, not copied

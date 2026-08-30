@@ -60,18 +60,22 @@ DrDebug::DrDebug(QWidget *parent)
 {
   QVBoxLayout *layout = new QVBoxLayout(this);
 
-  m_guestCombo = new QComboBox(this);
-  m_guestCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
-  layout->addWidget(m_guestCombo);
+  /* Everything that picks and launches a mini-game lives in one box at the top. */
+  QGroupBox *miniBox = new QGroupBox(tr("Mini-game"), this);
+  QVBoxLayout *miniLayout = new QVBoxLayout(miniBox);
 
-  m_miniMenu = new QMenu(this);
-  m_miniButton = new QToolButton(this);
+  m_guestCombo = new QComboBox(miniBox);
+  m_guestCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
+  miniLayout->addWidget(m_guestCombo);
+
+  m_miniMenu = new QMenu(miniBox);
+  m_miniButton = new QToolButton(miniBox);
   m_miniButton->setPopupMode(QToolButton::InstantPopup);
   m_miniButton->setToolButtonStyle(Qt::ToolButtonTextOnly);
   m_miniButton->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
   m_miniButton->setMenu(m_miniMenu);
   m_miniButton->setText(tr("(no mini-game)"));
-  layout->addWidget(m_miniButton);
+  miniLayout->addWidget(m_miniButton);
 
   /* QMenu::triggered fires for actions in submenus too; each action stores its
    * index into m_entries. */
@@ -84,6 +88,33 @@ DrDebug::DrDebug(QWidget *parent)
 
   connect(m_guestCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
     [this](int idx) { refreshMinis(idx); });
+
+  layout->addWidget(miniBox);
+
+  /* Request button with a warning icon that lights up when the team split doesn't
+   * match the mini-game type. */
+  QPushButton *btn = new QPushButton(tr("Request Minigame"), miniBox);
+  connect(btn, &QPushButton::clicked, this, [this]() {
+    int idx = m_selectedEntry;
+    if (idx < 0 || idx >= m_entries.size())
+      return;
+
+    emit minigameRequested(
+      m_entries[idx].first, m_entries[idx].second, players(m_entries[idx].second));
+  });
+
+  QHBoxLayout *requestRow = new QHBoxLayout;
+  requestRow->addWidget(btn);
+  m_teamWarning = new QLabel(QString::fromUtf8("\u26a0"), miniBox); /* warning sign */
+  m_teamWarning->setStyleSheet("color: #d9822b; font-weight: bold;");
+  m_teamWarning->setVisible(false);
+  requestRow->addWidget(m_teamWarning);
+  requestRow->addStretch();
+
+  QPushButton *cancelBtn = new QPushButton("Cancel Minigame", miniBox);
+  connect(cancelBtn, &QPushButton::clicked, this, [this]() { emit cancelRequested(); });
+  requestRow->addWidget(cancelBtn);
+  miniLayout->addLayout(requestRow);
 
   /* One group box of dropdowns per player, arranged P1/P2 on top, P3/P4 below. */
   QGridLayout *playerGrid = new QGridLayout;
@@ -151,94 +182,124 @@ DrDebug::DrDebug(QWidget *parent)
   playerGrid->setColumnStretch(1, 1);
   layout->addLayout(playerGrid);
 
-  QPushButton *btn = new QPushButton("Request Minigame", this);
-  connect(btn, &QPushButton::clicked, this, [this]() {
-    int idx = m_selectedEntry;
-    if (idx < 0 || idx >= m_entries.size())
-      return;
 
-    DrGuest *guest = m_entries[idx].first;
-    const dr_mp_minigame_t *minigame = m_entries[idx].second;
-
-    std::array<dr_player_t, 4> players{};
-    for (int i = 0; i < 4; i++)
-    {
-      const PlayerControls &pc = m_players[i];
-      players[i].character = dr_character(pc.character->currentData().toInt());
-      players[i].control_port = dr_control_port(pc.controlPort->currentData().toInt());
-      players[i].control_type = dr_control_type(pc.controlType->currentData().toInt());
-      players[i].difficulty = dr_difficulty(pc.difficulty->currentData().toInt());
-
-      /* No board to read totals from, so hand out something a mini-game HUD can
-       * plausibly show. */
-      players[i].coins = 100;
-      players[i].stars = 3;
-
-      /* team_id is chosen directly now (any 0-3); team_color follows it and team_type
-       * follows the minigame's layout for the chosen team. */
-      players[i].team_id = pc.teamId->currentData().toInt();
-      static const dr_team_color k_teamColors[4] = {
-        DR_TEAM_COLOR_BLUE, DR_TEAM_COLOR_RED, DR_TEAM_COLOR_YELLOW, DR_TEAM_COLOR_GREEN
-      };
-      players[i].team_color = (players[i].team_id >= 0 && players[i].team_id < 4)
-        ? k_teamColors[players[i].team_id] : DR_TEAM_COLOR_INVALID;
-
-      switch (minigame->type)
-      {
-      case DR_MINIGAME_2V2:
-        players[i].team_type = DR_TEAM_TYPE_2V2;
-        break;
-      case DR_MINIGAME_1V3:
-        players[i].team_type =
-          (players[i].team_id == 0) ? DR_TEAM_TYPE_1V3_SOLO : DR_TEAM_TYPE_1V3_GROUP;
-        break;
-      case DR_MINIGAME_DUEL:
-      case DR_MINIGAME_1P:
-      case DR_MINIGAME_ITEM:
-        /* team_id 0 = player (participates), 1 = non-player (sits out). */
-        players[i].team_type =
-          (players[i].team_id == 0) ? DR_TEAM_TYPE_SOLO : DR_TEAM_TYPE_INVALID;
-        break;
-      default:
-        players[i].team_type = DR_TEAM_TYPE_4P;
-        break;
-      }
-    }
-
-    emit minigameRequested(guest, minigame, players);
-  });
-
-  /* Request button with a warning icon that lights up when the team split doesn't
-   * match the mini-game type. */
-  QHBoxLayout *requestRow = new QHBoxLayout;
-  requestRow->addWidget(btn);
-  m_teamWarning = new QLabel(QString::fromUtf8("⚠"), this); /* ⚠ */
-  m_teamWarning->setStyleSheet("color: #d9822b; font-weight: bold;");
-  m_teamWarning->setVisible(false);
-  requestRow->addWidget(m_teamWarning);
-  requestRow->addStretch();
-  layout->addLayout(requestRow);
-
-  QPushButton *cancelBtn = new QPushButton("Cancel Minigame", this);
-  connect(cancelBtn, &QPushButton::clicked, this, [this]() { emit cancelRequested(); });
-  layout->addWidget(cancelBtn);
+  /* Board box: everything that pokes the running host directly. */
+  QGroupBox *boardBox = new QGroupBox(tr("Board"), this);
+  QVBoxLayout *boardLayout = new QVBoxLayout(boardBox);
 
   /* Turn selector: jump the board's current-turn counter (useful for testing the
    * last-5-turns event and end-of-game handling). */
   QHBoxLayout *turnRow = new QHBoxLayout;
-  turnRow->addWidget(new QLabel(tr("Turn:"), this));
-  QSpinBox *turnSpin = new QSpinBox(this);
+  turnRow->addWidget(new QLabel(tr("Turn:"), boardBox));
+  QSpinBox *turnSpin = new QSpinBox(boardBox);
   turnSpin->setRange(1, 99);
   turnRow->addWidget(turnSpin);
-  QPushButton *turnBtn = new QPushButton("Set Turn", this);
+  QPushButton *turnBtn = new QPushButton(tr("Set Turn"), boardBox);
   connect(turnBtn, &QPushButton::clicked, this,
     [this, turnSpin]() { emit setTurnRequested(turnSpin->value()); });
   turnRow->addWidget(turnBtn);
   turnRow->addStretch();
-  layout->addLayout(turnRow);
+  boardLayout->addLayout(turnRow);
+
+  /* Pull the board's own player setup into the dropdowns, or push the dropdowns
+   * back out over it. */
+  QHBoxLayout *setupRow = new QHBoxLayout;
+  setupRow->addWidget(new QLabel(tr("Players:"), boardBox));
+  QPushButton *readBtn = new QPushButton(tr("Read"), boardBox);
+  readBtn->setToolTip(tr("Load the running board's player setup into these dropdowns"));
+  connect(readBtn, &QPushButton::clicked, this, [this]() { emit readPlayersRequested(); });
+  setupRow->addWidget(readBtn);
+  QPushButton *writeBtn = new QPushButton(tr("Write"), boardBox);
+  writeBtn->setToolTip(tr("Stamp these dropdowns into the running board"));
+  connect(writeBtn, &QPushButton::clicked, this,
+    [this]() { emit writePlayersRequested(players()); });
+  setupRow->addWidget(writeBtn);
+  setupRow->addStretch();
+  boardLayout->addLayout(setupRow);
+
+  layout->addWidget(boardBox);
 
   layout->addStretch();
   setLayout(layout);
+}
+
+std::array<dr_player_t, 4> DrDebug::players(const dr_mp_minigame_t *minigame) const
+{
+  std::array<dr_player_t, 4> players{};
+
+  for (int i = 0; i < 4; i++)
+  {
+    const PlayerControls &pc = m_players[i];
+    players[i].character = dr_character(pc.character->currentData().toInt());
+    players[i].control_port = dr_control_port(pc.controlPort->currentData().toInt());
+    players[i].control_type = dr_control_type(pc.controlType->currentData().toInt());
+    players[i].difficulty = dr_difficulty(pc.difficulty->currentData().toInt());
+
+    /* team_id is chosen directly now (any 0-3); team_color follows it and team_type
+     * follows the minigame's layout for the chosen team. */
+    players[i].team_id = pc.teamId->currentData().toInt();
+    static const dr_team_color k_teamColors[4] = {
+      DR_TEAM_COLOR_BLUE, DR_TEAM_COLOR_RED, DR_TEAM_COLOR_YELLOW, DR_TEAM_COLOR_GREEN
+    };
+    players[i].team_color = (players[i].team_id < 4)
+      ? k_teamColors[players[i].team_id] : DR_TEAM_COLOR_INVALID;
+
+    /* The rest only matters when a mini-game is about to be launched. */
+    if (!minigame)
+      continue;
+
+    /* No board to read totals from, so hand out something a mini-game HUD can
+     * plausibly show. */
+    players[i].coins = 100;
+    players[i].stars = 3;
+
+    switch (minigame->type)
+    {
+    case DR_MINIGAME_2V2:
+      players[i].team_type = DR_TEAM_TYPE_2V2;
+      break;
+    case DR_MINIGAME_1V3:
+      players[i].team_type =
+        (players[i].team_id == 0) ? DR_TEAM_TYPE_1V3_SOLO : DR_TEAM_TYPE_1V3_GROUP;
+      break;
+    case DR_MINIGAME_DUEL:
+    case DR_MINIGAME_1P:
+    case DR_MINIGAME_ITEM:
+      /* team_id 0 = player (participates), 1 = non-player (sits out). */
+      players[i].team_type =
+        (players[i].team_id == 0) ? DR_TEAM_TYPE_SOLO : DR_TEAM_TYPE_INVALID;
+      break;
+    default:
+      players[i].team_type = DR_TEAM_TYPE_4P;
+      break;
+    }
+  }
+
+  return players;
+}
+
+void DrDebug::setPlayers(const std::array<dr_player_t, 4> &players)
+{
+  /* Anything the host couldn't resolve (an id no dr_character covers, say) comes back
+   * invalid and isn't in the dropdown: leave that field on whatever it showed. */
+  auto select = [](QComboBox *combo, int value) {
+    const int idx = combo->findData(value);
+    if (idx >= 0)
+      combo->setCurrentIndex(idx);
+  };
+
+  for (int i = 0; i < 4; i++)
+  {
+    const PlayerControls &pc = m_players[i];
+
+    select(pc.character, players[i].character);
+    select(pc.controlPort, players[i].control_port);
+    select(pc.controlType, players[i].control_type);
+    select(pc.difficulty, players[i].difficulty);
+    select(pc.teamId, static_cast<int>(players[i].team_id));
+  }
+
+  validateTeams();
 }
 
 void DrDebug::populate(const QList<DrGuest *> &guests)

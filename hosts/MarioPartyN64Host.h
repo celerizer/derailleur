@@ -5,16 +5,6 @@
 #include <array>
 #include <string>
 
-/// One entry in a host's scene-name table. Tables are terminated by an entry
-/// whose scene_id is -1 (scene_id is signed so the sentinel can't collide with
-/// any real 0x00-0xFF scene).
-typedef struct
-{
-  int scene_id;
-  const char *name;
-  bool ignore;
-} dr_scene_name_t;
-
 /// One element of the game's native scene stack (see DrHostConfig::scene_stack_addr).
 typedef struct
 {
@@ -22,18 +12,6 @@ typedef struct
   int16_t event;
   int16_t stat;
 } dr_mp64_overlay_t;
-
-/// Returns the descriptive name for `scene_id` by scanning `scenes` until a
-/// match or the -1 terminator, or nullptr if there is no table or no match.
-static inline const char *dr_scene_name(const dr_scene_name_t *scenes, int scene_id)
-{
-  if (!scenes)
-    return nullptr;
-  for (; scenes->scene_id != -1; scenes++)
-    if (scenes->scene_id == scene_id)
-      return scenes->name;
-  return nullptr;
-}
 
 typedef enum
 {
@@ -66,8 +44,10 @@ struct DrHostConfig
   std::string core;
   std::string game;
 
-  const dr_character *char_to_dr;
-  unsigned char_to_dr_size;
+  /// Native character id -> dr_character, DR_CHARACTER_INVALID for ids the game
+  /// doesn't use. nullptr = no mapping.
+  dr_character (*char_to_dr)(unsigned chr);
+
   const dr_difficulty *diff_to_dr;
   unsigned diff_to_dr_size;
   
@@ -200,7 +180,11 @@ public:
   void writeResults(DrGuest *guest) override;
   void clearResults() override;
   void setCurrentTurn(unsigned turn) override;
+  bool readPlayerSetup(DrPlayerArray &players) override;
+  bool writePlayerSetup(const DrPlayerArray &players) override;
   void startMinigame(unsigned index);
+
+  dr_host_platform platform(void) const override { return DR_HOST_PLATFORM_N64; }
 
   void run(void);
 

@@ -784,7 +784,7 @@ void MarioPartyN64Host::readPlayers(dr_minigame_type type)
     if (readu8(&team, m_config.values.team[i].address) != DR_OK) continue;
 
     dr_player_t &p = m_pendingPlayers[i];
-    p.character = (chr  < m_config.char_to_dr_size) ? m_config.char_to_dr[chr] : DR_CHARACTER_INVALID;
+    p.character = m_config.char_to_dr ? m_config.char_to_dr(chr) : DR_CHARACTER_INVALID;
     p.difficulty = (diff < m_config.diff_to_dr_size) ? m_config.diff_to_dr[diff] : DR_DIFFICULTY_INVALID;
     p.control_type = (bot & 0x01) ? DR_CONTROL_TYPE_CPU : DR_CONTROL_TYPE_HUMAN;
     p.control_port = static_cast<dr_control_port>(DR_CONTROL_PORT_P1 + ctrl);
@@ -846,6 +846,91 @@ void MarioPartyN64Host::readPlayers(dr_minigame_type type)
   }
 }
 
+/* Scan a native->dr mapping backwards to find the native id for `c`, or -1. The id
+ * spaces are tiny, so a linear probe beats keeping a second table per game. */
+static int dr_char_to_native(const DrHostConfig &config, dr_character c)
+{
+  if (config.char_to_dr && c != DR_CHARACTER_INVALID)
+    for (unsigned n = 0; n < 0x100; n++)
+      if (config.char_to_dr(n) == c)
+        return static_cast<int>(n);
+
+  return -1;
+}
+
+static int dr_diff_to_native(const DrHostConfig &config, dr_difficulty d)
+{
+  for (unsigned n = 0; n < config.diff_to_dr_size; n++)
+    if (config.diff_to_dr[n] == d)
+      return static_cast<int>(n);
+
+  return -1;
+}
+
+bool MarioPartyN64Host::readPlayerSetup(DrPlayerArray &players)
+{
+  if (!m_config.values.character[0].address)
+    return false;
+
+  for (unsigned i = 0; i < 4; i++)
+  {
+    uint8_t chr = 0, ctrl = 0, diff = 0, bot = 0, team = 0;
+
+    readu8(&chr,  m_config.values.character[i].address);
+    readu8(&ctrl, m_config.values.controller[i].address);
+    readu8(&diff, m_config.values.difficulty[i].address);
+    readu8(&bot,  m_config.values.bot[i].address);
+    readu8(&team, m_config.values.team[i].address);
+
+    dr_player_t &p = players[i];
+    p.character = m_config.char_to_dr ? m_config.char_to_dr(chr) : DR_CHARACTER_INVALID;
+    p.control_port = static_cast<dr_control_port>(DR_CONTROL_PORT_P1 + ctrl);
+    p.control_type = (bot & 0x01) ? DR_CONTROL_TYPE_CPU : DR_CONTROL_TYPE_HUMAN;
+    p.difficulty = (diff < m_config.diff_to_dr_size)
+      ? m_config.diff_to_dr[diff] : DR_DIFFICULTY_INVALID;
+    p.team_id = team;
+  }
+
+  return true;
+}
+
+bool MarioPartyN64Host::writePlayerSetup(const DrPlayerArray &players)
+{
+  if (!m_config.values.character[0].address)
+    return false;
+
+  for (unsigned i = 0; i < 4; i++)
+  {
+    const dr_player_t &p = players[i];
+    const int chr = dr_char_to_native(m_config, p.character);
+    const int diff = dr_diff_to_native(m_config, p.difficulty);
+    uint8_t bot = 0;
+
+    if (chr >= 0)
+      writeu8(static_cast<uint8_t>(chr), m_config.values.character[i].address);
+    else
+      emit logMessage(DR_LOG_WARN,
+        QString("write players: %1 has no id in this game, leaving slot %2 alone")
+          .arg(dr_character_name(p.character)).arg(i + 1));
+
+    if (diff >= 0)
+      writeu8(static_cast<uint8_t>(diff), m_config.values.difficulty[i].address);
+
+    writeu8(static_cast<uint8_t>(p.control_port - DR_CONTROL_PORT_P1),
+      m_config.values.controller[i].address);
+    writeu8(static_cast<uint8_t>(p.team_id), m_config.values.team[i].address);
+
+    /* Only bit 0 is the cpu flag; keep whatever else the game stores in the byte. */
+    readu8(&bot, m_config.values.bot[i].address);
+    bot = (p.control_type == DR_CONTROL_TYPE_CPU) ? (bot | 0x01) : (bot & ~0x01);
+    writeu8(bot, m_config.values.bot[i].address);
+  }
+
+  emit logMessage(DR_LOG_INFO, "write players: stamped the debug player setup");
+
+  return true;
+}
+
 void MarioPartyN64Host::setCurrentTurn(unsigned turn)
 {
   if (!m_config.values.turn_current.address)
@@ -902,13 +987,9 @@ void MarioPartyN64Host::writeResults(DrGuest *guest)
     
     readu8(&chr, m_config.values.character[i].address);
     dr_character character =
-      (chr < m_config.char_to_dr_size) ? m_config.char_to_dr[chr] : DR_CHARACTER_INVALID;
+      m_config.char_to_dr ? m_config.char_to_dr(chr) : DR_CHARACTER_INVALID;
 
-    emit logMessage(
-      DR_LOG_INFO, QString("%1 gets %2 + %3 coins")
-                     .arg(dr_character_name(character))
-                     .arg(result.coins)
-                     .arg(result.bonus_coins));
+    emit logMessage(DR_LOG_INFO, resultLogLine(i, character, result));
 
     /* Mario Party 1: Add result + bonus together */
     if (!m_config.values.bonus_result[i].address)

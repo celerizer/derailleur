@@ -20,11 +20,26 @@ public:
   DrDebug(QWidget *parent = nullptr);
   void populate(const QList<DrGuest *> &guests);
 
+  /// The four players as configured in the dialog. With a `minigame`, the fields a
+  /// launch needs (team_type and placeholder coins/stars) are filled in too; without
+  /// one, only what the dialog actually shows is set.
+  std::array<dr_player_t, 4> players(const dr_mp_minigame_t *minigame = nullptr) const;
+
+  /// Point every dropdown at `players`, for pulling the running host's setup in.
+  void setPlayers(const std::array<dr_player_t, 4> &players);
+
 signals:
   void minigameRequested(
     DrGuest *guest, const dr_mp_minigame_t *minigame, std::array<dr_player_t, 4> players);
   void cancelRequested();
   void setTurnRequested(int turn);
+
+  /// Read the host's player setup into the dialog. The owner does the reading and
+  /// answers with setPlayers, so this widget stays independent of DrHost.
+  void readPlayersRequested();
+
+  /// Stamp the dialog's player setup into the running host.
+  void writePlayersRequested(std::array<dr_player_t, 4> players);
 
 private:
   void refreshMinis(int guestIdx);

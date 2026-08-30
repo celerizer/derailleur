@@ -9,6 +9,11 @@
 #include <QRetro.h>
 #include <QtEndian>
 
+/// Applies one Wii Remote control layout to a single player's joypad: button and
+/// stick remaps that make a pad stand in for how the game expects the remote to
+/// be held (see dr_wii_control).
+void dr_apply_wii_control(QRetroInputJoypad &jp, dr_wii_control control);
+
 class DrRetro : public QObject
 {
   Q_OBJECT
@@ -66,6 +71,11 @@ public:
     if (m_core)
       m_core->startCore();
   }
+
+  /// Puts every port on one Wii control layout, for a context that doesn't vary
+  /// it per player (a board, a menu). Guests that split solo/team layouts per
+  /// mini-game use DolphinGuest::applyControlRemap instead.
+  void applyWiiControls(dr_wii_control control);
 
   void applyN64Remaps()
   {

@@ -6,7 +6,9 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QGridLayout>
 #include <QGuiApplication>
+#include <QIcon>
 #include <QLabel>
 #include <QLineEdit>
 #include <QMessageBox>
@@ -17,8 +19,10 @@
 #include <QScreen>
 #include <QSet>
 #include <QSettings>
+#include <QSize>
 #include <QStackedWidget>
 #include <QString>
+#include <QToolButton>
 #include <QVBoxLayout>
 #include <QWidget>
 
@@ -30,6 +34,10 @@
 #include "hosts/MarioParty2Host.h"
 #include "hosts/MarioParty3Host.h"
 #include "hosts/MarioParty4Host.h"
+#include "hosts/MarioParty5Host.h"
+#include "hosts/MarioParty6Host.h"
+#include "hosts/MarioParty7Host.h"
+#include "hosts/MarioParty8Host.h"
 #include "hosts/SonicShuffleHost.h"
 #include "guests/MarioKart64.h"
 #include "guests/MarioParty1.h"
@@ -138,19 +146,44 @@ MainWindow::MainWindow(QWidget *parent)
     QWidget *startGame = new QWidget(nullptr);
     QVBoxLayout *layout = new QVBoxLayout(startGame);
     QLabel *label = new QLabel(tr("Choose Host"), startGame);
+    QGridLayout *grid = new QGridLayout;
+    int hosts = 0;
+
     label->setAlignment(Qt::AlignCenter);
     layout->addStretch();
     layout->addWidget(label);
+    layout->addLayout(grid);
 
-    auto addHostButton = [&](const QString &name, auto factory) {
-      QPushButton *btn = new QPushButton(name, startGame);
-      connect(btn, &QPushButton::clicked, this, [this, factory]() { startWithHost(factory()); });
-      layout->addWidget(btn);
+    /* Two rows of four: each host is its own title screen with the game's name
+     * underneath. The 4:3 shots are scaled to keep their aspect. */
+    auto addHostButton = [&](const QString &name, const QString &title, auto factory) {
+      QToolButton *btn = new QToolButton(startGame);
+
+      btn->setText(name);
+      btn->setIcon(QIcon(QString(":/assets/titlescreen/%1.png").arg(title)));
+      btn->setIconSize(QSize(160, 120));
+      btn->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
+      btn->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+      connect(btn, &QToolButton::clicked, this, [this, factory]() { startWithHost(factory()); });
+      grid->addWidget(btn, hosts / 4, hosts % 4);
+      hosts++;
     };
-    addHostButton("Mario Party 1", [this]() -> DrHost * { return new MarioParty1Host(this); });
-    addHostButton("Mario Party 2", [this]() -> DrHost * { return new MarioParty2Host(this); });
-    addHostButton("Mario Party 3", [this]() -> DrHost * { return new MarioParty3Host(this); });
-    addHostButton("Mario Party 4", [this]() -> DrHost * { return new MarioParty4Host(this); });
+    addHostButton("Mario Party 1", "marioparty1",
+      [this]() -> DrHost * { return new MarioParty1Host(this); });
+    addHostButton("Mario Party 2", "marioparty2",
+      [this]() -> DrHost * { return new MarioParty2Host(this); });
+    addHostButton("Mario Party 3", "marioparty3",
+      [this]() -> DrHost * { return new MarioParty3Host(this); });
+    addHostButton("Mario Party 4", "marioparty4",
+      [this]() -> DrHost * { return new MarioParty4Host(this); });
+    addHostButton("Mario Party 5", "marioparty5",
+      [this]() -> DrHost * { return new MarioParty5Host(this); });
+    addHostButton("Mario Party 6", "marioparty6",
+      [this]() -> DrHost * { return new MarioParty6Host(this); });
+    addHostButton("Mario Party 7", "marioparty7",
+      [this]() -> DrHost * { return new MarioParty7Host(this); });
+    addHostButton("Mario Party 8", "marioparty8",
+      [this]() -> DrHost * { return new MarioParty8Host(this); });
     layout->addStretch();
 
     m_StartGameTab = startGame;
@@ -591,6 +624,22 @@ void MainWindow::startWithHost(DrHost *host)
 
   connect(m_Debug, &DrDebug::setTurnRequested, this,
     [this](int turn) { m_Host->setCurrentTurn(turn); });
+
+  /* The dialog holds no host pointer, so the read happens here and goes back as a
+   * plain array. Start from what the dialog already shows so fields the host doesn't
+   * track keep their current value. */
+  connect(m_Debug, &DrDebug::readPlayersRequested, this, [this]() {
+    DrPlayerArray players = m_Debug->players();
+    if (m_Host->readPlayerSetup(players))
+      m_Debug->setPlayers(players);
+    else
+      m_Logger->message(DR_LOG_WARN, "read players: this host can't read its player setup");
+  });
+
+  connect(m_Debug, &DrDebug::writePlayersRequested, this, [this](DrPlayerArray players) {
+    if (!m_Host->writePlayerSetup(players))
+      m_Logger->message(DR_LOG_WARN, "write players: this host can't write its player setup");
+  });
 #endif
 
   /* The host pulls its own candidates straight from the guest list's cache when
@@ -760,6 +809,7 @@ void MainWindow::launchMinigame(
       data.minigame = minigame;
       data.type = minigame ? minigame->type : DR_MINIGAME_INVALID;
       data.battle_pot = m_Host ? m_Host->battlePot() : 0;
+      data.host_platform = m_Host ? m_Host->platform() : DR_HOST_PLATFORM_INVALID;
       for (unsigned i = 0; i < 4; i++)
         data.players[i] = players[i];
       guest->applyGameData(data);
@@ -861,6 +911,18 @@ void MainWindow::setupNetplay()
       break;
     case DR_GAME_MARIOPARTY4:
       host = new MarioParty4Host(this);
+      break;
+    case DR_GAME_MARIOPARTY5:
+      host = new MarioParty5Host(this);
+      break;
+    case DR_GAME_MARIOPARTY6:
+      host = new MarioParty6Host(this);
+      break;
+    case DR_GAME_MARIOPARTY7:
+      host = new MarioParty7Host(this);
+      break;
+    case DR_GAME_MARIOPARTY8:
+      host = new MarioParty8Host(this);
       break;
     case DR_GAME_SONICSHUFFLE:
       host = new SonicShuffleHost(this);

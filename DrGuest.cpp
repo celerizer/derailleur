@@ -55,6 +55,7 @@ void DrGuest::applyGameData(const DrGameData &data)
    * can read m_players without copying data.players themselves. */
   for (unsigned i = 0; i < 4; i++)
     m_players[i] = data.players[i];
+  m_hostPlatform = data.host_platform;
 
   /* Apply emulation quirks for the minigame */
   const dr_mp_minigame_t *minigame = data.minigame;

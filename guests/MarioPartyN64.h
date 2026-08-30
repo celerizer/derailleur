@@ -37,7 +37,28 @@ struct MpN64Config
   /// what the board actually collected. 0 address = the game has no battles (MP1).
   dr_value_t battle_pot;
 
-  const uint8_t *character_ids;
+  /// dr_character -> the game's own character id, flagged with whether the game
+  /// really has that character or is only lending a slot (see dr_character_id_t).
+  dr_character_id_t (*char_from_dr)(dr_character character);
+
+  /// How many characters the game has, numbered from 0. Bounds the search for a
+  /// free slot when a stand-in's preferred character is already taken.
+  unsigned roster_size;
+
+  /// A handful of mini-games leave one more character playable than the board
+  /// ever offers, under a native id the character select never writes: Toad in
+  /// MP1's Slot Car Derby, Koopa Kid in MP2's Shell Shocked. A player who came
+  /// in as that character on the host gets the native id here instead of their
+  /// usual stand-in. DR_CHARACTER_INVALID (0) = this game has no such mini-game.
+  struct
+  {
+    dr_character character;
+    uint8_t native_id;
+
+    /// The mini-game ids the character is playable in, -1 terminated.
+    signed minigame_ids[8];
+  } hidden;
+
   const dr_mp_minigame_t *minigames;
 };
 
@@ -65,11 +86,17 @@ private:
   /// Reseeds the game's RNG from dr_rand, so a mini-game replayed from the same
   /// savestate doesn't play out identically. No-op without a configured address.
   void seedRng();
+  /// True if the hidden character is playable in `minigame` (see MpN64Config::hidden).
+  bool hiddenCharacterPlayable(const dr_mp_minigame_t *minigame) const;
+  /// Stamps the hidden character back into every slot in m_hiddenSlots.
+  void writeHiddenCharacters(void);
   void doApplyGameData(const DrGameData &data) override;
   DrRetro *m_retro = nullptr;
   MpN64Config m_config;
   int16_t m_lastScene = -1;
   int m_minigameFrames = 0;
+  /// Bitmask of the slots playing as the hidden character this mini-game.
+  uint8_t m_hiddenSlots = 0;
 };
 
 #endif

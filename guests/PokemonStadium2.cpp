@@ -372,7 +372,7 @@ void PokemonStadium2::writePlayerIcon(unsigned index, dr_character character)
   };
 
   /* Small single icon: the 32px art fitted to 2x of the original 36x28 texture. */
-  const QImage icon = ps2FitIcon(QString(":/assets/player-32px/%1.png").arg(c), 72, 56);
+  const QImage icon = ps2FitIcon(dr_player_icon_32px(m_hostPlatform, character), 72, 56);
   if (icon.isNull())
     log(DR_LOG_WARN, qPrintable(QString("no 32px player icon for character %1").arg(c)));
   saveTo(icon, PS2_PLAYER_ICON_FILES[index][0], PS2_PLAYER_ICON_FILES[index][1]);

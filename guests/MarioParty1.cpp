@@ -4,9 +4,66 @@
 
 #include <QRetroDirectories.h>
 
-static const uint8_t MP1_CHARACTER_IDS[DR_CHARACTER_SIZE] = {
-  0xFF, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05,
-};
+/* Mario Party 1's playable roster, in native id order. */
+typedef enum
+{
+  MP1_CHARACTER_MARIO = 0x0,
+  MP1_CHARACTER_LUIGI = 0x1,
+  MP1_CHARACTER_PEACH = 0x2,
+  MP1_CHARACTER_YOSHI = 0x3,
+  MP1_CHARACTER_WARIO = 0x4,
+  MP1_CHARACTER_DONKEY_KONG = 0x5
+} mp1_character;
+
+static dr_character_id_t mp1_char_from_dr(dr_character character)
+{
+  switch (character)
+  {
+  /* Supported characters */
+  case DR_CHARACTER_MARIO:
+    return { MP1_CHARACTER_MARIO, true };
+  case DR_CHARACTER_LUIGI:
+    return { MP1_CHARACTER_LUIGI, true };
+  case DR_CHARACTER_PEACH:
+    return { MP1_CHARACTER_PEACH, true };
+  case DR_CHARACTER_YOSHI:
+    return { MP1_CHARACTER_YOSHI, true };
+  case DR_CHARACTER_WARIO:
+    return { MP1_CHARACTER_WARIO, true };
+  case DR_CHARACTER_DONKEY_KONG:
+    return { MP1_CHARACTER_DONKEY_KONG, true };
+
+  /* Character replacements */
+  case DR_CHARACTER_WALUIGI:
+    return { MP1_CHARACTER_LUIGI, false };
+  case DR_CHARACTER_DAISY:
+    return { MP1_CHARACTER_PEACH, false };
+  case DR_CHARACTER_TOAD:
+    return { MP1_CHARACTER_MARIO, false };
+  case DR_CHARACTER_BOO:
+    return { MP1_CHARACTER_DONKEY_KONG, false };
+  case DR_CHARACTER_KOOPA_KID:
+    return { MP1_CHARACTER_WARIO, false };
+  case DR_CHARACTER_KOOPA_KID_R:
+    return { MP1_CHARACTER_MARIO, false };
+  case DR_CHARACTER_KOOPA_KID_G:
+    return { MP1_CHARACTER_LUIGI, false };
+  case DR_CHARACTER_KOOPA_KID_B:
+    return { MP1_CHARACTER_WARIO, false };
+  case DR_CHARACTER_TOADETTE:
+    return { MP1_CHARACTER_PEACH, false };
+  case DR_CHARACTER_BIRDO:
+    return { MP1_CHARACTER_YOSHI, false };
+  case DR_CHARACTER_DRY_BONES:
+    return { MP1_CHARACTER_DONKEY_KONG, false };
+  case DR_CHARACTER_BLOOPER:
+    return { MP1_CHARACTER_PEACH, false };
+  case DR_CHARACTER_HAMMER_BRO:
+    return { MP1_CHARACTER_MARIO, false };
+  default:
+    return { MP1_CHARACTER_MARIO, false };
+  }
+}
 
 static const dr_mp_minigame_t MP1_MINIGAMES[] = {
   { "Memory Match", DR_MINIGAME_1P, 0x00, 0x00, DR_NO_QUIRKS, DR_NO_FLAGS },
@@ -112,7 +169,8 @@ static MpN64Config buildConfig()
   config.stars[3] = { 0x800f334c, DR_VALUE_TYPE_U16 };
   // bonus_result_addr: MP1 doesn't separate this (left zero)
 
-  config.character_ids = MP1_CHARACTER_IDS;
+  config.char_from_dr = mp1_char_from_dr;
+  config.roster_size = 6;
   config.minigames = MP1_MINIGAMES;
 
   return config;
