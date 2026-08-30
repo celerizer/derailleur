@@ -142,7 +142,7 @@ static const dr_scene_name_t MP8_SCENE_NAMES[] =
   { 0x61, "Alpine Assault", false },
   { 0x62, "Treacherous Tightrope", false },
 
-  { -1, nullptr },
+  { -1, nullptr, true },
 };
 
 /**
@@ -415,16 +415,19 @@ void MarioParty8Host::writeResults(DrGuest *guest)
     if (m_config.char_to_dr && readValue(&chr, m_config.values.character[i]) == DR_OK)
       character = m_config.char_to_dr(static_cast<unsigned>(chr));
 
-    /* Write base result fields -- for duels mostly */
-    writeValue(results[i].coins, m_config.values.result[i]);
-    writeValue(results[i].bonus_coins, m_config.values.bonus_result[i]);
-
-    /* Only accept full success */
+    /* Only accept full success for Challenge minigames */
     if (m_MinigameType == DR_MINIGAME_1P)
     {
       if (results[i].coins + results[i].bonus_coins >= 10)
-        writeValue(results[i].coins, 10);
+        results[i].coins = 10;
+      else
+        results[i].coins = 0;
+      results[i].bonus_coins = 0;
     }
+
+    /* Write base result fields */
+    writeValue(results[i].coins, m_config.values.result[i]);
+    writeValue(results[i].bonus_coins, m_config.values.bonus_result[i]);
 
     /* Write directly to coins, clamped to zero */
     if (write_coins &&
@@ -436,7 +439,7 @@ void MarioParty8Host::writeResults(DrGuest *guest)
     }
 
     /* Write Minigame Star */
-    if (!duel && m_config.values.mg_star[i].address &&
+    if (write_coins && m_config.values.mg_star[i].address &&
         readValue(&mg_star, m_config.values.mg_star[i]) == DR_OK)
       writeValue(mg_star + won < 0 ? 0 : mg_star + won, m_config.values.mg_star[i]);
 
