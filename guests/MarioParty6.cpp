@@ -14,10 +14,11 @@ typedef enum
   MP6_CHARACTER_WALUIGI = 0x6,
   MP6_CHARACTER_TOAD = 0x7,
   MP6_CHARACTER_BOO = 0x8,
-  MP6_CHARACTER_KOOPA_KID = 0x9,
-  MP6_CHARACTER_KOOPA_KID_R = 0xA,
-  MP6_CHARACTER_KOOPA_KID_G = 0xB,
-  MP6_CHARACTER_KOOPA_KID_B = 0xC
+  MP6_CHARACTER_TOADETTE = 0x9,
+  MP6_CHARACTER_KOOPA_KID = 0xA,
+  MP6_CHARACTER_KOOPA_KID_R = 0xB,
+  MP6_CHARACTER_KOOPA_KID_G = 0xC,
+  MP6_CHARACTER_KOOPA_KID_B = 0xD
 } mp6_character;
 
 static dr_character_id_t mp6_char_from_dr(dr_character character)
@@ -51,12 +52,12 @@ static dr_character_id_t mp6_char_from_dr(dr_character character)
     return { MP6_CHARACTER_KOOPA_KID_G, true };
   case DR_CHARACTER_KOOPA_KID_B:
     return { MP6_CHARACTER_KOOPA_KID_B, true };
+  case DR_CHARACTER_TOADETTE:
+    return { MP6_CHARACTER_TOADETTE, true };
 
   /* Character replacements */
   case DR_CHARACTER_DONKEY_KONG:
     return { MP6_CHARACTER_BOO, false };
-  case DR_CHARACTER_TOADETTE:
-    return { MP6_CHARACTER_PEACH, false };
   case DR_CHARACTER_BIRDO:
     return { MP6_CHARACTER_YOSHI, false };
   case DR_CHARACTER_DRY_BONES:
