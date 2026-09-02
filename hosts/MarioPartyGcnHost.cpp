@@ -97,6 +97,10 @@ MarioPartyGcnHost::MarioPartyGcnHost(const DrGcnHostConfig &config, QObject *par
 {
   m_core = new QRetro();
   m_ownCore = true;
+
+  /* Pretend to not support gyro/accel so we can use the sticks */
+  m_core->setEnvironmentCallbackSupported(RETRO_ENVIRONMENT_GET_SENSOR_INTERFACE, false);
+
   m_gamePath = config.game;
   if (!m_core->loadCore(config.core.c_str()))
   {
