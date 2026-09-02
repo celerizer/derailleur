@@ -546,6 +546,9 @@ void MainWindow::startWithHost(DrHost *host)
 {
   m_Host = host;
 
+  raise();
+  activateWindow();
+
   /* A game is running now; the host picker can't start a second one. */
   if (m_StartGameTab)
     m_StartGameTab->setEnabled(false);
