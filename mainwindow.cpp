@@ -7,16 +7,16 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QGridLayout>
-#include <QGuiApplication>
 #include <QIcon>
 #include <QLabel>
 #include <QLineEdit>
 #include <QMessageBox>
+#include <QPainter>
 #include <QPalette>
+#include <QPixmap>
 #include <QRandomGenerator>
 #include <QPushButton>
 #include <QRetro.h>
-#include <QScreen>
 #include <QSet>
 #include <QSettings>
 #include <QSize>
@@ -725,6 +725,68 @@ void MainWindow::warmupStep()
     }, Qt::QueuedConnection);
 }
 
+/* How long holdView waits for the core to hand back a frame before covering the
+ * swap with the bare page instead. Comfortably longer than a frame, short enough
+ * that a stalled core doesn't leave the swap uncovered for long. */
+#define DR_OVERLAY_GRAB_TIMEOUT_MS 200
+
+void MainWindow::holdView(QRetro *core)
+{
+  DrOverlay *ov = overlay();
+  QWidget *page = m_Stack ? m_Stack->currentWidget() : nullptr;
+
+  if (!ov || !page || page->size().isEmpty())
+    return;
+
+  const qreal dpr = page->devicePixelRatioF();
+  QPixmap base(page->size() * dpr);
+
+  base.setDevicePixelRatio(dpr);
+  base.fill(Qt::black);
+  page->render(&base, QPoint(), QRegion(), QWidget::DrawChildren);
+
+  if (!core)
+  {
+    ov->hold(base);
+    return;
+  }
+
+  const QRect target(QPoint(0, 0), page->size());
+
+  /* The frame arrives a frame late for a hardware-rendered core, so the overlay
+   * only goes up once it lands; until then the live core is still on screen and
+   * the swap hasn't happened yet. Whichever of the frame or the timeout comes
+   * first wins. */
+  auto held = std::make_shared<bool>(false);
+  auto conn = std::make_shared<QMetaObject::Connection>();
+
+  *conn = connect(core, &QRetro::frameGrabbed, this,
+    [ov, base, target, held, conn](const QImage &frame) {
+      QObject::disconnect(*conn);
+      if (*held)
+        return;
+      *held = true;
+
+      QPixmap shot = base;
+      if (!frame.isNull())
+      {
+        QPainter painter(&shot);
+        painter.drawImage(target, frame);
+      }
+      ov->hold(shot);
+    });
+
+  QTimer::singleShot(DR_OVERLAY_GRAB_TIMEOUT_MS, this, [ov, base, held, conn]() {
+    if (*held)
+      return;
+    *held = true;
+    QObject::disconnect(*conn);
+    ov->hold(base);
+  });
+
+  core->grabFrame();
+}
+
 void MainWindow::launchMinigame(
   DrGuest *guest, const dr_mp_minigame_t *minigame, const dr_player_t players[4])
 {
@@ -752,12 +814,10 @@ void MainWindow::launchMinigame(
     }
     else
     {
-      QScreen *screen =
-        windowHandle() ? windowHandle()->screen() : QGuiApplication::primaryScreen();
       /* Freeze what is on screen to cover the core swap. With no host chosen
-       * (challenge mode, or a debug launch) grab this window instead. */
-      const WId source = (m_Host && m_Host->core()) ? m_Host->core()->winId() : winId();
-      ov->hold(screen->grabWindow(source));
+       * (challenge mode, or a debug launch) there is no core to draw in, so the
+       * page rasterizes on its own. */
+      holdView(m_Host ? m_Host->core() : nullptr);
     }
   }
 #endif
@@ -972,13 +1032,8 @@ void MainWindow::showChooser()
 #if SHOW_OVERLAY
   if (DrGuest *guest = m_Guests->currentGuest())
   {
-    DrOverlay *ov = overlay();
-    if (guest->core() && ov)
-    {
-      QScreen *screen =
-        windowHandle() ? windowHandle()->screen() : QGuiApplication::primaryScreen();
-      ov->hold(screen->grabWindow(guest->core()->winId()));
-    }
+    if (guest->core())
+      holdView(guest->core());
   }
 #endif
 
@@ -1005,11 +1060,7 @@ void MainWindow::showHost()
 {
 
 #if SHOW_OVERLAY
-  if (DrOverlay *ov = overlay())
-  {
-    QScreen *screen = windowHandle() ? windowHandle()->screen() : QGuiApplication::primaryScreen();
-    ov->hold(screen->grabWindow(m_Guests->currentGuest()->core()->winId()));
-  }
+  holdView(m_Guests->currentGuest()->core());
 #endif
 
   QTimer::singleShot(32, this, [this]() {
@@ -1031,11 +1082,7 @@ void MainWindow::showHost()
 void MainWindow::showGuests()
 {
 #if SHOW_OVERLAY
-  if (DrOverlay *ov = overlay())
-  {
-    QScreen *screen = windowHandle() ? windowHandle()->screen() : QGuiApplication::primaryScreen();
-    ov->hold(screen->grabWindow(m_Host->core()->winId()));
-  }
+  holdView(m_Host->core());
 #endif
 
   QTimer::singleShot(32, this, [this]() {

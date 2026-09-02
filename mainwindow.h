@@ -56,6 +56,10 @@ private:
   void setupNetplay();
   void attachNetplay();
 
+  /// Freezes the game view into the loading overlay so a core swap happens behind
+  /// a still image. `core` is the core currently on screen, or null.
+  void holdView(QRetro *core);
+
   /// Our seat/peer index in a netplay session (0 solo). Pushed into a host at
   /// start so it can show our private per-player state.
   int m_NetplayPeerIndex = 0;
