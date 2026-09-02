@@ -280,11 +280,11 @@ void CoreDolphin::doApplyGameData(const DrGameData &data)
                                 .arg(m_games.size())));
 
   // Always (re)insert on a multi-disc core; single-disc cores never hot-swap
+  core()->show();
+  core()->unpause();
+
   if (m_games.size() > 1)
   {
-    core()->show();
-    core()->unpause();
-
     static const int stepFrames = 120;
 
     /* Run each disc change step for two seconds */
