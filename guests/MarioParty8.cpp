@@ -463,22 +463,18 @@ const dr_mp_minigame_t *MarioParty8::minigames() const
   return MP8_MINIGAMES;
 }
 
-void MarioParty8::onBeforeBoot(const DrGameData &data)
-{
-  (void)data;
-
-  /* System Configuration > Widescreen (Wii). The board host forces this off, so
-   * a mini-game has to match or the picture changes shape on the way in. */
-  if (auto *c = core())
-    c->options()->setOptionValue("dolphin_widescreen", "disabled");
-}
-
 void MarioParty8::doApplyGameData(const DrGameData &data)
 {
   unsigned characters[4] = { 0, 0, 0, 0 };
 
   m_minigameFrames = 0;
   m_lastScene = -1;
+
+  /* System Configuration > Widescreen (Wii). The board host forces this off, so
+   * a mini-game has to match or the picture changes shape on the way in. The
+   * core is shared with MP9, which pins it back on for its own mini-games. */
+  if (auto *c = core())
+    c->options()->setOptionValue("dolphin_widescreen", "disabled");
 
   int16_t id = static_cast<int16_t>(data.minigame->minigame_id);
   m_retro->writes16(id, MP8_MINIGAME_TO_LOAD_ADDR);
