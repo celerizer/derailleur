@@ -1,6 +1,7 @@
 #include "CoreDolphin.h"
 
 #include <QDateTime>
+#include <QElapsedTimer>
 #include <QFile>
 #include <QFileInfo>
 #include <QTextStream>
@@ -338,9 +339,12 @@ void CoreDolphin::doApplyGameData(const DrGameData &data)
   core()->unpause();
 
   // Wait for the delegate to actually start its mini-game before revealing it
-  static const int maxSetupFrames = 60 * 30;
+  static const qint64 maxSetupMs = 30 * 1000;
   int setupFrames = 0;
-  while (!owner->minigameActive() && setupFrames < maxSetupFrames)
+  const unsigned startFrames = core()->frames();
+  QElapsedTimer setupTimer;
+  setupTimer.start();
+  while (!owner->minigameActive() && !setupTimer.hasExpired(maxSetupMs))
   {
     core()->waitFrames(1);
     QApplication::processEvents();
@@ -348,8 +352,11 @@ void CoreDolphin::doApplyGameData(const DrGameData &data)
   }
   if (setupFrames > 0)
     log(owner->minigameActive() ? DR_LOG_INFO : DR_LOG_WARN,
-      qPrintable(QString("disc change: waited %1 frames for delegate setup%2")
+      qPrintable(QString("disc change: waited %1 iterations (%2 core frames, %3 ms) "
+                         "for delegate setup%4")
                    .arg(setupFrames)
+                   .arg(core()->frames() - startFrames)
+                   .arg(setupTimer.elapsed())
                    .arg(owner->minigameActive() ? "" : " (timed out)")));
 
   /* A timed-out delegate means our setup diverged from the peers'; ask for a hard
