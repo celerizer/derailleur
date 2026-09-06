@@ -1,10 +1,10 @@
 #include "MarioKartDoubleDash.h"
 
-static const size_t MKDD_CUP_ADDR = 0x803CB7A8;
-static const size_t MKDD_TRACK_ADDR = 0x803CB7AC;
+static const dr_value_t MKDD_CUP = { 0x803CB7A8, DR_VALUE_TYPE_S32 };
+static const dr_value_t MKDD_TRACK = { 0x803CB7AC, DR_VALUE_TYPE_S32 };
 
 // u16 total laps for the race -- otherwise unused "sForceTotalLapNum"
-static const size_t MKDD_TOTAL_LAPS_ADDR = 0x803CB7EC;
+static const dr_value_t MKDD_TOTAL_LAPS = { 0x803CB7EC, DR_VALUE_TYPE_U16 };
 
 typedef enum
 {
@@ -15,10 +15,10 @@ typedef enum
 } mkdd_item_box;
 
 // u32 item box option
-static const size_t MKDD_VS_ITEM_BOX = 0x812BFB2C;
+static const dr_value_t MKDD_VS_ITEM_BOX = { 0x812BFB2C, DR_VALUE_TYPE_U32 };
 
 // u32 laps option (0=recommended, else number of laps)
-static const size_t MKDD_VS_LAPS = 0x812BFB30;
+static const dr_value_t MKDD_VS_LAPS = { 0x812BFB30, DR_VALUE_TYPE_U32 };
 
 typedef enum
 {
@@ -29,7 +29,7 @@ typedef enum
 } mkdd_player_count;
 
 // u32 player count (see mkdd_player_count)
-static const size_t MKDD_PLAYER_COUNT_ADDR = 0x812C1BC0;
+static const dr_value_t MKDD_PLAYER_COUNT = { 0x812C1BC0, DR_VALUE_TYPE_U32 };
 
 typedef enum
 {
@@ -38,7 +38,7 @@ typedef enum
 } mkdd_gametype;
 
 // u32 game type
-static const size_t MKDD_GAMETYPE_ADDR = 0x812C1BCC;
+static const dr_value_t MKDD_GAMETYPE = { 0x812C1BCC, DR_VALUE_TYPE_U32 };
 
 typedef enum
 {
@@ -49,20 +49,35 @@ typedef enum
 } mkdd_cc;
 
 // u32 engine class
-static const size_t MKDD_CC_ADDR = 0x812C1BD0;
+static const dr_value_t MKDD_CC = { 0x812C1BD0, DR_VALUE_TYPE_U32 };
 
 // u32 battle type (shine thief can only be a 4p, balloon/bomb can be battle games)
-static const size_t MKDD_BATTLE_TYPE = 0x812C1BCC;
+static const dr_value_t MKDD_BATTLE_TYPE = { 0x812C1BCC, DR_VALUE_TYPE_U32 };
 
-static const size_t MKDD_CHAR1_ADDR[4] = { 0x812C1C04, 0x812C1C20, 0x812C1C3C, 0x812C1C58 };
-static const size_t MKDD_CHAR2_ADDR[4] = { 0x812C1C08, 0x812C1C24, 0x812C1C40, 0x812C1C5C };
-static const size_t MKDD_KART_ADDR[4]  = { 0x812C1C0C, 0x812C1C28, 0x812C1C44, 0x812C1C60 };
+static const dr_value_t MKDD_CHAR1[4] = {
+  { 0x812C1C04, DR_VALUE_TYPE_S32 },
+  { 0x812C1C20, DR_VALUE_TYPE_S32 },
+  { 0x812C1C3C, DR_VALUE_TYPE_S32 },
+  { 0x812C1C58, DR_VALUE_TYPE_S32 }
+};
+static const dr_value_t MKDD_CHAR2[4] = {
+  { 0x812C1C08, DR_VALUE_TYPE_S32 },
+  { 0x812C1C24, DR_VALUE_TYPE_S32 },
+  { 0x812C1C40, DR_VALUE_TYPE_S32 },
+  { 0x812C1C5C, DR_VALUE_TYPE_S32 }
+};
+static const dr_value_t MKDD_KART[4] = {
+  { 0x812C1C0C, DR_VALUE_TYPE_S32 },
+  { 0x812C1C28, DR_VALUE_TYPE_S32 },
+  { 0x812C1C44, DR_VALUE_TYPE_S32 },
+  { 0x812C1C60, DR_VALUE_TYPE_S32 }
+};
 
 /* Pointer chain to a kart's runtime status:
  *   [ [ [0x803561D8] + 0x5B8 ] + 0x430 + kart*4 ] + 0x578  ->  mGameStatus (u32 bitflags)
  * ORing MKDD_STATUS_BOT into it makes that kart CPU-controlled. The objects only
  * exist once the race has started, so the chain reads null until then. */
-static const size_t MKDD_KART_ROOT_PTR      = 0x803561D8;
+static const dr_value_t MKDD_KART_ROOT_PTR = { 0x803561D8, DR_VALUE_TYPE_POINTER };
 static const size_t MKDD_KART_LIST_OFFSET   = 0x5B8;
 static const size_t MKDD_KART_ARRAY_OFFSET  = 0x430;
 static const size_t MKDD_KART_STATUS_OFFSET = 0x578;
@@ -79,15 +94,49 @@ typedef enum
 } mkdd_battle_stage;
 
 // u32 battle stage
-static const size_t MKDD_BATTLE_STAGE = 0x815973D0;
-
-#define MKDD_KART_COUNT 20
+static const dr_value_t MKDD_BATTLE_STAGE = { 0x815973D0, DR_VALUE_TYPE_U32 };
 
 // u32 current lap per player; a kart has finished once it reaches the total laps.
-static const size_t MKDD_LAPS_ADDR[4] = { 0x8037FF60, 0x8037FF64, 0x8037FF68, 0x8037FF6C };
+static const dr_value_t MKDD_LAPS[4] = {
+  { 0x8037FF60, DR_VALUE_TYPE_U32 },
+  { 0x8037FF64, DR_VALUE_TYPE_U32 },
+  { 0x8037FF68, DR_VALUE_TYPE_U32 },
+  { 0x8037FF6C, DR_VALUE_TYPE_U32 }
+};
 
 // u32 finishing placement per player (1 = 1st, 2 = 2nd, ...).
-static const size_t MKDD_PLACEMENT_ADDR[4] = { 0x8037FFA0, 0x8037FFA4, 0x8037FFA8, 0x8037FFAC };
+static const dr_value_t MKDD_PLACEMENT[4] = {
+  { 0x8037FFA0, DR_VALUE_TYPE_U32 },
+  { 0x8037FFA4, DR_VALUE_TYPE_U32 },
+  { 0x8037FFA8, DR_VALUE_TYPE_U32 },
+  { 0x8037FFAC, DR_VALUE_TYPE_U32 }
+};
+
+typedef enum
+{
+  MKDD_KART_NONE = -1,
+  MKDD_KART_BABY_MARIO = 0x00,
+  MKDD_KART_BABY_LUIGI = 0x01,
+  MKDD_KART_KOOPA_TROOPA = 0x02,
+  MKDD_KART_KOOPA_PARATROOPA = 0x03,
+  MKDD_KART_DIDDY_KONG = 0x04,
+  MKDD_KART_BOWSER_JR = 0x05,
+  MKDD_KART_TOAD = 0x06,
+  MKDD_KART_TOADETTE = 0x07,
+  MKDD_KART_MARIO = 0x08,
+  MKDD_KART_LUIGI = 0x09,
+  MKDD_KART_PEACH = 0x0A,
+  MKDD_KART_DAISY = 0x0B,
+  MKDD_KART_YOSHI = 0x0C,
+  MKDD_KART_BIRDO = 0x0D,
+  MKDD_KART_WALUIGI = 0x0E,
+  MKDD_KART_WARIO = 0x0F,
+  MKDD_KART_DONKEY_KONG = 0x10,
+  MKDD_KART_BOWSER = 0x11,
+  MKDD_KART_PETEY_PIRANHA = 0x12,
+  MKDD_KART_KING_BOO = 0x13,
+  MKDD_KART_PARADE = 0x14,
+} mkdd_kart;
 
 typedef enum
 {
@@ -102,8 +151,8 @@ typedef enum
   MKDD_CHAR_BABY_LUIGI = 0x07,
   MKDD_CHAR_TOAD = 0x08,
   MKDD_CHAR_TOADETTE = 0x09,
-  MKDD_CHAR_KOOPA = 0x0A,
-  MKDD_CHAR_PARATROOPA = 0x0B,
+  MKDD_CHAR_KOOPA_TROOPA = 0x0A,
+  MKDD_CHAR_KOOPA_PARATROOPA = 0x0B,
   MKDD_CHAR_DONKEY_KONG = 0x0C,
   MKDD_CHAR_DIDDY_KONG = 0x0D,
   MKDD_CHAR_BOWSER = 0x0E,
@@ -139,15 +188,69 @@ static mkdd_char mkddCharFor(dr_character character)
   case DR_CHARACTER_BOO:
     return MKDD_CHAR_KING_BOO;
   case DR_CHARACTER_KOOPA_KID:
+  case DR_CHARACTER_KOOPA_KID_R:
+  case DR_CHARACTER_KOOPA_KID_G:
+  case DR_CHARACTER_KOOPA_KID_B:
     return MKDD_CHAR_BOWSER_JR;
   case DR_CHARACTER_TOADETTE:
     return MKDD_CHAR_TOADETTE;
   case DR_CHARACTER_BIRDO:
     return MKDD_CHAR_BIRDO;
   case DR_CHARACTER_DRY_BONES:
-    return MKDD_CHAR_KOOPA;
+    return MKDD_CHAR_KOOPA_TROOPA;
+  case DR_CHARACTER_BLOOPER:
+    return MKDD_CHAR_KOOPA_PARATROOPA;
+  case DR_CHARACTER_HAMMER_BRO:
+    return MKDD_CHAR_KOOPA_TROOPA;
   default:
     return MKDD_CHAR_MARIO;
+  }
+}
+
+static mkdd_kart mkddKartFor(dr_character character)
+{
+  switch (character)
+  {
+  case DR_CHARACTER_MARIO:
+    return MKDD_KART_MARIO;
+  case DR_CHARACTER_LUIGI:
+    return MKDD_KART_LUIGI;
+  case DR_CHARACTER_PEACH:
+    return MKDD_KART_PEACH;
+  case DR_CHARACTER_YOSHI:
+    return MKDD_KART_YOSHI;
+  case DR_CHARACTER_WARIO:
+    return MKDD_KART_WARIO;
+  case DR_CHARACTER_DONKEY_KONG:
+    return MKDD_KART_DONKEY_KONG;
+  case DR_CHARACTER_WALUIGI:
+    return MKDD_KART_WALUIGI;
+  case DR_CHARACTER_DAISY:
+    return MKDD_KART_DAISY;
+  case DR_CHARACTER_TOAD:
+    return MKDD_KART_TOAD;
+  case DR_CHARACTER_BOO:
+    return MKDD_KART_KING_BOO;
+  case DR_CHARACTER_KOOPA_KID:
+    return MKDD_KART_BOWSER;
+  case DR_CHARACTER_KOOPA_KID_R:
+    return MKDD_KART_KOOPA_PARATROOPA;
+  case DR_CHARACTER_KOOPA_KID_G:
+    return MKDD_KART_KOOPA_TROOPA;
+  case DR_CHARACTER_KOOPA_KID_B:
+    return MKDD_KART_TOAD;
+  case DR_CHARACTER_TOADETTE:
+    return MKDD_KART_TOADETTE;
+  case DR_CHARACTER_BIRDO:
+    return MKDD_KART_BIRDO;
+  case DR_CHARACTER_DRY_BONES:
+    return MKDD_KART_KING_BOO;
+  case DR_CHARACTER_BLOOPER:
+    return MKDD_KART_BABY_MARIO;
+  case DR_CHARACTER_HAMMER_BRO:
+    return MKDD_KART_BOWSER_JR;
+  default:
+    return MKDD_KART_MARIO;
   }
 }
 
@@ -168,7 +271,6 @@ static mkdd_char mkddCharFor(dr_character character)
 #define MKDD_COURSE_BOWSERS_CASTLE    14
 #define MKDD_COURSE_RAINBOW_ROAD      15
 
-/* The scene_id field is unused here, so it carries the race's total laps. */
 static const dr_mp_minigame_t MKDD_MINIGAMES[] =
 {
   { "Kart: Luigi Circuit", DR_MINIGAME_4P, MKDD_COURSE_LUIGI_CIRCUIT, 1, DR_NO_QUIRKS, DR_FLAG_NO_DIFFICULTY },
@@ -261,9 +363,8 @@ void MarioKartDoubleDash::run()
   {
     for (unsigned i = 0; i < 4; i++)
     {
-      uint32_t laps = 0;
-      if (m_retro->readu32(&laps, MKDD_LAPS_ADDR[i]) == DR_OK &&
-          laps == static_cast<uint32_t>(m_laps))
+      int64_t laps = 0;
+      if (m_retro->readValue(&laps, MKDD_LAPS[i]) == DR_OK && laps == m_laps)
       {
         m_finishPending = true;
         finishMinigameInFrames(450);
@@ -281,12 +382,13 @@ void MarioKartDoubleDash::pressA()
 
 size_t MarioKartDoubleDash::kartStatusAddr(unsigned kart)
 {
-  uint32_t rootPtr = 0;
-  if (m_retro->readu32(&rootPtr, MKDD_KART_ROOT_PTR) != DR_OK || !rootPtr)
+  int64_t rootPtr = 0;
+  if (m_retro->readValue(&rootPtr, MKDD_KART_ROOT_PTR) != DR_OK || !rootPtr)
     return 0;
 
   uint32_t listPtr = 0;
-  if (m_retro->readu32(&listPtr, rootPtr + MKDD_KART_LIST_OFFSET) != DR_OK || !listPtr)
+  if (m_retro->readu32(&listPtr, static_cast<size_t>(rootPtr) + MKDD_KART_LIST_OFFSET) != DR_OK ||
+      !listPtr)
     return 0;
 
   uint32_t kartObj = 0;
@@ -303,14 +405,14 @@ void MarioKartDoubleDash::advanceSetup()
   switch (m_setupStep)
   {
   case MKDD_SETUP_CUP:
-    m_retro->writes32(m_cup, MKDD_CUP_ADDR);
+    m_retro->writeValue(m_cup, MKDD_CUP);
     pressA();
     m_setupStep = MKDD_SETUP_TRACK;
     m_stepDelay = 30;
     break;
   case MKDD_SETUP_TRACK:
-    m_retro->writes32(m_track, MKDD_TRACK_ADDR);
-    m_retro->writeu16(static_cast<uint16_t>(m_laps), MKDD_TOTAL_LAPS_ADDR);
+    m_retro->writeValue(m_track, MKDD_TRACK);
+    m_retro->writeValue(m_laps, MKDD_TOTAL_LAPS);
     pressA();
     m_setupStep = MKDD_SETUP_CONFIRM;
     m_stepDelay = 30;
@@ -351,11 +453,11 @@ void MarioKartDoubleDash::doApplyGameData(const DrGameData &data)
     const unsigned slot = dr_player_slot(m_players[i], i);
 
     // Pair every player with Toad
-    m_retro->writes32(mkddCharFor(m_players[i].character), MKDD_CHAR2_ADDR[slot]);
-    m_retro->writes32(MKDD_CHAR_TOAD, MKDD_CHAR1_ADDR[slot]);
+    m_retro->writeValue(mkddCharFor(m_players[i].character), MKDD_CHAR2[slot]);
+    m_retro->writeValue(MKDD_CHAR_TOAD, MKDD_CHAR1[slot]);
 
-    // Random kart for each player.
-    m_retro->writes32(dr_rand() % MKDD_KART_COUNT, MKDD_KART_ADDR[slot]);
+    // Each character drives their own kart.
+    m_retro->writeValue(mkddKartFor(m_players[i].character), MKDD_KART[slot]);
   }
 
   applyPlayers();
@@ -372,8 +474,8 @@ dr_minigame_result_t MarioKartDoubleDash::minigameResult(unsigned index)
     return result;
 
   const unsigned slot = dr_player_slot(m_players[index], index);
-  uint32_t place = 0;
-  if (m_retro->readu32(&place, MKDD_PLACEMENT_ADDR[slot]) == DR_OK && place == 1)
+  int64_t place = 0;
+  if (m_retro->readValue(&place, MKDD_PLACEMENT[slot]) == DR_OK && place == 1)
     result.coins = 10;
 
   return result;
