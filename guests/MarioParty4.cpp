@@ -103,7 +103,7 @@ static const dr_mp_minigame_t MP4_MINIGAMES[] = {
   { "Pair-a-sailing", DR_MINIGAME_2V2, 0x1D, 0x26, DR_NO_QUIRKS, DR_FLAG_LUCKY },
   { "Order Up", DR_MINIGAME_2V2, 0x1E, 0x27, DR_NO_QUIRKS, DR_NO_FLAGS },
   { "Dungeon Duos", DR_MINIGAME_2V2, 0x1F, 0x28, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Beach Volley Folley", DR_MINIGAME_2V2, 0x20, 0x29, DR_NO_QUIRKS, DR_NO_FLAGS }, // special
+  { "Beach Volley Folley", DR_MINIGAME_SPECIAL, 0x20, 0x29, DR_NO_QUIRKS, DR_NO_FLAGS }, // special
   { "Cheep Cheep Sweep", DR_MINIGAME_2V2, 0x21, 0x2A, DR_NO_QUIRKS, DR_NO_FLAGS },
 
   /* Bowser */
