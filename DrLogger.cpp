@@ -60,12 +60,23 @@ void DrLogger::setProgress(qint64 received, qint64 total)
     m_progress->setRange(0, 0); // unknown size -> keep it busy
 }
 
+/* Lines carrying any of these are dropped before they reach the view or the file. */
+static const char *const DR_LOG_NOISE[] = {
+  "might be used before being initialized",
+
+  nullptr
+};
+
 void DrLogger::message(unsigned level, const QString &message)
 {
   static const char *prefixes[] = { "INFO", "WARN", "ERROR" };
   static const char *colors[] = { "#4a90d9", "#e0a000", "#e05252" };
   const char *prefix = level < 3 ? prefixes[level] : "LOG";
   const char *color = level < 3 ? colors[level] : "#9aa0a6";
+
+  for (const char *const *noise = DR_LOG_NOISE; *noise; noise++)
+    if (message.contains(QLatin1String(*noise)))
+      return;
 
   QString line = QString("[%1] %2").arg(prefix).arg(message);
 
