@@ -496,12 +496,6 @@ void MarioParty8::doApplyGameData(const DrGameData &data)
   m_minigameFrames = 0;
   m_lastScene = -1;
 
-  /* System Configuration > Widescreen (Wii). The board host forces this off, so
-   * a mini-game has to match or the picture changes shape on the way in. The
-   * core is shared with MP9, which pins it back on for its own mini-games. */
-  if (auto *c = core())
-    c->options()->setOptionValue("dolphin_widescreen", "disabled");
-
   m_retro->writeValue(data.minigame->minigame_id, MP8_MINIGAME_TO_LOAD);
 
   /* Anyone MP8 doesn't have takes a free slot rather than doubling up on whoever

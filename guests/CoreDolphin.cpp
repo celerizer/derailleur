@@ -142,6 +142,13 @@ bool CoreDolphin::loadCore()
     // Core > Fastmem
     // Needs to be disabled for multi-instancing to work.
     core()->options()->setOptionValue("dolphin_fastmem", "disabled");
+
+    for (const dr_core_option_t *option = m_options; option && option->key; option++)
+    {
+      core()->options()->setOptionValue(option->key, option->value);
+      log(DR_LOG_INFO,
+        qPrintable(QString("core option: %1 = %2").arg(option->key).arg(option->value)));
+    }
   }
 
   if (!patchedPath.isEmpty())

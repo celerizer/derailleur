@@ -18,6 +18,11 @@ public:
   CoreDolphin(const QString &subdir, bool ownDirs = false, QObject *parent = nullptr);
   ~CoreDolphin();
 
+  /// Core options forced when the library opens, before any content loads --
+  /// Dolphin reads things like widescreen at boot and ignores later changes.
+  /// Terminated by a row with a null key.
+  void setOptions(const dr_core_option_t *options) { m_options = options; }
+
   void addGame(DolphinGuest *game);
   void finalizeGames();
 
@@ -60,6 +65,7 @@ private:
   dr_mp_minigame_t *m_flatList = nullptr;
   QString m_m3uPath;
   QByteArray m_name;
+  const dr_core_option_t *m_options = nullptr;
   QString m_subdir;
   QString m_baseCorePath; /* the (unpatched) Dolphin library, loaded lazily */
   int m_discIndex = -1;
