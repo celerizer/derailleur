@@ -49,6 +49,14 @@ void DrGuest::applyGameData(const DrGameData &data)
 {
   if (!core())
     return;
+
+  /* A launch supersedes whatever was running. Guests only start a mini-game when
+   * one isn't already active, so a stale flag from the last launch would let the
+   * state load and then leave the new mini-game waiting forever. Cleared
+   * silently: the launcher is already moving the view. */
+  cancelMinigame();
+  m_finishCountdown = 0;
+
   m_minigame = data.minigame;
 
   /* Cache the launch's players so guests (and their onBeforeBoot/doApplyGameData)
