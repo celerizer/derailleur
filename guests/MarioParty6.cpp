@@ -215,6 +215,57 @@ static MpGcnConfig buildConfig()
   return config;
 }
 
+/* Whether the game listens to the microphone: 0 enabled, 1 disabled, 2 use the
+ * controller instead. Held at 2 so a mic mini-game is playable without one. */
+static const dr_value_t MP6_MIC_OPTION = { 0x802BF978, DR_VALUE_TYPE_S32 };
+
+#define MP6_MIC_CONTROLLER 2
+
+/* Board status; bit 6 is the time of day. The rest of the byte belongs to the
+ * game, so it is read back and only that bit is forced. */
+static const dr_value_t MP6_BOARD_STATUS = { 0x80265B80, DR_VALUE_TYPE_U8 };
+
+/* GwMgTime, the same choice the mini-game itself reads. */
+static const dr_value_t MP6_MG_TIME = { 0x802C0278, DR_VALUE_TYPE_S16 };
+
+#define MP6_STATUS_NIGHT 0x40
+#define MP6_TIME_DAY 0
+#define MP6_TIME_NIGHT 1
+#define MP6_DAYNIGHT_FRAMES 120
+
+void MarioParty6::doApplyGameData(const DrGameData &data)
+{
+  MarioPartyGcn::doApplyGameData(data);
+
+  m_retro->writeValue(MP6_MIC_CONTROLLER, MP6_MIC_OPTION);
+
+  /* dr_rand is shared and lockstepped, so every netplay peer plays the same one.
+   * The setup writes it back over the next couple of seconds, so it is held
+   * rather than written once. */
+  m_night = (dr_rand() % 2) != 0;
+  m_dayNightFrames = MP6_DAYNIGHT_FRAMES;
+  log(DR_LOG_INFO, qPrintable(QString("time of day: %1").arg(m_night ? "night" : "day")));
+}
+
+void MarioParty6::run()
+{
+  MarioPartyGcn::run();
+
+  if (m_dayNightFrames > 0)
+  {
+    int64_t status = 0;
+
+    m_dayNightFrames--;
+
+    if (m_retro->readValue(&status, MP6_BOARD_STATUS) == DR_OK)
+      m_retro->writeValue(
+        m_night ? (status | MP6_STATUS_NIGHT) : (status & ~MP6_STATUS_NIGHT),
+        MP6_BOARD_STATUS);
+
+    m_retro->writeValue(m_night ? MP6_TIME_NIGHT : MP6_TIME_DAY, MP6_MG_TIME);
+  }
+}
+
 MarioParty6::MarioParty6(QRetro *sharedCore, QObject *parent)
   : MarioPartyGcn(buildConfig(), sharedCore, parent)
 {
