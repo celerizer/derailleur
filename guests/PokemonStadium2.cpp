@@ -377,11 +377,16 @@ void PokemonStadium2::writePlayerIcon(unsigned index, dr_character character)
     log(DR_LOG_WARN, qPrintable(QString("no 32px player icon for character %1").arg(c)));
   saveTo(icon, PS2_PLAYER_ICON_FILES[index][0], PS2_PLAYER_ICON_FILES[index][1]);
 
-  /* Higher-quality icon: the 50px art fitted to 2x of 48x40, chopped into a top
-   * and a bottom 96x40 half. */
-  const QImage hq = ps2FitIcon(QString(":/assets/player-50px/%1.png").arg(c), 96, 80);
+  /* Win icon: fitted to 2x of 48x40, then chopped into a top and a bottom 96x40
+   * half. The 50px art only covers the N64 boards' roster, so a GameCube or Wii
+   * host draws its own player icons rather than coming up blank. */
+  const QString winPath = m_hostPlatform == DR_HOST_PLATFORM_GCWII
+    ? dr_player_icon_32px(m_hostPlatform, character)
+    : QString(":/assets/player-50px/%1.png").arg(c);
+  const QImage hq = ps2FitIcon(winPath, 96, 80);
   if (hq.isNull())
-    log(DR_LOG_WARN, qPrintable(QString("no 50px player icon for character %1").arg(c)));
+    log(DR_LOG_WARN,
+      qPrintable(QString("no win icon for character %1 (%2)").arg(c).arg(winPath)));
   else
   {
     saveTo(hq.copy(0, 0, 96, 40), PS2_PLAYER_ICON_TOP_FILES[index][0],
