@@ -174,12 +174,14 @@ static const dr_scene_name_t MP1_SCENE_NAMES[] =
   { -1, nullptr },
 };
 
-static DrHostConfig makeConfig()
+static DrHostConfig makeConfig(const std::string &game)
 {
   DrHostConfig config = {};
 
   config.core = dr_core_path(DR_CORE_MUPEN64PLUSNEXT).toStdString();
   config.game = (dr_roms_directory() + "/Mario Party (USA).z64").toStdString();
+  if (!game.empty())
+    config.game = game;
 
   config.char_to_dr = mp1_char_to_dr;
   config.diff_to_dr = MP1_DIFF_TO_DR;
@@ -227,23 +229,23 @@ static DrHostConfig makeConfig()
   config.values.bot[1] = { 0x800f32e7, DR_VALUE_TYPE_U8 };
   config.values.bot[2] = { 0x800f3317, DR_VALUE_TYPE_U8 };
   config.values.bot[3] = { 0x800f3347, DR_VALUE_TYPE_U8 };
-  config.values.result[0] = { 0x800f32ba, DR_VALUE_TYPE_U16 };
-  config.values.result[1] = { 0x800f32ea, DR_VALUE_TYPE_U16 };
-  config.values.result[2] = { 0x800f331a, DR_VALUE_TYPE_U16 };
-  config.values.result[3] = { 0x800f334a, DR_VALUE_TYPE_U16 };
+  config.values.result[0] = { 0x800f32ba, DR_VALUE_TYPE_S16 };
+  config.values.result[1] = { 0x800f32ea, DR_VALUE_TYPE_S16 };
+  config.values.result[2] = { 0x800f331a, DR_VALUE_TYPE_S16 };
+  config.values.result[3] = { 0x800f334a, DR_VALUE_TYPE_S16 };
   // bonus_result: not available in mp1
   config.values.panel_color[0] = { 0x800f32c7, DR_VALUE_TYPE_U8 };
   config.values.panel_color[1] = { 0x800f32f7, DR_VALUE_TYPE_U8 };
   config.values.panel_color[2] = { 0x800f3327, DR_VALUE_TYPE_U8 };
   config.values.panel_color[3] = { 0x800f3357, DR_VALUE_TYPE_U8 };
-  config.values.coins[0] = { 0x800f32b8, DR_VALUE_TYPE_U16 };
-  config.values.coins[1] = { 0x800f32e8, DR_VALUE_TYPE_U16 };
-  config.values.coins[2] = { 0x800f3318, DR_VALUE_TYPE_U16 };
-  config.values.coins[3] = { 0x800f3348, DR_VALUE_TYPE_U16 };
-  config.values.stars[0] = { 0x800f32bc, DR_VALUE_TYPE_U16 };
-  config.values.stars[1] = { 0x800f32ec, DR_VALUE_TYPE_U16 };
-  config.values.stars[2] = { 0x800f331c, DR_VALUE_TYPE_U16 };
-  config.values.stars[3] = { 0x800f334c, DR_VALUE_TYPE_U16 };
+  config.values.coins[0] = { 0x800f32b8, DR_VALUE_TYPE_S16 };
+  config.values.coins[1] = { 0x800f32e8, DR_VALUE_TYPE_S16 };
+  config.values.coins[2] = { 0x800f3318, DR_VALUE_TYPE_S16 };
+  config.values.coins[3] = { 0x800f3348, DR_VALUE_TYPE_S16 };
+  config.values.stars[0] = { 0x800f32bc, DR_VALUE_TYPE_S16 };
+  config.values.stars[1] = { 0x800f32ec, DR_VALUE_TYPE_S16 };
+  config.values.stars[2] = { 0x800f331c, DR_VALUE_TYPE_S16 };
+  config.values.stars[3] = { 0x800f334c, DR_VALUE_TYPE_S16 };
   config.values.minigame_title_color = { 0x800C4DD0, DR_VALUE_TYPE_U8 };
   config.values.minigame_type = { 0x800D6459, DR_VALUE_TYPE_U8 };
   config.values.minigame_id = { 0x800ED5DE, DR_VALUE_TYPE_S16 };
@@ -264,8 +266,8 @@ static DrHostConfig makeConfig()
   return config;
 }
 
-MarioParty1Host::MarioParty1Host(QObject *parent)
-  : MarioPartyN64Host(makeConfig(), parent)
+MarioParty1Host::MarioParty1Host(QObject *parent, const std::string &game)
+  : MarioPartyN64Host(makeConfig(game), parent)
 {
   connect(
     m_core, &QRetro::frameEnd, this,

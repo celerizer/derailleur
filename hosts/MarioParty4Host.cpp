@@ -149,12 +149,30 @@ static const dr_scene_name_t MP4_SCENE_NAMES[] =
   { -1, nullptr },
 };
 
-static DrGcnHostConfig makeConfig()
+/* The battle roulette shows two pictures; Dolphin loads replacements for them out
+ * of <save>/User/Load/Textures/GMPE01. */
+static const char *MP4_BATTLE_ICON_DIR = "/User/Load/Textures/GMPE01";
+static const char *const MP4_BATTLE_ICON_FILE[] = {
+  "tex1_160x120_c17ee11cac3327fe_14.png",
+  "tex1_160x120_44baee82452dd439_14.png",
+
+  nullptr
+};
+
+static DrGcnHostConfig makeConfig(const std::string &game)
 {
   DrGcnHostConfig config = {};
 
   config.core = dr_core_path(DR_CORE_DOLPHIN).toStdString();
   config.game = (dr_roms_directory() + "/Mario Party 4 (USA) (Rev 1).rvz").toStdString();
+  if (!game.empty())
+    config.game = game;
+
+  config.battle_icons.dir = MP4_BATTLE_ICON_DIR;
+  config.battle_icons.files = MP4_BATTLE_ICON_FILE;
+  config.battle_icons.width = 160;
+  config.battle_icons.height = 120;
+  config.battle_icons.white_background = false;
 
   config.cheats.cave = MP4_CAVE;
   config.cheats.cave_addr = MP4_CAVE_ADDR;
@@ -163,46 +181,46 @@ static DrGcnHostConfig makeConfig()
   config.cheats.hooks = MP4_HOOK_BOARD;
 
   config.values.scene = { 0x801d3ce0, DR_VALUE_TYPE_S32 };
-  config.values.character[0] = { 0x8018fc10, DR_VALUE_TYPE_U16 };
-  config.values.character[1] = { 0x8018fc1a, DR_VALUE_TYPE_U16 };
-  config.values.character[2] = { 0x8018fc24, DR_VALUE_TYPE_U16 };
-  config.values.character[3] = { 0x8018fc2e, DR_VALUE_TYPE_U16 };
-  config.values.controller[0] = { 0x8018fc12, DR_VALUE_TYPE_U16 };
-  config.values.controller[1] = { 0x8018fc1c, DR_VALUE_TYPE_U16 };
-  config.values.controller[2] = { 0x8018fc26, DR_VALUE_TYPE_U16 };
-  config.values.controller[3] = { 0x8018fc30, DR_VALUE_TYPE_U16 };
-  config.values.difficulty[0] = { 0x8018fc14, DR_VALUE_TYPE_U16 };
-  config.values.difficulty[1] = { 0x8018fc1e, DR_VALUE_TYPE_U16 };
-  config.values.difficulty[2] = { 0x8018fc28, DR_VALUE_TYPE_U16 };
-  config.values.difficulty[3] = { 0x8018fc32, DR_VALUE_TYPE_U16 };
-  config.values.team[0] = { 0x8018fc16, DR_VALUE_TYPE_U16 };
-  config.values.team[1] = { 0x8018fc20, DR_VALUE_TYPE_U16 };
-  config.values.team[2] = { 0x8018fc2a, DR_VALUE_TYPE_U16 };
-  config.values.team[3] = { 0x8018fc34, DR_VALUE_TYPE_U16 };
-  config.values.bot[0] = { 0x8018fc18, DR_VALUE_TYPE_U16 };
-  config.values.bot[1] = { 0x8018fc22, DR_VALUE_TYPE_U16 };
-  config.values.bot[2] = { 0x8018fc2c, DR_VALUE_TYPE_U16 };
-  config.values.bot[3] = { 0x8018fc36, DR_VALUE_TYPE_U16 };
-  config.values.result[0] = { 0x8018fc60, DR_VALUE_TYPE_U16 };
-  config.values.result[1] = { 0x8018fc90, DR_VALUE_TYPE_U16 };
-  config.values.result[2] = { 0x8018fcc0, DR_VALUE_TYPE_U16 };
-  config.values.result[3] = { 0x8018fcf0, DR_VALUE_TYPE_U16 };
-  config.values.bonus_result[0] = { 0x8018fc5e, DR_VALUE_TYPE_U16 };
-  config.values.bonus_result[1] = { 0x8018fc8e, DR_VALUE_TYPE_U16 };
-  config.values.bonus_result[2] = { 0x8018fcbe, DR_VALUE_TYPE_U16 };
-  config.values.bonus_result[3] = { 0x8018fcee, DR_VALUE_TYPE_U16 };
-  config.values.coins[0] = { 0x8018fc54, DR_VALUE_TYPE_U16 };
-  config.values.coins[1] = { 0x8018fc84, DR_VALUE_TYPE_U16 };
-  config.values.coins[2] = { 0x8018fcb4, DR_VALUE_TYPE_U16 };
-  config.values.coins[3] = { 0x8018fce4, DR_VALUE_TYPE_U16 };
-  config.values.stars[0] = { 0x8018fc62, DR_VALUE_TYPE_U16 };
-  config.values.stars[1] = { 0x8018fc92, DR_VALUE_TYPE_U16 };
-  config.values.stars[2] = { 0x8018fcc2, DR_VALUE_TYPE_U16 };
-  config.values.stars[3] = { 0x8018fcf2, DR_VALUE_TYPE_U16 };
-  config.values.battle_ante[0] = { 0x8018fc5c, DR_VALUE_TYPE_U16 };
-  config.values.battle_ante[1] = { 0x8018fc8c, DR_VALUE_TYPE_U16 };
-  config.values.battle_ante[2] = { 0x8018fcbc, DR_VALUE_TYPE_U16 };
-  config.values.battle_ante[3] = { 0x8018fcec, DR_VALUE_TYPE_U16 };
+  config.values.character[0] = { 0x8018fc10, DR_VALUE_TYPE_S16 };
+  config.values.character[1] = { 0x8018fc1a, DR_VALUE_TYPE_S16 };
+  config.values.character[2] = { 0x8018fc24, DR_VALUE_TYPE_S16 };
+  config.values.character[3] = { 0x8018fc2e, DR_VALUE_TYPE_S16 };
+  config.values.controller[0] = { 0x8018fc12, DR_VALUE_TYPE_S16 };
+  config.values.controller[1] = { 0x8018fc1c, DR_VALUE_TYPE_S16 };
+  config.values.controller[2] = { 0x8018fc26, DR_VALUE_TYPE_S16 };
+  config.values.controller[3] = { 0x8018fc30, DR_VALUE_TYPE_S16 };
+  config.values.difficulty[0] = { 0x8018fc14, DR_VALUE_TYPE_S16 };
+  config.values.difficulty[1] = { 0x8018fc1e, DR_VALUE_TYPE_S16 };
+  config.values.difficulty[2] = { 0x8018fc28, DR_VALUE_TYPE_S16 };
+  config.values.difficulty[3] = { 0x8018fc32, DR_VALUE_TYPE_S16 };
+  config.values.team[0] = { 0x8018fc16, DR_VALUE_TYPE_S16 };
+  config.values.team[1] = { 0x8018fc20, DR_VALUE_TYPE_S16 };
+  config.values.team[2] = { 0x8018fc2a, DR_VALUE_TYPE_S16 };
+  config.values.team[3] = { 0x8018fc34, DR_VALUE_TYPE_S16 };
+  config.values.bot[0] = { 0x8018fc18, DR_VALUE_TYPE_S16 };
+  config.values.bot[1] = { 0x8018fc22, DR_VALUE_TYPE_S16 };
+  config.values.bot[2] = { 0x8018fc2c, DR_VALUE_TYPE_S16 };
+  config.values.bot[3] = { 0x8018fc36, DR_VALUE_TYPE_S16 };
+  config.values.result[0] = { 0x8018fc60, DR_VALUE_TYPE_S16 };
+  config.values.result[1] = { 0x8018fc90, DR_VALUE_TYPE_S16 };
+  config.values.result[2] = { 0x8018fcc0, DR_VALUE_TYPE_S16 };
+  config.values.result[3] = { 0x8018fcf0, DR_VALUE_TYPE_S16 };
+  config.values.bonus_result[0] = { 0x8018fc5e, DR_VALUE_TYPE_S16 };
+  config.values.bonus_result[1] = { 0x8018fc8e, DR_VALUE_TYPE_S16 };
+  config.values.bonus_result[2] = { 0x8018fcbe, DR_VALUE_TYPE_S16 };
+  config.values.bonus_result[3] = { 0x8018fcee, DR_VALUE_TYPE_S16 };
+  config.values.coins[0] = { 0x8018fc54, DR_VALUE_TYPE_S16 };
+  config.values.coins[1] = { 0x8018fc84, DR_VALUE_TYPE_S16 };
+  config.values.coins[2] = { 0x8018fcb4, DR_VALUE_TYPE_S16 };
+  config.values.coins[3] = { 0x8018fce4, DR_VALUE_TYPE_S16 };
+  config.values.stars[0] = { 0x8018fc62, DR_VALUE_TYPE_S16 };
+  config.values.stars[1] = { 0x8018fc92, DR_VALUE_TYPE_S16 };
+  config.values.stars[2] = { 0x8018fcc2, DR_VALUE_TYPE_S16 };
+  config.values.stars[3] = { 0x8018fcf2, DR_VALUE_TYPE_S16 };
+  config.values.battle_ante[0] = { 0x8018fc5c, DR_VALUE_TYPE_S16 };
+  config.values.battle_ante[1] = { 0x8018fc8c, DR_VALUE_TYPE_S16 };
+  config.values.battle_ante[2] = { 0x8018fcbc, DR_VALUE_TYPE_S16 };
+  config.values.battle_ante[3] = { 0x8018fcec, DR_VALUE_TYPE_S16 };
   config.values.minigame_id = { 0x8018fd2c, DR_VALUE_TYPE_S16 };
   config.values.title_block = { MP4_TITLE_BLOCK, DR_VALUE_TYPE_POINTER };
   config.values.rng = { 0x801d342c, DR_VALUE_TYPE_U32 };
@@ -225,8 +243,8 @@ static DrGcnHostConfig makeConfig()
   return config;
 }
 
-MarioParty4Host::MarioParty4Host(QObject *parent)
-  : MarioPartyGcnHost(makeConfig(), parent)
+MarioParty4Host::MarioParty4Host(QObject *parent, const std::string &game)
+  : MarioPartyGcnHost(makeConfig(game), parent)
 {
 }
 

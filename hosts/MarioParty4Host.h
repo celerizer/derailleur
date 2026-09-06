@@ -2,6 +2,7 @@
 #define DR_HOST_MARIO_PARTY_4_H
 
 #include "MarioPartyGcnHost.h"
+#include <string>
 
 /**
  * Gecko codes:
@@ -14,7 +15,7 @@ class MarioParty4Host : public MarioPartyGcnHost
   Q_OBJECT
 
 public:
-  explicit MarioParty4Host(QObject *parent = nullptr);
+  explicit MarioParty4Host(QObject *parent = nullptr, const std::string &game = {});
   dr_game game(void) const override { return DR_GAME_MARIOPARTY4; }
 
 protected:

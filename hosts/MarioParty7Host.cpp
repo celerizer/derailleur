@@ -189,12 +189,14 @@ static const dr_scene_name_t MP7_SCENE_NAMES[] =
   { -1, nullptr },
 };
 
-static DrGcnHostConfig makeConfig()
+static DrGcnHostConfig makeConfig(const std::string &game)
 {
   DrGcnHostConfig config = {};
 
   config.core = dr_core_path(DR_CORE_DOLPHIN).toStdString();
   config.game = (dr_roms_directory() + "/Mario Party 7 (USA) (Rev 1).rvz").toStdString();
+  if (!game.empty())
+    config.game = game;
 
   config.cheats.cave = MP7_CAVE;
   config.cheats.cave_addr = MP7_CAVE_ADDR;
@@ -203,34 +205,34 @@ static DrGcnHostConfig makeConfig()
   config.cheats.hooks = MP7_HOOK_BOARD;
 
   config.values.scene = { 0x802f2f3c, DR_VALUE_TYPE_S32 };
-  config.values.character[0] = { 0x80290c48, DR_VALUE_TYPE_U16 };
-  config.values.character[1] = { 0x80290c52, DR_VALUE_TYPE_U16 };
-  config.values.character[2] = { 0x80290c5c, DR_VALUE_TYPE_U16 };
-  config.values.character[3] = { 0x80290c66, DR_VALUE_TYPE_U16 };
-  config.values.controller[0] = { 0x80290c4a, DR_VALUE_TYPE_U16 };
-  config.values.controller[1] = { 0x80290c54, DR_VALUE_TYPE_U16 };
-  config.values.controller[2] = { 0x80290c5e, DR_VALUE_TYPE_U16 };
-  config.values.controller[3] = { 0x80290c68, DR_VALUE_TYPE_U16 };
-  config.values.difficulty[0] = { 0x80290c4c, DR_VALUE_TYPE_U16 };
-  config.values.difficulty[1] = { 0x80290c56, DR_VALUE_TYPE_U16 };
-  config.values.difficulty[2] = { 0x80290c60, DR_VALUE_TYPE_U16 };
-  config.values.difficulty[3] = { 0x80290c6a, DR_VALUE_TYPE_U16 };
-  config.values.team[0] = { 0x80290c4e, DR_VALUE_TYPE_U16 };
-  config.values.team[1] = { 0x80290c58, DR_VALUE_TYPE_U16 };
-  config.values.team[2] = { 0x80290c62, DR_VALUE_TYPE_U16 };
-  config.values.team[3] = { 0x80290c6c, DR_VALUE_TYPE_U16 };
-  config.values.bot[0] = { 0x80290c50, DR_VALUE_TYPE_U16 };
-  config.values.bot[1] = { 0x80290c5a, DR_VALUE_TYPE_U16 };
-  config.values.bot[2] = { 0x80290c64, DR_VALUE_TYPE_U16 };
-  config.values.bot[3] = { 0x80290c6e, DR_VALUE_TYPE_U16 };
-  config.values.result[0] = { 0x80290cca, DR_VALUE_TYPE_U16 };
-  config.values.result[1] = { 0x80290dda, DR_VALUE_TYPE_U16 };
-  config.values.result[2] = { 0x80290eea, DR_VALUE_TYPE_U16 };
-  config.values.result[3] = { 0x80290ffa, DR_VALUE_TYPE_U16 };
-  config.values.bonus_result[0] = { 0x80290cc8, DR_VALUE_TYPE_U16 };
-  config.values.bonus_result[1] = { 0x80290dd8, DR_VALUE_TYPE_U16 };
-  config.values.bonus_result[2] = { 0x80290ee8, DR_VALUE_TYPE_U16 };
-  config.values.bonus_result[3] = { 0x80290ff8, DR_VALUE_TYPE_U16 };
+  config.values.character[0] = { 0x80290c48, DR_VALUE_TYPE_S16 };
+  config.values.character[1] = { 0x80290c52, DR_VALUE_TYPE_S16 };
+  config.values.character[2] = { 0x80290c5c, DR_VALUE_TYPE_S16 };
+  config.values.character[3] = { 0x80290c66, DR_VALUE_TYPE_S16 };
+  config.values.controller[0] = { 0x80290c4a, DR_VALUE_TYPE_S16 };
+  config.values.controller[1] = { 0x80290c54, DR_VALUE_TYPE_S16 };
+  config.values.controller[2] = { 0x80290c5e, DR_VALUE_TYPE_S16 };
+  config.values.controller[3] = { 0x80290c68, DR_VALUE_TYPE_S16 };
+  config.values.difficulty[0] = { 0x80290c4c, DR_VALUE_TYPE_S16 };
+  config.values.difficulty[1] = { 0x80290c56, DR_VALUE_TYPE_S16 };
+  config.values.difficulty[2] = { 0x80290c60, DR_VALUE_TYPE_S16 };
+  config.values.difficulty[3] = { 0x80290c6a, DR_VALUE_TYPE_S16 };
+  config.values.team[0] = { 0x80290c4e, DR_VALUE_TYPE_S16 };
+  config.values.team[1] = { 0x80290c58, DR_VALUE_TYPE_S16 };
+  config.values.team[2] = { 0x80290c62, DR_VALUE_TYPE_S16 };
+  config.values.team[3] = { 0x80290c6c, DR_VALUE_TYPE_S16 };
+  config.values.bot[0] = { 0x80290c50, DR_VALUE_TYPE_S16 };
+  config.values.bot[1] = { 0x80290c5a, DR_VALUE_TYPE_S16 };
+  config.values.bot[2] = { 0x80290c64, DR_VALUE_TYPE_S16 };
+  config.values.bot[3] = { 0x80290c6e, DR_VALUE_TYPE_S16 };
+  config.values.result[0] = { 0x80290cca, DR_VALUE_TYPE_S16 };
+  config.values.result[1] = { 0x80290dda, DR_VALUE_TYPE_S16 };
+  config.values.result[2] = { 0x80290eea, DR_VALUE_TYPE_S16 };
+  config.values.result[3] = { 0x80290ffa, DR_VALUE_TYPE_S16 };
+  config.values.bonus_result[0] = { 0x80290cc8, DR_VALUE_TYPE_S16 };
+  config.values.bonus_result[1] = { 0x80290dd8, DR_VALUE_TYPE_S16 };
+  config.values.bonus_result[2] = { 0x80290ee8, DR_VALUE_TYPE_S16 };
+  config.values.bonus_result[3] = { 0x80290ff8, DR_VALUE_TYPE_S16 };
   config.values.coins[0] = { 0x80290cbe, DR_VALUE_TYPE_S16 };
   config.values.coins[1] = { 0x80290dce, DR_VALUE_TYPE_S16 };
   config.values.coins[2] = { 0x80290ede, DR_VALUE_TYPE_S16 };
@@ -264,7 +266,7 @@ static DrGcnHostConfig makeConfig()
   return config;
 }
 
-MarioParty7Host::MarioParty7Host(QObject *parent)
-  : MarioPartyGcnHost(makeConfig(), parent)
+MarioParty7Host::MarioParty7Host(QObject *parent, const std::string &game)
+  : MarioPartyGcnHost(makeConfig(game), parent)
 {
 }

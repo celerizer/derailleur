@@ -42,6 +42,10 @@ private:
   void connectCoreLog(QRetro *core);
 
   void startWithHost(DrHost *host);
+
+  /// Builds the Mario Party host for `mp` (1-8). `game` overrides the stock ROM
+  /// path; empty uses it. Returns null for an unknown index.
+  DrHost *makeHost(int mp, const QString &game);
   void showHost();
   /// Returns to the host select screen, for runs with no host to go back to
   /// (challenge mode, or a debug launch before a host was chosen).
@@ -73,6 +77,7 @@ private:
   DrHost *m_Host = nullptr;
   QWidget *m_HostContainer = nullptr;
   QWidget *m_StartGameTab = nullptr; // host picker; disabled once a game starts
+  QString m_CustomRom;               // basename of the running custom host ROM, if any
   QStackedWidget *m_Stack = nullptr;
   DrLogger *m_Logger = nullptr;
   DrOverlay *m_Overlay = nullptr;

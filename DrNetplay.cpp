@@ -152,7 +152,7 @@ void DrNetplay::hostSession(quint16 port, int playerCount)
   emit peerCountChanged(1, m_PeerCount);
 }
 
-void DrNetplay::startGame(int gameId, const QStringList &saveFilters)
+void DrNetplay::startGame(int gameId, const QStringList &saveFilters, const QString &customRom)
 {
   if (!m_IsServer)
     return;
@@ -169,6 +169,10 @@ void DrNetplay::startGame(int gameId, const QStringList &saveFilters)
     s.setByteOrder(QDataStream::LittleEndian);
     s << seed;
   }
+  /* A modified host ROM travels as its basename; every peer resolves it in their
+   * own custom folder. Empty means the stock game. */
+  payload.append(customRom.toUtf8());
+
   /* Deliver the authoritative allowed-mini-games filter *before* START so each
    * client applies it before it builds its host and decides which guests to
    * load. TCP preserves order and onSocketReadyRead processes messages
@@ -189,7 +193,7 @@ void DrNetplay::startGame(int gameId, const QStringList &saveFilters)
         .arg(dr_save_directory()));
   }
 
-  broadcast(DR_NETPLAY_PACKET_START, payload);
+  broadcastVar(DR_NETPLAY_PACKET_START, payload);
 
   /* The server's buffer setting is authoritative at session start. */
   QByteArray delayPayload;
@@ -785,7 +789,8 @@ void DrNetplay::onSocketReadyRead()
 
     /* Variable-length messages are framed [type][u32 len][payload]. */
     if (type == DR_NETPLAY_PACKET_RESYNC_STATE || type == DR_NETPLAY_PACKET_MINIGAME_FILTER ||
-        type == DR_NETPLAY_PACKET_SAVE || type == DR_NETPLAY_PACKET_LAUNCH)
+        type == DR_NETPLAY_PACKET_SAVE || type == DR_NETPLAY_PACKET_LAUNCH ||
+        type == DR_NETPLAY_PACKET_START)
     {
       if (buf.size() < 1 + 4)
         break;
@@ -883,14 +888,19 @@ void DrNetplay::handleMessage(QTcpSocket *sock, quint8 type, const QByteArray &p
       s.setByteOrder(QDataStream::LittleEndian);
       s >> seed;
     }
+    const QString customRom = QString::fromUtf8(payload.mid(5));
+
     dr_srand(seed);
     m_Active = true;
     dr_set_netplay_active(true);
     resetFrameCounter();
     emit logMessage(DR_LOG_INFO,
-      QString("netplay: client received start, game %1, peers=%2").arg(gameId).arg(m_PeerCount));
+      QString("netplay: client received start, game %1%2, peers=%3")
+        .arg(gameId)
+        .arg(customRom.isEmpty() ? QString() : QString(" (%1)").arg(customRom))
+        .arg(m_PeerCount));
     emit sessionStarted(m_PeerIndex, m_PeerCount);
-    emit startGameRequested(gameId);
+    emit startGameRequested(gameId, customRom);
     break;
   }
 
@@ -1317,8 +1327,6 @@ int DrNetplay::payloadLength(quint8 type)
   {
   case DR_NETPLAY_PACKET_HANDSHAKE:
     return 2;
-  case DR_NETPLAY_PACKET_START:
-    return 5; // 1-byte game id + 4-byte PRNG seed
   case DR_NETPLAY_PACKET_INPUT:
     return DR_NETPLAY_PACKET_PAYLOAD_SIZE;
   case DR_NETPLAY_PACKET_SET_DELAY:

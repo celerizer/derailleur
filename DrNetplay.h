@@ -27,7 +27,7 @@ class QTcpSocket;
 typedef enum
 {
   DR_NETPLAY_PACKET_HANDSHAKE    = 0x01, /* server -> client: { peerIndex, peerCount } */
-  DR_NETPLAY_PACKET_START        = 0x02, /* server -> client: begin lockstep */
+  DR_NETPLAY_PACKET_START        = 0x02, /* server -> client: var: [u8 game][u32 seed][utf8 custom rom] */
   DR_NETPLAY_PACKET_INPUT        = 0x03, /* either direction: DrNetplayPacket */
   /* 0x04 retired (was CANDIDATES; peers now roll candidates from the shared PRNG). */
   DR_NETPLAY_PACKET_SET_DELAY    = 0x05, /* any peer (relayed): new input delay, 1 byte */
@@ -170,7 +170,8 @@ public:
   /// file wildcards (see DrHost::saveFilePatterns, e.g. "Mario Party 3 (USA).*");
   /// only the files they select are shipped to clients, not the whole save folder.
   /// Empty ships the entire folder (legacy fallback).
-  void startGame(int gameId, const QStringList &saveFilters = QStringList());
+  void startGame(int gameId, const QStringList &saveFilters = QStringList(),
+    const QString &customRom = QString());
 
   /// Server only: forces a hard resync of the active context — every client
   /// stops, receives the host's (compressed) savestate, loads it and resumes
@@ -215,7 +216,7 @@ signals:
   void peerCountChanged(int connected, int total);
   void lobbyJoined(int peerIndex, int peerCount);
   /// Emitted on a client when the server selects a game (a dr_game value).
-  void startGameRequested(int gameId);
+  void startGameRequested(int gameId, const QString &customRom);
   /// Emitted (locally on set, or on a client when the host's filter arrives)
   /// with the opaque allowed-mini-games payload to apply.
   void minigameFilterReceived(QByteArray payload);

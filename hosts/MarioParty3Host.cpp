@@ -4,8 +4,127 @@
 
 #include <asm/mp3.h>
 
+#include <QCryptographicHash>
+#include <QDir>
+#include <QFile>
+#include <QFileInfo>
 #include <QRetro.h>
 #include <QRetroDirectories.h>
+#include <QUuid>
+#include <QtEndian>
+
+/**
+ * Mupen64Plus-Next compiles its ROM database into the library rather than reading
+ * system/Mupen64plus/mupen64plus.ini, so a modified Mario Party 3 is an unknown
+ * ROM and boots with the wrong save type. Overwrite a spare Mario Party 3 entry
+ * in a temp copy of the core with this ROM's md5 and crcs, so it inherits the
+ * retail settings the entry already refers to. Both fields are replaced in place
+ * at the same length, so nothing in the library shifts.
+ */
+static const char MP3_DB_MD5[] = "BDD79F498F37D01B8958F56EC6FFA097";
+static const char MP3_DB_CRC[] = "65DB63E3 64357A65";
+
+/// Temp core built for the running custom ROM, removed once the core has opened it.
+static QString &mp3PatchedCore(void)
+{
+  static QString path;
+
+  return path;
+}
+
+/// What the patch attempt did, logged once the host's log signal is connected.
+static QString &mp3PatchStatus(void)
+{
+  static QString status;
+
+  return status;
+}
+
+static QString writePatchedMupenCore(const QString &corePath, const QString &romPath)
+{
+  const int md5Len = sizeof(MP3_DB_MD5) - 1;
+  const int crcLen = sizeof(MP3_DB_CRC) - 1;
+  QFile rom(romPath);
+  QByteArray header;
+  QByteArray md5;
+
+  if (!rom.open(QIODevice::ReadOnly))
+  {
+    mp3PatchStatus() = QString("could not read %1").arg(romPath);
+    return QString();
+  }
+  header = rom.read(0x18).mid(0x10);
+  rom.seek(0);
+  md5 = QCryptographicHash::hash(rom.readAll(), QCryptographicHash::Md5).toHex().toUpper();
+  rom.close();
+
+  if (header.size() < 8 || md5.size() != md5Len)
+  {
+    mp3PatchStatus() = QString("%1 is too short to be a rom").arg(romPath);
+    return QString();
+  }
+
+  const QByteArray crc = QString("%1 %2")
+                           .arg(qFromBigEndian<quint32>(header.constData()), 8, 16, QChar('0'))
+                           .arg(qFromBigEndian<quint32>(header.constData() + 4), 8, 16, QChar('0'))
+                           .toUpper()
+                           .toLatin1();
+
+  if (crc.size() != crcLen)
+  {
+    mp3PatchStatus() = "computed crc was the wrong width";
+    return QString();
+  }
+
+  QFile core(corePath);
+  QByteArray data;
+
+  if (!core.open(QIODevice::ReadOnly))
+  {
+    mp3PatchStatus() = QString("could not read core %1").arg(corePath);
+    return QString();
+  }
+  data = core.readAll();
+  core.close();
+
+  const int md5Idx = data.indexOf(MP3_DB_MD5);
+
+  if (md5Idx < 0)
+  {
+    mp3PatchStatus() = "core has no Mario Party 3 (U) [f1] database entry to borrow";
+    return QString();
+  }
+
+  /* The crc belongs to the same entry, a fixed distance below the md5. */
+  const int crcIdx = data.indexOf(MP3_DB_CRC, md5Idx);
+
+  if (crcIdx < 0 || crcIdx - md5Idx > 128)
+  {
+    mp3PatchStatus() = "database entry found but its crc field was not where expected";
+    return QString();
+  }
+
+  data.replace(md5Idx, md5Len, md5);
+  data.replace(crcIdx, crcLen, crc);
+
+  const QString destPath = QString("%1/mupen64plus_next_%2.%3")
+                             .arg(QDir::tempPath(), QUuid::createUuid().toString(QUuid::Id128),
+                               QFileInfo(corePath).suffix());
+  QFile dest(destPath);
+
+  if (!dest.open(QIODevice::WriteOnly | QIODevice::Truncate))
+  {
+    mp3PatchStatus() = QString("could not write patched core to %1").arg(destPath);
+    return QString();
+  }
+  dest.write(data);
+  dest.close();
+
+  mp3PatchStatus() =
+    QString("patched core database entry to md5 %1, crc %2").arg(QString(md5), QString(crc));
+
+  return destPath;
+}
 
 /* Native character id -> dr_character */
 static dr_character mp3_char_to_dr(unsigned chr)
@@ -177,12 +296,20 @@ static const dr_scene_name_t MP3_SCENE_NAMES[] =
   { -1, nullptr },
 };
 
-static DrHostConfig makeConfig()
+static DrHostConfig makeConfig(const std::string &game)
 {
   DrHostConfig config = {};
 
   config.core = dr_core_path(DR_CORE_MUPEN64PLUSNEXT).toStdString();
   config.game = (dr_roms_directory() + "/Mario Party 3 (USA).z64").toStdString();
+  if (!game.empty())
+  {
+    config.game = game;
+    mp3PatchedCore() = writePatchedMupenCore(
+      QString::fromStdString(config.core), QString::fromStdString(config.game));
+    if (!mp3PatchedCore().isEmpty())
+      config.core = mp3PatchedCore().toStdString();
+  }
 
   config.char_to_dr = mp3_char_to_dr;
   config.diff_to_dr = MP3_DIFF_TO_DR;
@@ -242,10 +369,10 @@ static DrHostConfig makeConfig()
   config.values.bot[1] = { 0x800d1144, DR_VALUE_TYPE_U8 };
   config.values.bot[2] = { 0x800d117c, DR_VALUE_TYPE_U8 };
   config.values.bot[3] = { 0x800d11b4, DR_VALUE_TYPE_U8 };
-  config.values.result[0] = { 0x800d1110, DR_VALUE_TYPE_U16 };
-  config.values.result[1] = { 0x800d1148, DR_VALUE_TYPE_U16 };
-  config.values.result[2] = { 0x800d1180, DR_VALUE_TYPE_U16 };
-  config.values.result[3] = { 0x800d11b8, DR_VALUE_TYPE_U16 };
+  config.values.result[0] = { 0x800d1110, DR_VALUE_TYPE_S16 };
+  config.values.result[1] = { 0x800d1148, DR_VALUE_TYPE_S16 };
+  config.values.result[2] = { 0x800d1180, DR_VALUE_TYPE_S16 };
+  config.values.result[3] = { 0x800d11b8, DR_VALUE_TYPE_S16 };
   config.values.bonus_result[0] = { 0x800d110e, DR_VALUE_TYPE_S16 };
   config.values.bonus_result[1] = { 0x800d1146, DR_VALUE_TYPE_S16 };
   config.values.bonus_result[2] = { 0x800d117e, DR_VALUE_TYPE_S16 };
@@ -254,14 +381,14 @@ static DrHostConfig makeConfig()
   config.values.panel_color[1] = { 0x800d115c, DR_VALUE_TYPE_U8 };
   config.values.panel_color[2] = { 0x800d1194, DR_VALUE_TYPE_U8 };
   config.values.panel_color[3] = { 0x800d11cc, DR_VALUE_TYPE_U8 };
-  config.values.coins[0] = { 0x800d1112, DR_VALUE_TYPE_U16 };
-  config.values.coins[1] = { 0x800d114a, DR_VALUE_TYPE_U16 };
-  config.values.coins[2] = { 0x800d1182, DR_VALUE_TYPE_U16 };
-  config.values.coins[3] = { 0x800d11ba, DR_VALUE_TYPE_U16 };
-  config.values.stars[0] = { 0x800d1116, DR_VALUE_TYPE_U8 };
-  config.values.stars[1] = { 0x800d114e, DR_VALUE_TYPE_U8 };
-  config.values.stars[2] = { 0x800d1186, DR_VALUE_TYPE_U8 };
-  config.values.stars[3] = { 0x800d11be, DR_VALUE_TYPE_U8 };
+  config.values.coins[0] = { 0x800d1112, DR_VALUE_TYPE_S16 };
+  config.values.coins[1] = { 0x800d114a, DR_VALUE_TYPE_S16 };
+  config.values.coins[2] = { 0x800d1182, DR_VALUE_TYPE_S16 };
+  config.values.coins[3] = { 0x800d11ba, DR_VALUE_TYPE_S16 };
+  config.values.stars[0] = { 0x800d1116, DR_VALUE_TYPE_S8 };
+  config.values.stars[1] = { 0x800d114e, DR_VALUE_TYPE_S8 };
+  config.values.stars[2] = { 0x800d1186, DR_VALUE_TYPE_S8 };
+  config.values.stars[3] = { 0x800d11be, DR_VALUE_TYPE_S8 };
   config.values.mg_star[0] = { 0x800d1130, DR_VALUE_TYPE_S16 };
   config.values.mg_star[1] = { 0x800d1168, DR_VALUE_TYPE_S16 };
   config.values.mg_star[2] = { 0x800d11a0, DR_VALUE_TYPE_S16 };
@@ -288,9 +415,33 @@ static DrHostConfig makeConfig()
   return config;
 }
 
-MarioParty3Host::MarioParty3Host(QObject *parent)
-  : MarioPartyN64Host(makeConfig(), parent)
+MarioParty3Host::MarioParty3Host(QObject *parent, const std::string &game)
+  : MarioPartyN64Host(makeConfig(game), parent)
 {
+  /* QRetro copies the core into its own temp before opening it, so ours is done. */
+  if (!mp3PatchedCore().isEmpty())
+  {
+    QFile::remove(mp3PatchedCore());
+    mp3PatchedCore().clear();
+  }
+
+  /* Deferred: the host's log signal is only connected after we are constructed. */
+  if (!mp3PatchStatus().isEmpty())
+  {
+    const bool ok = mp3PatchStatus().startsWith("patched");
+
+    QMetaObject::invokeMethod(
+      this,
+      [this, ok, status = mp3PatchStatus()]() {
+        log(ok ? DR_LOG_INFO : DR_LOG_WARN,
+          qPrintable(QString("custom rom: %1%2")
+                       .arg(status)
+                       .arg(ok ? "" : "; using the stock core, save type may be wrong")));
+      },
+      Qt::QueuedConnection);
+    mp3PatchStatus().clear();
+  }
+
   connect(
     m_core, &QRetro::frameEnd, this,
     [this, called = false]() mutable {

@@ -2,13 +2,14 @@
 #define DR_HOST_MARIO_PARTY_8_H
 
 #include "MarioPartyGcnHost.h"
+#include <string>
 
 class MarioParty8Host : public MarioPartyGcnHost
 {
   Q_OBJECT
 
 public:
-  explicit MarioParty8Host(QObject *parent = nullptr);
+  explicit MarioParty8Host(QObject *parent = nullptr, const std::string &game = {});
   dr_game game(void) const override { return DR_GAME_MARIOPARTY8; }
 
   /// MP8's board never runs a mini-game results screen we can drive, so the

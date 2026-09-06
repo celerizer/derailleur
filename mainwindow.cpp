@@ -15,6 +15,7 @@
 #include <QPalette>
 #include <QPixmap>
 #include <QRandomGenerator>
+#include <QScrollArea>
 #include <QPushButton>
 #include <QRetro.h>
 #include <QSet>
@@ -30,6 +31,58 @@
 #include "DrDebug.h"
 #include "DrDownloader.h"
 #include "DrSettings.h"
+
+/* A modified host ROM found under roms/custom/mpN. `name` is the basename, which
+ * is also what travels over netplay so each peer resolves its own copy. */
+struct DrCustomRom
+{
+  int mp;
+  QString path;
+  QString name;
+  QString icon;
+};
+
+/* N64 hosts boot .z64; the GameCube and Wii ones boot .rvz or .iso. */
+static QStringList dr_custom_rom_filters(int mp)
+{
+  if (mp <= 3)
+    return { "*.z64" };
+  return { "*.rvz", "*.iso" };
+}
+
+static QList<DrCustomRom> dr_custom_roms(void)
+{
+  QList<DrCustomRom> roms;
+
+  for (int mp = 1; mp <= 8; mp++)
+  {
+    QDir dir(dr_roms_directory() + QString("/custom/mp%1").arg(mp));
+
+    if (!dir.exists())
+      continue;
+
+    for (const QFileInfo &info :
+      dir.entryInfoList(dr_custom_rom_filters(mp), QDir::Files, QDir::Name))
+    {
+      const QString png = dir.filePath(info.completeBaseName() + ".png");
+
+      roms.append({ mp, info.absoluteFilePath(), info.completeBaseName(),
+        QFile::exists(png) ? png : QString() });
+    }
+  }
+
+  return roms;
+}
+
+static QString dr_custom_rom_path(int mp, const QString &name)
+{
+  for (const DrCustomRom &rom : dr_custom_roms())
+    if (rom.mp == mp && rom.name == name)
+      return rom.path;
+
+  return QString();
+}
+
 #include "hosts/MarioParty1Host.h"
 #include "hosts/MarioParty2Host.h"
 #include "hosts/MarioParty3Host.h"
@@ -116,17 +169,12 @@ QByteArray serializeDebugLaunch(int guestIndex, int minigameIndex, const dr_play
 MainWindow::MainWindow(QWidget *parent)
   : QMainWindow(parent)
 {
-  // Single helper window that gathers the auxiliary tool widgets as sidebar
-  // categories. Each tool is added below via m_Tools->addTool() instead of
-  // being shown as its own top-level window.
   m_Tools = new DrToolWindow(nullptr);
   m_Tools->show();
 
 #if SHOW_LOGGER
   m_Logger = new DrLogger(nullptr);
   m_Tools->addTool(tr("Log"), m_Logger);
-
-  /* Build/version banner -- first thing logged so it heads every session log. */
   m_Logger->message(DR_LOG_INFO, QString("derailleur built %1 %2").arg(__DATE__, __TIME__));
   m_Logger->message(DR_LOG_INFO, QString("build revision %1").arg(DR_STRINGIZE(DR_GIT_HASH)));
   m_Logger->message(DR_LOG_INFO, QString("git hash %1").arg(DR_STRINGIZE(DR_GIT_HASH_FULL)));
@@ -134,62 +182,11 @@ MainWindow::MainWindow(QWidget *parent)
     QString("started %1").arg(QDateTime::currentDateTime().toString(Qt::ISODate)));
 #endif
 
-  /* Show only the Log while starting up (cores load, guests build). Everything
-   * added from here is hidden until revealTools() at the end of construction. */
+  /* Show only the log while starting up */
   m_Tools->setDeferReveal(true);
 
-  /* "Start Game" tab: the host picker. Made the default view once revealed; the
-   * main window stays black until a game is started. The button handlers only
-   * fire at runtime, so referencing members built further down (m_Guests,
-   * m_Netplay via startWithHost) is fine. */
-  {
-    QWidget *startGame = new QWidget(nullptr);
-    QVBoxLayout *layout = new QVBoxLayout(startGame);
-    QLabel *label = new QLabel(tr("Choose Host"), startGame);
-    QGridLayout *grid = new QGridLayout;
-    int hosts = 0;
-
-    label->setAlignment(Qt::AlignCenter);
-    layout->addStretch();
-    layout->addWidget(label);
-    layout->addLayout(grid);
-
-    /* Two rows of four: each host is its own title screen with the game's name
-     * underneath. The 4:3 shots are scaled to keep their aspect. */
-    auto addHostButton = [&](const QString &name, const QString &title, auto factory) {
-      QToolButton *btn = new QToolButton(startGame);
-
-      btn->setText(name);
-      btn->setIcon(QIcon(QString(":/assets/titlescreen/%1.png").arg(title)));
-      btn->setIconSize(QSize(160, 120));
-      btn->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
-      btn->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-      connect(btn, &QToolButton::clicked, this, [this, factory]() { startWithHost(factory()); });
-      grid->addWidget(btn, hosts / 4, hosts % 4);
-      hosts++;
-    };
-    addHostButton("Mario Party 1", "marioparty1",
-      [this]() -> DrHost * { return new MarioParty1Host(this); });
-    addHostButton("Mario Party 2", "marioparty2",
-      [this]() -> DrHost * { return new MarioParty2Host(this); });
-    addHostButton("Mario Party 3", "marioparty3",
-      [this]() -> DrHost * { return new MarioParty3Host(this); });
-    addHostButton("Mario Party 4", "marioparty4",
-      [this]() -> DrHost * { return new MarioParty4Host(this); });
-    addHostButton("Mario Party 5", "marioparty5",
-      [this]() -> DrHost * { return new MarioParty5Host(this); });
-    addHostButton("Mario Party 6", "marioparty6",
-      [this]() -> DrHost * { return new MarioParty6Host(this); });
-    addHostButton("Mario Party 7", "marioparty7",
-      [this]() -> DrHost * { return new MarioParty7Host(this); });
-    addHostButton("Mario Party 8", "marioparty8",
-      [this]() -> DrHost * { return new MarioParty8Host(this); });
-    layout->addStretch();
-
-    m_StartGameTab = startGame;
-    m_Tools->addTool(tr("Start Game"), startGame);
-  }
-
+  /* Paths first: the host picker scans roms/custom for modified ROMs, so the
+   * configured roms directory has to be in place before it is built. */
   {
     QDir cwd = QDir::current();
     QString iniPath = cwd.filePath("derailleur.ini");
@@ -227,6 +224,98 @@ MainWindow::MainWindow(QWidget *parent)
     connect(&downloader, &DrDownloader::progressUpdated, m_Logger, &DrLogger::setProgress);
 #endif
     downloader.runBlocking(s, dr_save_directory(), dr_state_directory());
+  }
+
+  /* "Start Game" tab: the host picker. Made the default view once revealed; the
+   * main window stays black until a game is started. The button handlers only
+   * fire at runtime, so referencing members built further down (m_Guests,
+   * m_Netplay via startWithHost) is fine. */
+  {
+    QWidget *startGame = new QWidget(nullptr);
+    QVBoxLayout *layout = new QVBoxLayout(startGame);
+    QLabel *label = new QLabel(tr("Choose Host"), startGame);
+    QGridLayout *grid = new QGridLayout;
+    int hosts = 0;
+
+    label->setAlignment(Qt::AlignCenter);
+    layout->addStretch();
+    layout->addWidget(label);
+    layout->addLayout(grid);
+
+    /* Two rows of four: each host is its own title screen with the game's name
+     * underneath. The 4:3 shots are scaled to keep their aspect. */
+    auto addHostButton = [&](const QString &name, const QString &title, auto factory) {
+      QToolButton *btn = new QToolButton(startGame);
+
+      btn->setText(name);
+      btn->setIcon(QIcon(QString(":/assets/titlescreen/%1.png").arg(title)));
+      btn->setIconSize(QSize(160, 120));
+      btn->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
+      btn->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+      connect(btn, &QToolButton::clicked, this, [this, factory]() {
+        m_CustomRom.clear();
+        startWithHost(factory());
+      });
+      grid->addWidget(btn, hosts / 4, hosts % 4);
+      hosts++;
+    };
+    addHostButton("Mario Party", "marioparty1",
+      [this]() -> DrHost * { return new MarioParty1Host(this); });
+    addHostButton("Mario Party 2", "marioparty2",
+      [this]() -> DrHost * { return new MarioParty2Host(this); });
+    addHostButton("Mario Party 3", "marioparty3",
+      [this]() -> DrHost * { return new MarioParty3Host(this); });
+    addHostButton("Mario Party 4", "marioparty4",
+      [this]() -> DrHost * { return new MarioParty4Host(this); });
+    addHostButton("Mario Party 5", "marioparty5",
+      [this]() -> DrHost * { return new MarioParty5Host(this); });
+    addHostButton("Mario Party 6", "marioparty6",
+      [this]() -> DrHost * { return new MarioParty6Host(this); });
+    addHostButton("Mario Party 7", "marioparty7",
+      [this]() -> DrHost * { return new MarioParty7Host(this); });
+    addHostButton("Mario Party 8", "marioparty8",
+      [this]() -> DrHost * { return new MarioParty8Host(this); });
+
+    /* Modified ROMs dropped in roms/custom/mpN follow the stock eight, each named
+     * after its file and using a sibling .png when one is there. */
+    const QList<DrCustomRom> customRoms = dr_custom_roms();
+
+    for (const DrCustomRom &rom : customRoms)
+    {
+      QToolButton *btn = new QToolButton(startGame);
+
+      btn->setText(rom.name);
+      btn->setIcon(rom.icon.isEmpty()
+          ? QIcon(QString(":/assets/titlescreen/marioparty%1.png").arg(rom.mp))
+          : QIcon(rom.icon));
+      btn->setIconSize(QSize(160, 120));
+      btn->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
+      btn->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+      connect(btn, &QToolButton::clicked, this, [this, rom]() {
+        m_CustomRom = rom.name;
+        startWithHost(makeHost(rom.mp, rom.path));
+      });
+      grid->addWidget(btn, hosts / 4, hosts % 4);
+      hosts++;
+    }
+
+    m_StartGameTab = startGame;
+
+    /* Custom entries push the grid past one screen, so give it a scroll area. */
+    if (customRoms.isEmpty())
+    {
+      layout->addStretch();
+      m_Tools->addTool(tr("Start Game"), startGame);
+    }
+    else
+    {
+      QScrollArea *scroll = new QScrollArea(nullptr);
+
+      scroll->setWidget(startGame);
+      scroll->setWidgetResizable(true);
+      scroll->setFrameShape(QFrame::NoFrame);
+      m_Tools->addTool(tr("Start Game"), scroll);
+    }
   }
 
   /* Wipe the Mupen64Plus texture cache each boot so freshly laid-down hires
@@ -290,11 +379,13 @@ MainWindow::MainWindow(QWidget *parent)
       m_Guests->add(dolphin);
   }
 
-  /* The Wii core cannot survive a disc swap, so give each Wii game its own
-   * Dolphin instance with a single disc, and its own system/save dirs so the two
-   * NANDs stay apart. They still load lazily, so only the ones actually launched
-   * ever boot. */
+  /* Setup Mario Party 8 with widescreen disabled */
+  static const dr_core_option_t MP8_GUEST_OPTIONS[] = {
+    { "dolphin_widescreen", "disabled" },
+    { nullptr, nullptr },
+  };
   auto *dolphinMp8 = new CoreDolphin("wii-mp8", true, this);
+  dolphinMp8->setOptions(MP8_GUEST_OPTIONS);
   dolphinMp8->addGame(new MarioParty8(dolphinMp8->core(), dolphinMp8));
   dolphinMp8->finalizeGames();
   if (dolphinMp8->isValid())
@@ -542,6 +633,33 @@ void MainWindow::connectCoreLog(QRetro *core)
     Qt::QueuedConnection);
 }
 
+DrHost *MainWindow::makeHost(int mp, const QString &game)
+{
+  const std::string path = game.toStdString();
+
+  switch (mp)
+  {
+  case 1:
+    return new MarioParty1Host(this, path);
+  case 2:
+    return new MarioParty2Host(this, path);
+  case 3:
+    return new MarioParty3Host(this, path);
+  case 4:
+    return new MarioParty4Host(this, path);
+  case 5:
+    return new MarioParty5Host(this, path);
+  case 6:
+    return new MarioParty6Host(this, path);
+  case 7:
+    return new MarioParty7Host(this, path);
+  case 8:
+    return new MarioParty8Host(this, path);
+  default:
+    return nullptr;
+  }
+}
+
 void MainWindow::startWithHost(DrHost *host)
 {
   m_Host = host;
@@ -577,7 +695,8 @@ void MainWindow::startWithHost(DrHost *host)
    * startGameRequested signal.) */
   if (m_Netplay->isServer())
   {
-    m_Netplay->startGame(static_cast<int>(host->game()), host->saveFilePatterns());
+    m_Netplay->startGame(
+      static_cast<int>(host->game()), host->saveFilePatterns(), m_CustomRom);
   }
 
   /* Only load guests that have at least one allowed mini-game; the rest never
@@ -957,45 +1076,43 @@ void MainWindow::setupNetplay()
 
   /* A client follows the server's game choice: build the matching host and
    * start it locally. */
-  connect(m_Netplay, &DrNetplay::startGameRequested, this, [this](int gameId) {
-    if (m_Host)
-      return;
-    DrHost *host = nullptr;
-    switch (static_cast<dr_game>(gameId))
-    {
-    case DR_GAME_MARIOPARTY1:
-      host = new MarioParty1Host(this);
-      break;
-    case DR_GAME_MARIOPARTY2:
-      host = new MarioParty2Host(this);
-      break;
-    case DR_GAME_MARIOPARTY3:
-      host = new MarioParty3Host(this);
-      break;
-    case DR_GAME_MARIOPARTY4:
-      host = new MarioParty4Host(this);
-      break;
-    case DR_GAME_MARIOPARTY5:
-      host = new MarioParty5Host(this);
-      break;
-    case DR_GAME_MARIOPARTY6:
-      host = new MarioParty6Host(this);
-      break;
-    case DR_GAME_MARIOPARTY7:
-      host = new MarioParty7Host(this);
-      break;
-    case DR_GAME_MARIOPARTY8:
-      host = new MarioParty8Host(this);
-      break;
-    case DR_GAME_SONICSHUFFLE:
-      host = new SonicShuffleHost(this);
-      break;
-    default:
-      break;
-    }
-    if (host)
-      startWithHost(host);
-  });
+  connect(m_Netplay, &DrNetplay::startGameRequested, this,
+    [this](int gameId, const QString &customRom) {
+      if (m_Host)
+        return;
+
+      const dr_game game = static_cast<dr_game>(gameId);
+      DrHost *host = nullptr;
+
+      if (game >= DR_GAME_MARIOPARTY1 && game <= DR_GAME_MARIOPARTY8)
+      {
+        const int mp = 1 + (game - DR_GAME_MARIOPARTY1);
+        QString path;
+
+        /* The server named a modified ROM; find our own copy of it. Starting the
+         * stock game instead would desync on the first frame, so refuse. */
+        if (!customRom.isEmpty())
+        {
+          path = dr_custom_rom_path(mp, customRom);
+          if (path.isEmpty())
+          {
+            if (m_Logger)
+              m_Logger->message(DR_LOG_ERROR,
+                QString("netplay: host uses custom ROM \"%1\", not found in custom/mp%2")
+                  .arg(customRom)
+                  .arg(mp));
+            return;
+          }
+        }
+        m_CustomRom = customRom;
+        host = makeHost(mp, path);
+      }
+      else if (game == DR_GAME_SONICSHUFFLE)
+        host = new SonicShuffleHost(this);
+
+      if (host)
+        startWithHost(host);
+    });
 }
 
 void MainWindow::attachNetplay()
