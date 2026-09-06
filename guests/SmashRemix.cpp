@@ -22,38 +22,103 @@ static const dr_mp_minigame_t SR_MINIGAMES[] = {
 };
 
 /* Whether the game is in team battle mode */
-static const size_t SR_GAME_TYPE_ADDR = 0x800a4d0a;
-static const size_t SR_STAGE_ADDR = 0x800a4d09;
+static const dr_value_t SR_GAME_TYPE = { 0x800a4d0a, DR_VALUE_TYPE_U8 };
+static const dr_value_t SR_STAGE = { 0x800a4d09, DR_VALUE_TYPE_U8 };
 
-static const size_t SR_CHARACTER_ADDR[4] = { 0x800a4d2b, 0x800a4d9f, 0x800a4e13, 0x800a4e87 };
+static const dr_value_t SR_CHARACTER[4] = {
+  { 0x800a4d2b, DR_VALUE_TYPE_U8 },
+  { 0x800a4d9f, DR_VALUE_TYPE_U8 },
+  { 0x800a4e13, DR_VALUE_TYPE_U8 },
+  { 0x800a4e87, DR_VALUE_TYPE_U8 }
+};
 
 /* Player type for this slot: 0 = human, 1 = CPU, 2 = inactive (no player) */
-static const size_t SR_PLAYER_TYPE_ADDR[4] = { 0x800a4d2a, 0x800a4d9e, 0x800a4e12, 0x800a4e86 };
+static const dr_value_t SR_PLAYER_TYPE[4] = {
+  { 0x800a4d2a, DR_VALUE_TYPE_U8 },
+  { 0x800a4d9e, DR_VALUE_TYPE_U8 },
+  { 0x800a4e12, DR_VALUE_TYPE_U8 },
+  { 0x800a4e86, DR_VALUE_TYPE_U8 }
+};
 
-static const size_t SR_DIFFICULTY_ADDR[4] = { 0x800a4d28, 0x800a4dac, 0x800a4e10, 0x800a4e84 };
+static const dr_value_t SR_DIFFICULTY[4] = {
+  { 0x800a4d28, DR_VALUE_TYPE_U8 },
+  { 0x800a4dac, DR_VALUE_TYPE_U8 },
+  { 0x800a4e10, DR_VALUE_TYPE_U8 },
+  { 0x800a4e84, DR_VALUE_TYPE_U8 }
+};
 
-static const size_t SR_COLOR_ADDR[4] = { 0x800a4d2e, 0x800a4da2, 0x800a4e16, 0x800a4e8a };
+static const dr_value_t SR_COLOR[4] = {
+  { 0x800a4d2e, DR_VALUE_TYPE_U8 },
+  { 0x800a4da2, DR_VALUE_TYPE_U8 },
+  { 0x800a4e16, DR_VALUE_TYPE_U8 },
+  { 0x800a4e8a, DR_VALUE_TYPE_U8 }
+};
 
-static const size_t SR_TEAM_ADDR_1[4] = { 0x800a4d2d, 0x800a4da1, 0x800a4e15, 0x800a4e89 };
-static const size_t SR_TEAM_ADDR_2[4] = { 0x800a4d2c, 0x800a4da0, 0x800a4e14, 0x800a4e88 };
+static const dr_value_t SR_TEAM_1[4] = {
+  { 0x800a4d2d, DR_VALUE_TYPE_U8 },
+  { 0x800a4da1, DR_VALUE_TYPE_U8 },
+  { 0x800a4e15, DR_VALUE_TYPE_U8 },
+  { 0x800a4e89, DR_VALUE_TYPE_U8 }
+};
+static const dr_value_t SR_TEAM_2[4] = {
+  { 0x800a4d2c, DR_VALUE_TYPE_U8 },
+  { 0x800a4da0, DR_VALUE_TYPE_U8 },
+  { 0x800a4e14, DR_VALUE_TYPE_U8 },
+  { 0x800a4e88, DR_VALUE_TYPE_U8 }
+};
 
-static const size_t SR_STOCKS_ADDR[4] = { 0x800a4d33, 0x800a4da7, 0x800a4e1b, 0x800a4e8f };
+static const dr_value_t SR_STOCKS[4] = {
+  { 0x800a4d33, DR_VALUE_TYPE_S8 },
+  { 0x800a4da7, DR_VALUE_TYPE_S8 },
+  { 0x800a4e1b, DR_VALUE_TYPE_S8 },
+  { 0x800a4e8f, DR_VALUE_TYPE_S8 }
+};
 
 /* The controller port for this player, or 4 if CPU-controlled */
-static const size_t SR_PORT_ADDR[4] = { 0x800a4d32, 0x800a4da6, 0x800a4e1a, 0x800a4e8e };
+static const dr_value_t SR_PORT[4] = {
+  { 0x800a4d32, DR_VALUE_TYPE_U8 },
+  { 0x800a4da6, DR_VALUE_TYPE_U8 },
+  { 0x800a4e1a, DR_VALUE_TYPE_U8 },
+  { 0x800a4e8e, DR_VALUE_TYPE_U8 }
+};
 
-/* The color drawn behind the percentage, should match SR_PORT_ADDR */
-static const size_t SR_PORT_COLOR_ADDR[4] = { 0x800a4d30, 0x800a4da4, 0x800a4e18, 0x800a4e8c };
+/* The color drawn behind the percentage, should match SR_PORT */
+static const dr_value_t SR_PORT_COLOR[4] = {
+  { 0x800a4d30, DR_VALUE_TYPE_U8 },
+  { 0x800a4da4, DR_VALUE_TYPE_U8 },
+  { 0x800a4e18, DR_VALUE_TYPE_U8 },
+  { 0x800a4e8c, DR_VALUE_TYPE_U8 }
+};
 
 /* The size of the player, a u32. 0=normal, 1=giant, 2=tiny */
-static const size_t SR_SIZE_ADDR_1[4] = { 0x80502fac, 0x80502fb0, 0x80502fb4, 0x80502fb8 };
-static const size_t SR_SIZE_ADDR_2[4] = { 0x80502fbc, 0x80502fc0, 0x80502fc4, 0x80502fc8 };
+static const dr_value_t SR_SIZE_1[4] = {
+  { 0x80502fac, DR_VALUE_TYPE_U32 },
+  { 0x80502fb0, DR_VALUE_TYPE_U32 },
+  { 0x80502fb4, DR_VALUE_TYPE_U32 },
+  { 0x80502fb8, DR_VALUE_TYPE_U32 }
+};
+static const dr_value_t SR_SIZE_2[4] = {
+  { 0x80502fbc, DR_VALUE_TYPE_U32 },
+  { 0x80502fc0, DR_VALUE_TYPE_U32 },
+  { 0x80502fc4, DR_VALUE_TYPE_U32 },
+  { 0x80502fc8, DR_VALUE_TYPE_U32 }
+};
 
 /* The item the player starts with */
-static const size_t SR_START_ITEM_ADDR[4] = { 0x80453748, 0x8045374c, 0x80453750, 0x80453754 };
+static const dr_value_t SR_START_ITEM[4] = {
+  { 0x80453748, DR_VALUE_TYPE_U32 },
+  { 0x8045374c, DR_VALUE_TYPE_U32 },
+  { 0x80453750, DR_VALUE_TYPE_U32 },
+  { 0x80453754, DR_VALUE_TYPE_U32 }
+};
 
 /* The item the player can spawn by taunting */
-static const size_t SR_TAUNT_ITEM_ADDR[4] = { 0x804539a8, 0x804539ac, 0x804539b0, 0x804539b4 };
+static const dr_value_t SR_TAUNT_ITEM[4] = {
+  { 0x804539a8, DR_VALUE_TYPE_U32 },
+  { 0x804539ac, DR_VALUE_TYPE_U32 },
+  { 0x804539b0, DR_VALUE_TYPE_U32 },
+  { 0x804539b4, DR_VALUE_TYPE_U32 }
+};
 
 typedef enum
 {
@@ -89,13 +154,16 @@ typedef enum
  *   star rod 0x00000400, hammer 0x00002000, motion sensor bomb 0x00004000,
  *   bob-omb 0x00008000
  */
-static const size_t SR_ITEM_SWITCH_ADDR = 0x800a4d14;
+static const dr_value_t SR_ITEM_SWITCH = { 0x800a4d14, DR_VALUE_TYPE_U32 };
 
 /* The same, for the items Smash Remix adds on top of the vanilla list */
-static const size_t SR_REMIX_ITEM_SWITCH_ADDR[2] = { 0x80445424, 0x80445428 };
+static const dr_value_t SR_REMIX_ITEM_SWITCH[2] = {
+  { 0x80445424, DR_VALUE_TYPE_U32 },
+  { 0x80445428, DR_VALUE_TYPE_U32 }
+};
 
 /* How often items spawn, a u8 */
-static const size_t SR_ITEM_FREQUENCY_ADDR = 0x800a4d24;
+static const dr_value_t SR_ITEM_FREQUENCY = { 0x800a4d24, DR_VALUE_TYPE_U8 };
 
 typedef enum
 {
@@ -227,12 +295,484 @@ static const sr_character_t SR_CHARACTER_ID[] = {
   { DR_CHARACTER_KOOPA_KID_G, SR_CHARACTER_BOWSER, 0x04 }, // Bowser (green)
   { DR_CHARACTER_KOOPA_KID_B, SR_CHARACTER_BOWSER, 0x02 }, // Bowser (blue)
 
-  { DR_CHARACTER_TOADETTE, SR_CHARACTER_LUCAS, 0x04 }, // Lucas (pink)
+  { DR_CHARACTER_TOADETTE, SR_CHARACTER_LUCAS, 0x02 }, // Lucas (pink)
   { DR_CHARACTER_BIRDO, SR_CHARACTER_YOSHI, 0x04 }, // Yoshi (pink)
   { DR_CHARACTER_DRY_BONES, SR_CHARACTER_BOWSER, 0x03 }, // Bowser (black)
-  { DR_CHARACTER_BLOOPER, SR_CHARACTER_MEWTWO, 0x04 }, // Mewtwo (blue)
+  { DR_CHARACTER_BLOOPER, SR_CHARACTER_MEWTWO, 0x05 }, // Mewtwo (cyan)
   { DR_CHARACTER_HAMMER_BRO, SR_CHARACTER_DEDEDE, 0x04 }, // Dedede (green)
 };
+
+typedef enum
+{
+  SR_STAGE_PEACHS_CASTLE = 0x00,
+  SR_STAGE_SECTOR_Z = 0x01,
+  SR_STAGE_CONGO_JUNGLE = 0x02,
+  SR_STAGE_PLANET_ZEBES = 0x03,
+  SR_STAGE_HYRULE_CASTLE = 0x04,
+  SR_STAGE_YOSHIS_ISLAND = 0x05,
+  SR_STAGE_DREAM_LAND = 0x06,
+  SR_STAGE_SAFFRON_CITY = 0x07,
+  SR_STAGE_MUSHROOM_KINGDOM = 0x08,
+  SR_STAGE_DREAM_LAND_BETA_1 = 0x09,
+  SR_STAGE_DREAM_LAND_BETA_2 = 0x0a,
+  SR_STAGE_HOW_TO_PLAY = 0x0b,
+  SR_STAGE_MINI_YOSHIS_ISLAND = 0x0c,
+  SR_STAGE_META_CRYSTAL = 0x0d,
+  SR_STAGE_DUEL_ZONE = 0x0e,
+  SR_STAGE_RACE_TO_THE_FINISH = 0x0f,
+  SR_STAGE_FINAL_DESTINATION = 0x10,
+  SR_STAGE_BTT_MARIO = 0x11,
+  SR_STAGE_BTT_FOX = 0x12,
+  SR_STAGE_BTT_DONKEY_KONG = 0x13,
+  SR_STAGE_BTT_SAMUS = 0x14,
+  SR_STAGE_BTT_LUIGI = 0x15,
+  SR_STAGE_BTT_LINK = 0x16,
+  SR_STAGE_BTT_YOSHI = 0x17,
+  SR_STAGE_BTT_FALCON = 0x18,
+  SR_STAGE_BTT_KIRBY = 0x19,
+  SR_STAGE_BTT_PIKACHU = 0x1a,
+  SR_STAGE_BTT_JIGGLYPUFF = 0x1b,
+  SR_STAGE_BTT_NESS = 0x1c,
+  SR_STAGE_BTP_MARIO = 0x1d,
+  SR_STAGE_BTP_FOX = 0x1e,
+  SR_STAGE_BTP_DONKEY_KONG = 0x1f,
+  SR_STAGE_BTP_SAMUS = 0x20,
+  SR_STAGE_BTP_LUIGI = 0x21,
+  SR_STAGE_BTP_LINK = 0x22,
+  SR_STAGE_BTP_YOSHI = 0x23,
+  SR_STAGE_BTP_FALCON = 0x24,
+  SR_STAGE_BTP_KIRBY = 0x25,
+  SR_STAGE_BTP_PIKACHU = 0x26,
+  SR_STAGE_BTP_JIGGLYPUFF = 0x27,
+  SR_STAGE_BTP_NESS = 0x28,
+  SR_STAGE_DEKU_TREE = 0x29,
+  SR_STAGE_FIRST_DESTINATION = 0x2a,
+  SR_STAGE_GANONS_TOWER = 0x2b,
+  SR_STAGE_GYM_LEADER_CASTLE = 0x2c,
+  SR_STAGE_POKEMON_STADIUM = 0x2d,
+  SR_STAGE_TALTAL = 0x2e,
+  SR_STAGE_GLACIAL = 0x2f,
+  SR_STAGE_WARIOWARE = 0x30,
+  SR_STAGE_BATTLEFIELD = 0x31,
+  SR_STAGE_FLAT_ZONE = 0x32,
+  SR_STAGE_DR_MARIO = 0x33,
+  SR_STAGE_COOLCOOL = 0x34,
+  SR_STAGE_DRAGONKING = 0x35,
+  SR_STAGE_GREAT_BAY = 0x36,
+  SR_STAGE_FRAYS_STAGE = 0x37,
+  SR_STAGE_TOH = 0x38,
+  SR_STAGE_FOD = 0x39,
+  SR_STAGE_MUDA = 0x3a,
+  SR_STAGE_MEMENTOS = 0x3b,
+  SR_STAGE_SHOWDOWN = 0x3c,
+  SR_STAGE_SPIRALM = 0x3d,
+  SR_STAGE_N64 = 0x3e,
+  SR_STAGE_MUTE_DL = 0x3f,
+  SR_STAGE_MADMM = 0x40,
+  SR_STAGE_SMBBF = 0x41,
+  SR_STAGE_SMBO = 0x42,
+  SR_STAGE_BOWSERB = 0x43,
+  SR_STAGE_PEACH2 = 0x44,
+  SR_STAGE_DELFINO = 0x45,
+  SR_STAGE_CORNERIA2 = 0x46,
+  SR_STAGE_KITCHEN = 0x47,
+  SR_STAGE_BLUE = 0x48,
+  SR_STAGE_ONETT = 0x49,
+  SR_STAGE_ZLANDING = 0x4a,
+  SR_STAGE_FROSTY = 0x4b,
+  SR_STAGE_SMASHVILLE2 = 0x4c,
+  SR_STAGE_BTT_DRM = 0x4d,
+  SR_STAGE_BTT_GND = 0x4e,
+  SR_STAGE_BTT_YL = 0x4f,
+  SR_STAGE_BATTLEFIELD_DL = 0x50,
+  SR_STAGE_BTT_DS = 0x51,
+  SR_STAGE_BTT_STG1 = 0x52,
+  SR_STAGE_BTT_FALCO = 0x53,
+  SR_STAGE_BTT_WARIO = 0x54,
+  SR_STAGE_HTEMPLE = 0x55,
+  SR_STAGE_BTT_LUCAS = 0x56,
+  SR_STAGE_BTP_GND = 0x57,
+  SR_STAGE_NPC = 0x58,
+  SR_STAGE_BTP_DS = 0x59,
+  SR_STAGE_SMASHKETBALL = 0x5a,
+  SR_STAGE_BTP_DRM = 0x5b,
+  SR_STAGE_NORFAIR = 0x5c,
+  SR_STAGE_RAIDBLUE = 0x5d,
+  SR_STAGE_FALLS = 0x5e,
+  SR_STAGE_OSOHE = 0x5f,
+  SR_STAGE_YOSHI_STORY_2 = 0x60,
+  SR_STAGE_WORLD1 = 0x61,
+  SR_STAGE_FLAT_ZONE_2 = 0x62,
+  SR_STAGE_GERUDO = 0x63,
+  SR_STAGE_BTP_YL = 0x64,
+  SR_STAGE_BTP_FALCO = 0x65,
+  SR_STAGE_BTP_POLY = 0x66,
+  SR_STAGE_HCASTLE_DL = 0x67,
+  SR_STAGE_HCASTLE_O = 0x68,
+  SR_STAGE_CONGOJ_DL = 0x69,
+  SR_STAGE_CONGOJ_O = 0x6a,
+  SR_STAGE_PCASTLE_DL = 0x6b,
+  SR_STAGE_PCASTLE_O = 0x6c,
+  SR_STAGE_BTP_WARIO = 0x6d,
+  SR_STAGE_FRAYS_STAGE_NIGHT = 0x6e,
+  SR_STAGE_GOOMBA_ROAD = 0x6f,
+  SR_STAGE_BTP_LUCAS2 = 0x70,
+  SR_STAGE_SECTOR_Z_DL = 0x71,
+  SR_STAGE_SAFFRON_DL = 0x72,
+  SR_STAGE_YOSHI_ISLAND_DL = 0x73,
+  SR_STAGE_ZEBES_DL = 0x74,
+  SR_STAGE_SECTOR_Z_O = 0x75,
+  SR_STAGE_SAFFRON_O = 0x76,
+  SR_STAGE_YOSHI_ISLAND_O = 0x77,
+  SR_STAGE_DREAM_LAND_O = 0x78,
+  SR_STAGE_ZEBES_O = 0x79,
+  SR_STAGE_BTT_BOWSER = 0x7a,
+  SR_STAGE_BTP_BOWSER = 0x7b,
+  SR_STAGE_BOWSERS_KEEP = 0x7c,
+  SR_STAGE_RITH_ESSA = 0x7d,
+  SR_STAGE_VENOM = 0x7e,
+  SR_STAGE_BTT_WOLF = 0x7f,
+  SR_STAGE_BTP_WOLF = 0x80,
+  SR_STAGE_BTT_CONKER = 0x81,
+  SR_STAGE_BTP_CONKER = 0x82,
+  SR_STAGE_WINDY = 0x83,
+  SR_STAGE_DATA = 0x84,
+  SR_STAGE_CLANCER = 0x85,
+  SR_STAGE_JAPES = 0x86,
+  SR_STAGE_BTT_MARTH = 0x87,
+  SR_STAGE_GB_LAND = 0x88,
+  SR_STAGE_BTT_MTWO = 0x89,
+  SR_STAGE_BTP_MARTH = 0x8a,
+  SR_STAGE_REST = 0x8b,
+  SR_STAGE_BTP_MTWO = 0x8c,
+  SR_STAGE_CSIEGE = 0x8d,
+  SR_STAGE_YOSHIS_ISLAND_II = 0x8e,
+  SR_STAGE_FINAL_DESTINATION_DL = 0x8f,
+  SR_STAGE_FINAL_DESTINATION_TENT = 0x90,
+  SR_STAGE_COOLCOOL_REMIX = 0x91,
+  SR_STAGE_DUEL_ZONE_DL = 0x92,
+  SR_STAGE_COOLCOOL_DL = 0x93,
+  SR_STAGE_META_CRYSTAL_DL = 0x94,
+  SR_STAGE_DREAM_LAND_SR = 0x95,
+  SR_STAGE_PCASTLE_BETA = 0x96,
+  SR_STAGE_HCASTLE_REMIX = 0x97,
+  SR_STAGE_SECTOR_Z_REMIX = 0x98,
+  SR_STAGE_MUTE = 0x99,
+  SR_STAGE_HRC = 0x9a,
+  SR_STAGE_MK_REMIX = 0x9b,
+  SR_STAGE_GHZ = 0x9c,
+  SR_STAGE_SUBCON = 0x9d,
+  SR_STAGE_PIRATE = 0x9e,
+  SR_STAGE_CASINO = 0x9f,
+  SR_STAGE_BTT_SONIC = 0xa0,
+  SR_STAGE_BTP_SONIC = 0xa1,
+  SR_STAGE_MMADNESS = 0xa2,
+  SR_STAGE_RAINBOWROAD = 0xa3,
+  SR_STAGE_POKEMON_STADIUM_2 = 0xa4,
+  SR_STAGE_NORFAIR_REMIX = 0xa5,
+  SR_STAGE_TOADSTURNPIKE = 0xa6,
+  SR_STAGE_TALTAL_REMIX = 0xa7,
+  SR_STAGE_BTP_SHEIK = 0xa8,
+  SR_STAGE_WINTER_DL = 0xa9,
+  SR_STAGE_BTT_SHEIK = 0xaa,
+  SR_STAGE_GLACIAL_REMIX = 0xab,
+  SR_STAGE_BTT_MARINA = 0xac,
+  SR_STAGE_DRAGONKING_REMIX = 0xad,
+  SR_STAGE_BTP_MARINA = 0xae,
+  SR_STAGE_BTT_DEDEDE = 0xaf,
+  SR_STAGE_DRACULAS_CASTLE = 0xb0,
+  SR_STAGE_INVERTED_CASTLE = 0xb1,
+  SR_STAGE_BTP_DEDEDE = 0xb2,
+  SR_STAGE_MT_DEDEDE = 0xb3,
+  SR_STAGE_EDO = 0xb4,
+  SR_STAGE_DEKU_TREE_DL = 0xb5,
+  SR_STAGE_ZLANDING_DL = 0xb6,
+  SR_STAGE_BTT_GOEMON = 0xb7,
+  SR_STAGE_FIRST_REMIX = 0xb8,
+  SR_STAGE_BTP_GOEMON = 0xb9,
+  SR_STAGE_TWILIGHT_CITY = 0xba,
+  SR_STAGE_MELRODE = 0xbb,
+  SR_STAGE_META_REMIX = 0xbc,
+  SR_STAGE_REMIX_RTTF = 0xbd,
+  SR_STAGE_REAPERS = 0xbe,
+  SR_STAGE_SCUTTLE_TOWN = 0xbf,
+  SR_STAGE_BIG_BOOS_HAUNT = 0xc0,
+  SR_STAGE_YOSHIS_ISLAND_MELEE = 0xc1,
+  SR_STAGE_BTT_BANJO = 0xc2,
+  SR_STAGE_SPAWNED_FEAR = 0xc3,
+  SR_STAGE_SMASHVILLE_REMIX = 0xc4,
+  SR_STAGE_BTP_BANJO = 0xc5,
+  SR_STAGE_POKEFLOATS = 0xc6,
+  SR_STAGE_BIG_SNOWMAN = 0xc7,
+  SR_STAGE_DL_BETA_DL = 0xc8,
+  SR_STAGE_LMAO_CASTLE = 0xc9,
+  SR_STAGE_DISCOVERY_FALLS = 0xca,
+  SR_STAGE_BTT_CRASH = 0xcb,
+  SR_STAGE_DISCOVERY_FALLS_REMIX = 0xcc,
+  SR_STAGE_N64_REMIX = 0xcd,
+  SR_STAGE_BTP_CRASH = 0xce,
+  SR_STAGE_BTT_PEACH = 0xcf,
+  SR_STAGE_BTP_PEACH = 0xd0,
+  SR_STAGE_SOCCER = 0xd1,
+  SR_STAGE_TIME_TWISTER = 0xd2,
+  SR_STAGE_TIME_TWISTER_SSS = 0xd3,
+  SR_STAGE_NSANITY_BEACH = 0xd4,
+  SR_STAGE_SNOW_GO = 0xd5,
+  SR_STAGE_FUTURE_FRENZY = 0xd6,
+  SR_STAGE_HTP_FALL = 0xd7,
+
+  SR_STAGE_BTX_FIRST = 0x11,
+  SR_STAGE_BTX_LAST = 0x28,
+  SR_STAGE_MAX = 0xd7,
+  SR_STAGE_RANDOM = 0xde
+} sr_stage;
+
+typedef struct
+{
+  sr_stage stage;
+  const char *name;
+  bool selectable;
+} sr_stage_t;
+
+static const sr_stage_t SR_STAGES[] = {
+  { SR_STAGE_PEACHS_CASTLE, "Peach's Castle", true },
+  { SR_STAGE_SECTOR_Z, "Sector Z", true },
+  { SR_STAGE_CONGO_JUNGLE, "Congo Jungle", true },
+  { SR_STAGE_PLANET_ZEBES, "Planet Zebes", true },
+  { SR_STAGE_HYRULE_CASTLE, "Hyrule Castle", true },
+  { SR_STAGE_YOSHIS_ISLAND, "Yoshi's Island", true },
+  { SR_STAGE_DREAM_LAND, "Dream Land", true },
+  { SR_STAGE_SAFFRON_CITY, "Saffron City", true },
+  { SR_STAGE_MUSHROOM_KINGDOM, "Mushroom Kingdom", true },
+  { SR_STAGE_DREAM_LAND_BETA_1, "Dream Land Beta 1", false },
+  { SR_STAGE_DREAM_LAND_BETA_2, "Dream Land Beta 2", false },
+  { SR_STAGE_HOW_TO_PLAY, "How to Play", false },
+  { SR_STAGE_MINI_YOSHIS_ISLAND, "Mini Yoshi's Island", true },
+  { SR_STAGE_META_CRYSTAL, "Meta Crystal", true },
+  { SR_STAGE_DUEL_ZONE, "Duel Zone", true },
+  { SR_STAGE_RACE_TO_THE_FINISH, "Race to the Finish", false },
+  { SR_STAGE_FINAL_DESTINATION, "Final Destination", true },
+  { SR_STAGE_BTT_MARIO, "Break the Targets (Mario)", false },
+  { SR_STAGE_BTT_FOX, "Break the Targets (Fox)", false },
+  { SR_STAGE_BTT_DONKEY_KONG, "Break the Targets (Donkey Kong)", false },
+  { SR_STAGE_BTT_SAMUS, "Break the Targets (Samus)", false },
+  { SR_STAGE_BTT_LUIGI, "Break the Targets (Luigi)", false },
+  { SR_STAGE_BTT_LINK, "Break the Targets (Link)", false },
+  { SR_STAGE_BTT_YOSHI, "Break the Targets (Yoshi)", false },
+  { SR_STAGE_BTT_FALCON, "Break the Targets (Falcon)", false },
+  { SR_STAGE_BTT_KIRBY, "Break the Targets (Kirby)", false },
+  { SR_STAGE_BTT_PIKACHU, "Break the Targets (Pikachu)", false },
+  { SR_STAGE_BTT_JIGGLYPUFF, "Break the Targets (Jigglypuff)", false },
+  { SR_STAGE_BTT_NESS, "Break the Targets (Ness)", false },
+  { SR_STAGE_BTP_MARIO, "Board the Platforms (Mario)", false },
+  { SR_STAGE_BTP_FOX, "Board the Platforms (Fox)", false },
+  { SR_STAGE_BTP_DONKEY_KONG, "Board the Platforms (Donkey Kong)", false },
+  { SR_STAGE_BTP_SAMUS, "Board the Platforms (Samus)", false },
+  { SR_STAGE_BTP_LUIGI, "Board the Platforms (Luigi)", false },
+  { SR_STAGE_BTP_LINK, "Board the Platforms (Link)", false },
+  { SR_STAGE_BTP_YOSHI, "Board the Platforms (Yoshi)", false },
+  { SR_STAGE_BTP_FALCON, "Board the Platforms (Falcon)", false },
+  { SR_STAGE_BTP_KIRBY, "Board the Platforms (Kirby)", false },
+  { SR_STAGE_BTP_PIKACHU, "Board the Platforms (Pikachu)", false },
+  { SR_STAGE_BTP_JIGGLYPUFF, "Board the Platforms (Jigglypuff)", false },
+  { SR_STAGE_BTP_NESS, "Board the Platforms (Ness)", false },
+  { SR_STAGE_DEKU_TREE, "Deku Tree", true },
+  { SR_STAGE_FIRST_DESTINATION, "First Destination", true },
+  { SR_STAGE_GANONS_TOWER, "Ganon's Tower", true },
+  { SR_STAGE_GYM_LEADER_CASTLE, "Gym Leader Castle", true },
+  { SR_STAGE_POKEMON_STADIUM, "Pokemon Stadium", true },
+  { SR_STAGE_TALTAL, "Tal Tal Heights", true },
+  { SR_STAGE_GLACIAL, "Glacial River", true },
+  { SR_STAGE_WARIOWARE, "WarioWare, Inc.", true },
+  { SR_STAGE_BATTLEFIELD, "Battlefield", true },
+  { SR_STAGE_FLAT_ZONE, "Flat Zone", true },
+  { SR_STAGE_DR_MARIO, "Dr. Mario", true },
+  { SR_STAGE_COOLCOOL, "Cool Cool Mountain", true },
+  { SR_STAGE_DRAGONKING, "Dragon King", true },
+  { SR_STAGE_GREAT_BAY, "Great Bay", true },
+  { SR_STAGE_FRAYS_STAGE, "Fray's Stage", true },
+  { SR_STAGE_TOH, "Tower of Heaven", true },
+  { SR_STAGE_FOD, "Fountain of Dreams", true },
+  { SR_STAGE_MUDA, "Muda Kingdom", true },
+  { SR_STAGE_MEMENTOS, "Mementos", true },
+  { SR_STAGE_SHOWDOWN, "Showdown", true },
+  { SR_STAGE_SPIRALM, "Spiral Mountain", true },
+  { SR_STAGE_N64, "N64", true },
+  { SR_STAGE_MUTE_DL, "Mute City DL", true },
+  { SR_STAGE_MADMM, "Mad Monster Mansion", true },
+  { SR_STAGE_SMBBF, "Mushroom Kingdom Battlefield", true },
+  { SR_STAGE_SMBO, "Mushroom Kingdom Omega", true },
+  { SR_STAGE_BOWSERB, "Bowser's Battleship", true },
+  { SR_STAGE_PEACH2, "Peach's Castle II", true },
+  { SR_STAGE_DELFINO, "Delfino Plaza", true },
+  { SR_STAGE_CORNERIA2, "Corneria City", true },
+  { SR_STAGE_KITCHEN, "Kitchen Island", true },
+  { SR_STAGE_BLUE, "Big Blue", true },
+  { SR_STAGE_ONETT, "Onett", true },
+  { SR_STAGE_ZLANDING, "Zebes Landing", true },
+  { SR_STAGE_FROSTY, "Frosty Village", true },
+  { SR_STAGE_SMASHVILLE2, "Smashville II", true },
+  { SR_STAGE_BTT_DRM, "Break the Targets (Dr. Mario)", false },
+  { SR_STAGE_BTT_GND, "Break the Targets (Ganondorf)", false },
+  { SR_STAGE_BTT_YL, "Break the Targets (Young Link)", false },
+  { SR_STAGE_BATTLEFIELD_DL, "Battlefield DL", true },
+  { SR_STAGE_BTT_DS, "Break the Targets (Dark Samus)", false },
+  { SR_STAGE_BTT_STG1, "Break the Targets (Stage 1)", false },
+  { SR_STAGE_BTT_FALCO, "Break the Targets (Falco)", false },
+  { SR_STAGE_BTT_WARIO, "Break the Targets (Wario)", false },
+  { SR_STAGE_HTEMPLE, "Hyrule Temple", true },
+  { SR_STAGE_BTT_LUCAS, "Break the Targets (Lucas)", false },
+  { SR_STAGE_BTP_GND, "Board the Platforms (Ganondorf)", false },
+  { SR_STAGE_NPC, "New Pork City", true },
+  { SR_STAGE_BTP_DS, "Board the Platforms (Dark Samus)", false },
+  { SR_STAGE_SMASHKETBALL, "Smashketball", false },
+  { SR_STAGE_BTP_DRM, "Board the Platforms (Dr. Mario)", false },
+  { SR_STAGE_NORFAIR, "Norfair", true },
+  { SR_STAGE_RAIDBLUE, "Raid on Blue", true },
+  { SR_STAGE_FALLS, "Falls", true },
+  { SR_STAGE_OSOHE, "Osohe Castle", true },
+  { SR_STAGE_YOSHI_STORY_2, "Yoshi's Story II", true },
+  { SR_STAGE_WORLD1, "World 1-1", true },
+  { SR_STAGE_FLAT_ZONE_2, "Flat Zone 2", true },
+  { SR_STAGE_GERUDO, "Gerudo Valley", true },
+  { SR_STAGE_BTP_YL, "Board the Platforms (Young Link)", false },
+  { SR_STAGE_BTP_FALCO, "Board the Platforms (Falco)", false },
+  { SR_STAGE_BTP_POLY, "Board the Platforms (Polygon)", false },
+  { SR_STAGE_HCASTLE_DL, "Hyrule Castle DL", true },
+  { SR_STAGE_HCASTLE_O, "Hyrule Castle Omega", true },
+  { SR_STAGE_CONGOJ_DL, "Congo Jungle DL", true },
+  { SR_STAGE_CONGOJ_O, "Congo Jungle Omega", true },
+  { SR_STAGE_PCASTLE_DL, "Peach's Castle DL", true },
+  { SR_STAGE_PCASTLE_O, "Peach's Castle Omega", true },
+  { SR_STAGE_BTP_WARIO, "Board the Platforms (Wario)", false },
+  { SR_STAGE_FRAYS_STAGE_NIGHT, "Fray's Stage (Night)", true },
+  { SR_STAGE_GOOMBA_ROAD, "Goomba Road", true },
+  { SR_STAGE_BTP_LUCAS2, "Board the Platforms (Lucas)", false },
+  { SR_STAGE_SECTOR_Z_DL, "Sector Z DL", true },
+  { SR_STAGE_SAFFRON_DL, "Saffron City DL", true },
+  { SR_STAGE_YOSHI_ISLAND_DL, "Yoshi's Island DL", true },
+  { SR_STAGE_ZEBES_DL, "Planet Zebes DL", true },
+  { SR_STAGE_SECTOR_Z_O, "Sector Z Omega", true },
+  { SR_STAGE_SAFFRON_O, "Saffron City Omega", true },
+  { SR_STAGE_YOSHI_ISLAND_O, "Yoshi's Island Omega", true },
+  { SR_STAGE_DREAM_LAND_O, "Dream Land Omega", true },
+  { SR_STAGE_ZEBES_O, "Planet Zebes Omega", true },
+  { SR_STAGE_BTT_BOWSER, "Break the Targets (Bowser)", false },
+  { SR_STAGE_BTP_BOWSER, "Board the Platforms (Bowser)", false },
+  { SR_STAGE_BOWSERS_KEEP, "Bowser's Keep", true },
+  { SR_STAGE_RITH_ESSA, "Rith Essa", true },
+  { SR_STAGE_VENOM, "Venom", true },
+  { SR_STAGE_BTT_WOLF, "Break the Targets (Wolf)", false },
+  { SR_STAGE_BTP_WOLF, "Board the Platforms (Wolf)", false },
+  { SR_STAGE_BTT_CONKER, "Break the Targets (Conker)", false },
+  { SR_STAGE_BTP_CONKER, "Board the Platforms (Conker)", false },
+  { SR_STAGE_WINDY, "Windy", true },
+  { SR_STAGE_DATA, "Data Select", true },
+  { SR_STAGE_CLANCER, "Clancer", true },
+  { SR_STAGE_JAPES, "Jungle Japes", true },
+  { SR_STAGE_BTT_MARTH, "Break the Targets (Marth)", false },
+  { SR_STAGE_GB_LAND, "Game Boy Land", true },
+  { SR_STAGE_BTT_MTWO, "Break the Targets (Mewtwo)", false },
+  { SR_STAGE_BTP_MARTH, "Board the Platforms (Marth)", false },
+  { SR_STAGE_REST, "Rest Area", true },
+  { SR_STAGE_BTP_MTWO, "Board the Platforms (Mewtwo)", false },
+  { SR_STAGE_CSIEGE, "Castle Siege", true },
+  { SR_STAGE_YOSHIS_ISLAND_II, "Yoshi's Island II", true },
+  { SR_STAGE_FINAL_DESTINATION_DL, "Final Destination DL", true },
+  { SR_STAGE_FINAL_DESTINATION_TENT, "Final Destination (Tent)", true },
+  { SR_STAGE_COOLCOOL_REMIX, "Cool Cool Mountain Remix", true },
+  { SR_STAGE_DUEL_ZONE_DL, "Duel Zone DL", true },
+  { SR_STAGE_COOLCOOL_DL, "Cool Cool Mountain DL", true },
+  { SR_STAGE_META_CRYSTAL_DL, "Meta Crystal DL", true },
+  { SR_STAGE_DREAM_LAND_SR, "Dream Land SR", true },
+  { SR_STAGE_PCASTLE_BETA, "Peach's Castle Beta", false },
+  { SR_STAGE_HCASTLE_REMIX, "Hyrule Castle Remix", true },
+  { SR_STAGE_SECTOR_Z_REMIX, "Sector Z Remix", true },
+  { SR_STAGE_MUTE, "Mute City", true },
+  { SR_STAGE_HRC, "Home Run Contest", false },
+  { SR_STAGE_MK_REMIX, "Mushroom Kingdom Remix", true },
+  { SR_STAGE_GHZ, "Green Hill Zone", true },
+  { SR_STAGE_SUBCON, "Subcon", true },
+  { SR_STAGE_PIRATE, "Pirate Land", true },
+  { SR_STAGE_CASINO, "Casino Night Zone", true },
+  { SR_STAGE_BTT_SONIC, "Break the Targets (Sonic)", false },
+  { SR_STAGE_BTP_SONIC, "Board the Platforms (Sonic)", false },
+  { SR_STAGE_MMADNESS, "Metallic Madness", true },
+  { SR_STAGE_RAINBOWROAD, "Rainbow Road", true },
+  { SR_STAGE_POKEMON_STADIUM_2, "Pokemon Stadium 2", true },
+  { SR_STAGE_NORFAIR_REMIX, "Norfair Remix", true },
+  { SR_STAGE_TOADSTURNPIKE, "Toad's Turnpike", true },
+  { SR_STAGE_TALTAL_REMIX, "Tal Tal Heights Remix", true },
+  { SR_STAGE_BTP_SHEIK, "Board the Platforms (Sheik)", false },
+  { SR_STAGE_WINTER_DL, "Winter DL", true },
+  { SR_STAGE_BTT_SHEIK, "Break the Targets (Sheik)", false },
+  { SR_STAGE_GLACIAL_REMIX, "Glacial River Remix", true },
+  { SR_STAGE_BTT_MARINA, "Break the Targets (Marina)", false },
+  { SR_STAGE_DRAGONKING_REMIX, "Dragon King Remix", true },
+  { SR_STAGE_BTP_MARINA, "Board the Platforms (Marina)", false },
+  { SR_STAGE_BTT_DEDEDE, "Break the Targets (Dedede)", false },
+  { SR_STAGE_DRACULAS_CASTLE, "Dracula's Castle", true },
+  { SR_STAGE_INVERTED_CASTLE, "Inverted Castle", true },
+  { SR_STAGE_BTP_DEDEDE, "Board the Platforms (Dedede)", false },
+  { SR_STAGE_MT_DEDEDE, "Mt. Dedede", true },
+  { SR_STAGE_EDO, "Edo Town", true },
+  { SR_STAGE_DEKU_TREE_DL, "Deku Tree DL", true },
+  { SR_STAGE_ZLANDING_DL, "Zebes Landing DL", true },
+  { SR_STAGE_BTT_GOEMON, "Break the Targets (Goemon)", false },
+  { SR_STAGE_FIRST_REMIX, "First Destination Remix", true },
+  { SR_STAGE_BTP_GOEMON, "Board the Platforms (Goemon)", false },
+  { SR_STAGE_TWILIGHT_CITY, "Twilight City", true },
+  { SR_STAGE_MELRODE, "Melrode", true },
+  { SR_STAGE_META_REMIX, "Meta Crystal Remix", true },
+  { SR_STAGE_REMIX_RTTF, "Remix Race to the Finish", false },
+  { SR_STAGE_REAPERS, "Reapers", true },
+  { SR_STAGE_SCUTTLE_TOWN, "Scuttle Town", true },
+  { SR_STAGE_BIG_BOOS_HAUNT, "Big Boo's Haunt", true },
+  { SR_STAGE_YOSHIS_ISLAND_MELEE, "Yoshi's Island (Melee)", true },
+  { SR_STAGE_BTT_BANJO, "Break the Targets (Banjo)", false },
+  { SR_STAGE_SPAWNED_FEAR, "Spawned Fear", true },
+  { SR_STAGE_SMASHVILLE_REMIX, "Smashville Remix", true },
+  { SR_STAGE_BTP_BANJO, "Board the Platforms (Banjo)", false },
+  { SR_STAGE_POKEFLOATS, "Poke Floats", true },
+  { SR_STAGE_BIG_SNOWMAN, "Big Snowman", true },
+  { SR_STAGE_DL_BETA_DL, "Dream Land Beta DL", false },
+  { SR_STAGE_LMAO_CASTLE, "LMAO Castle", true },
+  { SR_STAGE_DISCOVERY_FALLS, "Discovery Falls", true },
+  { SR_STAGE_BTT_CRASH, "Break the Targets (Crash)", false },
+  { SR_STAGE_DISCOVERY_FALLS_REMIX, "Discovery Falls Remix", true },
+  { SR_STAGE_N64_REMIX, "N64 Remix", true },
+  { SR_STAGE_BTP_CRASH, "Board the Platforms (Crash)", false },
+  { SR_STAGE_BTT_PEACH, "Break the Targets (Peach)", false },
+  { SR_STAGE_BTP_PEACH, "Board the Platforms (Peach)", false },
+  { SR_STAGE_SOCCER, "Soccer", false },
+  { SR_STAGE_TIME_TWISTER, "Time Twister", true },
+  { SR_STAGE_TIME_TWISTER_SSS, "Time Twister SSS", false },
+  { SR_STAGE_NSANITY_BEACH, "N. Sanity Beach", true },
+  { SR_STAGE_SNOW_GO, "Snow Go", true },
+  { SR_STAGE_FUTURE_FRENZY, "Future Frenzy", true },
+  { SR_STAGE_HTP_FALL, "How to Play (Fall)", false },
+};
+
+static const sr_stage_t *srRandomStage(void)
+{
+  unsigned count = 0;
+  unsigned pick;
+  unsigned i;
+
+  for (i = 0; i < sizeof(SR_STAGES) / sizeof(*SR_STAGES); i++)
+    if (SR_STAGES[i].selectable)
+      count++;
+
+  if (!count)
+    return &SR_STAGES[0];
+
+  pick = dr_rand() % count;
+  for (i = 0; i < sizeof(SR_STAGES) / sizeof(*SR_STAGES); i++)
+    if (SR_STAGES[i].selectable && !pick--)
+      return &SR_STAGES[i];
+
+  return &SR_STAGES[0];
+}
 
 void SmashRemix::run(void)
 {
@@ -243,10 +783,10 @@ void SmashRemix::run(void)
   if (!m_minigame || !m_minigameActive)
     return;
 
-  int8_t stocks[4];
+  int64_t stocks[4];
   for (unsigned i = 0; i < 4; i++)
   {
-    if (m_retro->reads8(&stocks[i], SR_STOCKS_ADDR[i]) != DR_OK)
+    if (m_retro->readValue(&stocks[i], SR_STOCKS[i]) != DR_OK)
       return;
   }
 
@@ -417,33 +957,36 @@ void SmashRemix::doApplyGameData(const DrGameData &data)
   }
   loadState(state());
 
-  /* Use a random stage from the original stage list */
+  /* Use a random selectable stage */
   unsigned long rc = dr_rand_count();
-  uint8_t stage = dr_rand() % 9;
-  log(DR_LOG_INFO, qPrintable(QString("SR stage=%1 randcount=%2").arg(stage).arg(rc)));
-  m_retro->writeu8(stage, SR_STAGE_ADDR);
+  const sr_stage_t *stage = srRandomStage();
+  log(DR_LOG_INFO, qPrintable(QString("SR stage=%1 (0x%2) randcount=%3")
+                                .arg(stage->name)
+                                .arg(stage->stage, 2, 16, QChar('0'))
+                                .arg(rc)));
+  m_retro->writeValue(stage->stage, SR_STAGE);
 
   /* Enable team battle for the 2v2 and 1v3 minigames */
   bool teamBattle = (minigame->type == DR_MINIGAME_2V2 || minigame->type == DR_MINIGAME_1V3);
-  m_retro->writeu8(teamBattle ? 1 : 0, SR_GAME_TYPE_ADDR);
+  m_retro->writeValue(teamBattle ? 1 : 0, SR_GAME_TYPE);
 
   /* Remix PKMN spawns Poke Balls and nothing else; every other minigame is
    * itemless, handing out its start/taunt items directly (see applyPlayers). */
   if (minigame->minigame_id == 0x05)
   {
     static const sr_item pkmn_items[] = { SR_ITEM_POKEBALL };
-    m_retro->writeu32(sr_item_mask(pkmn_items, 1), SR_ITEM_SWITCH_ADDR);
-    m_retro->writeu8(SR_ITEM_FREQUENCY_VERY_HIGH, SR_ITEM_FREQUENCY_ADDR);
+    m_retro->writeValue(sr_item_mask(pkmn_items, 1), SR_ITEM_SWITCH);
+    m_retro->writeValue(SR_ITEM_FREQUENCY_VERY_HIGH, SR_ITEM_FREQUENCY);
   }
   else
   {
-    m_retro->writeu32(0, SR_ITEM_SWITCH_ADDR);
-    m_retro->writeu8(SR_ITEM_FREQUENCY_NONE, SR_ITEM_FREQUENCY_ADDR);
+    m_retro->writeValue(0, SR_ITEM_SWITCH);
+    m_retro->writeValue(SR_ITEM_FREQUENCY_NONE, SR_ITEM_FREQUENCY);
   }
 
   /* No Remix item ever spawns */
-  m_retro->writeu32(0, SR_REMIX_ITEM_SWITCH_ADDR[0]);
-  m_retro->writeu32(0, SR_REMIX_ITEM_SWITCH_ADDR[1]);
+  m_retro->writeValue(0, SR_REMIX_ITEM_SWITCH[0]);
+  m_retro->writeValue(0, SR_REMIX_ITEM_SWITCH[1]);
 
   log(DR_LOG_INFO, qPrintable(QString("Smash Remix starting!")));
 
@@ -493,15 +1036,15 @@ void SmashRemix::applyPlayers()
     m_slotCharacters[slot] = p.character;
 
     bool isBot = (p.control_type == DR_CONTROL_TYPE_CPU);
-    m_retro->writeu8(isBot ? 1 : 0, SR_PLAYER_TYPE_ADDR[slot]);
+    m_retro->writeValue(isBot ? 1 : 0, SR_PLAYER_TYPE[slot]);
 
     for (const auto &entry : SR_CHARACTER_ID)
     {
       if (entry.character == p.character)
       {
-        m_retro->writeu8(entry.character_value, SR_CHARACTER_ADDR[slot]);
-        m_retro->writeu8(entry.color_value, SR_COLOR_ADDR[slot]);
-        m_retro->writeu8(isBot ? 4 : slot, SR_PORT_ADDR[slot]);
+        m_retro->writeValue(entry.character_value, SR_CHARACTER[slot]);
+        m_retro->writeValue(entry.color_value, SR_COLOR[slot]);
+        m_retro->writeValue(isBot ? 4 : slot, SR_PORT[slot]);
         break;
       }
     }
@@ -528,8 +1071,7 @@ void SmashRemix::applyPlayers()
       difficulty = 5;
       break;
     }
-    m_retro->writeu8(
-      static_cast<uint8_t>(difficulty), SR_DIFFICULTY_ADDR[slot]);
+    m_retro->writeValue(static_cast<uint8_t>(difficulty), SR_DIFFICULTY[slot]);
 
     uint8_t color, team;
     if (m_minigame->type == DR_MINIGAME_1V3 || m_minigame->type == DR_MINIGAME_2V2)
@@ -559,17 +1101,17 @@ void SmashRemix::applyPlayers()
         color = slot;
       team = slot;
     }
-    m_retro->writeu8(color, SR_PORT_COLOR_ADDR[slot]);
-    m_retro->writeu8(team, SR_TEAM_ADDR_1[slot]);
-    m_retro->writeu8(team, SR_TEAM_ADDR_2[slot]);
+    m_retro->writeValue(color, SR_PORT_COLOR[slot]);
+    m_retro->writeValue(team, SR_TEAM_1[slot]);
+    m_retro->writeValue(team, SR_TEAM_2[slot]);
 
     uint8_t size = 0; // normal
     if (m_minigame->minigame_id == 0x02) // Giant Battle: solo is giant
       size = (p.team_type == DR_TEAM_TYPE_1V3_SOLO) ? 1 : 0;
     else if (m_minigame->minigame_id == 0x03) // Tiny Battle: group is tiny
       size = (p.team_type == DR_TEAM_TYPE_1V3_SOLO) ? 0 : 2;
-    m_retro->writeu32(size, SR_SIZE_ADDR_1[slot]);
-    m_retro->writeu32(size, SR_SIZE_ADDR_2[slot]);
+    m_retro->writeValue(size, SR_SIZE_1[slot]);
+    m_retro->writeValue(size, SR_SIZE_2[slot]);
 
     /* Items: none by default. */
     sr_item startItem = SR_ITEM_NONE;
@@ -585,8 +1127,8 @@ void SmashRemix::applyPlayers()
     else if (m_minigame->minigame_id == 0x06 && p.team_type == DR_TEAM_TYPE_1V3_SOLO)
       startItem = SR_ITEM_HAMMER;
       
-    m_retro->writeu32(startItem, SR_START_ITEM_ADDR[slot]);
-    m_retro->writeu32(tauntItem, SR_TAUNT_ITEM_ADDR[slot]);
+    m_retro->writeValue(startItem, SR_START_ITEM[slot]);
+    m_retro->writeValue(tauntItem, SR_TAUNT_ITEM[slot]);
   }
 
   unsigned activeSlots = 0;
@@ -603,8 +1145,8 @@ void SmashRemix::applyPlayers()
         /* Mark the slot totally inactive (2), not just out of stocks — otherwise
          * a slot the savestate had populated (e.g. slot 1 when the duelists land
          * on slots 0 and 2) still spawns a stale player. */
-        m_retro->writeu8(2, SR_PLAYER_TYPE_ADDR[slot]);
-        m_retro->writes8(-1, SR_STOCKS_ADDR[slot]);
+        m_retro->writeValue(2, SR_PLAYER_TYPE[slot]);
+        m_retro->writeValue(-1, SR_STOCKS[slot]);
       }
   }
 }
