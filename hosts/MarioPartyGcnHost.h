@@ -48,6 +48,27 @@ struct DrGcnHostConfig
   /// Terminated by a row with a null key. nullptr = leave the core alone.
   const dr_core_option_t *options;
 
+  /// The battle roulette picks from pictures, so they are redrawn as the names of
+  /// the candidates on offer. Dolphin loads the replacements out of `dir` under
+  /// the save directory. A null `dir` means this game doesn't do that.
+  struct
+  {
+    /// Texture directory, relative to the save directory (e.g. Dolphin's GMPE01).
+    const char *dir;
+
+    /// One file per icon the roulette shows, in the order the candidates fill
+    /// them. Terminated by a null entry.
+    const char *const *files;
+
+    /// The texture's real size; it is drawn at 2x so the text stays sharp.
+    int width;
+    int height;
+
+    /// Draw onto white rather than transparency, inverting the text and its
+    /// outline to suit.
+    bool white_background;
+  } battle_icons;
+
   struct
   {
     dr_value_t scene;                 // current scene id

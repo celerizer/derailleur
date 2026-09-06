@@ -26,34 +26,25 @@ typedef enum
   MPGC_TEXT_COLOR_LIGHT_GRAY = 10
 } mpgc_text_color;
 
-/* MP4 shows its two battle mini-game candidates as 160x120 icons. Dolphin loads
- * replacements for them out of <save>/User/Load/Textures/GMPE01, so a reroll can
- * redraw them to name the two candidates. Drawn at 2x so the text stays sharp. */
-static const char *MP4_BATTLE_ICON_DIR = "/User/Load/Textures/GMPE01";
-static const char *MP4_BATTLE_ICON_FILE[2] = {
-  "tex1_160x120_c17ee11cac3327fe_14.png",
-  "tex1_160x120_44baee82452dd439_14.png"
-};
-
-#define MP4_BATTLE_ICON_WIDTH 160
-#define MP4_BATTLE_ICON_HEIGHT 120
-#define MP4_BATTLE_ICON_SCALE 2
+/* The battle roulette picks a mini-game from pictures, so they get redrawn as the
+ * names of the candidates on offer (see DrGcnHostConfig::battle_icons). */
+#define MPGC_BATTLE_ICON_SCALE 2
 
 /* Draws `title` centered into an icon-sized image and writes it to `path`. The
  * text wraps, and the font shrinks until every line fits, so nothing is cut off. */
-static bool mp4WriteBattleIcon(const QString &path, const QString &title)
+static bool mpgcWriteBattleIcon(
+  const QString &path, const QString &title, int width, int height, bool whiteBackground)
 {
-  const int scale = MP4_BATTLE_ICON_SCALE;
+  const int scale = MPGC_BATTLE_ICON_SCALE;
   const int outline = 2 * scale;
   const int flags = Qt::AlignCenter | Qt::TextWordWrap;
-  QImage image(MP4_BATTLE_ICON_WIDTH * scale, MP4_BATTLE_ICON_HEIGHT * scale,
-    QImage::Format_ARGB32);
+  QImage image(width * scale, height * scale, QImage::Format_ARGB32);
   QPainter painter;
   QRect rect;
   QFont font;
   int pixels;
 
-  image.fill(Qt::transparent);
+  image.fill(whiteBackground ? Qt::white : Qt::transparent);
 
   if (!painter.begin(&image))
     return false;
@@ -65,7 +56,7 @@ static bool mp4WriteBattleIcon(const QString &path, const QString &title)
   font = painter.font();
   font.setBold(true);
 
-  for (pixels = 24 * scale; pixels > 6 * scale; pixels--)
+  for (pixels = (height / 5) * scale; pixels > 6 * scale; pixels--)
   {
     QRect bounds;
 
@@ -78,13 +69,13 @@ static bool mp4WriteBattleIcon(const QString &path, const QString &title)
 
   /* Outline first, so the name reads against whatever the icon sat on. Every
    * offset in the square is drawn, otherwise the thicker ring leaves gaps. */
-  painter.setPen(Qt::black);
+  painter.setPen(whiteBackground ? Qt::white : Qt::black);
   for (int dy = -outline; dy <= outline; dy += scale)
     for (int dx = -outline; dx <= outline; dx += scale)
       if (dx || dy)
         painter.drawText(rect.translated(dx, dy), flags, title);
 
-  painter.setPen(Qt::white);
+  painter.setPen(whiteBackground ? Qt::black : Qt::white);
   painter.drawText(rect, flags, title);
   painter.end();
 
@@ -179,8 +170,8 @@ void MarioPartyGcnHost::rollMinigames(void)
 
   m_MinigameSource->rerollMinigames();
 
-  /* MP4 picks its battle mini-game from two pictures, so name them here. */
-  if (game() == DR_GAME_MARIOPARTY4)
+  /* Games whose battle roulette shows pictures name them here. */
+  if (m_config.battle_icons.dir && m_config.battle_icons.files)
     stampBattleIcons();
 }
 
@@ -188,7 +179,7 @@ void MarioPartyGcnHost::stampBattleIcons(void)
 {
   const std::array<DrMinigameCandidate, 5> &candidates =
     m_MinigameSource->minigameCandidates(DR_MINIGAME_BATTLE);
-  const QString dir = dr_save_directory() + MP4_BATTLE_ICON_DIR;
+  const QString dir = dr_save_directory() + m_config.battle_icons.dir;
 
   if (!QDir().mkpath(dir))
   {
@@ -196,15 +187,16 @@ void MarioPartyGcnHost::stampBattleIcons(void)
     return;
   }
 
-  /* The roulette only ever offers the first two of the type's five candidates. */
-  for (unsigned i = 0; i < 2; i++)
+  /* One icon per picture the roulette shows, filled from the type's candidates. */
+  for (unsigned i = 0; m_config.battle_icons.files[i] && i < candidates.size(); i++)
   {
     const dr_mp_minigame_t *minigame = candidates[i].minigame;
     const QString title = (minigame && minigame->name)
       ? QString::fromUtf8(minigame->name) : QString();
-    const QString path = dir + "/" + MP4_BATTLE_ICON_FILE[i];
+    const QString path = dir + "/" + m_config.battle_icons.files[i];
 
-    if (mp4WriteBattleIcon(path, title))
+    if (mpgcWriteBattleIcon(path, title, m_config.battle_icons.width,
+          m_config.battle_icons.height, m_config.battle_icons.white_background))
       log(DR_LOG_INFO, qPrintable(QString("battle icon %1: %2").arg(i).arg(title)));
     else
       log(DR_LOG_WARN,
