@@ -3,14 +3,29 @@
 #include <QFile>
 #include <QRetro.h>
 
-static const size_t MK64_MENU_CHAR_ADDR[4] = { 0x8018EDE4, 0x8018EDE5, 0x8018EDE6, 0x8018EDE7 };
-static const size_t MK64_REAL_CHAR_ADDR[4] = { 0x800e86a8, 0x800e86a9, 0x800e86aa, 0x800e86ab };
+static const dr_value_t MK64_MENU_CHAR[4] = {
+  { 0x8018EDE4, DR_VALUE_TYPE_U8 },
+  { 0x8018EDE5, DR_VALUE_TYPE_U8 },
+  { 0x8018EDE6, DR_VALUE_TYPE_U8 },
+  { 0x8018EDE7, DR_VALUE_TYPE_U8 }
+};
+static const dr_value_t MK64_REAL_CHAR[4] = {
+  { 0x800e86a8, DR_VALUE_TYPE_U8 },
+  { 0x800e86a9, DR_VALUE_TYPE_U8 },
+  { 0x800e86aa, DR_VALUE_TYPE_U8 },
+  { 0x800e86ab, DR_VALUE_TYPE_U8 }
+};
 
-static const size_t MK64_COURSE_ADDR = 0x8018EE0B;
-static const size_t MK64_CUP_ADDR = 0x8018EE09;
-static const size_t MK64_TRACK_ADDR = 0x800dc5a1;
+static const dr_value_t MK64_COURSE = { 0x8018EE0B, DR_VALUE_TYPE_U8 };
+static const dr_value_t MK64_CUP = { 0x8018EE09, DR_VALUE_TYPE_U8 };
+static const dr_value_t MK64_TRACK = { 0x800dc5a1, DR_VALUE_TYPE_U8 };
 
-static const size_t MK64_LAPS_ADDR[4] = { 0x80164390, 0x80164394, 0x80164398, 0x8016439C }; // u32
+static const dr_value_t MK64_LAPS[4] = {
+  { 0x80164390, DR_VALUE_TYPE_U32 },
+  { 0x80164394, DR_VALUE_TYPE_U32 },
+  { 0x80164398, DR_VALUE_TYPE_U32 },
+  { 0x8016439C, DR_VALUE_TYPE_U32 }
+}; // u32
 
 // s16 per-player status; P1 at MK64_PLAYER_STATUS_ADDR, +MK64_PLAYER_STRIDE per slot.
 // ORing MK64_STATUS_BOT marks that racer as a CPU/bot.
@@ -121,15 +136,15 @@ void MarioKart64::run()
   {
     --m_lapsFreezeFrames;
     for (unsigned i = 0; i < 4; i++)
-      m_retro->writeu32(1, MK64_LAPS_ADDR[i]);
+      m_retro->writeValue(1, MK64_LAPS[i]);
   }
 
   if (m_winnerIndex == -1 && m_minigameActive)
   {
     for (unsigned i = 0; i < 4; i++)
     {
-      uint32_t laps;
-      if (m_retro->readu32(&laps, MK64_LAPS_ADDR[i]) == DR_OK && laps >= 3)
+      int64_t laps;
+      if (m_retro->readValue(&laps, MK64_LAPS[i]) == DR_OK && laps >= 3)
       {
         m_winnerIndex = m_slotToIndex[i];
         m_finishCountdown = 360;
@@ -159,11 +174,11 @@ void MarioKart64::doApplyGameData(const DrGameData &data)
   if (auto *c = core())
     c->cheatSet(0, true, MK64_CHEAT_MULTIPLAYER_MUSIC);
 
-  m_retro->writeu8(id % 4, MK64_COURSE_ADDR);
-  m_retro->writeu8(id / 4, MK64_CUP_ADDR);
+  m_retro->writeValue(id % 4, MK64_COURSE);
+  m_retro->writeValue(id / 4, MK64_CUP);
 
   if (id >= 0 && (size_t)id < sizeof(MK64_TRACK_ID) / sizeof(*MK64_TRACK_ID))
-    m_retro->writeu8(MK64_TRACK_ID[id], MK64_TRACK_ADDR);
+    m_retro->writeValue(MK64_TRACK_ID[id], MK64_TRACK);
 
   m_lapsFreezeFrames = 300;
   m_finishCountdown = -1;
@@ -193,8 +208,8 @@ void MarioKart64::doApplyGameData(const DrGameData &data)
     {
       if (c->character == m_characters[i])
       {
-        m_retro->writeu8(c->menu_value, MK64_MENU_CHAR_ADDR[slot]);
-        m_retro->writeu8(c->real_value, MK64_REAL_CHAR_ADDR[slot]);
+        m_retro->writeValue(c->menu_value, MK64_MENU_CHAR[slot]);
+        m_retro->writeValue(c->real_value, MK64_REAL_CHAR[slot]);
         break;
       }
     }

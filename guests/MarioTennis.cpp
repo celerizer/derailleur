@@ -3,56 +3,58 @@
 #include <QFile>
 #include <QRetro.h>
 
-static const size_t MT_CHARACTER_ADDR[4] = {
-  0x80065214,
-  0x80065218,
-  0x8006521C,
-  0x80065220,
+static const dr_value_t MT_CHARACTER[4] = {
+  { 0x80065214, DR_VALUE_TYPE_U32 },
+  { 0x80065218, DR_VALUE_TYPE_U32 },
+  { 0x8006521C, DR_VALUE_TYPE_U32 },
+  { 0x80065220, DR_VALUE_TYPE_U32 }
 };
 
 // u32 bool: 1 = using alternate color
-static const size_t MT_COLOR_ADDR[4] = {
-  0x80065224,
-  0x80065228,
-  0x8006522C,
-  0x80065230,
+static const dr_value_t MT_COLOR[4] = {
+  { 0x80065224, DR_VALUE_TYPE_U32 },
+  { 0x80065228, DR_VALUE_TYPE_U32 },
+  { 0x8006522C, DR_VALUE_TYPE_U32 },
+  { 0x80065230, DR_VALUE_TYPE_U32 }
 };
 
 // Court slots: [0]=team0/singles1, [1]=team1/singles2, [2]=team0 partner, [3]=team1 partner
 // Value = player index (0=P1 .. 3=P4)
-static const size_t MT_SLOT_ADDR[4] = {
-  0x80065234,
-  0x80065235,
-  0x80065236,
-  0x80065237,
+static const dr_value_t MT_SLOT[4] = {
+  { 0x80065234, DR_VALUE_TYPE_U8 },
+  { 0x80065235, DR_VALUE_TYPE_U8 },
+  { 0x80065236, DR_VALUE_TYPE_U8 },
+  { 0x80065237, DR_VALUE_TYPE_U8 }
 };
 
 // u8: 0x00-0x03 human port, 0xFF bot
-static const size_t MT_CONTROL_ADDR[4] = {
-  0x80065238,
-  0x80065239,
-  0x8006523A,
-  0x8006523B,
+static const dr_value_t MT_CONTROL[4] = {
+  { 0x80065238, DR_VALUE_TYPE_U8 },
+  { 0x80065239, DR_VALUE_TYPE_U8 },
+  { 0x8006523A, DR_VALUE_TYPE_U8 },
+  { 0x8006523B, DR_VALUE_TYPE_U8 }
 };
 
-static const size_t MT_DIFFICULTY_ADDR[4] = {
-  0x8006523C,
-  0x8006523D,
-  0x8006523E,
-  0x8006523F,
+static const dr_value_t MT_DIFFICULTY[4] = {
+  { 0x8006523C, DR_VALUE_TYPE_U8 },
+  { 0x8006523D, DR_VALUE_TYPE_U8 },
+  { 0x8006523E, DR_VALUE_TYPE_U8 },
+  { 0x8006523F, DR_VALUE_TYPE_U8 }
 };
 
 // sets won: index 0 = team_id 0 side, index 1 = team_id 1 side
-static const size_t MT_SETS_WON_ADDR[2] = { 0x8015344F, 0x80153450 };
+static const dr_value_t MT_SETS_WON[2] = {
+  { 0x8015344F, DR_VALUE_TYPE_U8 },
+  { 0x80153450, DR_VALUE_TYPE_U8 }
+};
 static const size_t MT_GAMES_WON_ADDR[2] = { 0x8015344D, 0x8015344E };
 static const size_t MT_POINTS_ADDR[2] = { 0x8015344A, 0x8015344B };
 
-static const size_t MT_COURT_ADDR = 0x80065240; // u8: court (0x00-0x0F random, 0x10 bowser)
-static const size_t MT_SETS_ADDR = 0x80065243;  // u8: number of sets
-static const size_t MT_GAMES_ADDR = 0x80065244; // u8: number of games
-static const size_t MT_GAME_TYPE_ADDR =
-  0x80065248; // u32: 00=tournament 01=piranha 03=exhibition 04=tb5 05=ringshot 06=bowser 07=tb7
-static const size_t MT_DOUBLES_ADDR = 0x8006524F; // u8: 1 = doubles, 0 = singles
+static const dr_value_t MT_COURT = { 0x80065240, DR_VALUE_TYPE_U8 }; // u8: court (0x00-0x0F random, 0x10 bowser)
+static const dr_value_t MT_SETS = { 0x80065243, DR_VALUE_TYPE_U8 };  // u8: number of sets
+static const dr_value_t MT_GAMES = { 0x80065244, DR_VALUE_TYPE_U8 }; // u8: number of games
+static const dr_value_t MT_GAME_TYPE = { 0x80065248, DR_VALUE_TYPE_U32 }; // u32: 00=tournament 01=piranha 03=exhibition 04=tb5 05=ringshot 06=bowser 07=tb7
+static const dr_value_t MT_DOUBLES = { 0x8006524F, DR_VALUE_TYPE_U8 }; // u8: 1 = doubles, 0 = singles
 
 static const dr_character MT_CHAR_TO_DR[] = {
   DR_CHARACTER_YOSHI, // 0x00
@@ -156,8 +158,8 @@ void MarioTennis::run()
 
   for (unsigned team = 0; team < 2; team++)
   {
-    uint8_t setsWon = 0;
-    if (m_retro->readu8(&setsWon, MT_SETS_WON_ADDR[team]) != DR_OK
+    int64_t setsWon = 0;
+    if (m_retro->readValue(&setsWon, MT_SETS_WON[team]) != DR_OK
       || setsWon < 1)
       continue;
 
@@ -215,11 +217,11 @@ void MarioTennis::doApplyGameData(const DrGameData &data)
   uint8_t court = (minigame->minigame_id == 0x06) ? 0x10 : (uint8_t)(dr_rand() % 16);
   log(DR_LOG_INFO, qPrintable(QString("MT court=%1 id=0x%2 randcount=%3")
                        .arg(court).arg(minigame->minigame_id, 2, 16, QChar('0')).arg(rc)));
-  m_retro->writeu8(court, MT_COURT_ADDR);
-  m_retro->writeu8(0x01, MT_SETS_ADDR);
-  m_retro->writeu8(0x01, MT_GAMES_ADDR);
-  m_retro->writeu32(minigame->minigame_id, MT_GAME_TYPE_ADDR);
-  m_retro->writeu8(doubles ? 0x01 : 0x00, MT_DOUBLES_ADDR);
+  m_retro->writeValue(court, MT_COURT);
+  m_retro->writeValue(0x01, MT_SETS);
+  m_retro->writeValue(0x01, MT_GAMES);
+  m_retro->writeValue(minigame->minigame_id, MT_GAME_TYPE);
+  m_retro->writeValue(doubles ? 0x01 : 0x00, MT_DOUBLES);
 
   /* Record all players and write each one's character/difficulty. */
   for (unsigned i = 0; i < 4; i++)
@@ -227,10 +229,10 @@ void MarioTennis::doApplyGameData(const DrGameData &data)
     const dr_player_t &p = data.players[i];
     if (p.character < DR_CHARACTER_SIZE && MT_DR_TO_CHAR[p.character].id != 0xFF)
     {
-      m_retro->writeu32(MT_DR_TO_CHAR[p.character].id, MT_CHARACTER_ADDR[i]);
-      m_retro->writeu32(MT_DR_TO_CHAR[p.character].color, MT_COLOR_ADDR[i]);
+      m_retro->writeValue(MT_DR_TO_CHAR[p.character].id, MT_CHARACTER[i]);
+      m_retro->writeValue(MT_DR_TO_CHAR[p.character].color, MT_COLOR[i]);
     }
-    m_retro->writeu8(mtDifficulty(p.difficulty), MT_DIFFICULTY_ADDR[i]);
+    m_retro->writeValue(mtDifficulty(p.difficulty), MT_DIFFICULTY[i]);
   }
   applyTeams();
 
@@ -289,10 +291,10 @@ void MarioTennis::applyTeams()
   for (unsigned s = 0; s < slotCount; s++)
   {
     unsigned pi = slotPlayer[s];
-    m_retro->writeu8(static_cast<uint8_t>(pi), MT_SLOT_ADDR[s]);
+    m_retro->writeValue(static_cast<uint8_t>(pi), MT_SLOT[s]);
     uint8_t ctrl = (m_players[pi].control_type == DR_CONTROL_TYPE_CPU)
                      ? 0xFF
                      : static_cast<uint8_t>(m_players[pi].control_port - DR_CONTROL_PORT_P1);
-    m_retro->writeu8(ctrl, MT_CONTROL_ADDR[s]);
+    m_retro->writeValue(ctrl, MT_CONTROL[s]);
   }
 }

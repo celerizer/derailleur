@@ -13,19 +13,19 @@ struct MpN64Config
   int scene_miniexplain[2]; // two because MP2 has two overlays for this
   int scene_miniresults;
 
-  size_t scene_addr;
-  size_t minigame_addr;
+  dr_value_t scene;
+  dr_value_t minigame;
 
   /// The game's RNG state, reseeded as each mini-game starts. 0 = don't touch it.
-  size_t rng_addr;
+  dr_value_t rng;
 
-  size_t controller_addr[4];
-  size_t difficulty_addr[4];
-  size_t team_addr[4];
-  size_t bot_addr[4];
-  size_t character_addr[4];
-  size_t bonus_result_addr[4];
-  size_t result_addr[4];
+  dr_value_t controller[4];
+  dr_value_t difficulty[4];
+  dr_value_t team[4];
+  dr_value_t bot[4];
+  dr_value_t character[4];
+  dr_value_t bonus_result[4];
+  dr_value_t result[4];
 
   /// Board coins and stars, copied in from the host so the mini-game shows what
   /// the board has. Read at the width each game declares (stars are a byte in

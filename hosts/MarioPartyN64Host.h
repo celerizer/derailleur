@@ -195,10 +195,10 @@ private:
 
   /// Address of the active mini-game type byte: the duel-overlay byte on a duel
   /// board, otherwise the game's normal type byte.
-  size_t mgTypeAddr() const
+  const dr_value_t &mgTypeValue() const
   {
     return (m_isDuelBoard && m_config.values.title_type_duel.address)
-      ? m_config.values.title_type_duel.address : m_config.values.minigame_type.address;
+      ? m_config.values.title_type_duel : m_config.values.minigame_type;
   }
   /// Reads a roulette-flow guard value (turn owner / space index) per its dr_value_t type.
   int64_t readBoardGuard(const dr_value_t &value);

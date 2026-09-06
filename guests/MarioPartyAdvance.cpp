@@ -4,10 +4,10 @@
 #include <QRetro.h>
 #include <QRetroDirectories.h>
 
-#define MPA_MINIGAME_ACTIVE_ADDR 0x0300440C
-#define MPA_MINIGAME_ID_ADDR 0x0300440D
-#define MPA_PLAYER_1_ADDR 0x0300440E
-#define MPA_PLAYER_2_ADDR 0x0300440F
+static const dr_value_t MPA_MINIGAME_ACTIVE = { 0x0300440C, DR_VALUE_TYPE_U8 };
+static const dr_value_t MPA_MINIGAME_ID = { 0x0300440D, DR_VALUE_TYPE_U8 };
+static const dr_value_t MPA_PLAYER_1 = { 0x0300440E, DR_VALUE_TYPE_U8 };
+static const dr_value_t MPA_PLAYER_2 = { 0x0300440F, DR_VALUE_TYPE_U8 };
 
 
 #define MPA_TYPE_1_WINDOW 1
@@ -75,33 +75,33 @@ void MarioPartyAdvance::doApplyGameData(const DrGameData &data)
   m_winners = 0;
   m_EndWaitFrames = 0;
   loadState(state());
-  m_retro->writeu8((uint8_t)minigame->minigame_id, MPA_MINIGAME_ID_ADDR);
+  m_retro->writeValue(minigame->minigame_id, MPA_MINIGAME_ID);
 
   /* Only the first two board players map onto Mario Party Advance's two slots. */
   for (unsigned i = 0; i < 2; i++)
   {
-    size_t address = i ? MPA_PLAYER_2_ADDR : MPA_PLAYER_1_ADDR;
+    const dr_value_t &address = i ? MPA_PLAYER_2 : MPA_PLAYER_1;
 
     switch (data.players[i].character)
     {
     case DR_CHARACTER_MARIO:
     case DR_CHARACTER_WARIO:
-      m_retro->writeu8(0, address);
+      m_retro->writeValue(0, address);
       break;
     case DR_CHARACTER_LUIGI:
     case DR_CHARACTER_WALUIGI:
-      m_retro->writeu8(1, address);
+      m_retro->writeValue(1, address);
       break;
     case DR_CHARACTER_PEACH:
     case DR_CHARACTER_DAISY:
-      m_retro->writeu8(2, address);
+      m_retro->writeValue(2, address);
       break;
     case DR_CHARACTER_YOSHI:
     case DR_CHARACTER_DONKEY_KONG:
-      m_retro->writeu8(3, address);
+      m_retro->writeValue(3, address);
       break;
     default:
-      m_retro->writeu8(i, address);
+      m_retro->writeValue(i, address);
     }
   }
 
@@ -111,10 +111,10 @@ void MarioPartyAdvance::doApplyGameData(const DrGameData &data)
 void MarioPartyAdvance::run4pPinball()
 {
   static const size_t MPA_4PP_PLAYER_OUT = 0x03006688;
-  static const size_t MPA_4PP_PLAYER_OUT_COUNT = 0x0300668C;
-  unsigned out_count = 0;
+  static const dr_value_t MPA_4PP_PLAYER_OUT_COUNT = { 0x0300668C, DR_VALUE_TYPE_U32 };
+  int64_t out_count = 0;
 
-  if (m_retro->readu32(&out_count, MPA_4PP_PLAYER_OUT_COUNT) != DR_OK)
+  if (m_retro->readValue(&out_count, MPA_4PP_PLAYER_OUT_COUNT) != DR_OK)
     return;
 
   if (out_count >= 3)
@@ -142,8 +142,8 @@ void MarioPartyAdvance::run()
   if (!m_minigame || !m_minigameActive)
     return;
 
-  uint8_t active = 0;
-  if (!m_retro || m_retro->readu8(&active, MPA_MINIGAME_ACTIVE_ADDR) != DR_OK)
+  int64_t active = 0;
+  if (!m_retro || m_retro->readValue(&active, MPA_MINIGAME_ACTIVE) != DR_OK)
     return;
 
   if (!m_gameStarted)

@@ -6,29 +6,39 @@
 #include <QRetro.h>
 
 /* u8 - which player (0-3) is the "1" in a 1 vs 3 mini-game */
-static const size_t SS_MINIGAME_SOLO_ADDR = 0x21D804;
+static const dr_value_t SS_MINIGAME_SOLO = { 0x21D804, DR_VALUE_TYPE_U8 };
 
 /* u8 - mini-game supertype: 1 = Normal, 2 = Accident, 3 = Stage Clear */
-static const size_t SS_MINIGAME_SUPERTYPE_ADDR = 0x21D805;
+static const dr_value_t SS_MINIGAME_SUPERTYPE = { 0x21D805, DR_VALUE_TYPE_U8 };
 
 /* u8 - mini-game to load (id; see SS_MINIGAMES). ids restart per supertype. */
-static const size_t SS_MINIGAME_ID_ADDR = 0x21D806;
+static const dr_value_t SS_MINIGAME_ID = { 0x21D806, DR_VALUE_TYPE_U8 };
 
 /* s8 - mini-game type: -1 = Other, 0 = VS 4, 1 = 1 vs 3, 2 = 2 vs 2 */
-static const size_t SS_MINIGAME_TYPE_ADDR = 0x21D807;
+static const dr_value_t SS_MINIGAME_TYPE = { 0x21D807, DR_VALUE_TYPE_S8 };
 
 /* u8 - per-player team in the mini-game (0 or 1) */
-static const size_t SS_MINIGAME_TEAM_ADDR[4] = { 0x000FB10C, 0x000FB10D, 0x000FB10E, 0x000FB10F };
+static const dr_value_t SS_MINIGAME_TEAM[4] = {
+  { 0x000FB10C, DR_VALUE_TYPE_U8 },
+  { 0x000FB10D, DR_VALUE_TYPE_U8 },
+  { 0x000FB10E, DR_VALUE_TYPE_U8 },
+  { 0x000FB10F, DR_VALUE_TYPE_U8 }
+};
 
 /* u8 - per-player role within the team in the mini-game (0 or 1) */
-static const size_t SS_MINIGAME_ROLE_ADDR[4] = { 0x000FB114, 0x000FB115, 0x000FB116, 0x000FB117 };
+static const dr_value_t SS_MINIGAME_ROLE[4] = {
+  { 0x000FB114, DR_VALUE_TYPE_U8 },
+  { 0x000FB115, DR_VALUE_TYPE_U8 },
+  { 0x000FB116, DR_VALUE_TYPE_U8 },
+  { 0x000FB117, DR_VALUE_TYPE_U8 }
+};
 
 /* s32 - becomes -1 once the mini-game is loaded and ready (after the state load) */
-static const size_t SS_MINIGAME_READY_ADDR = 0x000FB1E8;
+static const dr_value_t SS_MINIGAME_READY = { 0x000FB1E8, DR_VALUE_TYPE_S32 };
 
 /* u8 - "arrangement": order the characters appear on the loading screen
  * (index into SS_ARRANGEMENTS). */
-static const size_t SS_MINIGAME_ARRANGEMENT_ADDR = 0x21D8F5;
+static const dr_value_t SS_MINIGAME_ARRANGEMENT = { 0x21D8F5, DR_VALUE_TYPE_U8 };
 
 /* Loading-screen character order for each arrangement value. */
 static const uint8_t SS_ARRANGEMENTS[12][4] =
@@ -56,7 +66,12 @@ typedef enum
 } ss_supertype;
 
 /* u8 - CPU difficulty per player (1 = Easy, 2 = Normal, 3 = Hard) */
-static const size_t SS_CPU_DIFFICULTY_ADDR[4] = { 0x21D818, 0x21D819, 0x21D81A, 0x21D81B };
+static const dr_value_t SS_CPU_DIFFICULTY[4] = {
+  { 0x21D818, DR_VALUE_TYPE_U8 },
+  { 0x21D819, DR_VALUE_TYPE_U8 },
+  { 0x21D81A, DR_VALUE_TYPE_U8 },
+  { 0x21D81B, DR_VALUE_TYPE_U8 }
+};
 
 /* u8 - turn order per player (0-3) */
 static const size_t SS_TURN_ORDER_ADDR[4] = { 0x21D81C, 0x21D81D, 0x21D81E, 0x21D81F };
@@ -68,8 +83,18 @@ static const size_t SS_TURN_ORDER_ADDR[4] = { 0x21D81C, 0x21D81D, 0x21D81E, 0x21
 static const size_t SS_MINIEVENT_ADDR = 0x21D84C;
 
 /* s16 - per-player mini-game result rings */
-static const size_t SS_MINIGAME_BONUS_ADDR[4] = { 0x21D914, 0x21D918, 0x21D91C, 0x21D920 };
-static const size_t SS_MINIGAME_EARNED_ADDR[4] = { 0x21D924, 0x21D928, 0x21D92C, 0x21D930 };
+static const dr_value_t SS_MINIGAME_BONUS[4] = {
+  { 0x21D914, DR_VALUE_TYPE_S16 },
+  { 0x21D918, DR_VALUE_TYPE_S16 },
+  { 0x21D91C, DR_VALUE_TYPE_S16 },
+  { 0x21D920, DR_VALUE_TYPE_S16 }
+};
+static const dr_value_t SS_MINIGAME_EARNED[4] = {
+  { 0x21D924, DR_VALUE_TYPE_S16 },
+  { 0x21D928, DR_VALUE_TYPE_S16 },
+  { 0x21D92C, DR_VALUE_TYPE_S16 },
+  { 0x21D930, DR_VALUE_TYPE_S16 }
+};
 
 /* Per-player state, 0x200 bytes each from SS_PLAYER_BASE; pad keeps offsets (asserted below). */
 #pragma pack(push, 1)
@@ -153,7 +178,7 @@ static uint8_t ss_arrangement_value(const uint8_t order[4])
   return (uint8_t)(dr_rand() % 12);
 }
 
-/* Fields: name, host type, id (SS_MINIGAME_ID_ADDR), supertype (SS_MINIGAME_SUPERTYPE_ADDR),
+/* Fields: name, host type, id (SS_MINIGAME_ID), supertype (SS_MINIGAME_SUPERTYPE),
  * quirks. ids restart at 0 per supertype, so the supertype is what disambiguates them. */
 static const dr_mp_minigame_t SS_MINIGAMES[] =
 {
@@ -244,8 +269,8 @@ void SonicShuffle::run(void)
    * overlay up (don't start yet) until it signals ready by setting the flag to -1. */
   if (m_waitingForReady)
   {
-    int32_t ready = 0;
-    m_retro->reads32(&ready, SS_MINIGAME_READY_ADDR);
+    int64_t ready = 0;
+    m_retro->readValue(&ready, SS_MINIGAME_READY);
     if (ready == -1)
     {
       m_waitingForReady = false;
@@ -321,9 +346,9 @@ void SonicShuffle::doApplyGameData(const DrGameData &data)
                   : (type == DR_MINIGAME_1V3) ? 1
                   : (type == DR_MINIGAME_2V2) ? 2
                   : -1; /* Other */
-    m_retro->writeForFrames(SS_MINIGAME_SUPERTYPE_ADDR, &supertype, 1, 120);
-    m_retro->writeForFrames(SS_MINIGAME_ID_ADDR, &id, 1, 120);
-    m_retro->writeForFrames(SS_MINIGAME_TYPE_ADDR, &mgtype, 1, 120);
+    m_retro->writeValueForFrames(supertype, SS_MINIGAME_SUPERTYPE, 120);
+    m_retro->writeValueForFrames(id, SS_MINIGAME_ID, 120);
+    m_retro->writeValueForFrames(mgtype, SS_MINIGAME_TYPE, 120);
   }
 
   /* Board coins -> rings + rings to lose; board stars -> Precioustones. Also push
@@ -337,11 +362,11 @@ void SonicShuffle::doApplyGameData(const DrGameData &data)
     m_retro->writeu8(static_cast<uint8_t>(m_players[i].stars), SS_PLAYER_ADDR(slot, precioustones));
     m_retro->writeu8(m_players[i].control_type == DR_CONTROL_TYPE_CPU ? 1 : 0,
       SS_PLAYER_ADDR(slot, is_bot));
-    m_retro->writeu8(ss_difficulty(m_players[i].difficulty), SS_CPU_DIFFICULTY_ADDR[slot]);
+    m_retro->writeValue(ss_difficulty(m_players[i].difficulty), SS_CPU_DIFFICULTY[slot]);
   }
 
   /* For 1v3, the "1" is the host's solo player; determined here and reused below
-   * for both SS_MINIGAME_SOLO_ADDR and the loading-screen arrangement. */
+   * for both SS_MINIGAME_SOLO and the loading-screen arrangement. */
   uint8_t solo = 0;
 
   /* Per-slot team (0/1) and role (0/1) for a 2v2, assigned locally from the host's
@@ -379,8 +404,8 @@ void SonicShuffle::doApplyGameData(const DrGameData &data)
 
     for (i = 0; i < 4; i++)
     {
-      m_retro->writeForFrames(SS_MINIGAME_TEAM_ADDR[i], &team_of[i], 1, 120);
-      m_retro->writeForFrames(SS_MINIGAME_ROLE_ADDR[i], &role_of[i], 1, 120);
+      m_retro->writeValueForFrames(team_of[i], SS_MINIGAME_TEAM[i], 120);
+      m_retro->writeValueForFrames(role_of[i], SS_MINIGAME_ROLE[i], 120);
     }
   }
   else if (type == DR_MINIGAME_1V3)
@@ -391,7 +416,7 @@ void SonicShuffle::doApplyGameData(const DrGameData &data)
         solo = static_cast<uint8_t>(dr_player_slot(m_players[i], i));
         break;
       }
-    m_retro->writeForFrames(SS_MINIGAME_SOLO_ADDR, &solo, 1, 120);
+    m_retro->writeValueForFrames(solo, SS_MINIGAME_SOLO, 120);
   }
 
   /* Loading-screen arrangement: 2v2 pairs teammates as (1st,3rd)/(2nd,4th)
@@ -421,7 +446,7 @@ void SonicShuffle::doApplyGameData(const DrGameData &data)
     else
       arrangement = (uint8_t)(dr_rand() % 12);
 
-    m_retro->writeForFrames(SS_MINIGAME_ARRANGEMENT_ADDR, &arrangement, 1, 120);
+    m_retro->writeValueForFrames(arrangement, SS_MINIGAME_ARRANGEMENT, 120);
   }
 
   /* Data is injected; wait for the game to load and signal ready (see run) before
@@ -441,14 +466,14 @@ dr_minigame_result_t SonicShuffle::minigameResult(unsigned index)
 {
   dr_minigame_result_t result = { 0, 0 };
   unsigned slot;
-  int16_t earned = 0, bonus = 0;
+  int64_t earned = 0, bonus = 0;
 
   if (index >= 4)
     return result;
 
   slot = dr_player_slot(m_players[index], index);
-  m_retro->reads16(&earned, SS_MINIGAME_EARNED_ADDR[slot]);
-  m_retro->reads16(&bonus, SS_MINIGAME_BONUS_ADDR[slot]);
+  m_retro->readValue(&earned, SS_MINIGAME_EARNED[slot]);
+  m_retro->readValue(&bonus, SS_MINIGAME_BONUS[slot]);
 
   /* SS earned/bonus map onto MP coins/bonus_coins swapped */
   result.coins = bonus;

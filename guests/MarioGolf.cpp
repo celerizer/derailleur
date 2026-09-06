@@ -4,25 +4,45 @@
 #include <QString>
 
 // u32 per-player selected/menu character.
-static const size_t MG_MENU_CHARACTER_ADDR[4] = { 0x8012F480, 0x8012F484, 0x8012F488, 0x8012F48C };
+static const dr_value_t MG_MENU_CHARACTER[4] = {
+  { 0x8012F480, DR_VALUE_TYPE_U32 },
+  { 0x8012F484, DR_VALUE_TYPE_U32 },
+  { 0x8012F488, DR_VALUE_TYPE_U32 },
+  { 0x8012F48C, DR_VALUE_TYPE_U32 }
+};
 
 // u8 per-player (true, in-game) character (raw per-player addresses).
-static const size_t MG_CHARACTER_ADDR[4] = { 0x801B71ED, 0x801B72A5, 0x801B735D, 0x801B7415 };
+static const dr_value_t MG_CHARACTER[4] = {
+  { 0x801B71ED, DR_VALUE_TYPE_U8 },
+  { 0x801B72A5, DR_VALUE_TYPE_U8 },
+  { 0x801B735D, DR_VALUE_TYPE_U8 },
+  { 0x801B7415, DR_VALUE_TYPE_U8 }
+};
 
 // u8 per-player color (raw per-player addresses, 0xB8 stride). 0=default color, 1=c-left
 // 2=c-down, 3=c-right
-static const size_t MG_COLOR_ADDR[4] = { 0x801B724B, 0x801B7303, 0x801B73BB, 0x801B7473 };
+static const dr_value_t MG_COLOR[4] = {
+  { 0x801B724B, DR_VALUE_TYPE_U8 },
+  { 0x801B7303, DR_VALUE_TYPE_U8 },
+  { 0x801B73BB, DR_VALUE_TYPE_U8 },
+  { 0x801B7473, DR_VALUE_TYPE_U8 }
+};
 
 // u8 bool per-player: is this golfer a bot? (0xB8-strided from P1).
-static const size_t MG_BOT_ADDR[4] = { 0x801B71EE, 0x801B72A6, 0x801B735E, 0x801B7416 };
+static const dr_value_t MG_BOT[4] = {
+  { 0x801B71EE, DR_VALUE_TYPE_U8 },
+  { 0x801B72A6, DR_VALUE_TYPE_U8 },
+  { 0x801B735E, DR_VALUE_TYPE_U8 },
+  { 0x801B7416, DR_VALUE_TYPE_U8 }
+};
 
 // u32 course id (see mario_golf_course) and u32 current hole.
-static const size_t MG_COURSE_ADDR = 0x801B6094;
-static const size_t MG_HOLE_ADDR = 0x801B6098;
+static const dr_value_t MG_COURSE = { 0x801B6094, DR_VALUE_TYPE_U32 };
+static const dr_value_t MG_HOLE = { 0x801B6098, DR_VALUE_TYPE_S32 };
 
 // u32 game state. The intro/loading screen covers everything up to MG_STATE_FINISHED,
 // which is when the actual mini-golf gameplay becomes visible.
-static const size_t MG_STATE_ADDR = 0x801B6088;
+static const dr_value_t MG_STATE = { 0x801B6088, DR_VALUE_TYPE_U32 };
 typedef enum
 {
   MG_STATE_INTRO = 3,
@@ -33,23 +53,38 @@ typedef enum
 
 // u32 whose turn it is (0-3). Drives netplay golf mode so the active golfer has 0
 // input latency (priority) while everyone else waits.
-static const size_t MG_TURN_ADDR = 0x800FBE74;
+static const dr_value_t MG_TURN = { 0x800FBE74, DR_VALUE_TYPE_U32 };
 
 // u8 per-player controller port (0-3), 0xB8-strided. The block defaults to 0 (all
 // golfers read controller 0), so we write each golfer its own port for local + netplay.
-static const size_t MG_PLAYER_PORT_ADDR[4] = { 0x801B71F7, 0x801B72AF, 0x801B7367, 0x801B741F };
+static const dr_value_t MG_PLAYER_PORT[4] = {
+  { 0x801B71F7, DR_VALUE_TYPE_U8 },
+  { 0x801B72AF, DR_VALUE_TYPE_U8 },
+  { 0x801B7367, DR_VALUE_TYPE_U8 },
+  { 0x801B741F, DR_VALUE_TYPE_U8 }
+};
 
 // Per-player hole state, 0xB8-strided (P1 0x801B71F0, P3 0x801B7360, P4 0x801B7418).
-static const size_t MG_SHOTS_ADDR[4] = { 0x801B71F0, 0x801B72A8, 0x801B7360, 0x801B7418 }; // u32 strokes
-static const size_t MG_SUNK_ADDR[4]  = { 0x801B71F6, 0x801B72AE, 0x801B7366, 0x801B741E }; // u8 ball sunk
+static const dr_value_t MG_SHOTS[4] = {
+  { 0x801B71F0, DR_VALUE_TYPE_U32 },
+  { 0x801B72A8, DR_VALUE_TYPE_U32 },
+  { 0x801B7360, DR_VALUE_TYPE_U32 },
+  { 0x801B7418, DR_VALUE_TYPE_U32 }
+}; // u32 strokes
+static const dr_value_t MG_SUNK[4] = {
+  { 0x801B71F6, DR_VALUE_TYPE_U8 },
+  { 0x801B72AE, DR_VALUE_TYPE_U8 },
+  { 0x801B7366, DR_VALUE_TYPE_U8 },
+  { 0x801B741E, DR_VALUE_TYPE_U8 }
+}; // u8 ball sunk
 
 // u8 bool: is a ball currently in flight? The stroke counter increments the moment the
 // swing is made, so a hole can't be judged off the counter alone -- wait for this to
 // pulse back to 0, meaning the ball that stroke launched has come to rest.
-static const size_t MG_IN_FLIGHT_ADDR = 0x801061CB;
+static const dr_value_t MG_IN_FLIGHT = { 0x801061CB, DR_VALUE_TYPE_U8 };
 
 // u8 par for the current hole.
-static const size_t MG_PAR_ADDR = 0x800BAA04;
+static const dr_value_t MG_PAR = { 0x800BAA04, DR_VALUE_TYPE_U8 };
 
 typedef enum
 {
@@ -187,8 +222,8 @@ void MarioGolf::doApplyGameData(const DrGameData &data)
    * is 0-based one lower than the hole number, so the first hole writes -1. */
   if (data.minigame)
   {
-    m_retro->writeu32(static_cast<uint32_t>(data.minigame->minigame_id), MG_COURSE_ADDR);
-    m_retro->writes32(data.minigame->scene_id - 1, MG_HOLE_ADDR);
+    m_retro->writeValue(data.minigame->minigame_id, MG_COURSE);
+    m_retro->writeValue(data.minigame->scene_id - 1, MG_HOLE);
   }
 
   /* Each board player's golfer + color go into the in-game slot matching their
@@ -201,18 +236,17 @@ void MarioGolf::doApplyGameData(const DrGameData &data)
     m_slotToIndex[slot] = static_cast<int>(i);
 
     const mg_char_pick pick = mgCharFor(data.players[i].character);
-    m_retro->writeu32(pick.character, MG_MENU_CHARACTER_ADDR[slot]);
-    m_retro->writeu8(pick.character, MG_CHARACTER_ADDR[slot]);
-    m_retro->writeu8(pick.color, MG_COLOR_ADDR[slot]);
+    m_retro->writeValue(pick.character, MG_MENU_CHARACTER[slot]);
+    m_retro->writeValue(pick.character, MG_CHARACTER[slot]);
+    m_retro->writeValue(pick.color, MG_COLOR[slot]);
 
     /* Assign the golfer in this slot to its own controller port. The block defaults to
      * 0 (all golfers -> controller 0); hold our value through init with writeForFrames. */
-    const uint8_t port = static_cast<uint8_t>(slot);
-    m_retro->writeForFrames(MG_PLAYER_PORT_ADDR[slot], &port, 1, 300);
+    m_retro->writeValueForFrames(slot, MG_PLAYER_PORT[slot], 300);
 
     /* Mark CPU-controlled golfers as bots. */
-    const uint8_t bot = (data.players[i].control_type == DR_CONTROL_TYPE_CPU) ? 1 : 0;
-    m_retro->writeForFrames(MG_BOT_ADDR[slot], &bot, 1, 300);
+    m_retro->writeValueForFrames(
+      data.players[i].control_type == DR_CONTROL_TYPE_CPU ? 1 : 0, MG_BOT[slot], 300);
   }
 
   /* Don't reveal yet. Wait 60 frames for the loaded state to settle, force an A press
@@ -245,8 +279,8 @@ void MarioGolf::run()
       return;
     }
 
-    uint32_t gameState = 0;
-    if (m_retro->readu32(&gameState, MG_STATE_ADDR) == DR_OK &&
+    int64_t gameState = 0;
+    if (m_retro->readValue(&gameState, MG_STATE) == DR_OK &&
         gameState == MG_STATE_INTRO)
       startMinigame();
     return;
@@ -258,8 +292,8 @@ void MarioGolf::run()
    * value is deterministic game state, so every peer toggles it on the same frame.
    * @todo if per-player slot remapping is added, translate turn (in-game slot) to the
    * board/peer index before passing it. */
-  uint32_t turn = 0;
-  if (m_retro->readu32(&turn, MG_TURN_ADDR) == DR_OK && turn < 4 &&
+  int64_t turn = 0;
+  if (m_retro->readValue(&turn, MG_TURN) == DR_OK && turn < 4 &&
       static_cast<int>(turn) != m_lastTurn)
   {
     m_lastTurn = static_cast<int>(turn);
@@ -273,8 +307,8 @@ void MarioGolf::run()
     return;
 
   /* Read the hole state: strokes taken and whether each active player has sunk it. */
-  uint8_t par = 0;
-  if (m_retro->readu8(&par, MG_PAR_ADDR) != DR_OK)
+  int64_t par = 0;
+  if (m_retro->readValue(&par, MG_PAR) != DR_OK)
     return;
 
   if (static_cast<int>(par) != m_prevPar)
@@ -286,8 +320,8 @@ void MarioGolf::run()
   /* A stroke's outcome isn't known until its ball settles: the counter increments at the
    * swing, but the ball can still sink (or not) while it's in flight. Clear the pending
    * stroke on the in-flight falling edge, before the loop below can flag a new one. */
-  uint8_t inFlightRaw = 0;
-  if (m_retro->readu8(&inFlightRaw, MG_IN_FLIGHT_ADDR) == DR_OK)
+  int64_t inFlightRaw = 0;
+  if (m_retro->readValue(&inFlightRaw, MG_IN_FLIGHT) == DR_OK)
   {
     const bool inFlight = (inFlightRaw != 0);
     if (m_prevInFlight && !inFlight)
@@ -298,18 +332,18 @@ void MarioGolf::run()
   /* First pass: sample every slot and latch hole-outs. A stroke that appeared this frame
    * flags the ball as pending, so it must run to completion before anything below reads
    * m_shotPending -- an in-flight ball can still sink. */
-  uint32_t shots[4] = {};
+  int64_t shots[4] = {};
   bool sunk[4] = {};
   for (unsigned slot = 0; slot < 4; slot++)
   {
     if (m_slotToIndex[slot] < 0)
       continue;
-    m_retro->readu32(&shots[slot], MG_SHOTS_ADDR[slot]);
-    uint8_t s = 0;
-    m_retro->readu8(&s, MG_SUNK_ADDR[slot]);
+    m_retro->readValue(&shots[slot], MG_SHOTS[slot]);
+    int64_t s = 0;
+    m_retro->readValue(&s, MG_SUNK[slot]);
     sunk[slot] = (s != 0);
 
-    if (shots[slot] > m_prevShots[slot])
+    if (shots[slot] > static_cast<int64_t>(m_prevShots[slot]))
     {
       m_shotPending = true;
       log(DR_LOG_INFO, qPrintable(QString("Mario Golf: player %1 stroke %2")
@@ -341,7 +375,7 @@ void MarioGolf::run()
   {
     if (m_slotToIndex[slot] < 0 || sunk[slot] || shots[slot] < par || shots[slot] >= 9)
       continue;
-    m_retro->writeu32(9, MG_SHOTS_ADDR[slot]);
+    m_retro->writeValue(9, MG_SHOTS[slot]);
     shots[slot] = 9;
     m_prevShots[slot] = 9;
     log(DR_LOG_INFO, qPrintable(QString("Mario Golf: player %1 mercy-ruled (missed par)")

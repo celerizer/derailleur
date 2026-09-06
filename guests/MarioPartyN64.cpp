@@ -41,8 +41,8 @@ void MarioPartyN64::run()
   if (m_minigameActive)
     m_minigameFrames++;
 
-  int16_t val;
-  if (m_retro->reads16(&val, m_config.scene_addr) == DR_OK && val != m_lastScene)
+  int64_t val;
+  if (m_retro->readValue(&val, m_config.scene) == DR_OK && val != m_lastScene)
   {
     const int16_t last = m_lastScene;
 
@@ -71,13 +71,13 @@ void MarioPartyN64::run()
 
 void MarioPartyN64::seedRng()
 {
-  if (!m_config.rng_addr)
+  if (!m_config.rng.address)
     return;
 
   /* dr_rand is shared and lockstepped, so netplay peers seed identically. */
   const uint32_t seed = static_cast<uint32_t>(dr_rand());
 
-  m_retro->writeu32(seed, m_config.rng_addr);
+  m_retro->writeValue(seed, m_config.rng);
   log(DR_LOG_INFO, qPrintable(QString("RNG seed: 0x%1").arg(seed, 8, 16, QChar('0'))));
 }
 
@@ -108,7 +108,7 @@ void MarioPartyN64::writeHiddenCharacters(void)
   {
     if (!(m_hiddenSlots & (1 << i)))
       continue;
-    m_retro->writeu8(m_config.hidden.native_id, m_config.character_addr[i]);
+    m_retro->writeValue(m_config.hidden.native_id, m_config.character[i]);
     log(DR_LOG_INFO, qPrintable(QString("hidden character: forced P%1 to 0x%2 entering %3")
       .arg(i + 1).arg(m_config.hidden.native_id, 2, 16, QChar('0'))
       .arg(m_minigame ? m_minigame->name : "mini-game")));
@@ -146,9 +146,8 @@ void MarioPartyN64::doApplyGameData(const DrGameData &data)
   core()->unserializeFromFile(m_config.state.c_str());
   m_lastScene = -1;
   m_minigameFrames = 0;
-  int16_t id = static_cast<int16_t>(data.minigame->minigame_id);
   const bool hidden = hiddenCharacterPlayable(data.minigame);
-  m_retro->writeForFrames(m_config.minigame_addr, &id, sizeof(id), 120);
+  m_retro->writeValueForFrames(data.minigame->minigame_id, m_config.minigame, 120);
   m_hiddenSlots = 0;
 
   /* Anyone the game doesn't have takes a free slot rather than doubling up on
@@ -171,16 +170,16 @@ void MarioPartyN64::doApplyGameData(const DrGameData &data)
         .arg(chr, 2, 16, QChar('0')).arg(data.minigame->name)));
     }
 
-    m_retro->writeu8(chr, m_config.character_addr[i]);
-    m_retro->writeu8(static_cast<uint8_t>(p.control_port - 1), m_config.controller_addr[i]);
+    m_retro->writeValue(chr, m_config.character[i]);
+    m_retro->writeValue(p.control_port - 1, m_config.controller[i]);
 
-    uint8_t bot = 0;
-    if (m_retro->readu8(&bot, m_config.bot_addr[i]) == DR_OK)
-      m_retro->writeu8((bot & ~0x01) | (p.control_type == DR_CONTROL_TYPE_CPU ? 1 : 0),
-        m_config.bot_addr[i]);
+    int64_t bot = 0;
+    if (m_retro->readValue(&bot, m_config.bot[i]) == DR_OK)
+      m_retro->writeValue((bot & ~0x01) | (p.control_type == DR_CONTROL_TYPE_CPU ? 1 : 0),
+        m_config.bot[i]);
 
-    m_retro->writeu8(mpN64Difficulty(p.difficulty), m_config.difficulty_addr[i]);
-    m_retro->writeu8(static_cast<uint8_t>(p.team_id), m_config.team_addr[i]);
+    m_retro->writeValue(mpN64Difficulty(p.difficulty), m_config.difficulty[i]);
+    m_retro->writeValue(p.team_id, m_config.team[i]);
 
     /* Carry the board totals over, so a mini-game that shows coins/stars shows
      * the same numbers the host does. */
@@ -201,11 +200,11 @@ dr_minigame_result_t MarioPartyN64::minigameResult(unsigned index)
 
   if (index < 4)
   {
-    int16_t coins, bonus;
+    int64_t coins, bonus;
 
-    if (m_retro->reads16(&coins, m_config.result_addr[index]) == DR_OK)
+    if (m_retro->readValue(&coins, m_config.result[index]) == DR_OK)
       result.coins = coins;
-    if (m_retro->reads16(&bonus, m_config.bonus_result_addr[index]) == DR_OK)
+    if (m_retro->readValue(&bonus, m_config.bonus_result[index]) == DR_OK)
       result.bonus_coins = bonus;
   }
 

@@ -29,9 +29,9 @@ static const size_t SSH_NUM_CARDS_OFFSET = 0x23;     /* u8 */
 
 /* Card-selection cursor while choosing a card (you can pick from another player's
  * hand, so the target player is tracked separately). */
-static const size_t SSH_SEL_CARD_INDEX_ADDR = 0x0032E4F0;  /* u32: card index in hand */
-static const size_t SSH_SEL_CARD_PLAYER_ADDR = 0x0032E4F4; /* u32: whose hand (0-indexed) */
-static const size_t SSH_SEL_CARD_CHOSEN_ADDR = 0x0032E538; /* u32 bool: selection confirmed */
+static const dr_value_t SSH_SEL_CARD_INDEX = { 0x0032E4F0, DR_VALUE_TYPE_U32 };  /* card index in hand */
+static const dr_value_t SSH_SEL_CARD_PLAYER = { 0x0032E4F4, DR_VALUE_TYPE_U32 }; /* whose hand (0-indexed) */
+static const dr_value_t SSH_SEL_CARD_CHOSEN = { 0x0032E538, DR_VALUE_TYPE_U32 }; /* bool: selection confirmed */
 
 /* Address of `off` within player p's struct (p = 0..3). */
 #define SSH_PLAYER_ADDR(p, off) \
@@ -112,12 +112,12 @@ void SonicShuffleHost::pollLocalHand(void)
 
   /* Which of our cards to glow: only while a selection is in progress (not yet
    * confirmed) and the cursor is on our own hand. -1 = no glow. */
-  uint32_t selIndex = 0, selPlayer = 0, selChosen = 0;
-  readu32(&selIndex, SSH_SEL_CARD_INDEX_ADDR);
-  readu32(&selPlayer, SSH_SEL_CARD_PLAYER_ADDR);
-  readu32(&selChosen, SSH_SEL_CARD_CHOSEN_ADDR);
+  int64_t selIndex = 0, selPlayer = 0, selChosen = 0;
+  readValue(&selIndex, SSH_SEL_CARD_INDEX);
+  readValue(&selPlayer, SSH_SEL_CARD_PLAYER);
+  readValue(&selChosen, SSH_SEL_CARD_CHOSEN);
   const int highlight =
-    (selChosen == 0 && selPlayer == static_cast<uint32_t>(p)) ? static_cast<int>(selIndex) : -1;
+    (selChosen == 0 && selPlayer == p) ? static_cast<int>(selIndex) : -1;
 
   /* Only report when something changed, so this doesn't spam every frame. */
   bool changed = (character != m_lastCharacter) || (num != m_lastNumCards) ||

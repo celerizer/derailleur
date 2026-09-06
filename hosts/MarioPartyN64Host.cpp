@@ -1,4 +1,5 @@
 #include "MarioPartyN64Host.h"
+
 #include "../DrGuest.h"
 
 #include <QRandomGenerator>
@@ -7,6 +8,8 @@
 #include <QString>
 #include <cctype>
 #include <cstring>
+
+static const dr_value_t MP1_TITLE_IMAGE = { 0x800ED146, DR_VALUE_TYPE_S8 };
 
 typedef enum
 {
@@ -34,18 +37,18 @@ void MarioPartyN64Host::setSceneQueue(const dr_mp64_overlay_t overlays[5], int o
     writes16(overlays[i].event, elem + 4);
     writes16(overlays[i].stat, elem + 6);
   }
-  writes16(static_cast<int16_t>(overlay_count), m_config.values.scene_stack_count.address);
+  writeValue(overlay_count, m_config.values.scene_stack_count);
 }
 
 bool MarioPartyN64Host::replaceSceneOverlay(const int *match_ids,
                                             const dr_mp64_overlay_t &overlay)
 {
-  int16_t count = 0;
+  int64_t count = 0;
   int idx = -1;
   int active = 0;
   dr_mp64_overlay_t overlays[5] = {};
 
-  reads16(&count, m_config.values.scene_stack_count.address);
+  readValue(&count, m_config.values.scene_stack_count);
   if (!count)
     return false;
 
@@ -118,8 +121,8 @@ void MarioPartyN64Host::run(void)
     m_State = s;
   };
 
-  int16_t scene_id = 0;
-  reads16(&scene_id, m_config.values.scene.address);
+  int64_t scene_id = 0;
+  readValue(&scene_id, m_config.values.scene);
 
   if ((uint8_t)scene_id != m_lastScene)
   {
@@ -146,7 +149,7 @@ void MarioPartyN64Host::run(void)
 
     /* MP1: randomize the title-screen image on entry to the Intro scene (0x61). */
     if (game() == DR_GAME_MARIOPARTY1 && (uint8_t)scene_id == 0x61)
-      writes8(static_cast<int8_t>(dr_rand() % 7), 0x800ED146);
+      writeValue(dr_rand() % 7, MP1_TITLE_IMAGE);
 
     /* Item mini-games play natively with a single participant. Grant that player golf
      * mode (0 input delay, priority) on entry and clear it on exit. The participant is
@@ -169,12 +172,12 @@ void MarioPartyN64Host::run(void)
         int authority = -1;
         for (unsigned i = 0; i < 4; i++)
         {
-          uint8_t team = 0xFF;
-          readu8(&team, m_config.values.team[i].address);
+          int64_t team = 0xFF;
+          readValue(&team, m_config.values.team[i]);
           if (team == 0)
           {
-            uint8_t ctrl = 0;
-            readu8(&ctrl, m_config.values.controller[i].address);
+            int64_t ctrl = 0;
+            readValue(&ctrl, m_config.values.controller[i]);
             authority = ctrl;
             break;
           }
@@ -209,7 +212,7 @@ void MarioPartyN64Host::run(void)
 
   case DR_HOST_STATE_BEFORE_BOARD:
   {
-    writeForFrames(mgTypeAddr(), &ff, 1, 30);
+    writeValueForFrames(ff, mgTypeValue(), 30);
 
     bool matched = false;
     bool isDuel = false;
@@ -244,7 +247,7 @@ void MarioPartyN64Host::run(void)
 
       /* Hold the active type byte at 0xFF for a bit so a value left over from loading
        * doesn't read as an in-progress roulette the instant we enter the board. */
-      writeForFrames(mgTypeAddr(), &ff, 1, 30);
+      writeValueForFrames(ff, mgTypeValue(), 30);
 
       /* Stamp the code cave into RAM, then enable the board hook (slot 2) that jumps
        * into it -- a single code that both stamps the roulette titles and forces the
@@ -295,7 +298,7 @@ void MarioPartyN64Host::run(void)
     {
       if (!m_itemSceneLeft)
       {
-        writeu8(m_itemChosenId, m_config.values.minigame_id.address);
+        writeValue(m_itemChosenId, m_config.values.minigame_id);
         if ((uint8_t)scene_id != m_lastBoardScene)
           m_itemSceneLeft = true;
       }
@@ -303,7 +306,7 @@ void MarioPartyN64Host::run(void)
       {
         m_itemPending = false;
         m_itemSceneLeft = false;
-        writeForFrames(mgTypeAddr(), &ff, 1, 30);
+        writeValueForFrames(ff, mgTypeValue(), 30);
       }
       break;
     }
@@ -317,7 +320,7 @@ void MarioPartyN64Host::run(void)
     if (m_sceneChangeGrace > 0)
     {
       m_sceneChangeGrace--;
-      writeu8(0xFF, mgTypeAddr());
+      writeValue(0xFF, mgTypeValue());
       if (m_isDuelBoard)
         m_lastDuelType = 0xFF;
       break;
@@ -328,8 +331,8 @@ void MarioPartyN64Host::run(void)
       /* A duel board only ever runs the duel type, so unlike the regular board (which
        * watches several types) we gate the roulette purely on the duel type byte
        * transitioning to 0. */
-      uint8_t minigame_type = m_lastDuelType;
-      readu8(&minigame_type, m_config.values.title_type_duel.address);
+      int64_t minigame_type = m_lastDuelType;
+      readValue(&minigame_type, m_config.values.title_type_duel);
       if (minigame_type != m_lastDuelType)
         emit logMessage(DR_LOG_INFO,
           QString("duel mg type: 0x%1").arg(minigame_type, 2, 16, QChar('0')));
@@ -347,8 +350,8 @@ void MarioPartyN64Host::run(void)
     }
 
     /* Check if the mini-game type value been set */
-    uint8_t minigame_type = 0;
-    readu8(&minigame_type, m_config.values.minigame_type.address);
+    int64_t minigame_type = 0;
+    readValue(&minigame_type, m_config.values.minigame_type);
     if (minigame_type != 0xFF)
       emit logMessage(DR_LOG_INFO,
         QString("board mg type: 0x%1").arg(minigame_type, 2, 16, QChar('0')));
@@ -359,7 +362,7 @@ void MarioPartyN64Host::run(void)
       if (mg_type == DR_MINIGAME_ITEM)
       {
         m_lastMinigameId = -1;
-        writeu8(0xFF, m_config.values.minigame_id.address);
+        writeValue(-1, m_config.values.minigame_id);
         m_itemChosenId = 0x3B + (dr_rand() % 6);
         m_itemPending = true;
         m_itemSceneLeft = false;
@@ -374,7 +377,7 @@ void MarioPartyN64Host::run(void)
         break;
       }
     }
-    writeu8(0xFF, mgTypeAddr());
+    writeValue(0xFF, mgTypeValue());
     break;
   }
   case DR_HOST_STATE_BEFORE_ROULETTE:
@@ -403,7 +406,7 @@ void MarioPartyN64Host::run(void)
       emit logMessage(DR_LOG_WARN,
         "roulette failsafe: turn/space changed mid-roulette; returning to BOARD");
       /* Clear the (stale/false) type byte so BOARD doesn't immediately re-fire. */
-      writeForFrames(mgTypeAddr(), &ff, 1, 30);
+      writeValueForFrames(ff, mgTypeValue(), 30);
       if (m_isDuelBoard)
         m_lastDuelType = 0xFF;
       setState(DR_HOST_STATE_BOARD);
@@ -416,9 +419,9 @@ void MarioPartyN64Host::run(void)
      */
     if (!m_isDuelBoard)
     {
-      uint8_t minigame_type = 0;
+      int64_t minigame_type = 0;
 
-      readu8(&minigame_type, m_config.values.minigame_type.address);
+      readValue(&minigame_type, m_config.values.minigame_type);
       if (minigame_type != (uint8_t)m_MinigameType)
       {
         emit logMessage(DR_LOG_ERROR,
@@ -482,15 +485,15 @@ void MarioPartyN64Host::run(void)
         startMinigame(m_lastMinigameId);
 
         m_lastMinigameId = -1;
-        writeu8(0xFF, m_config.values.minigame_id.address);
+        writeValue(-1, m_config.values.minigame_id);
         setState(DR_HOST_STATE_MINIGAME);
       }
       break;
     }
 
     /* Wait for the game to queue its own scene overlays. */
-    int16_t count = 0;
-    reads16(&count, m_config.values.scene_stack_count.address);
+    int64_t count = 0;
+    readValue(&count, m_config.values.scene_stack_count);
     if (!count)
       break;
 
@@ -561,8 +564,8 @@ void MarioPartyN64Host::run(void)
     {
       /* Invalidate our watchpoints */
       m_lastMinigameId = -1;
-      writeu8(0xFF, m_config.values.minigame_id.address);
-      writeForFrames(mgTypeAddr(), &ff, 1, 30);
+      writeValue(-1, m_config.values.minigame_id);
+      writeValueForFrames(ff, mgTypeValue(), 30);
 
       /* Clear any golf mode we granted for a 1P mini-game. */
       if (m_hostGolfMode)
@@ -769,19 +772,19 @@ void MarioPartyN64Host::readPlayers(dr_minigame_type type)
 {
   m_pendingPlayers = {};
 
-  uint8_t panelColors[4];
+  int64_t panelColors[4];
   for (unsigned i = 0; i < 4; i++)
-    if (readu8(&panelColors[i], m_config.values.panel_color[i].address) != DR_OK)
+    if (readValue(&panelColors[i], m_config.values.panel_color[i]) != DR_OK)
       panelColors[i] = 0xFF;
 
   for (unsigned i = 0; i < 4; i++)
   {
-    uint8_t chr, ctrl, diff, bot, team;
-    if (readu8(&chr,  m_config.values.character[i].address) != DR_OK) continue;
-    if (readu8(&ctrl, m_config.values.controller[i].address) != DR_OK) continue;
-    if (readu8(&diff, m_config.values.difficulty[i].address) != DR_OK) continue;
-    if (readu8(&bot,  m_config.values.bot[i].address) != DR_OK) continue;
-    if (readu8(&team, m_config.values.team[i].address) != DR_OK) continue;
+    int64_t chr, ctrl, diff, bot, team;
+    if (readValue(&chr, m_config.values.character[i]) != DR_OK) continue;
+    if (readValue(&ctrl, m_config.values.controller[i]) != DR_OK) continue;
+    if (readValue(&diff, m_config.values.difficulty[i]) != DR_OK) continue;
+    if (readValue(&bot, m_config.values.bot[i]) != DR_OK) continue;
+    if (readValue(&team, m_config.values.team[i]) != DR_OK) continue;
 
     dr_player_t &p = m_pendingPlayers[i];
     p.character = m_config.char_to_dr ? m_config.char_to_dr(chr) : DR_CHARACTER_INVALID;
@@ -874,13 +877,13 @@ bool MarioPartyN64Host::readPlayerSetup(DrPlayerArray &players)
 
   for (unsigned i = 0; i < 4; i++)
   {
-    uint8_t chr = 0, ctrl = 0, diff = 0, bot = 0, team = 0;
+    int64_t chr = 0, ctrl = 0, diff = 0, bot = 0, team = 0;
 
-    readu8(&chr,  m_config.values.character[i].address);
-    readu8(&ctrl, m_config.values.controller[i].address);
-    readu8(&diff, m_config.values.difficulty[i].address);
-    readu8(&bot,  m_config.values.bot[i].address);
-    readu8(&team, m_config.values.team[i].address);
+    readValue(&chr, m_config.values.character[i]);
+    readValue(&ctrl, m_config.values.controller[i]);
+    readValue(&diff, m_config.values.difficulty[i]);
+    readValue(&bot, m_config.values.bot[i]);
+    readValue(&team, m_config.values.team[i]);
 
     dr_player_t &p = players[i];
     p.character = m_config.char_to_dr ? m_config.char_to_dr(chr) : DR_CHARACTER_INVALID;
@@ -904,26 +907,25 @@ bool MarioPartyN64Host::writePlayerSetup(const DrPlayerArray &players)
     const dr_player_t &p = players[i];
     const int chr = dr_char_to_native(m_config, p.character);
     const int diff = dr_diff_to_native(m_config, p.difficulty);
-    uint8_t bot = 0;
+    int64_t bot = 0;
 
     if (chr >= 0)
-      writeu8(static_cast<uint8_t>(chr), m_config.values.character[i].address);
+      writeValue(chr, m_config.values.character[i]);
     else
       emit logMessage(DR_LOG_WARN,
         QString("write players: %1 has no id in this game, leaving slot %2 alone")
           .arg(dr_character_name(p.character)).arg(i + 1));
 
     if (diff >= 0)
-      writeu8(static_cast<uint8_t>(diff), m_config.values.difficulty[i].address);
+      writeValue(diff, m_config.values.difficulty[i]);
 
-    writeu8(static_cast<uint8_t>(p.control_port - DR_CONTROL_PORT_P1),
-      m_config.values.controller[i].address);
-    writeu8(static_cast<uint8_t>(p.team_id), m_config.values.team[i].address);
+    writeValue(static_cast<uint8_t>(p.control_port - DR_CONTROL_PORT_P1), m_config.values.controller[i]);
+    writeValue(p.team_id, m_config.values.team[i]);
 
     /* Only bit 0 is the cpu flag; keep whatever else the game stores in the byte. */
-    readu8(&bot, m_config.values.bot[i].address);
+    readValue(&bot, m_config.values.bot[i]);
     bot = (p.control_type == DR_CONTROL_TYPE_CPU) ? (bot | 0x01) : (bot & ~0x01);
-    writeu8(bot, m_config.values.bot[i].address);
+    writeValue(bot, m_config.values.bot[i]);
   }
 
   emit logMessage(DR_LOG_INFO, "write players: stamped the debug player setup");
@@ -938,7 +940,7 @@ void MarioPartyN64Host::setCurrentTurn(unsigned turn)
     emit logMessage(DR_LOG_WARN, "set turn: this game has no turn counter configured");
     return;
   }
-  writeu8(static_cast<uint8_t>(turn), m_config.values.turn_current.address);
+  writeValue(turn, m_config.values.turn_current);
   emit logMessage(DR_LOG_INFO, QString("set current turn to %1").arg(turn));
 }
 
@@ -946,9 +948,9 @@ void MarioPartyN64Host::clearResults()
 {
   for (unsigned i = 0; i < 4; i++)
   {
-    writes16(0, m_config.values.result[i].address);
+    writeValue(0, m_config.values.result[i]);
     if (m_config.values.bonus_result[i].address)
-      writes16(0, m_config.values.bonus_result[i].address);
+      writeValue(0, m_config.values.bonus_result[i]);
   }
 
 }
@@ -983,9 +985,9 @@ void MarioPartyN64Host::writeResults(DrGuest *guest)
   for (unsigned i = 0; i < 4; i++)
   {
     auto result = guest->minigameResult(i);
-    uint8_t chr = 0;
+    int64_t chr = 0;
     
-    readu8(&chr, m_config.values.character[i].address);
+    readValue(&chr, m_config.values.character[i]);
     dr_character character =
       m_config.char_to_dr ? m_config.char_to_dr(chr) : DR_CHARACTER_INVALID;
 
@@ -1001,7 +1003,7 @@ void MarioPartyN64Host::writeResults(DrGuest *guest)
     }
   }
 
-  writeu8(0xFF, mgTypeAddr());
+  writeValue(0xFF, mgTypeValue());
   m_writing = 30;
   m_lastScene = 0xFF;
 }

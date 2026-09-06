@@ -49,13 +49,13 @@ static const char *PS2_HIRES_DIR =
   "system/Mupen64plus/hires_texture/POKEMON STADIUM 2/GLideNHQ";
 
 // u8: single shared bot difficulty (0/1/2 = easy/normal/hard); use the hardest
-static const size_t PS2_BOT_DIFFICULTY_ADDR = 0x8012B361;
+static const dr_value_t PS2_BOT_DIFFICULTY = { 0x8012B361, DR_VALUE_TYPE_U8 };
 
 // u8 bitmask: bit i set = player i is human (else CPU)
-static const size_t PS2_IS_HUMAN_ADDR = 0x8012B362;
+static const dr_value_t PS2_IS_HUMAN = { 0x8012B362, DR_VALUE_TYPE_U8 };
 
 // s8 in the minigame-select menu holding the highlighted minigame
-static const size_t PS2_MINIGAME_ID_ADDR = 0x8012B363;
+static const dr_value_t PS2_MINIGAME_ID = { 0x8012B363, DR_VALUE_TYPE_U8 };
 
 static uint8_t ps2Difficulty(dr_difficulty d)
 {
@@ -75,7 +75,7 @@ static uint8_t ps2Difficulty(dr_difficulty d)
 }
 
 // u16 music tempo; it becomes the results-music tempo once a minigame ends.
-static const size_t PS2_MUSIC_TEMPO_ADDR = 0x8011F304;
+static const dr_value_t PS2_MUSIC_TEMPO = { 0x8011F304, DR_VALUE_TYPE_U16 };
 static const uint16_t PS2_RESULTS_TEMPO = 0x1EF0;
 
 typedef enum
@@ -113,19 +113,19 @@ static const dr_mp_minigame_t PS2_MINIGAMES[] = {
 };
 
 /* u32 score addresses for each player */
-static const size_t PS2_SCORES[][4] = {
-  { 0x80176FBC, 0x80176FE8, 0x80177014, 0x80177040 }, // Gutsy Golbat
-  { 0x80176884, 0x8017821C, 0x80179BB4, 0x8017B54C }, // Topsy-Turvy
-  { 0x80174360, 0x801743F8, 0x80174490, 0x80174528 }, // Clear Cut Challenge
-  { 0x801E94C0, 0x801E94D8, 0x801E94F0, 0x801E9508 }, // Furret's Frolic
-  { 0x8016EA94, 0x8016EAE0, 0x8016EB2C, 0x8016EB78 }, // Barrier Ball
-  { 0x8016D64C, 0x8016D6A4, 0x8016D6FC, 0x8016D754 }, // Pichu's Power Plant
-  { 0x8017DFB0, 0x8017E00C, 0x8017E068, 0x8017E0C4 }, // Rampage Rollout
-  { 0x80181228, 0x8018122C, 0x80181230, 0x80181234 }, // Streaming Stampede
-  { 0x8018B0EC, 0x8018B198, 0x8018B244, 0x8018B2F0 }, // Tumbling Togepi
-  { 0x801AB404, 0x801AB408, 0x801AB40C, 0x801AB410 }, // Delibird's Delivery
-  { 0x80191ADC, 0x80191C00, 0x80191D24, 0x80191E48 }, // Egg Emergency
-  { 0x8017EB54, 0x8017EB58, 0x8017EB5C, 0x8017EB60 }, // Eager Eevee
+static const dr_value_t PS2_SCORES[][4] = {
+  { { 0x80176FBC, DR_VALUE_TYPE_U32 }, { 0x80176FE8, DR_VALUE_TYPE_U32 }, { 0x80177014, DR_VALUE_TYPE_U32 }, { 0x80177040, DR_VALUE_TYPE_U32 } }, // Gutsy Golbat
+  { { 0x80176884, DR_VALUE_TYPE_U32 }, { 0x8017821C, DR_VALUE_TYPE_U32 }, { 0x80179BB4, DR_VALUE_TYPE_U32 }, { 0x8017B54C, DR_VALUE_TYPE_U32 } }, // Topsy-Turvy
+  { { 0x80174360, DR_VALUE_TYPE_U32 }, { 0x801743F8, DR_VALUE_TYPE_U32 }, { 0x80174490, DR_VALUE_TYPE_U32 }, { 0x80174528, DR_VALUE_TYPE_U32 } }, // Clear Cut Challenge
+  { { 0x801E94C0, DR_VALUE_TYPE_U32 }, { 0x801E94D8, DR_VALUE_TYPE_U32 }, { 0x801E94F0, DR_VALUE_TYPE_U32 }, { 0x801E9508, DR_VALUE_TYPE_U32 } }, // Furret's Frolic
+  { { 0x8016EA94, DR_VALUE_TYPE_U32 }, { 0x8016EAE0, DR_VALUE_TYPE_U32 }, { 0x8016EB2C, DR_VALUE_TYPE_U32 }, { 0x8016EB78, DR_VALUE_TYPE_U32 } }, // Barrier Ball
+  { { 0x8016D64C, DR_VALUE_TYPE_U32 }, { 0x8016D6A4, DR_VALUE_TYPE_U32 }, { 0x8016D6FC, DR_VALUE_TYPE_U32 }, { 0x8016D754, DR_VALUE_TYPE_U32 } }, // Pichu's Power Plant
+  { { 0x8017DFB0, DR_VALUE_TYPE_U32 }, { 0x8017E00C, DR_VALUE_TYPE_U32 }, { 0x8017E068, DR_VALUE_TYPE_U32 }, { 0x8017E0C4, DR_VALUE_TYPE_U32 } }, // Rampage Rollout
+  { { 0x80181228, DR_VALUE_TYPE_U32 }, { 0x8018122C, DR_VALUE_TYPE_U32 }, { 0x80181230, DR_VALUE_TYPE_U32 }, { 0x80181234, DR_VALUE_TYPE_U32 } }, // Streaming Stampede
+  { { 0x8018B0EC, DR_VALUE_TYPE_U32 }, { 0x8018B198, DR_VALUE_TYPE_U32 }, { 0x8018B244, DR_VALUE_TYPE_U32 }, { 0x8018B2F0, DR_VALUE_TYPE_U32 } }, // Tumbling Togepi
+  { { 0x801AB404, DR_VALUE_TYPE_U32 }, { 0x801AB408, DR_VALUE_TYPE_U32 }, { 0x801AB40C, DR_VALUE_TYPE_U32 }, { 0x801AB410, DR_VALUE_TYPE_U32 } }, // Delibird's Delivery
+  { { 0x80191ADC, DR_VALUE_TYPE_U32 }, { 0x80191C00, DR_VALUE_TYPE_U32 }, { 0x80191D24, DR_VALUE_TYPE_U32 }, { 0x80191E48, DR_VALUE_TYPE_U32 } }, // Egg Emergency
+  { { 0x8017EB54, DR_VALUE_TYPE_U32 }, { 0x8017EB58, DR_VALUE_TYPE_U32 }, { 0x8017EB5C, DR_VALUE_TYPE_U32 }, { 0x8017EB60, DR_VALUE_TYPE_U32 } }, // Eager Eevee
 };
 
 PokemonStadium2::PokemonStadium2(QObject *parent)
@@ -183,16 +183,16 @@ void PokemonStadium2::run()
     m_tempoWatchDelay--;
     return;
   }
-  uint16_t tempo = 0;
-  if (m_retro->readu16(&tempo, PS2_MUSIC_TEMPO_ADDR) == DR_OK && tempo == PS2_RESULTS_TEMPO)
+  int64_t tempo = 0;
+  if (m_retro->readValue(&tempo, PS2_MUSIC_TEMPO) == DR_OK && tempo == PS2_RESULTS_TEMPO)
     finishMinigame();
 }
 
 void PokemonStadium2::trackRampage()
 {
-  uint32_t score[4] = {};
+  int64_t score[4] = {};
   for (unsigned i = 0; i < 4; i++)
-    m_retro->readu32(&score[i], PS2_SCORES[PS2_MINIGAME_RAMPAGE_ROLLOUT][i]);
+    m_retro->readValue(&score[i], PS2_SCORES[PS2_MINIGAME_RAMPAGE_ROLLOUT][i]);
 
   /* Wait for everyone's lap counter to be 9 */
   if (!m_rampageRecording)
@@ -264,7 +264,7 @@ void PokemonStadium2::doApplyGameData(const DrGameData &data)
 
   loadState(state());
   int8_t id = static_cast<int8_t>(m_minigame ? m_minigame->minigame_id : -1);
-  m_retro->writeForFrames(PS2_MINIGAME_ID_ADDR, &id, 1, 120);
+  m_retro->writeValueForFrames(id, PS2_MINIGAME_ID, 120);
 
   /* Player setup: a human bitmask (bit i = player i human) and a single shared
    * bot difficulty set to the hardest requested. */
@@ -276,8 +276,8 @@ void PokemonStadium2::doApplyGameData(const DrGameData &data)
       human |= (1u << dr_player_slot(m_players[i], i));
     difficulty = qMax(difficulty, ps2Difficulty(m_players[i].difficulty));
   }
-  m_retro->writeForFrames(PS2_IS_HUMAN_ADDR, &human, 1, 120);
-  m_retro->writeForFrames(PS2_BOT_DIFFICULTY_ADDR, &difficulty, 1, 120);
+  m_retro->writeValueForFrames(human, PS2_IS_HUMAN, 120);
+  m_retro->writeValueForFrames(difficulty, PS2_BOT_DIFFICULTY, 120);
 
   startMinigame();
   m_tempoWatchDelay = 120; // don't watch for the results tempo until settled
@@ -291,12 +291,12 @@ unsigned PokemonStadium2::computeWinners()
   const int id = m_minigame->minigame_id;
   if (id < 0 || id >= static_cast<int>(sizeof(PS2_SCORES) / sizeof(*PS2_SCORES)))
     return 0;
-  const size_t *addrs = PS2_SCORES[id];
+  const dr_value_t *addrs = PS2_SCORES[id];
 
-  uint32_t score[4] = {};
+  int64_t score[4] = {};
   for (unsigned i = 0; i < 4; i++)
-    if (addrs[i])
-      m_retro->readu32(&score[i], addrs[i]);
+    if (addrs[i].address)
+      m_retro->readValue(&score[i], addrs[i]);
 
   unsigned winners = 0;
   switch (id)

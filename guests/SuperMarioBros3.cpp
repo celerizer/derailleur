@@ -3,13 +3,13 @@
 #include <QFile>
 
 /// u8 The current Vs. mode map
-static const size_t SMB3_VS_MAP_ADDR = 0x7F24;
+static const dr_value_t SMB3_VS_MAP = { 0x7F24, DR_VALUE_TYPE_U8 };
 
 /// u8 bool -- 0 if Mario won, 1 if Luigi won. Set once the game has fully faded to black
-static const size_t SMB3_VS_WINNER_ADDR = 0x073E;
+static const dr_value_t SMB3_VS_WINNER = { 0x073E, DR_VALUE_TYPE_U8 };
 
 /// u8 bool -- Set to 1 when the mini-game is finished
-static const size_t SMB3_VS_GAME_OVER_ADDR = 0x007D;
+static const dr_value_t SMB3_VS_GAME_OVER = { 0x007D, DR_VALUE_TYPE_U8 };
 
 /// u8 [4] -- PPU Mario colors. Typically 00 16 36 12
 static const size_t SMB3_VS_MARIO_PPU_ADDR = 0x80003010;
@@ -108,7 +108,7 @@ void SuperMarioBros3::doApplyGameData(const DrGameData &data)
   /* Select the Vs. map for this mini-game (the entry's id); hold it as the match
    * spins up. */
   uint8_t map = static_cast<uint8_t>(data.minigame->minigame_id);
-  m_retro->writeForFrames(SMB3_VS_MAP_ADDR, &map, sizeof(map), 30);
+  m_retro->writeValueForFrames(map, SMB3_VS_MAP, 30);
 
   /* Recolor the two Vs. duelists to match their characters. The participating
    * players fill the Mario and Luigi sprite slots; hold the write for 30 frames so
@@ -155,20 +155,20 @@ void SuperMarioBros3::run()
 
   /* The game-over flag is set once the match ends. Guard with a few frames so a
    * stale flag from the loaded state can't finish us instantly. */
-  uint8_t over = 0;
+  int64_t over = 0;
   if (m_minigameFrames >= 30 &&
-      m_retro->readu8(&over, SMB3_VS_GAME_OVER_ADDR) == DR_OK && over)
+      m_retro->readValue(&over, SMB3_VS_GAME_OVER) == DR_OK && over)
     finishMinigame();
 }
 
 dr_minigame_result_t SuperMarioBros3::minigameResult(unsigned index)
 {
   dr_minigame_result_t result = { 0, 0 };
-  uint8_t winner = 0;
+  int64_t winner = 0;
 
   /* The winner byte is the sprite slot (0 = Mario, 1 = Luigi); map it back to the
    * board player that filled that slot. */
-  if (m_retro->readu8(&winner, SMB3_VS_WINNER_ADDR) == DR_OK &&
+  if (m_retro->readValue(&winner, SMB3_VS_WINNER) == DR_OK &&
       winner < 2 && m_slotToPlayer[winner] == static_cast<int>(index))
     result.coins = 10;
 

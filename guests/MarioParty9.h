@@ -42,7 +42,7 @@ private:
   bool m_controlsApplied = false;
   /// Frames left before the deferred netplay hard resync; 0 = none pending.
   int m_resyncCountdown = 0;
-  uint32_t m_partyPointsStart = 0;
+  int64_t m_partyPointsStart = 0;
 };
 
 #endif

@@ -3,10 +3,10 @@
 #include <QRetro.h>
 
 /// s16 - mini-game id to load
-static const size_t MP8_MINIGAME_TO_LOAD_ADDR = 0x802287CC;
+static const dr_value_t MP8_MINIGAME_TO_LOAD = { 0x802287CC, DR_VALUE_TYPE_S16 };
 
 /// s32 - current scene id
-static const size_t MP8_SCENE_ID_ADDR = 0x802CD220;
+static const dr_value_t MP8_SCENE_ID = { 0x802CD220, DR_VALUE_TYPE_S32 };
 
 /// s16 - minigame variant perhaps? course id for moped
 static const size_t MP8_MINIGAME_VARIANT_ADDR = 0x802CE35E;
@@ -18,16 +18,20 @@ static const int32_t MP8_SCENE_MINIGAME_EXPLAIN = 0x16;
  * stride) and the "real" in-game player structs (0x118 stride, holds coins etc.
  * below). A third region mirrors the difficulty/bot flags at their menu locations
  * (MP8_MENU_*). The setup array holds, per slot:
- *   +0x0  character      u16  MP8_CHARACTER_ADDR
+ *   +0x0  character      u16  MP8_CHARACTER
  *   +0x2  controller port u16  MP8_CONTROL_PORT_ADDR
- *   +0x4  difficulty     u16  MP8_CPU_DIFFICULTY_ADDR
- *   +0x6  team           u16  MP8_TEAM_ADDR
- *   +0x8  is bot         u16  MP8_IS_BOT_ADDR
+ *   +0x4  difficulty     u16  MP8_CPU_DIFFICULTY
+ *   +0x6  team           u16  MP8_TEAM
+ *   +0x8  is bot         u16  MP8_IS_BOT
  */
 
 /// character roster id per in-game slot -- setup array, 0xA (10-byte) stride.
-static const size_t MP8_CHARACTER_ADDR[4] =
-  { 0x802282D0, 0x802282DA, 0x802282E4, 0x802282EE };
+static const dr_value_t MP8_CHARACTER[4] = {
+  { 0x802282D0, DR_VALUE_TYPE_U16 },
+  { 0x802282DA, DR_VALUE_TYPE_U16 },
+  { 0x802282E4, DR_VALUE_TYPE_U16 },
+  { 0x802282EE, DR_VALUE_TYPE_U16 }
+};
 
 /* Extras Zone per-player selection -- 0x6-byte stride, four slots. Used only in
  * the Extras Zone, where players choose a character or a Mii.
@@ -50,25 +54,37 @@ static const size_t MP8_CONTROL_PORT_ADDR[4] =
 
 /// u16 - CPU difficulty per slot -- setup array, 0xA stride (+4 from the
 /// character). This is the difficulty that actually takes effect in-game.
-static const size_t MP8_CPU_DIFFICULTY_ADDR[4] =
-  { 0x802282D4, 0x802282DE, 0x802282E8, 0x802282F2 };
+static const dr_value_t MP8_CPU_DIFFICULTY[4] = {
+  { 0x802282D4, DR_VALUE_TYPE_U16 },
+  { 0x802282DE, DR_VALUE_TYPE_U16 },
+  { 0x802282E8, DR_VALUE_TYPE_U16 },
+  { 0x802282F2, DR_VALUE_TYPE_U16 }
+};
 
 /// u16 - mini-game team per slot (1v3: group = 1, solo = 0) -- setup array, 0xA
 /// stride (+6 from the character).
-static const size_t MP8_TEAM_ADDR[4] =
-  { 0x802282D6, 0x802282E0, 0x802282EA, 0x802282F4 };
+static const dr_value_t MP8_TEAM[4] = {
+  { 0x802282D6, DR_VALUE_TYPE_U16 },
+  { 0x802282E0, DR_VALUE_TYPE_U16 },
+  { 0x802282EA, DR_VALUE_TYPE_U16 },
+  { 0x802282F4, DR_VALUE_TYPE_U16 }
+};
 
 /// u16 - whether this slot is a bot (0 or 1) -- setup array, 0xA stride (+8 from
-/// the character). Setting this also flips a bit in MP8_CPU_FLAGS_ADDR.
-static const size_t MP8_IS_BOT_ADDR[4] =
-  { 0x802282D8, 0x802282E2, 0x802282EC, 0x802282F6 };
+/// the character). Setting this also flips a bit in MP8_CPU_FLAGS.
+static const dr_value_t MP8_IS_BOT[4] = {
+  { 0x802282D8, DR_VALUE_TYPE_U16 },
+  { 0x802282E2, DR_VALUE_TYPE_U16 },
+  { 0x802282EC, DR_VALUE_TYPE_U16 },
+  { 0x802282F6, DR_VALUE_TYPE_U16 }
+};
 
 /* In-game player struct -- 0x118-byte stride, four consecutive slots. P1 begins
  * at 0x802282F8, directly after the 4x0xA setup array above (no gap). Offsets
  * below are from that base; "HOLE" marks bytes we haven't identified. Addresses
  * are P1; add slot*0x118 for slots 2-4.
  *
- *   +0x00  cpu/behavior flags u16    MP8_CPU_FLAGS_ADDR (0x4001 human/0xE001 bot)
+ *   +0x00  cpu/behavior flags u16    MP8_CPU_FLAGS (0x4001 human/0xE001 bot)
  *   +0x02  ...........       HOLE (4 bytes)
  *   +0x06  item slots        u8[3]   MP8_ITEM_ADDR
  *   +0x09  item slots (2)    u8[3]   MP8_ITEM2_ADDR
@@ -82,7 +98,7 @@ static const size_t MP8_IS_BOT_ADDR[4] =
  *   +0x2A  ...........       HOLE (2 bytes)
  *   +0x2C  coin star         u16     MP8_COIN_STAR_ADDR
  *   +0x2E  ...........       HOLE (4 bytes)
- *   +0x32  minigame result   u16     MP8_RESULT_ADDR
+ *   +0x32  minigame result   u16     MP8_RESULT
  *   +0x34  ...........       HOLE (4 bytes)
  *   +0x38  stars             u16     MP8_STARS_ADDR
  *   +0x3A  max stars held    u16     MP8_MAX_STARS_ADDR
@@ -90,9 +106,13 @@ static const size_t MP8_IS_BOT_ADDR[4] =
  */
 
 /// u16 - CPU/behavior flags (0x4001 human -> 0xE001 bot). A bit here tracks the
-/// bot state also set via MP8_IS_BOT_ADDR.
-static const size_t MP8_CPU_FLAGS_ADDR[4] =
-  { 0x802282F8, 0x80228410, 0x80228528, 0x80228640 };
+/// bot state also set via MP8_IS_BOT.
+static const dr_value_t MP8_CPU_FLAGS[4] = {
+  { 0x802282F8, DR_VALUE_TYPE_U16 },
+  { 0x80228410, DR_VALUE_TYPE_U16 },
+  { 0x80228528, DR_VALUE_TYPE_U16 },
+  { 0x80228640, DR_VALUE_TYPE_U16 }
+};
 
 /// u8[3] - the player's three item slots (three contiguous bytes starting here).
 static const size_t MP8_ITEM_ADDR[4] =
@@ -146,12 +166,20 @@ static const size_t MP8_COIN_STAR_ADDR[4] =
   { 0x80228324, 0x8022843C, 0x80228554, 0x8022866C };
 
 /// u16 - mini-game bonus result per player.
-static const size_t MP8_BONUS_RESULT_ADDR[4] =
-  { 0x80228328, 0x80228440, 0x80228558, 0x80228670 };
+static const dr_value_t MP8_BONUS_RESULT[4] = {
+  { 0x80228328, DR_VALUE_TYPE_S16 },
+  { 0x80228440, DR_VALUE_TYPE_S16 },
+  { 0x80228558, DR_VALUE_TYPE_S16 },
+  { 0x80228670, DR_VALUE_TYPE_S16 }
+};
 
 /// u16 - mini-game result per player.
-static const size_t MP8_RESULT_ADDR[4] =
-  { 0x8022832A, 0x80228442, 0x8022855A, 0x80228672 };
+static const dr_value_t MP8_RESULT[4] = {
+  { 0x8022832A, DR_VALUE_TYPE_S16 },
+  { 0x80228442, DR_VALUE_TYPE_S16 },
+  { 0x8022855A, DR_VALUE_TYPE_S16 },
+  { 0x80228672, DR_VALUE_TYPE_S16 }
+};
 
 /// u16 - current stars per player.
 static const size_t MP8_STARS_ADDR[4] =
@@ -167,12 +195,12 @@ static const size_t MP8_CANDIES_USED_ADDR[4] =
 
 /// u16 - CPU difficulty at the pre-game menu location -- 4-byte stride, same
 /// region as MP8_MENU_IS_BOT_ADDR. Noted only; we drive difficulty via the setup
-/// array (MP8_CPU_DIFFICULTY_ADDR).
+/// array (MP8_CPU_DIFFICULTY).
 static const size_t MP8_MENU_DIFFICULTY_ADDR[4] =
   { 0x80740EEA, 0x80740EEE, 0x80740EF2, 0x80740EF6 };
 
 /// u8 - bot flag at the pre-game menu location -- contiguous per-slot, 1-byte
-/// stride. Noted only; the in-game bot state is driven via MP8_IS_BOT_ADDR.
+/// stride. Noted only; the in-game bot state is driven via MP8_IS_BOT.
 static const size_t MP8_MENU_IS_BOT_ADDR[4] =
   { 0x80740EE0, 0x80740EE1, 0x80740EE2, 0x80740EE3 };
 
@@ -418,8 +446,8 @@ void MarioParty8::run()
   if (m_minigameActive)
     m_minigameFrames++;
 
-  int32_t val;
-  if (m_retro->reads32(&val, MP8_SCENE_ID_ADDR) == DR_OK && val != m_lastScene)
+  int64_t val;
+  if (m_retro->readValue(&val, MP8_SCENE_ID) == DR_OK && val != m_lastScene)
   {
     log(DR_LOG_INFO, qPrintable(QString("%1 scene: 0x%2").arg(name()).arg(val, 4, 16, QChar('0'))));
     m_lastScene = val;
@@ -451,10 +479,8 @@ void MarioParty8::run()
   /* In Moped Mayhem, write the character every frame */
   if (m_minigame && m_minigame->minigame_id == 0x44)
   {
-    const int16_t p1 = static_cast<int16_t>(mp8_moped_char_from_dr(m_players[0].character));
-    const int16_t p2 = static_cast<int16_t>(mp8_moped_char_from_dr(m_players[1].character));
-    m_retro->writes16(p1, MP8_CHARACTER_ADDR[0]);
-    m_retro->writes16(p2, MP8_CHARACTER_ADDR[1]);
+    m_retro->writeValue(mp8_moped_char_from_dr(m_players[0].character), MP8_CHARACTER[0]);
+    m_retro->writeValue(mp8_moped_char_from_dr(m_players[1].character), MP8_CHARACTER[1]);
   }
 }
 
@@ -476,8 +502,7 @@ void MarioParty8::doApplyGameData(const DrGameData &data)
   if (auto *c = core())
     c->options()->setOptionValue("dolphin_widescreen", "disabled");
 
-  int16_t id = static_cast<int16_t>(data.minigame->minigame_id);
-  m_retro->writes16(id, MP8_MINIGAME_TO_LOAD_ADDR);
+  m_retro->writeValue(data.minigame->minigame_id, MP8_MINIGAME_TO_LOAD);
 
   /* Anyone MP8 doesn't have takes a free slot rather than doubling up on whoever
    * their stand-in points at. Moped Mayhem writes its own two every frame. */
@@ -486,24 +511,21 @@ void MarioParty8::doApplyGameData(const DrGameData &data)
   for (unsigned i = 0; i < 4; i++)
   {
     const unsigned slot = dr_player_slot(m_players[i], i);
-    m_retro->writeu16(static_cast<uint16_t>(characters[i]), MP8_CHARACTER_ADDR[slot]);
-    m_retro->writeu16(static_cast<uint16_t>(mp8Difficulty(m_players[i].difficulty)),
-      MP8_CPU_DIFFICULTY_ADDR[slot]);
-    m_retro->writeu16(m_players[i].control_type == DR_CONTROL_TYPE_CPU ? 1 : 0,
-      MP8_IS_BOT_ADDR[slot]);
+    m_retro->writeValue(characters[i], MP8_CHARACTER[slot]);
+    m_retro->writeValue(mp8Difficulty(m_players[i].difficulty), MP8_CPU_DIFFICULTY[slot]);
+    m_retro->writeValue(m_players[i].control_type == DR_CONTROL_TYPE_CPU ? 1 : 0, MP8_IS_BOT[slot]);
 
     /* Flip the same bot bits (0x4001 human -> 0xE001 bot) in the flags word,
      * preserving the rest. */
-    uint16_t flags = 0;
-    m_retro->readu16(&flags, MP8_CPU_FLAGS_ADDR[slot]);
+    int64_t flags = 0;
+    m_retro->readValue(&flags, MP8_CPU_FLAGS[slot]);
     if (m_players[i].control_type == DR_CONTROL_TYPE_CPU)
       flags |= 0xA000;
     else
       flags &= ~0xA000;
-    m_retro->writeu16(flags, MP8_CPU_FLAGS_ADDR[slot]);
+    m_retro->writeValue(flags, MP8_CPU_FLAGS[slot]);
 
-    uint16_t team = static_cast<uint16_t>(m_players[i].team_id);
-    m_retro->writeu16(team, MP8_TEAM_ADDR[slot]);
+    m_retro->writeValue(m_players[i].team_id, MP8_TEAM[slot]);
   }
 
   applyControlRemap(data.minigame->quirks, m_players);
@@ -517,14 +539,14 @@ dr_minigame_result_t MarioParty8::minigameResult(unsigned index)
 
   const unsigned slot = dr_player_slot(m_players[index], index);
 
-  int16_t coins = 0;
-  if (m_retro->reads16(&coins, MP8_RESULT_ADDR[slot]) != DR_OK)
+  int64_t coins = 0;
+  if (m_retro->readValue(&coins, MP8_RESULT[slot]) != DR_OK)
     return result;
 
   result.coins = coins;
 
-  int16_t bonus = 0;
-  if (m_retro->reads16(&bonus, MP8_BONUS_RESULT_ADDR[slot]) == DR_OK)
+  int64_t bonus = 0;
+  if (m_retro->readValue(&bonus, MP8_BONUS_RESULT[slot]) == DR_OK)
     result.bonus_coins = bonus;
 
   return result;

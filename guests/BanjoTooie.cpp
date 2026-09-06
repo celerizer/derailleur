@@ -104,23 +104,23 @@ static QImage btOutlinedIcon(const QString &srcPath, int w, int h, const QColor 
 }
 
 // s16 per-player score
-static const size_t BT_SCORE_ADDRS[4] = {
-  0x8012778C,
-  0x8012778E,
-  0x80127790,
-  0x80127792,
+static const dr_value_t BT_SCORE[4] = {
+  { 0x8012778C, DR_VALUE_TYPE_S16 },
+  { 0x8012778E, DR_VALUE_TYPE_S16 },
+  { 0x80127790, DR_VALUE_TYPE_S16 },
+  { 0x80127792, DR_VALUE_TYPE_S16 }
 };
 
 // Two consecutive heap pointers the mini-game allocates while running. We wait
 // for them to become non-null (the game has started), then treat them going
 // null again as the mini-game being over.
-static const size_t BT_HEAP_PTR_ADDRS[2] = {
-  0x80127730,
-  0x80127734,
+static const dr_value_t BT_HEAP_PTR[2] = {
+  { 0x80127730, DR_VALUE_TYPE_POINTER },
+  { 0x80127734, DR_VALUE_TYPE_POINTER }
 };
 
 /// @warning If the state data changes this needs to be updated, it's heap-allocated -mgmt
-static const size_t BT_MINIGAME_ID_ADDR = 0x80191646;
+static const dr_value_t BT_MINIGAME_ID = { 0x80191646, DR_VALUE_TYPE_U16 };
 
 typedef enum
 {
@@ -204,9 +204,9 @@ void BanjoTooie::run()
    * the loading overlay up and the core muted until both are populated, then start
    * the mini-game -- startMinigame() drops the overlay and unmutes. When they clear
    * again, the mini-game is over. */
-  uint32_t ptr[2] = {};
-  bool ok = m_retro->readu32(&ptr[0], BT_HEAP_PTR_ADDRS[0]) == DR_OK
-    && m_retro->readu32(&ptr[1], BT_HEAP_PTR_ADDRS[1]) == DR_OK;
+  int64_t ptr[2] = {};
+  bool ok = m_retro->readValue(&ptr[0], BT_HEAP_PTR[0]) == DR_OK
+    && m_retro->readValue(&ptr[1], BT_HEAP_PTR[1]) == DR_OK;
   if (!ok)
     return;
 
@@ -220,9 +220,9 @@ void BanjoTooie::run()
   }
   else if (!ptr[0] && !ptr[1])
   {
-    int16_t score[4] = {};
+    int64_t score[4] = {};
     for (unsigned i = 0; i < 4; i++)
-      m_retro->reads16(&score[i], BT_SCORE_ADDRS[i]);
+      m_retro->readValue(&score[i], BT_SCORE[i]);
     log(DR_LOG_INFO, qPrintable(QString("BT final scores (by port): %1, %2, %3, %4")
                        .arg(score[0]).arg(score[1]).arg(score[2]).arg(score[3])));
     finishMinigame();
@@ -236,9 +236,9 @@ const dr_mp_minigame_t *BanjoTooie::minigames() const
 
 unsigned BanjoTooie::computeWinners()
 {
-  int16_t score[4] = {};
+  int64_t score[4] = {};
   for (unsigned i = 0; i < 4; i++)
-    m_retro->reads16(&score[i], BT_SCORE_ADDRS[i]);
+    m_retro->readValue(&score[i], BT_SCORE[i]);
 
   /* Colosseum Kickball is scored in reverse: the lowest score wins. */
   const bool lowestWins =
@@ -339,7 +339,7 @@ void BanjoTooie::doApplyGameData(const DrGameData &data)
   loadState(state());
 
   uint16_t id = static_cast<uint16_t>(m_minigame ? m_minigame->minigame_id : 0);
-  m_retro->writeForFrames(BT_MINIGAME_ID_ADDR, &id, sizeof(id), 60);
+  m_retro->writeValueForFrames(id, BT_MINIGAME_ID, 60);
   m_aPressDelay = 60;
   m_stateLoaded = true;
 }

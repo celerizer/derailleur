@@ -314,11 +314,10 @@ typedef enum
   DR_GAME_MARIOPARTY5,
   DR_GAME_MARIOPARTY6,
   DR_GAME_MARIOPARTY7,
+  DR_GAME_MARIOPARTY8,
+  DR_GAME_MARIOPARTY9,
 
   DR_GAME_SONICSHUFFLE,
-
-  /* Appended rather than kept in order: the values go over the wire in netplay. */
-  DR_GAME_MARIOPARTY8,
 
   DR_GAME_SIZE
 } dr_game;
@@ -386,6 +385,10 @@ typedef union
     /// A mini-game that relies on controller rumble. Hint to not choose it
     /// unless all players have rumble-supported controllers.
     unsigned rumble : 1;
+
+    /// A mini-game that only supports one player. Used as a hint when
+    /// choosing DK or Bowser mini-games.
+    unsigned solo : 1;
   } flags;
 } dr_minigame_flags_t;
 
@@ -468,6 +471,30 @@ typedef struct
   size_t address;
   dr_value_type type;
 } dr_value_t;
+
+static inline unsigned dr_value_type_size(dr_value_type type)
+{
+  switch (type)
+  {
+  case DR_VALUE_TYPE_S8:
+  case DR_VALUE_TYPE_U8:
+    return 1;
+  case DR_VALUE_TYPE_S16:
+  case DR_VALUE_TYPE_U16:
+    return 2;
+  case DR_VALUE_TYPE_S32:
+  case DR_VALUE_TYPE_U32:
+  case DR_VALUE_TYPE_FLOAT:
+  case DR_VALUE_TYPE_POINTER:
+    return 4;
+  case DR_VALUE_TYPE_S64:
+  case DR_VALUE_TYPE_U64:
+  case DR_VALUE_TYPE_DOUBLE:
+    return 8;
+  default:
+    return 0;
+  }
+}
 
 typedef struct
 {

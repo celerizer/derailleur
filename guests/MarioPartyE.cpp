@@ -28,20 +28,20 @@ MarioPartyE::MarioPartyE(QObject *parent)
 
 void MarioPartyE::runTimeBombTicks()
 {
-  static const size_t TBT_STATE = 0x02001A57; // u8, on 05 mini is finished
-  [[maybe_unused]] static const size_t TBT_TICK_TYPE = 0x02001A59; // u8, 0=none, 1=up, 2=down
-  [[maybe_unused]] static const size_t TBT_TIME = 0x02001A5A; // u16
-  static const size_t TBT_PLAYER = 0x020100A5; // bool, 0=p1, 1=p2
-  static const size_t TBT_P1_WON = 0x020100A6; // bool
+  static const dr_value_t TBT_STATE = { 0x02001A57, DR_VALUE_TYPE_U8 }; // on 05 mini is finished
+  [[maybe_unused]] static const dr_value_t TBT_TICK_TYPE = { 0x02001A59, DR_VALUE_TYPE_U8 }; // 0=none, 1=up, 2=down
+  [[maybe_unused]] static const dr_value_t TBT_TIME = { 0x02001A5A, DR_VALUE_TYPE_U16 };
+  static const dr_value_t TBT_PLAYER = { 0x020100A5, DR_VALUE_TYPE_U8 }; // 0=p1, 1=p2
+  static const dr_value_t TBT_P1_WON = { 0x020100A6, DR_VALUE_TYPE_U8 };
 
-  uint8_t state = 0;
-  if (m_retro->readu8(&state, TBT_STATE) != DR_OK)
+  int64_t state = 0;
+  if (m_retro->readValue(&state, TBT_STATE) != DR_OK)
     return;
 
   if (state == 0x05)
   {
-    uint8_t p1Won = 0;
-    m_retro->readu8(&p1Won, TBT_P1_WON);
+    int64_t p1Won = 0;
+    m_retro->readValue(&p1Won, TBT_P1_WON);
     m_winners |= p1Won ? (1u << 0) : (1u << 1);
     finishMinigame();
     return;
@@ -49,8 +49,8 @@ void MarioPartyE::runTimeBombTicks()
 
   if (auto *c = core())
   {
-    uint8_t player = 0;
-    m_retro->readu8(&player, TBT_PLAYER);
+    int64_t player = 0;
+    m_retro->readValue(&player, TBT_PLAYER);
     auto &p1 = c->input()->joypads()[0];
     auto &p2 = c->input()->joypads()[1];
     for (unsigned i = 0; i <= RETRO_DEVICE_ID_JOYPAD_R3; i++)

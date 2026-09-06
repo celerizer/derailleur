@@ -2,24 +2,49 @@
 
 #include <QRetro.h>
 
-static const size_t MP9_MINIGAME_TO_LOAD_ADDR = 0x816FF828;
+static const dr_value_t MP9_MINIGAME_TO_LOAD = { 0x816FF828, DR_VALUE_TYPE_S32 };
 
 static const size_t MP9_NUM_PLAYERS_ADDR = 0x81752534;
 
 /// bool - Whether or not this player is a bot
-static const size_t MP9_IS_BOT_ADDR[4] = { 0x81752548, 0x81752570, 0x81752598, 0x817525C0 };
+static const dr_value_t MP9_IS_BOT[4] = {
+  { 0x81752548, DR_VALUE_TYPE_U8 },
+  { 0x81752570, DR_VALUE_TYPE_U8 },
+  { 0x81752598, DR_VALUE_TYPE_U8 },
+  { 0x817525C0, DR_VALUE_TYPE_U8 }
+};
 
 /// s32 - Mini-game team. In a 1v3 the group is 1 and the solo is 0 (matches other MPs).
-static const size_t MP9_TEAM_ADDR[4] = { 0x8175254C, 0x81752574, 0x8175259C, 0x817525C4 };
+static const dr_value_t MP9_TEAM[4] = {
+  { 0x8175254C, DR_VALUE_TYPE_S32 },
+  { 0x81752574, DR_VALUE_TYPE_S32 },
+  { 0x8175259C, DR_VALUE_TYPE_S32 },
+  { 0x817525C4, DR_VALUE_TYPE_S32 }
+};
 
 /// s32
-static const size_t MP9_CPU_DIFFICULTY_ADDR[4] = { 0x81752550, 0x81752578, 0x817525A0, 0x817525C8 };
+static const dr_value_t MP9_CPU_DIFFICULTY[4] = {
+  { 0x81752550, DR_VALUE_TYPE_S32 },
+  { 0x81752578, DR_VALUE_TYPE_S32 },
+  { 0x817525A0, DR_VALUE_TYPE_S32 },
+  { 0x817525C8, DR_VALUE_TYPE_S32 }
+};
 
 /// s32
-static const size_t MP9_CHARACTER_ADDR[4] = { 0x81752554, 0x8175257C, 0x817525A4, 0x817525CC };
+static const dr_value_t MP9_CHARACTER[4] = {
+  { 0x81752554, DR_VALUE_TYPE_S32 },
+  { 0x8175257C, DR_VALUE_TYPE_S32 },
+  { 0x817525A4, DR_VALUE_TYPE_S32 },
+  { 0x817525CC, DR_VALUE_TYPE_S32 }
+};
 
 /// s32 - The results placement after the mini-game. 0=1st, 1=2nd, 2=3rd, 3=4th
-static const size_t MP9_RESULT_PLACEMENT_ADDR[4] = { 0x81752558, 0x81752580, 0x817525A8, 0x817525D0 };
+static const dr_value_t MP9_RESULT_PLACEMENT[4] = {
+  { 0x81752558, DR_VALUE_TYPE_S32 },
+  { 0x81752580, DR_VALUE_TYPE_S32 },
+  { 0x817525A8, DR_VALUE_TYPE_S32 },
+  { 0x817525D0, DR_VALUE_TYPE_S32 }
+};
 
 /// s32 - The number of mini-stars obtained from the mini-game
 static const size_t MP9_RESULT_AWARD_ADDR[4] = { 0x81752560, 0x81752588, 0x817525B0, 0x817525D8 };
@@ -28,11 +53,11 @@ static const size_t MP9_RESULT_AWARD_ADDR[4] = { 0x81752560, 0x81752588, 0x81752
 static const size_t MP9_MINI_STARS_ADDR[4] = { 0x81752568, 0x81752590, 0x817525B8, 0x817525E0 };
 
 /// u32 - total party points; when this increases the mini-game has finished
-static const size_t MP9_PARTY_POINTS_ADDR = 0x81752240;
+static const dr_value_t MP9_PARTY_POINTS = { 0x81752240, DR_VALUE_TYPE_U32 };
 
 /// s32 - -1 until the mini-game actually starts. Controls stay on the pointer
 /// while this reads -1, then switch to the mini-game's own layout.
-static const size_t MP9_MINIGAME_STARTED_ADDR = 0x81752520;
+static const dr_value_t MP9_MINIGAME_STARTED = { 0x81752520, DR_VALUE_TYPE_S32 };
 
 /// u32 - partner index in Bowser Jr. mini-games. Unused for now; noted here in case we ever support those.
 static const size_t MP9_BOWSER_JR_PARTNER_ADDR = 0x8175261C;
@@ -253,8 +278,8 @@ void MarioParty9::run()
    * by the savestate can't swap us immediately. */
   if (!m_controlsApplied && m_minigame && m_minigameFrames >= 60)
   {
-    int32_t started = -1;
-    if (m_retro->reads32(&started, MP9_MINIGAME_STARTED_ADDR) == DR_OK && started != -1)
+    int64_t started = -1;
+    if (m_retro->readValue(&started, MP9_MINIGAME_STARTED) == DR_OK && started != -1)
     {
       applyControlRemap(m_minigame->quirks, m_players);
       m_controlsApplied = true;
@@ -270,8 +295,9 @@ void MarioParty9::run()
 
   if (!m_finishScheduled)
   {
-    uint32_t points = 0;
-    if (m_retro->readu32(&points, MP9_PARTY_POINTS_ADDR) == DR_OK && points > m_partyPointsStart)
+    int64_t points = 0;
+    if (m_retro->readValue(&points, MP9_PARTY_POINTS) == DR_OK &&
+        points > m_partyPointsStart)
     {
       m_finishScheduled = true;
       finishMinigameInFrames(150);
@@ -293,10 +319,9 @@ void MarioParty9::doApplyGameData(const DrGameData &data)
   m_resyncCountdown = 0;
 
   m_partyPointsStart = 0;
-  m_retro->readu32(&m_partyPointsStart, MP9_PARTY_POINTS_ADDR);
+  m_retro->readValue(&m_partyPointsStart, MP9_PARTY_POINTS);
 
-  int32_t id = static_cast<int32_t>(data.minigame->minigame_id);
-  m_retro->writes32(id, MP9_MINIGAME_TO_LOAD_ADDR);
+  m_retro->writeValue(data.minigame->minigame_id, MP9_MINIGAME_TO_LOAD);
 
   /* Anyone MP9 doesn't have takes a free slot rather than doubling up on whoever
    * their stand-in points at. */
@@ -306,21 +331,21 @@ void MarioParty9::doApplyGameData(const DrGameData &data)
   {
     const unsigned slot = dr_player_slot(m_players[i], i);
 
-    m_retro->writes32(static_cast<int32_t>(characters[i]), MP9_CHARACTER_ADDR[slot]);
+    m_retro->writeValue(static_cast<int32_t>(characters[i]), MP9_CHARACTER[slot]);
 
     int32_t diff = mp9Difficulty(m_players[i].difficulty);
-    m_retro->writes32(diff, MP9_CPU_DIFFICULTY_ADDR[slot]);
+    m_retro->writeValue(diff, MP9_CPU_DIFFICULTY[slot]);
 
     uint8_t bot = m_players[i].control_type == DR_CONTROL_TYPE_CPU ? 1 : 0;
-    m_retro->writeu8(bot, MP9_IS_BOT_ADDR[slot]);
+    m_retro->writeValue(bot, MP9_IS_BOT[slot]);
 
     /* Set "1-vs.-Rivals" teams -- use a continuous write because free play overwrites it */
     int32_t team = m_players[i].team_type == DR_TEAM_TYPE_1V3_GROUP ? 1 : 0;
-    m_retro->writeForFrames(MP9_TEAM_ADDR[slot], &team, sizeof(team), 60);
+    m_retro->writeValueForFrames(team, MP9_TEAM[slot], 60);
   }
 
   /* The start button is clicked with the pointer; run() swaps to the mini-game's
-   * own layout once MP9_MINIGAME_STARTED_ADDR leaves -1. */
+   * own layout once MP9_MINIGAME_STARTED leaves -1. */
   m_controlsApplied = false;
   applyControlProfile(DR_WII_CONTROL_POINTER);
 }
@@ -333,8 +358,8 @@ dr_minigame_result_t MarioParty9::minigameResult(unsigned index)
 
   const unsigned slot = dr_player_slot(m_players[index], index);
 
-  int32_t place = -1;
-  if (m_retro->reads32(&place, MP9_RESULT_PLACEMENT_ADDR[slot]) != DR_OK)
+  int64_t place = -1;
+  if (m_retro->readValue(&place, MP9_RESULT_PLACEMENT[slot]) != DR_OK)
     return result;
 
   const dr_minigame_type type = m_minigame ? m_minigame->type : DR_MINIGAME_4P;

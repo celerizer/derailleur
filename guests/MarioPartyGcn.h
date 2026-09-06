@@ -13,20 +13,20 @@ struct MpGcnConfig
   int scene_miniexplain;
   int scene_miniresults;
 
-  size_t scene_addr;
-  size_t minigame_addr;
+  dr_value_t scene;
+  dr_value_t minigame;
 
-  size_t character_addr[4];
-  size_t controller_addr[4];
-  size_t difficulty_addr[4];
-  size_t team_addr[4];
-  size_t bot_addr[4];
+  dr_value_t character[4];
+  dr_value_t controller[4];
+  dr_value_t difficulty[4];
+  dr_value_t team[4];
+  dr_value_t bot[4];
 
   /// The secondary coin amount gained from a mini-game
-  size_t bonus_result_addr[4];
+  dr_value_t bonus_result[4];
 
   /// The primary coin amount gained from a mini-game, usually 0 or 10
-  size_t result_addr[4];
+  dr_value_t result[4];
 
   /// Board coins and stars, copied in from the host so the mini-game shows what
   /// the board has. Read at the width each game declares. 0 address = don't write.

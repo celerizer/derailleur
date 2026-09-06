@@ -21,8 +21,8 @@ void MarioPartyGcn::run()
   if (m_minigameActive)
     m_minigameFrames++;
 
-  int32_t val;
-  if (m_retro->reads32(&val, m_config.scene_addr) == DR_OK && val != m_lastScene)
+  int64_t val;
+  if (m_retro->readValue(&val, m_config.scene) == DR_OK && val != m_lastScene)
   {
     log(DR_LOG_INFO, qPrintable(QString("%1 scene: 0x%2").arg(name()).arg(val, 4, 16, QChar('0'))));
     m_lastScene = val;
@@ -51,8 +51,7 @@ void MarioPartyGcn::doApplyGameData(const DrGameData &data)
   {
     m_slotOf[i] = static_cast<int>(i);
   }
-  int16_t id = static_cast<int16_t>(data.minigame->minigame_id);
-  m_retro->writeForFrames(m_config.minigame_addr, &id, sizeof(id), 120);
+  m_retro->writeValueForFrames(data.minigame->minigame_id, m_config.minigame, 120);
   applyPlayers();
 }
 
@@ -62,10 +61,10 @@ dr_minigame_result_t MarioPartyGcn::minigameResult(unsigned index)
   if (index < 4)
   {
     unsigned slot = static_cast<unsigned>(m_slotOf[index]);
-    uint16_t coins;
-    if (m_retro->readu16(&coins, m_config.result_addr[slot]) == DR_OK)
+    int64_t coins;
+    if (m_retro->readValue(&coins, m_config.result[slot]) == DR_OK)
       result.coins = coins;
-    if (m_retro->readu16(&coins, m_config.bonus_result_addr[slot]) == DR_OK)
+    if (m_retro->readValue(&coins, m_config.bonus_result[slot]) == DR_OK)
       result.bonus_coins = coins;
   }
   return result;
@@ -101,17 +100,17 @@ void MarioPartyGcn::applyPlayers()
     const dr_player_t &p = m_players[i];
     unsigned slot = static_cast<unsigned>(m_slotOf[i]);
 
-    m_retro->writeu16(static_cast<uint16_t>(characters[i]), m_config.character_addr[slot]);
+    m_retro->writeValue(characters[i], m_config.character[slot]);
 
     if (p.control_port != DR_CONTROL_PORT_INVALID && p.control_port < DR_CONTROL_PORT_SIZE)
-      m_retro->writeu16(static_cast<uint16_t>(p.control_port - 1), m_config.controller_addr[slot]);
+      m_retro->writeValue(p.control_port - 1, m_config.controller[slot]);
 
-    uint16_t current = 0;
-    uint16_t is_bot = (p.control_type == DR_CONTROL_TYPE_CPU) ? 1 : 0;
-    if (m_retro->readu16(&current, m_config.bot_addr[slot]) == DR_OK)
-      m_retro->writeu16((current & ~0x01) | is_bot, m_config.bot_addr[slot]);
+    int64_t current = 0;
+    int64_t is_bot = (p.control_type == DR_CONTROL_TYPE_CPU) ? 1 : 0;
+    if (m_retro->readValue(&current, m_config.bot[slot]) == DR_OK)
+      m_retro->writeValue((current & ~0x01) | is_bot, m_config.bot[slot]);
 
-    uint16_t mp_difficulty;
+    int64_t mp_difficulty;
     switch (p.difficulty)
     {
     case DR_DIFFICULTY_VERY_EASY:
@@ -131,9 +130,9 @@ void MarioPartyGcn::applyPlayers()
       mp_difficulty = 0x01;
       break;
     }
-    m_retro->writeu16(mp_difficulty, m_config.difficulty_addr[slot]);
+    m_retro->writeValue(mp_difficulty, m_config.difficulty[slot]);
 
-    m_retro->writeu16(static_cast<uint16_t>(p.team_id), m_config.team_addr[slot]);
+    m_retro->writeValue(p.team_id, m_config.team[slot]);
 
     /* Carry the board totals over, so a mini-game that shows coins/stars shows
      * the same numbers the host does. */

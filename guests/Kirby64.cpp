@@ -8,15 +8,15 @@
 
 // u32: single shared CPU difficulty (0/1/2/3 = easy/normal/hard/very hard);
 // use the highest selected CPU difficulty.
-static const size_t K64_CPU_DIFFICULTY_ADDR = 0x8018ED10;
+static const dr_value_t K64_CPU_DIFFICULTY = { 0x8018ED10, DR_VALUE_TYPE_U32 };
 
 // u32 per-player character
 // 0 = Kirby, 1 = King Dedede, 2 = Waddle Dee, 3 = Ado
-static const size_t K64_CHARACTER_ADDRS[4] = {
-  0x8018ED18,
-  0x8018ED1C,
-  0x8018ED20,
-  0x8018ED24,
+static const dr_value_t K64_CHARACTER[4] = {
+  { 0x8018ED18, DR_VALUE_TYPE_U32 },
+  { 0x8018ED1C, DR_VALUE_TYPE_U32 },
+  { 0x8018ED20, DR_VALUE_TYPE_U32 },
+  { 0x8018ED24, DR_VALUE_TYPE_U32 }
 };
 
 typedef enum
@@ -28,11 +28,11 @@ typedef enum
 } k64_character;
 
 // u32 per-player costume/color
-static const size_t K64_COLOR_ADDRS[4] = {
-  0x8018ED28,
-  0x8018ED2C,
-  0x8018ED30,
-  0x8018ED34,
+static const dr_value_t K64_COLOR[4] = {
+  { 0x8018ED28, DR_VALUE_TYPE_U32 },
+  { 0x8018ED2C, DR_VALUE_TYPE_U32 },
+  { 0x8018ED30, DR_VALUE_TYPE_U32 },
+  { 0x8018ED34, DR_VALUE_TYPE_U32 }
 };
 
 /*
@@ -75,15 +75,15 @@ static const size_t K64_COLOR_ADDRS[4] = {
  */
 
 // u8 per-player: 0 = human, 1 = CPU
-static const size_t K64_IS_BOT_ADDRS[4] = {
-  0x8018ED38,
-  0x8018ED39,
-  0x8018ED3A,
-  0x8018ED3B,
+static const dr_value_t K64_IS_BOT[4] = {
+  { 0x8018ED38, DR_VALUE_TYPE_U8 },
+  { 0x8018ED39, DR_VALUE_TYPE_U8 },
+  { 0x8018ED3A, DR_VALUE_TYPE_U8 },
+  { 0x8018ED3B, DR_VALUE_TYPE_U8 }
 };
 
 // u32 currently selected minigame
-static const size_t K64_MINIGAME_ID_ADDR = 0x800D71BC;
+static const dr_value_t K64_MINIGAME_ID = { 0x800D71BC, DR_VALUE_TYPE_S32 };
 
 typedef enum
 {
@@ -93,11 +93,11 @@ typedef enum
 } k64_minigame_id;
 
 // u32 wins for each player
-static const size_t K64_WINS_ADDRS[4] = {
-  0x800D71C0,
-  0x800D71C4,
-  0x800D71C8,
-  0x800D71CC,
+static const dr_value_t K64_WINS[4] = {
+  { 0x800D71C0, DR_VALUE_TYPE_U32 },
+  { 0x800D71C4, DR_VALUE_TYPE_U32 },
+  { 0x800D71C8, DR_VALUE_TYPE_U32 },
+  { 0x800D71CC, DR_VALUE_TYPE_U32 }
 };
 
 static uint32_t k64Difficulty(dr_difficulty d)
@@ -207,9 +207,9 @@ void Kirby64::run()
    */
   if (m_winnerIndex < 0)
   {
-    uint32_t wins[4] = {};
+    int64_t wins[4] = {};
     for (unsigned i = 0; i < 4; i++)
-      m_retro->readu32(&wins[i], K64_WINS_ADDRS[i]);
+      m_retro->readValue(&wins[i], K64_WINS[i]);
 
     /* Wins are indexed by in-game slot; map back to the board player index. */
     for (unsigned slot = 0; slot < 4; slot++)
@@ -266,7 +266,7 @@ void Kirby64::doApplyGameData(const DrGameData &data)
   loadState(state());
 
   int32_t id = static_cast<int32_t>(m_minigame ? m_minigame->minigame_id : -1);
-  m_retro->writeForFrames(K64_MINIGAME_ID_ADDR, &id, sizeof(id), 120);
+  m_retro->writeValueForFrames(id, K64_MINIGAME_ID, 120);
 
   uint32_t difficulty = 0;
   for (unsigned i = 0; i < 4; i++)
@@ -319,14 +319,14 @@ void Kirby64::doApplyGameData(const DrGameData &data)
       break;
     }
 
-    m_retro->writeForFrames(K64_CHARACTER_ADDRS[slot], &character, sizeof(character), 120);
-    m_retro->writeForFrames(K64_COLOR_ADDRS[slot], &color, sizeof(color), 120);
+    m_retro->writeValueForFrames(character, K64_CHARACTER[slot], 120);
+    m_retro->writeValueForFrames(color, K64_COLOR[slot], 120);
 
     uint8_t bot = (m_players[i].control_type == DR_CONTROL_TYPE_CPU) ? 1 : 0;
-    m_retro->writeForFrames(K64_IS_BOT_ADDRS[slot], &bot, sizeof(bot), 120);
+    m_retro->writeValueForFrames(bot, K64_IS_BOT[slot], 120);
   }
 
-  m_retro->writeForFrames(K64_CPU_DIFFICULTY_ADDR, &difficulty, sizeof(difficulty), 120);
+  m_retro->writeValueForFrames(difficulty, K64_CPU_DIFFICULTY, 120);
 
   /* Press A shortly after loading to advance past the ready prompt. The overlay
    * stays up (we don't startMinigame yet) until the press completes. */

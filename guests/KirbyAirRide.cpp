@@ -1,14 +1,34 @@
 #include "KirbyAirRide.h"
 
 // Addresses
-static const size_t KAR_COLOR_ADDR[4]        = { 0x80535BF9, 0x80535BFA, 0x80535BFB, 0x80535BFC };
+static const dr_value_t KAR_COLOR[4] = {
+  { 0x80535BF9, DR_VALUE_TYPE_U8 },
+  { 0x80535BFA, DR_VALUE_TYPE_U8 },
+  { 0x80535BFB, DR_VALUE_TYPE_U8 },
+  { 0x80535BFC, DR_VALUE_TYPE_U8 }
+};
 static const size_t KAR_MACHINE_ADDR[4]      = { 0x80535C09, 0x80535C0A, 0x80535C0B, 0x80535C0C };
-static const size_t KAR_CPU_LEVEL_ADDR[4]    = { 0x80535C05, 0x80535C06, 0x80535C07, 0x80535C08 };
-static const size_t KAR_CONTROL_TYPE_ADDR[4] = { 0x80535BED, 0x80535BEE, 0x80535BEF, 0x80535BF0 };
-static const size_t KAR_RESULT_ADDR[4]       = { 0x80535CCC, 0x80535CCD, 0x80535CCE, 0x80535CCF };
+static const dr_value_t KAR_CPU_LEVEL[4] = {
+  { 0x80535C05, DR_VALUE_TYPE_U8 },
+  { 0x80535C06, DR_VALUE_TYPE_U8 },
+  { 0x80535C07, DR_VALUE_TYPE_U8 },
+  { 0x80535C08, DR_VALUE_TYPE_U8 }
+};
+static const dr_value_t KAR_CONTROL_TYPE[4] = {
+  { 0x80535BED, DR_VALUE_TYPE_U8 },
+  { 0x80535BEE, DR_VALUE_TYPE_U8 },
+  { 0x80535BEF, DR_VALUE_TYPE_U8 },
+  { 0x80535BF0, DR_VALUE_TYPE_U8 }
+};
+static const dr_value_t KAR_RESULT[4] = {
+  { 0x80535CCC, DR_VALUE_TYPE_U8 },
+  { 0x80535CCD, DR_VALUE_TYPE_U8 },
+  { 0x80535CCE, DR_VALUE_TYPE_U8 },
+  { 0x80535CCF, DR_VALUE_TYPE_U8 }
+};
 
-#define KAR_STADIUM_GAME_ADDR 0x80535F85
-#define KAR_STADIUM_STATE_ADDR 0x80535F87
+static const dr_value_t KAR_STADIUM_GAME = { 0x80535F85, DR_VALUE_TYPE_U8 };
+static const dr_value_t KAR_STADIUM_STATE = { 0x80535F87, DR_VALUE_TYPE_U8 };
 
 // Colors
 #define KAR_COLOR_PINK    0
@@ -110,9 +130,9 @@ void KirbyAirRide::run()
 
   m_minigameFrames++;
 
-  uint8_t state;
+  int64_t state;
   if (m_finishPending || m_minigameFrames < 60 ||
-      m_retro->readu8(&state, KAR_STADIUM_STATE_ADDR) != DR_OK)
+      m_retro->readValue(&state, KAR_STADIUM_STATE) != DR_OK)
     return;
 
   // Air Glider signals "finished" with state 2; every other stadium uses 1.
@@ -158,7 +178,7 @@ void KirbyAirRide::doApplyGameData(const DrGameData &data)
     stadium = static_cast<uint8_t>(minigame->minigame_id);
     break;
   }
-  m_retro->writeForFrames(KAR_STADIUM_GAME_ADDR, &stadium, sizeof(stadium), 120);
+  m_retro->writeValueForFrames(stadium, KAR_STADIUM_GAME, 120);
   applyPlayers();
   startMinigame();
 }
@@ -168,8 +188,8 @@ dr_minigame_result_t KirbyAirRide::minigameResult(unsigned index)
   dr_minigame_result_t result = { 0, 0 };
   if (index < 4)
   {
-    uint8_t place;
-    if (m_retro->readu8(&place, KAR_RESULT_ADDR[index]) == DR_OK && place == 0)
+    int64_t place;
+    if (m_retro->readValue(&place, KAR_RESULT[index]) == DR_OK && place == 0)
       result.coins = 10;
   }
   return result;
@@ -215,10 +235,10 @@ void KirbyAirRide::applyPlayers()
     default:
       color = KAR_COLOR_PINK;
     }
-    m_retro->writeForFrames(KAR_COLOR_ADDR[i], &color, sizeof(color), 120);
+    m_retro->writeValueForFrames(color, KAR_COLOR[i], 120);
 
     uint8_t ctrl = (p.control_type == DR_CONTROL_TYPE_CPU) ? KAR_CONTROL_CPU : KAR_CONTROL_HUMAN;
-    m_retro->writeForFrames(KAR_CONTROL_TYPE_ADDR[i], &ctrl, sizeof(ctrl), 120);
+    m_retro->writeValueForFrames(ctrl, KAR_CONTROL_TYPE[i], 120);
 
     uint8_t level;
     switch (p.difficulty)
@@ -241,6 +261,6 @@ void KirbyAirRide::applyPlayers()
     default:
       level = 4;
     }
-    m_retro->writeForFrames(KAR_CPU_LEVEL_ADDR[i], &level, sizeof(level), 120);
+    m_retro->writeValueForFrames(level, KAR_CPU_LEVEL[i], 120);
   }
 }

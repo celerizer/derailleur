@@ -142,9 +142,9 @@ static MpN64Config buildConfig()
   config.scene_miniexplain[1] = 0x6f;
   config.scene_miniresults = 0x7c;
 
-  config.scene_addr = 0x800C596C;    // u16
-  config.minigame_addr = 0x800ED5DE; // u16
-  config.rng_addr = 0x800c2ff4;
+  config.scene = { 0x800C596C, DR_VALUE_TYPE_S16 };
+  config.minigame = { 0x800ED5DE, DR_VALUE_TYPE_S16 };
+  config.rng = { 0x800c2ff4, DR_VALUE_TYPE_U32 };
 
   const size_t controller_addr[4] = { 0x800f32b3, 0x800f32e3, 0x800f3313, 0x800f3343 };
   const size_t difficulty_addr[4] = { 0x800f32b2, 0x800f32e2, 0x800f3312, 0x800f3342 };
@@ -152,12 +152,16 @@ static MpN64Config buildConfig()
   const size_t bot_addr[4]        = { 0x800f32b7, 0x800f32e7, 0x800f3317, 0x800f3347 };
   const size_t character_addr[4]  = { 0x800f32b4, 0x800f32e4, 0x800f3314, 0x800f3344 };
   const size_t result_addr[4]     = { 0x800f32ba, 0x800f32ea, 0x800f331a, 0x800f334a }; // u16
-  memcpy(config.controller_addr, controller_addr, sizeof(controller_addr));
-  memcpy(config.difficulty_addr, difficulty_addr, sizeof(difficulty_addr));
-  memcpy(config.team_addr, team_addr, sizeof(team_addr));
-  memcpy(config.bot_addr, bot_addr, sizeof(bot_addr));
-  memcpy(config.character_addr, character_addr, sizeof(character_addr));
-  memcpy(config.result_addr, result_addr, sizeof(result_addr));
+
+  for (unsigned i = 0; i < 4; i++)
+  {
+    config.controller[i] = { controller_addr[i], DR_VALUE_TYPE_U8 };
+    config.difficulty[i] = { difficulty_addr[i], DR_VALUE_TYPE_U8 };
+    config.team[i] = { team_addr[i], DR_VALUE_TYPE_U8 };
+    config.bot[i] = { bot_addr[i], DR_VALUE_TYPE_U8 };
+    config.character[i] = { character_addr[i], DR_VALUE_TYPE_U8 };
+    config.result[i] = { result_addr[i], DR_VALUE_TYPE_S16 };
+  }
 
   config.coins[0] = { 0x800f32b8, DR_VALUE_TYPE_U16 };
   config.coins[1] = { 0x800f32e8, DR_VALUE_TYPE_U16 };
