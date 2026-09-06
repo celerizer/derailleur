@@ -74,6 +74,92 @@ static QList<DrCustomRom> dr_custom_roms(void)
   return roms;
 }
 
+/* Boards whose battle roulette shows a picture the host can't redraw get a stock
+ * one instead: the same image is copied over every icon slot the game has.
+ * Dolphin loads them out of <save>/User/Load/Textures/<game id>. */
+struct DrTextureAsset
+{
+  const char *dir;
+  const char *source;
+  const char *const *files;
+};
+
+static const char *const MP6_BATTLE_ICON_FILE[] = {
+  "tex1_128x128_2bb955ca50dd26a6_14.png",
+  "tex1_128x128_2f5e8d147ce5d7f5_14.png",
+  "tex1_128x128_560c420a6be5402f_14.png",
+  "tex1_128x128_722f65211251356e_14.png",
+  "tex1_128x128_d3d80b92eda45477_14.png",
+  "tex1_128x128_f75626c325e81470_14.png",
+
+  nullptr
+};
+
+static const char *const MP7_BATTLE_ICON_FILE[] = {
+  "tex1_128x104_2e3485dc3d6f3eb6_eea1d86ba1bfcd04_9.png",
+  "tex1_128x104_a8173cf855b51046_b52e7bf246f8a16b_9.png",
+  "tex1_128x104_aa12f37d6f11d30a_93ab94e37f5aabf6_9.png",
+  "tex1_128x104_ddbc2b4774edce92_79b97c505c3eb0f3_9.png",
+  "tex1_128x104_e2943b1807a2fede_fc117f3666cb6b2e_9.png",
+
+  nullptr
+};
+
+static const char *const MP8_BATTLE_ICON_FILE[] = {
+  "tex1_224x168_16c7623064db6ff8_14.png",
+
+  nullptr
+};
+
+static const DrTextureAsset DR_TEXTURE_ASSETS[] = {
+  { "GP6E01", ":/assets/minigame-icon/battle-mp6.png", MP6_BATTLE_ICON_FILE },
+  { "GP7E01", ":/assets/minigame-icon/battle-mp7.png", MP7_BATTLE_ICON_FILE },
+  { "RM8E01", ":/assets/minigame-icon/battle-mp8.png", MP8_BATTLE_ICON_FILE },
+
+  { nullptr, nullptr, nullptr }
+};
+
+/* Refreshed every boot so an updated asset lands without anyone clearing the
+ * folder by hand. A resource copies out read-only, so the mode is reset or the
+ * next boot cannot overwrite it. */
+static void dr_install_textures(DrLogger *logger)
+{
+  for (const DrTextureAsset *asset = DR_TEXTURE_ASSETS; asset->dir; asset++)
+  {
+    const QString dir = dr_save_directory() + "/User/Load/Textures/" + asset->dir;
+    unsigned copied = 0;
+
+    if (!asset->files[0])
+      continue;
+
+    if (!QDir().mkpath(dir))
+    {
+      if (logger)
+        logger->message(DR_LOG_WARN, QString("textures: cannot create %1").arg(dir));
+      continue;
+    }
+
+    for (const char *const *file = asset->files; *file; file++)
+    {
+      const QString dest = dir + "/" + *file;
+
+      QFile::remove(dest);
+      if (QFile::copy(asset->source, dest))
+      {
+        QFile::setPermissions(dest,
+          QFile::ReadOwner | QFile::WriteOwner | QFile::ReadGroup | QFile::ReadOther);
+        copied++;
+      }
+      else if (logger)
+        logger->message(DR_LOG_WARN, QString("textures: failed to write %1").arg(dest));
+    }
+
+    if (logger)
+      logger->message(DR_LOG_INFO,
+        QString("textures: %1 file(s) into %2").arg(copied).arg(asset->dir));
+  }
+}
+
 static QString dr_custom_rom_path(int mp, const QString &name)
 {
   for (const DrCustomRom &rom : dr_custom_roms())
@@ -225,6 +311,8 @@ MainWindow::MainWindow(QWidget *parent)
 #endif
     downloader.runBlocking(s, dr_save_directory(), dr_state_directory());
   }
+
+  dr_install_textures(m_Logger);
 
   /* "Start Game" tab: the host picker. Made the default view once revealed; the
    * main window stays black until a game is started. The button handlers only
@@ -441,6 +529,9 @@ MainWindow::MainWindow(QWidget *parent)
     m_Guests->applyFilter(payload);
     m_Filter->setFromPayload(payload);
   });
+
+  /* Now that filterChanged is wired, put back the list chosen last session. */
+  m_Filter->restoreLastList();
 
   m_Stack = new QStackedWidget(this);
 
@@ -914,6 +1005,18 @@ void MainWindow::launchMinigame(
 {
   if (!m_Guests->activateGuest(guest))
     return;
+
+  /* Back-to-back launches from the debug and challenge tabs can arrive while a
+   * mini-game is still running, on this guest or another. Drop them all first --
+   * a guest left marked active never starts its next one. */
+  for (DrGuest *g : m_Guests->guests())
+    if (g->minigameActive())
+    {
+      if (m_Logger)
+        m_Logger->message(DR_LOG_INFO,
+          QString("cancelling running mini-game on %1").arg(g->name()));
+      g->cancelMinigame();
+    }
 
 #if SHOW_OVERLAY
   if (DrOverlay *ov = overlay())
