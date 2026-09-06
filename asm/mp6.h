@@ -73,10 +73,15 @@ static const unsigned char MP6_CAVE[] = {
  * address and frame size, so a type whose idTable row is unstamped drops
  * back into the stock function untouched. Forces GWMgUnlockGet to return
  * TRUE so real titles show instead of the hidden-name placeholder, without
- * modifying the save. Only the four list sites need the cave. Redirects
- * MgCallCallMg's handoff from instdll to the results overlay so the
- * minigame itself is never run; the instruction-data preload that instdll
- * would have consumed is deliberately left alone for now.
+ * modifying the save. Only the four list sites need the cave. Forces the
+ * Battle Mini-Game selector's icon lookup to the panel index instead of
+ * searching battleMgDataTbl for a message id the cave has already
+ * overwritten, and points the three battleMgDataTbl rows that search would
+ * have found at title_block so the panel captions are this build's titles
+ * rather than the shipped Mini-Game names. Redirects MgCallCallMg's handoff
+ * from instdll to the results overlay so the minigame itself is never run;
+ * the instruction-data preload that instdll would have consumed is
+ * deliberately left alone for now.
  */
 static const unsigned int MP6_HOOK_BOARD[][3] = {
     { 0x801F1E50, 0x4804B930, 4 },
