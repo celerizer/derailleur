@@ -48,6 +48,12 @@ struct DrGcnHostConfig
   /// Terminated by a row with a null key. nullptr = leave the core alone.
   const dr_core_option_t *options;
 
+  /// This board builds separate mic and non-mic roulette lists and says which one
+  /// it is filling through dr_host_state_t::mic, so candidates are rolled to match
+  /// (MP6 and MP7). Boards without that split take mic mini-games like any other
+  /// and flag them on the roulette instead.
+  bool mic_lists;
+
   /// The battle roulette picks from pictures, so they are redrawn as the names of
   /// the candidates on offer. Dolphin loads the replacements out of `dir` under
   /// the save directory. A null `dir` means this game doesn't do that.
@@ -186,6 +192,10 @@ private:
   /// Cache `type`'s five candidates and stamp their names into the title block.
   void stampTitles(dr_minigame_type type);
 
+  /// Which candidate set this board wants, from the list the cave says it is
+  /// building. Always DR_MIC_ANY unless the board splits its lists.
+  dr_mic_mode micMode(void);
+
   /// Resolve the roulette's chosen id to a cached candidate and launch it.
   void startMinigame(void);
 
@@ -210,6 +220,7 @@ protected:
 
   /// The type the roulette named for the mini-game being played, kept until the
   /// next roulette so writeResults can still tell what was launched.
+  dr_mic_mode m_MicMode = DR_MIC_ANY; // list the roulette asked for
   dr_minigame_type m_MinigameType = DR_MINIGAME_INVALID;
 
   /// Reroll the shared mini-game pool (kept lockstepped across netplay peers).

@@ -12,6 +12,9 @@ public:
   const char *name() const override { return "Mario Party 6"; }
   dr_guest id() const override { return DR_GUEST_MARIOPARTY6; }
 
+  /// Settles the mic option and rolls the time of day before the mini-game starts.
+  void doApplyGameData(const DrGameData &data) override;
+
 protected:
   void run() override;
 

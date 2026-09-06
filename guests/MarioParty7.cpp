@@ -89,11 +89,11 @@ static const dr_mp_minigame_t MP7_MINIGAMES[] = {
   { "Kart Wheeled", DR_MINIGAME_4P, 0x0D, 0x14, DR_NO_QUIRKS, DR_NO_FLAGS },
 
   /* 4-Player Mic */
-  { "Balloon Busters", DR_MINIGAME_INVALID, 0x0E, 0x15, DR_NO_QUIRKS, DR_FLAG_MIC },
-  { "Clock Watchers", DR_MINIGAME_INVALID, 0x0F, 0x16, DR_NO_QUIRKS, DR_FLAG_MIC },
-  { "Dart Attack", DR_MINIGAME_INVALID, 0x10, 0x17, DR_NO_QUIRKS, DR_FLAG_MIC },
-  { "Oil Crisis", DR_MINIGAME_INVALID, 0x12, 0x18, DR_NO_QUIRKS, DR_FLAG_MIC },
-  { "Mathemortician", DR_MINIGAME_INVALID, 0x57, 0x5D, DR_NO_QUIRKS, DR_FLAG_MIC },
+  { "Balloon Busters", DR_MINIGAME_4P, 0x0E, 0x15, DR_NO_QUIRKS, DR_FLAG_MIC },
+  { "Clock Watchers", DR_MINIGAME_4P, 0x0F, 0x16, DR_NO_QUIRKS, DR_FLAG_MIC },
+  { "Dart Attack", DR_MINIGAME_4P, 0x10, 0x17, DR_NO_QUIRKS, DR_FLAG_MIC },
+  { "Oil Crisis", DR_MINIGAME_4P, 0x12, 0x18, DR_NO_QUIRKS, DR_FLAG_MIC },
+  { "Mathemortician", DR_MINIGAME_4P, 0x57, 0x5D, DR_NO_QUIRKS, DR_FLAG_MIC },
 
   /* 1-vs.-3 */
   { "La Bomba", DR_MINIGAME_1V3, 0x14, 0x1A, DR_NO_QUIRKS, DR_NO_FLAGS },
@@ -107,10 +107,10 @@ static const dr_mp_minigame_t MP7_MINIGAMES[] = {
   { "Pogo-a-go-go", DR_MINIGAME_1V3, 0x20, 0x26, DR_NO_QUIRKS, DR_NO_FLAGS },
 
   /* 1-vs.-3 Mic */
-  { "Wheel of Woe", DR_MINIGAME_INVALID, 0x1C, 0x22, DR_NO_QUIRKS, DR_FLAG_MIC },
-  { "Boxing Day", DR_MINIGAME_INVALID, 0x1D, 0x23, DR_NO_QUIRKS, DR_FLAG_MIC },
-  { "Be My Chum!", DR_MINIGAME_INVALID, 0x1E, 0x24, DR_NO_QUIRKS, DR_FLAG_MIC },
-  { "StratosFEAR!", DR_MINIGAME_INVALID, 0x1F, 0x25, DR_NO_QUIRKS, DR_FLAG_MIC },
+  { "Wheel of Woe", DR_MINIGAME_1V3, 0x1C, 0x22, DR_NO_QUIRKS, DR_FLAG_MIC },
+  { "Boxing Day", DR_MINIGAME_1V3, 0x1D, 0x23, DR_NO_QUIRKS, DR_FLAG_MIC },
+  { "Be My Chum!", DR_MINIGAME_1V3, 0x1E, 0x24, DR_NO_QUIRKS, DR_FLAG_MIC },
+  { "StratosFEAR!", DR_MINIGAME_1V3, 0x1F, 0x25, DR_NO_QUIRKS, DR_FLAG_MIC },
 
   /* 2-vs.-2 */
   { "Buzzstormer", DR_MINIGAME_2V2, 0x21, 0x27, DR_NO_QUIRKS, DR_NO_FLAGS },
@@ -148,19 +148,19 @@ static const dr_mp_minigame_t MP7_MINIGAMES[] = {
   { "Camp Ukiki", DR_MINIGAME_DUEL, 0x3D, 0x43, DR_NO_QUIRKS, DR_NO_FLAGS },
 
   /* DK minigames (single-player) */
-  { "Jump, Man", DR_MINIGAME_DK, 0x47, 0x4D, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Vine Country", DR_MINIGAME_DK, 0x48, 0x4E, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "A Bridge Too Short", DR_MINIGAME_DK, 0x49, 0x4F, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Jump, Man", DR_MINIGAME_DK, 0x47, 0x4D, DR_NO_QUIRKS, DR_FLAG_SOLO },
+  { "Vine Country", DR_MINIGAME_DK, 0x48, 0x4E, DR_NO_QUIRKS, DR_FLAG_SOLO },
+  { "A Bridge Too Short", DR_MINIGAME_DK, 0x49, 0x4F, DR_NO_QUIRKS, DR_FLAG_SOLO },
 
   /* Bowser minigames (single-player) */
-  { "Tunnel of Lava!", DR_MINIGAME_BOWSER, 0x41, 0x47, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Treasure Dome!", DR_MINIGAME_BOWSER, 0x42, 0x48, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Slot-O-Whirl!", DR_MINIGAME_BOWSER, 0x43, 0x49, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Tunnel of Lava!", DR_MINIGAME_BOWSER, 0x41, 0x47, DR_NO_QUIRKS, DR_FLAG_SOLO },
+  { "Treasure Dome!", DR_MINIGAME_BOWSER, 0x42, 0x48, DR_NO_QUIRKS, DR_FLAG_SOLO },
+  { "Slot-O-Whirl!", DR_MINIGAME_BOWSER, 0x43, 0x49, DR_NO_QUIRKS, DR_FLAG_SOLO },
 
   /* DK minigames (multiplayer) */
-  { "Peel Out", DR_MINIGAME_SPECIAL, 0x44, 0x4A, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Bananas Faster", DR_MINIGAME_SPECIAL, 0x45, 0x4B, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Stump Change", DR_MINIGAME_SPECIAL, 0x46, 0x4C, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Peel Out", DR_MINIGAME_DK, 0x44, 0x4A, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Bananas Faster", DR_MINIGAME_DK, 0x45, 0x4B, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Stump Change", DR_MINIGAME_DK, 0x46, 0x4C, DR_NO_QUIRKS, DR_NO_FLAGS },
 
   /* Bowser minigames (multiplayer) */
   { "Funstacle Course!", DR_MINIGAME_BOWSER, 0x3E, 0x44, DR_NO_QUIRKS, DR_NO_FLAGS },
@@ -213,6 +213,19 @@ static MpGcnConfig buildConfig()
   config.minigames = MP7_MINIGAMES;
 
   return config;
+}
+
+/* Whether the game listens to the microphone: 0 enabled, 1 disabled, 2 use the
+ * controller instead. Held at 2 so a mic mini-game is playable without one. */
+static const dr_value_t MP7_MIC_OPTION = { 0x802F2630, DR_VALUE_TYPE_S32 };
+
+#define MP7_MIC_CONTROLLER 2
+
+void MarioParty7::doApplyGameData(const DrGameData &data)
+{
+  MarioPartyGcn::doApplyGameData(data);
+
+  m_retro->writeValue(MP7_MIC_CONTROLLER, MP7_MIC_OPTION);
 }
 
 MarioParty7::MarioParty7(QRetro *sharedCore, QObject *parent)

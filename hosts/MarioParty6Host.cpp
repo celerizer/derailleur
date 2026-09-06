@@ -247,6 +247,10 @@ static DrGcnHostConfig makeConfig(const std::string &game)
 
   config.host_state_addr = MP6_HOST_STATE;
 
+  /* Both roulette list builders are diverted into the cave, which says which
+   * one ran; candidates follow it so a mic roulette offers only mic games. */
+  config.mic_lists = true;
+
   /* save_files: MP6's memory-card file name still needs filling in */
 
   return config;

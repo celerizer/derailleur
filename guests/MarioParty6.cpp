@@ -150,11 +150,11 @@ static const dr_mp_minigame_t MP6_MINIGAMES[] = {
   { "Something's Amist", DR_MINIGAME_DUEL, 0x3E, 0x44, DR_NO_QUIRKS, DR_NO_FLAGS },
   
   // Mic minigames
-  { "Verbal Assault", DR_MINIGAME_SPECIAL, 0x40, 0x46, DR_NO_QUIRKS, DR_FLAG_MIC },
-  { "Shoot Yer Mouth Off", DR_MINIGAME_SPECIAL, 0x41, 0x4A, DR_NO_QUIRKS, DR_FLAG_MIC },
-  { "Talkie Walkie", DR_MINIGAME_SPECIAL, 0x42, 0x4B, DR_NO_QUIRKS, DR_FLAG_MIC },
-  { "Word Herd", DR_MINIGAME_SPECIAL, 0x44, 0x47, DR_NO_QUIRKS, DR_FLAG_MIC },
-  { "Fruit Talktail", DR_MINIGAME_SPECIAL, 0x45, 0x48, DR_NO_QUIRKS, DR_FLAG_MIC },
+  { "Verbal Assault", DR_MINIGAME_1V3, 0x40, 0x46, DR_NO_QUIRKS, DR_FLAG_MIC },
+  { "Shoot Yer Mouth Off", DR_MINIGAME_1V3, 0x41, 0x4A, DR_NO_QUIRKS, DR_FLAG_MIC },
+  { "Talkie Walkie", DR_MINIGAME_1V3, 0x42, 0x4B, DR_NO_QUIRKS, DR_FLAG_MIC },
+  { "Word Herd", DR_MINIGAME_1V3, 0x44, 0x47, DR_NO_QUIRKS, DR_FLAG_MIC },
+  { "Fruit Talktail", DR_MINIGAME_1V3, 0x45, 0x48, DR_NO_QUIRKS, DR_FLAG_MIC },
   
   /* Bowser */
   { "Pit Boss", DR_MINIGAME_BOWSER, 0x46, 0x4C, DR_NO_QUIRKS, DR_NO_FLAGS },

@@ -208,6 +208,21 @@ void MarioPartyGcnHost::stampBattleIcons(void)
  * slots after the title block's base. */
 static const unsigned MPGC_TITLE_SLOTS = 4;
 
+/* MP6 and MP7 divert both roulette list builders into one cave routine, which
+ * stamps which of the two ran. Serve that list and nothing else, so a mic
+ * roulette offers only mic mini-games and the normal one never does. */
+dr_mic_mode MarioPartyGcnHost::micMode(void)
+{
+  int8_t mic = 0;
+
+  if (!m_config.mic_lists || !m_config.host_state_addr)
+    return DR_MIC_ANY;
+
+  reads8(&mic, m_config.host_state_addr + offsetof(dr_host_state_t, mic));
+
+  return mic ? DR_MIC_ONLY : DR_MIC_OFF;
+}
+
 void MarioPartyGcnHost::stampTitles(dr_minigame_type type)
 {
   if (!m_MinigameSource)
@@ -215,7 +230,7 @@ void MarioPartyGcnHost::stampTitles(dr_minigame_type type)
 
   /* Cache the chosen type's five so startMinigame() can resolve the choice. This
    * only reads the already-rolled pool, so it stays deterministic across peers. */
-  m_Candidates = m_MinigameSource->minigameCandidates(type);
+  m_Candidates = m_MinigameSource->minigameCandidates(type, m_MicMode);
 
   /* Stamp the candidate names into the title block (4 slots x 32 bytes) -- the
    * roulette only ever shows four, which is what startMinigame's id mask reads
@@ -234,7 +249,16 @@ void MarioPartyGcnHost::stampTitles(dr_minigame_type type)
 
     writeu8(0x0B, addr + j++);
 
-    if (m_Candidates[slot].minigame && m_Candidates[slot].minigame->flags.flags.lucky)
+    /* A board that doesn't split its lists can land on a mic mini-game, so say so
+     * -- the player needs the microphone plugged in. Boards that do split have
+     * every entry the same either way, so there is nothing to single out. */
+    if (m_MicMode == DR_MIC_ANY && m_Candidates[slot].minigame &&
+        m_Candidates[slot].minigame->flags.flags.mic)
+    {
+      writeu8(0x1e, addr + j++);
+      writeu8(MPGC_TEXT_COLOR_MAGENTA, addr + j++);
+    }
+    else if (m_Candidates[slot].minigame && m_Candidates[slot].minigame->flags.flags.lucky)
     {
       writeu8(0x1e, addr + j++);
       writeu8(MPGC_TEXT_COLOR_YELLOW, addr + j++);
@@ -350,9 +374,15 @@ void MarioPartyGcnHost::run(void)
     {
       m_MinigameType = m_config.minigame_type_to_dr[minigame_type];
 
+      /* Latched with the type: the cave stamps both as the list is built, and the
+       * roulette re-stamps from here on without asking again. */
+      m_MicMode = micMode();
+
       log(DR_LOG_INFO,
-        qPrintable(QString("roulette type %1 (%2)")
-          .arg(minigame_type).arg(dr_minigame_type_name(m_MinigameType))));
+        qPrintable(QString("roulette type %1 (%2)%3")
+          .arg(minigame_type).arg(dr_minigame_type_name(m_MinigameType))
+          .arg(m_MicMode == DR_MIC_ONLY ? " mic"
+             : m_MicMode == DR_MIC_OFF  ? " no-mic" : "")));
 
       /* Stamp the detected type's candidates so the roulette shows the right names. */
       stampTitles(m_MinigameType);

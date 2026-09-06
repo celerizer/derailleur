@@ -704,10 +704,13 @@ void MarioPartyN64Host::stampTitleColors(
     const dr_mp_minigame_t *mg = (i < 5) ? candidates[i].minigame : nullptr;
     uint8_t color = MP64_TEXT_WHITE;
 
-    if (mg && mg->flags.flags.lucky)
+    if (mg && mg->flags.flags.mic)
+      color = MP64_TEXT_MAGENTA;
+    else if (mg && mg->flags.flags.lucky)
       color = MP64_TEXT_YELLOW;
     else if (mg && mg->flags.flags.unlucky)
       color = MP64_TEXT_RED;
+
     writeu8(color, m_config.values.title_color.address + (size_t)row * 8 + i);
   }
 }
