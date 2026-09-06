@@ -22,8 +22,17 @@ typedef struct
   /// lifecycle has completed.
   int8_t minigame_type;
 
-  /// Reserved for future use and alignment
-  int8_t reserved[3];
+  /// Game-specific. MP4 stamps the roulette position the hand landed on here,
+  /// 1..N; every other game leaves it alone.
+  int8_t reserved;
+
+  /// Nonzero while the list being built is the single-player DK/Bowser set.
+  /// Mario Party 7 only.
+  int8_t single_player;
+
+  /// Nonzero while the list being built is the mic set.
+  /// Mario Party 6 and 7 only.
+  int8_t mic;
 } dr_host_state_t;
 
 Q_DECLARE_METATYPE(DrMinigameCandidate)
@@ -46,7 +55,8 @@ public:
 
   /// The five cached candidates for `type`. Fills the cache on the first-ever
   /// query. Returns a zeroed array for an out-of-range type.
-  virtual const std::array<DrMinigameCandidate, 5> &minigameCandidates(dr_minigame_type type) = 0;
+  virtual const std::array<DrMinigameCandidate, 5> &minigameCandidates(
+    dr_minigame_type type, dr_mic_mode mic = DR_MIC_ANY) = 0;
 
   /// Re-roll the five cached candidates for every type.
   virtual void rerollMinigames(void) = 0;

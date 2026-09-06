@@ -23,10 +23,12 @@ public:
   /// DrMinigameSource: the cached candidates for a type, and a full reroll. The
   /// cache is empty until the first query (see rerollMinigames), which keeps
   /// netplay peers rolling in lockstep. See DrMinigameSource for the contract.
-  const std::array<DrMinigameCandidate, 5> &minigameCandidates(dr_minigame_type type) override;
+  const std::array<DrMinigameCandidate, 5> &minigameCandidates(
+    dr_minigame_type type, dr_mic_mode mic = DR_MIC_ANY) override;
   void rerollMinigames(void) override;
 
-  DrGuest *pickMinigame(dr_minigame_type type, const dr_mp_minigame_t *&outMinigame);
+  DrGuest *pickMinigame(
+    dr_minigame_type type, dr_mic_mode mic, const dr_mp_minigame_t *&outMinigame);
   bool activateGuest(DrGuest *guest);
   void logSummary();
 
@@ -56,9 +58,14 @@ private:
   DrGuest *m_activeGuest = nullptr;
   QSet<quint32> m_disabled; // disabled mini-game keys: (guestIndex << 16) | ordinal
 
-  /* Rolled candidate cache, indexed by dr_minigame_type. Empty (m_rolled false)
-   * until the first query or reroll. */
-  std::array<std::array<DrMinigameCandidate, 5>, DR_MINIGAME_SIZE> m_candidates = {};
+  /* Rolled candidate cache, indexed by dr_minigame_type then dr_mic_mode. Every
+   * mode is rolled up front so a board that only learns which list it wants once
+   * the roulette opens can take its set without drawing from the shared PRNG
+   * then -- the roulette re-stamps every couple of seconds, and a draw there
+   * would reroll under the player and drift netplay peers apart. Empty
+   * (m_rolled false) until the first query or reroll. */
+  std::array<std::array<std::array<DrMinigameCandidate, 5>, DR_MIC_SIZE>, DR_MINIGAME_SIZE>
+    m_candidates = {};
   bool m_rolled = false;
 };
 

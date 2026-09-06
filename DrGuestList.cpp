@@ -29,7 +29,8 @@ void DrGuestList::add(DrGuest *guest)
   });
 }
 
-DrGuest *DrGuestList::pickMinigame(dr_minigame_type type, const dr_mp_minigame_t *&outMinigame)
+DrGuest *DrGuestList::pickMinigame(
+  dr_minigame_type type, dr_mic_mode mic, const dr_mp_minigame_t *&outMinigame)
 {
   struct EligibleGroup
   {
@@ -51,7 +52,9 @@ DrGuest *DrGuestList::pickMinigame(dr_minigame_type type, const dr_mp_minigame_t
       {
         const quint32 key = (static_cast<quint32>(i) << 16) | ord++;
         if (mg->type == type && mg->minigame_id != 0xFF && !m_disabled.contains(key)
-            && !(netplay && mg->flags.flags.no_netplay))
+            && !(netplay && mg->flags.flags.no_netplay)
+            && !(mic == DR_MIC_OFF && mg->flags.flags.mic)
+            && !(mic == DR_MIC_ONLY && !mg->flags.flags.mic))
           minigames.append(mg);
       }
       if (!minigames.isEmpty())
@@ -69,38 +72,58 @@ DrGuest *DrGuestList::pickMinigame(dr_minigame_type type, const dr_mp_minigame_t
   return picked.guest;
 }
 
+/// Label for the log line; the plain set carries no suffix.
+static const char *dr_mic_mode_suffix(dr_mic_mode mic)
+{
+  switch (mic)
+  {
+  case DR_MIC_OFF:
+    return " (no mic)";
+  case DR_MIC_ONLY:
+    return " (mic only)";
+  default:
+    return "";
+  }
+}
+
 void DrGuestList::rerollMinigames(void)
 {
   for (unsigned t = 1; t < DR_MINIGAME_SIZE; t++)
   {
-    QStringList entries;
-
-    for (DrMinigameCandidate &c : m_candidates[t])
+    for (unsigned m = 0; m < DR_MIC_SIZE; m++)
     {
-      const dr_mp_minigame_t *mg = nullptr;
-      c.guest = pickMinigame((dr_minigame_type)t, mg);
-      c.minigame = mg;
+      const dr_mic_mode mic = (dr_mic_mode)m;
+      QStringList entries;
 
-      if (c.guest && c.minigame)
+      for (DrMinigameCandidate &c : m_candidates[t][m])
       {
-        entries.append(QString("%1 -> %2 (0x%3)")
-                       .arg(c.guest->name())
-                       .arg(c.minigame->name)
-                       .arg(c.minigame->minigame_id, 2, 16, QChar('0')));
-      }
-    }
+        const dr_mp_minigame_t *mg = nullptr;
+        c.guest = pickMinigame((dr_minigame_type)t, mic, mg);
+        c.minigame = mg;
 
-    if (!entries.isEmpty())
-    {
-      log(DR_LOG_INFO, qPrintable(QString("%1 mini-games: %2")
-                           .arg(dr_minigame_type_name((dr_minigame_type)t))
-                           .arg(entries.join(", "))));
+        if (c.guest && c.minigame)
+        {
+          entries.append(QString("%1 -> %2 (0x%3)")
+                         .arg(c.guest->name())
+                         .arg(c.minigame->name)
+                         .arg(c.minigame->minigame_id, 2, 16, QChar('0')));
+        }
+      }
+
+      if (!entries.isEmpty())
+      {
+        log(DR_LOG_INFO, qPrintable(QString("%1 mini-games%2: %3")
+                             .arg(dr_minigame_type_name((dr_minigame_type)t))
+                             .arg(dr_mic_mode_suffix(mic))
+                             .arg(entries.join(", "))));
+      }
     }
   }
   m_rolled = true;
 }
 
-const std::array<DrMinigameCandidate, 5> &DrGuestList::minigameCandidates(dr_minigame_type type)
+const std::array<DrMinigameCandidate, 5> &DrGuestList::minigameCandidates(
+  dr_minigame_type type, dr_mic_mode mic)
 {
   /* The first query rolls the whole cache; do it here so the roll lands on the
    * host's lockstepped frame and every netplay peer stays in sync. */
@@ -108,9 +131,9 @@ const std::array<DrMinigameCandidate, 5> &DrGuestList::minigameCandidates(dr_min
     rerollMinigames();
 
   static const std::array<DrMinigameCandidate, 5> empty = {};
-  if (type <= DR_MINIGAME_INVALID || type >= DR_MINIGAME_SIZE)
+  if (type <= DR_MINIGAME_INVALID || type >= DR_MINIGAME_SIZE || mic >= DR_MIC_SIZE)
     return empty;
-  return m_candidates[type];
+  return m_candidates[type][mic];
 }
 
 void DrGuestList::applyFilter(const QByteArray &payload)

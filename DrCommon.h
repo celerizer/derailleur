@@ -398,6 +398,8 @@ typedef union
 #define DR_FLAG_BITS_NO_BOTS 0x08u
 #define DR_FLAG_BITS_NO_DIFFICULTY 0x10u
 #define DR_FLAG_BITS_MIC 0x20u
+#define DR_FLAG_BITS_RUMBLE 0x40u
+#define DR_FLAG_BITS_SOLO 0x80u
 
 #define DR_NO_FLAGS { 0u }
 #define DR_FLAG_LUCKY { DR_FLAG_BITS_LUCKY }
@@ -406,6 +408,8 @@ typedef union
 #define DR_FLAG_NO_BOTS { DR_FLAG_BITS_NO_BOTS }
 #define DR_FLAG_NO_DIFFICULTY { DR_FLAG_BITS_NO_DIFFICULTY }
 #define DR_FLAG_MIC { DR_FLAG_BITS_MIC }
+#define DR_FLAG_RUMBLE { DR_FLAG_BITS_RUMBLE }
+#define DR_FLAG_SOLO { DR_FLAG_BITS_SOLO }
 
 typedef enum
 {
@@ -636,6 +640,19 @@ typedef enum
 
   DR_MINIGAME_SIZE
 } dr_minigame_type;
+
+/// What a host wants done about mic mini-games when candidates are rolled. MP6 and
+/// MP7 build separate mic and non-mic roulette lists and say which through
+/// dr_host_state_t::mic, so they ask for one or the other; every other board has
+/// no such split and takes whatever comes.
+typedef enum
+{
+  DR_MIC_ANY = 0, /* mic mini-games are eligible alongside the rest */
+  DR_MIC_OFF,     /* never roll a mic mini-game */
+  DR_MIC_ONLY,    /* roll nothing but mic mini-games */
+
+  DR_MIC_SIZE
+} dr_mic_mode;
 
 typedef struct
 {
