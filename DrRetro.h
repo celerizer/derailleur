@@ -116,6 +116,8 @@ public:
   void log(unsigned level, const char *message);
   void writeForFrames(
     size_t addr, const void *value, unsigned bytes, unsigned frames, dr_endianness endianness = DR_ENDIANNESS_INVALID);
+  void writeValueForFrames(int64_t val, const dr_value_t &value, unsigned frames,
+    dr_endianness endianness = DR_ENDIANNESS_INVALID);
   void tickFrameWrites();
 
   QRetro *m_core = nullptr;

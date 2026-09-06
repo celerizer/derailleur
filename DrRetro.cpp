@@ -242,6 +242,16 @@ void DrRetro::writeForFrames(
     { addr, QByteArray(static_cast<const char *>(value), bytes), endianness, frames });
 }
 
+void DrRetro::writeValueForFrames(int64_t val, const dr_value_t &value, unsigned frames,
+  dr_endianness endianness)
+{
+  uint64_t raw = static_cast<uint64_t>(val);
+  unsigned bytes = dr_value_type_size(value.type);
+
+  if (bytes)
+    writeForFrames(value.address, &raw, bytes, frames, endianness);
+}
+
 void DrRetro::tickFrameWrites()
 {
   for (auto it = m_frameWrites.begin(); it != m_frameWrites.end();)

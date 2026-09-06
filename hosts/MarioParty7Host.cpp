@@ -231,7 +231,18 @@ static DrGcnHostConfig makeConfig()
   config.values.bonus_result[1] = { 0x80290dd8, DR_VALUE_TYPE_U16 };
   config.values.bonus_result[2] = { 0x80290ee8, DR_VALUE_TYPE_U16 };
   config.values.bonus_result[3] = { 0x80290ff8, DR_VALUE_TYPE_U16 };
-  /* coins, stars and the battle antes are not mapped for MP7 yet */
+  config.values.coins[0] = { 0x80290cbe, DR_VALUE_TYPE_S16 };
+  config.values.coins[1] = { 0x80290dce, DR_VALUE_TYPE_S16 };
+  config.values.coins[2] = { 0x80290ede, DR_VALUE_TYPE_S16 };
+  config.values.coins[3] = { 0x80290fee, DR_VALUE_TYPE_S16 };
+  config.values.stars[0] = { 0x80290cd0, DR_VALUE_TYPE_S16 };
+  config.values.stars[1] = { 0x80290de0, DR_VALUE_TYPE_S16 };
+  config.values.stars[2] = { 0x80290ef0, DR_VALUE_TYPE_S16 };
+  config.values.stars[3] = { 0x80291000, DR_VALUE_TYPE_S16 };
+  config.values.battle_ante[0] = { 0x80290cc6, DR_VALUE_TYPE_S16 };
+  config.values.battle_ante[1] = { 0x80290dd6, DR_VALUE_TYPE_S16 };
+  config.values.battle_ante[2] = { 0x80290ee6, DR_VALUE_TYPE_S16 };
+  config.values.battle_ante[3] = { 0x80290ff6, DR_VALUE_TYPE_S16 };
   config.values.title_block = { MP7_TITLE_BLOCK, DR_VALUE_TYPE_POINTER };
   config.values.minigame_id = { 0x80291558, DR_VALUE_TYPE_S16 };
 
