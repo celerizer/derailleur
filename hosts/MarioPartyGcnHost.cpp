@@ -32,8 +32,8 @@ typedef enum
 
 /* Draws `title` centered into an icon-sized image and writes it to `path`. The
  * text wraps, and the font shrinks until every line fits, so nothing is cut off. */
-static bool mpgcWriteBattleIcon(
-  const QString &path, const QString &title, int width, int height, bool whiteBackground)
+static QImage mpgcBattleIcon(
+  const QString &title, int width, int height, bool whiteBackground)
 {
   const int scale = MPGC_BATTLE_ICON_SCALE;
   const int outline = 2 * scale;
@@ -47,7 +47,7 @@ static bool mpgcWriteBattleIcon(
   image.fill(whiteBackground ? Qt::white : Qt::transparent);
 
   if (!painter.begin(&image))
-    return false;
+    return QImage();
   painter.setRenderHint(QPainter::TextAntialiasing, true);
 
   /* The margin leaves room for the outline pass on every side */
@@ -79,7 +79,7 @@ static bool mpgcWriteBattleIcon(
   painter.drawText(rect, flags, title);
   painter.end();
 
-  return image.save(path);
+  return image;
 }
 
 MarioPartyGcnHost::MarioPartyGcnHost(const DrGcnHostConfig &config, QObject *parent)
@@ -171,7 +171,7 @@ void MarioPartyGcnHost::rollMinigames(void)
   m_MinigameSource->rerollMinigames();
 
   /* Games whose battle roulette shows pictures name them here. */
-  if (m_config.battle_icons.dir && m_config.battle_icons.files)
+  if (m_config.battle_icons.dirs && m_config.battle_icons.files)
     stampBattleIcons();
 }
 
@@ -179,28 +179,40 @@ void MarioPartyGcnHost::stampBattleIcons(void)
 {
   const std::array<DrMinigameCandidate, 5> &candidates =
     m_MinigameSource->minigameCandidates(DR_MINIGAME_BATTLE);
-  const QString dir = dr_save_directory() + m_config.battle_icons.dir;
 
-  if (!QDir().mkpath(dir))
-  {
-    log(DR_LOG_WARN, qPrintable(QString("battle icons: cannot create %1").arg(dir)));
-    return;
-  }
-
-  /* One icon per picture the roulette shows, filled from the type's candidates. */
+  /* One icon per picture the roulette shows, filled from the type's candidates.
+   * Drawn once, then written to every directory the game answers to. */
   for (unsigned i = 0; m_config.battle_icons.files[i] && i < candidates.size(); i++)
   {
     const dr_mp_minigame_t *minigame = candidates[i].minigame;
     const QString title = (minigame && minigame->name)
       ? QString::fromUtf8(minigame->name) : QString();
-    const QString path = dir + "/" + m_config.battle_icons.files[i];
+    const QImage icon = mpgcBattleIcon(title, m_config.battle_icons.width,
+      m_config.battle_icons.height, m_config.battle_icons.white_background);
 
-    if (mpgcWriteBattleIcon(path, title, m_config.battle_icons.width,
-          m_config.battle_icons.height, m_config.battle_icons.white_background))
-      log(DR_LOG_INFO, qPrintable(QString("battle icon %1: %2").arg(i).arg(title)));
-    else
-      log(DR_LOG_WARN,
-        qPrintable(QString("battle icon %1: failed to write %2").arg(i).arg(path)));
+    if (icon.isNull())
+    {
+      log(DR_LOG_WARN, qPrintable(QString("battle icon %1: could not be drawn").arg(i)));
+      continue;
+    }
+
+    for (const char *const *entry = m_config.battle_icons.dirs; *entry; entry++)
+    {
+      const QString dir = dr_save_directory() + *entry;
+      const QString path = dir + "/" + m_config.battle_icons.files[i];
+
+      if (!QDir().mkpath(dir))
+      {
+        log(DR_LOG_WARN, qPrintable(QString("battle icons: cannot create %1").arg(dir)));
+        continue;
+      }
+
+      if (icon.save(path, "PNG"))
+        log(DR_LOG_INFO, qPrintable(QString("battle icon %1: %2 -> %3").arg(i).arg(title).arg(*entry)));
+      else
+        log(DR_LOG_WARN,
+          qPrintable(QString("battle icon %1: failed to write %2").arg(i).arg(path)));
+    }
   }
 }
 

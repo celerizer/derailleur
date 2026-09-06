@@ -150,8 +150,14 @@ static const dr_scene_name_t MP4_SCENE_NAMES[] =
 };
 
 /* The battle roulette shows two pictures; Dolphin loads replacements for them out
- * of <save>/User/Load/Textures/GMPE01. */
-static const char *MP4_BATTLE_ICON_DIR = "/User/Load/Textures/GMPE01";
+ * of the texture folder for whichever disc id it opened, so both get the same
+ * icons. */
+static const char *const MP4_BATTLE_ICON_DIR[] = {
+  "/User/Load/Textures/GMPE01",
+  "/User/Load/Textures/GMPDX2",
+
+  nullptr
+};
 static const char *const MP4_BATTLE_ICON_FILE[] = {
   "tex1_160x120_c17ee11cac3327fe_14.png",
   "tex1_160x120_44baee82452dd439_14.png",
@@ -168,7 +174,7 @@ static DrGcnHostConfig makeConfig(const std::string &game)
   if (!game.empty())
     config.game = game;
 
-  config.battle_icons.dir = MP4_BATTLE_ICON_DIR;
+  config.battle_icons.dirs = MP4_BATTLE_ICON_DIR;
   config.battle_icons.files = MP4_BATTLE_ICON_FILE;
   config.battle_icons.width = 160;
   config.battle_icons.height = 120;

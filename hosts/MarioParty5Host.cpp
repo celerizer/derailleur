@@ -197,7 +197,11 @@ static const dr_scene_name_t MP5_SCENE_NAMES[] =
 
 /* The battle roulette shows its pictures at 256x256 on a white card; Dolphin loads
  * replacements for them out of <save>/User/Load/Textures/GP5E01. */
-static const char *MP5_BATTLE_ICON_DIR = "/User/Load/Textures/GP5E01";
+static const char *const MP5_BATTLE_ICON_DIR[] = {
+  "/User/Load/Textures/GP5E01",
+
+  nullptr
+};
 static const char *const MP5_BATTLE_ICON_FILE[] = {
   "tex1_256x256_14cd97e20cc4a751_14.png",
   "tex1_256x256_4f75037eb57a1e19_14.png",
@@ -215,7 +219,7 @@ static DrGcnHostConfig makeConfig(const std::string &game)
   if (!game.empty())
     config.game = game;
 
-  config.battle_icons.dir = MP5_BATTLE_ICON_DIR;
+  config.battle_icons.dirs = MP5_BATTLE_ICON_DIR;
   config.battle_icons.files = MP5_BATTLE_ICON_FILE;
   config.battle_icons.width = 256;
   config.battle_icons.height = 256;

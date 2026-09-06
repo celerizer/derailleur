@@ -59,8 +59,10 @@ struct DrGcnHostConfig
   /// the save directory. A null `dir` means this game doesn't do that.
   struct
   {
-    /// Texture directory, relative to the save directory (e.g. Dolphin's GMPE01).
-    const char *dir;
+    /// Texture directories, relative to the save directory (e.g. Dolphin's
+    /// GMPE01). Every one gets the same icons, for a game whose discs Dolphin
+    /// knows under more than one id. Terminated by a null entry.
+    const char *const *dirs;
 
     /// One file per icon the roulette shows, in the order the candidates fill
     /// them. Terminated by a null entry.
