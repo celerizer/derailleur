@@ -136,15 +136,12 @@ static const dr_mp_minigame_t MP2_MINIGAMES[] = {
   // 3A Chance Time (scene 34)
 
   // duel
-  /// @todo leaving these unsupported for now as they dont give results
-  /*
   { "Quick Draw Corks", DR_MINIGAME_DUEL, 0x3B, 0x3F, DR_NO_QUIRKS },
   { "Saber Swipes", DR_MINIGAME_DUEL, 0x3C, 0x42, DR_NO_QUIRKS },
   { "Mushroom Brew", DR_MINIGAME_DUEL, 0x3D, 0x44, DR_NO_QUIRKS },
   { "Time Bomb", DR_MINIGAME_DUEL, 0x3E, 0x46, DR_NO_QUIRKS },
   { "Psychic Safari", DR_MINIGAME_DUEL, 0x3F, 0x48, DR_NO_QUIRKS },
   { "Rock, Paper, Mario", DR_MINIGAME_DUEL, 0x40, 0x4A, DR_NO_QUIRKS },
-  */
 
   // leftovers
   { "Bowser's Big Blast", DR_MINIGAME_BATTLE, 0x41, 0x39, DR_NO_QUIRKS, DR_NO_FLAGS },
@@ -217,6 +214,47 @@ static MpN64Config buildConfig()
   config.minigames = MP2_MINIGAMES;
 
   return config;
+}
+
+/* Who won the duel: a game slot 0-3, or -1 for a draw. The coin fields the other
+ * mini-game types report through are not filled in for duels. */
+static const dr_value_t MP2_DUEL_WINNER = { 0x800FC880, DR_VALUE_TYPE_S32 };
+
+#define MP2_DUEL_WIN_COINS 10
+
+void MarioParty2::remapSlots(void)
+{
+  /* The duel pair takes slots 0 and 2; the bystanders fill what is left. */
+  static const int order[4] = { 0, 2, 1, 3 };
+  int next = 0;
+
+  if (!m_minigame || m_minigame->type != DR_MINIGAME_DUEL)
+    return;
+
+  for (unsigned i = 0; i < 4; i++)
+    if (dr_team_type_participates(m_players[i].team_type))
+      m_slotOf[i] = order[next++];
+  for (unsigned i = 0; i < 4; i++)
+    if (!dr_team_type_participates(m_players[i].team_type))
+      m_slotOf[i] = order[next++];
+}
+
+dr_minigame_result_t MarioParty2::minigameResult(unsigned index)
+{
+  dr_minigame_result_t result = { 0, 0 };
+  int64_t winner = -1;
+
+  if (!m_minigame || m_minigame->type != DR_MINIGAME_DUEL)
+    return MarioPartyN64::minigameResult(index);
+
+  /* -1 is a draw, so nobody scores. */
+  if (index >= 4 || m_retro->readValue(&winner, MP2_DUEL_WINNER) != DR_OK || winner < 0)
+    return result;
+
+  if (m_slotOf[index] == winner)
+    result.coins = MP2_DUEL_WIN_COINS;
+
+  return result;
 }
 
 MarioParty2::MarioParty2(QObject *parent)
