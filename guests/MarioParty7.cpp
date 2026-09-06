@@ -62,7 +62,7 @@ static dr_character_id_t mp7_char_from_dr(dr_character character)
   case DR_CHARACTER_DONKEY_KONG:
     return { MP7_CHARACTER_BOO, false };
   case DR_CHARACTER_KOOPA_KID:
-    return { MP7_CHARACTER_WARIO, false };
+    return { MP7_CHARACTER_KOOPA_KID_G, false };
   case DR_CHARACTER_BLOOPER:
     return { MP7_CHARACTER_PEACH, false };
   case DR_CHARACTER_HAMMER_BRO:

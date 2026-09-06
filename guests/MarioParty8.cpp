@@ -288,7 +288,7 @@ static dr_character_id_t mp8_char_from_dr(dr_character character)
   case DR_CHARACTER_DONKEY_KONG:
     return { MP8_CHARACTER_BOO, false };
   case DR_CHARACTER_KOOPA_KID:
-    return { MP8_CHARACTER_WARIO, false };
+    return { MP8_CHARACTER_HAMMER_BRO, false };
   case DR_CHARACTER_KOOPA_KID_R:
     return { MP8_CHARACTER_MARIO, false };
   case DR_CHARACTER_KOOPA_KID_G:

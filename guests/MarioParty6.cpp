@@ -14,8 +14,8 @@ typedef enum
   MP6_CHARACTER_WALUIGI = 0x6,
   MP6_CHARACTER_TOAD = 0x7,
   MP6_CHARACTER_BOO = 0x8,
-  MP6_CHARACTER_TOADETTE = 0x9,
-  MP6_CHARACTER_KOOPA_KID = 0xA,
+  MP6_CHARACTER_KOOPA_KID = 0x9,
+  MP6_CHARACTER_TOADETTE = 0xA,
   MP6_CHARACTER_KOOPA_KID_R = 0xB,
   MP6_CHARACTER_KOOPA_KID_G = 0xC,
   MP6_CHARACTER_KOOPA_KID_B = 0xD
@@ -209,7 +209,7 @@ static MpGcnConfig buildConfig()
   }
 
   config.char_from_dr = mp6_char_from_dr;
-  config.roster_size = 13;
+  config.roster_size = 14;
   config.minigames = MP6_MINIGAMES;
 
   return config;

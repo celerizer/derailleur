@@ -27,9 +27,9 @@ static dr_character mp6_char_to_dr(unsigned chr)
   case 0x08:
     return DR_CHARACTER_BOO;
   case 0x09:
-    return DR_CHARACTER_TOADETTE;
-  case 0x0A:
     return DR_CHARACTER_KOOPA_KID;
+  case 0x0A:
+    return DR_CHARACTER_TOADETTE;
   case 0x0B:
     return DR_CHARACTER_KOOPA_KID_R;
   case 0x0C:
