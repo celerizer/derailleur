@@ -199,12 +199,26 @@ MarioParty4::MarioParty4(QRetro *sharedCore, QObject *parent)
 {
 }
 
+static const dr_value_t MP4_BOARD = { 0x8018FD00, DR_VALUE_TYPE_U8 };
+
+#define MP4_BOARD_COUNT 6
+
+void MarioParty4::doApplyGameData(const DrGameData &data)
+{
+  MarioPartyGcn::doApplyGameData(data);
+
+  /* Randomize the board to get a random host character */
+  const int64_t board = dr_rand() % MP4_BOARD_COUNT;
+
+  m_retro->writeValue(board, MP4_BOARD);
+  log(DR_LOG_INFO, qPrintable(QString("board: %1").arg(board)));
+}
+
 dr_minigame_result_t MarioParty4::minigameResult(unsigned index)
 {
   dr_minigame_result_t result = MarioPartyGcn::minigameResult(index);
 
-  /* A Bowser mini-game marks the players it caught rather than the ones who got
-   * through, so what the game calls a result is the opposite of everyone else's. */
+  /* Mario Party 4 stores its Bowser game results backwards from the others */
   if (m_minigame && m_minigame->type == DR_MINIGAME_BOWSER)
     result.coins = result.coins ? 0 : 1;
 

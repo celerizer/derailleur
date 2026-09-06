@@ -15,6 +15,9 @@ public:
   /// MP4's Bowser mini-games score the other way round to every other type, so
   /// the result comes back flipped.
   dr_minigame_result_t minigameResult(unsigned index) override;
+
+  /// Picks the board the mini-game is played on, once the state has loaded.
+  void doApplyGameData(const DrGameData &data) override;
 };
 
 #endif

@@ -207,6 +207,41 @@ static MpGcnConfig buildConfig()
   return config;
 }
 
+/* The model id of the star spirit a mini-game shows. The game only ever asks for
+ * the first; the seven ids from there are the rest of them. */
+static const dr_value_t MP5_STAR_SPIRIT = { 0x8045CDB8, DR_VALUE_TYPE_U32 };
+
+#define MP5_STAR_SPIRIT_FIRST 0x0025000A
+#define MP5_STAR_SPIRIT_COUNT 7
+
+void MarioParty5::run()
+{
+  MarioPartyGcn::run();
+  rollStarSpirit();
+}
+
+void MarioParty5::rollStarSpirit()
+{
+  int64_t model = 0;
+
+  if (m_retro->readValue(&model, MP5_STAR_SPIRIT) != DR_OK)
+    return;
+
+  if (model == MP5_STAR_SPIRIT_FIRST)
+  {
+    if (!m_starSpirit)
+    {
+      m_starSpirit = MP5_STAR_SPIRIT_FIRST + dr_rand() % MP5_STAR_SPIRIT_COUNT;
+      log(DR_LOG_INFO,
+        qPrintable(QString("star spirit model: 0x%1").arg(m_starSpirit, 8, 16, QChar('0'))));
+    }
+    m_retro->writeValue(m_starSpirit, MP5_STAR_SPIRIT);
+  }
+  else if (model < MP5_STAR_SPIRIT_FIRST ||
+           model >= MP5_STAR_SPIRIT_FIRST + MP5_STAR_SPIRIT_COUNT)
+    m_starSpirit = 0;
+}
+
 MarioParty5::MarioParty5(QRetro *sharedCore, QObject *parent)
   : MarioPartyGcn(buildConfig(), sharedCore, parent)
 {
