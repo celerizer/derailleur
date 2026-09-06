@@ -3,10 +3,13 @@
 
 #include <QByteArray>
 #include <QList>
+#include <QMap>
+#include <QString>
 #include <QWidget>
 
 #include "DrGuest.h"
 
+class QComboBox;
 class QTreeWidget;
 class QTreeWidgetItem;
 class QTimer;
@@ -40,6 +43,11 @@ public:
   /// without re-emitting filterChanged.
   void setFromPayload(const QByteArray &payload);
 
+  /// Select and apply the list chosen last session, emitting filterChanged so it
+  /// reaches the guests. Call once the caller has connected that signal --
+  /// populate() alone leaves everything allowed.
+  void restoreLastList(void);
+
 signals:
   /// Emitted when the user changes the selection. Coalesced so a single click on
   /// a guest's tristate box (which cascades to its children) emits once.
@@ -48,10 +56,26 @@ signals:
 private:
   void onItemChanged(QTreeWidgetItem *item, int column);
 
+  /// Named lists from the ini, keyed by name (QMap keeps the dropdown sorted).
+  QMap<QString, QByteArray> readLists(void) const;
+
+  /// Replaces the stored lists, and records `last` as the one now in use.
+  void writeLists(const QMap<QString, QByteArray> &lists, const QString &last) const;
+
+  /// Refill the dropdown from the ini and select `name` ("" = the unsaved slot).
+  void reloadLists(const QString &name);
+
+  /// Apply the list at `index`, or do nothing for the unsaved slot.
+  void onListSelected(int index);
+
+  void saveList(void);
+  void deleteList(void);
+
   /// Recount the allowed (checked) mini-games per type, refresh the count
   /// fields, and flag any Mario Party game that can no longer be played.
   void updateCounts();
 
+  QComboBox *m_lists = nullptr;
   QTreeWidget *m_tree = nullptr;
   QTimer *m_coalesce = nullptr;
   bool m_applying = false; // suppress emits during programmatic updates

@@ -1,7 +1,15 @@
 #include "DrMinigameFilter.h"
 
+#include <algorithm>
+
+#include <QComboBox>
 #include <QDataStream>
+#include <QDir>
 #include <QFont>
+#include <QHBoxLayout>
+#include <QInputDialog>
+#include <QPushButton>
+#include <QSettings>
 #include <QGridLayout>
 #include <QGroupBox>
 #include <QIODevice>
@@ -17,6 +25,15 @@
 static constexpr int k_RoleKey = Qt::UserRole;
 static constexpr int k_RoleIsLeaf = Qt::UserRole + 1;
 static constexpr int k_RoleType = Qt::UserRole + 2;
+
+// Saved lists live in derailleur.ini as an array, so a name can contain anything.
+static const char *k_ListsArray = "minigame_lists";
+static const char *k_LastKey = "settings/minigame_list_last";
+
+static QString dr_filter_ini(void)
+{
+  return QDir::current().filePath("derailleur.ini");
+}
 
 // The mini-game types shown as running totals, in display order.
 static const dr_minigame_type k_CountedTypes[] = {
@@ -47,6 +64,24 @@ DrMinigameFilter::DrMinigameFilter(QWidget *parent)
   resize(360, 520);
 
   auto *layout = new QVBoxLayout(this);
+
+  /* Saved lists: pick one to load it, or name the current ticks and keep them. */
+  auto *listRow = new QHBoxLayout;
+  auto *saveButton = new QPushButton(tr("Save As..."), this);
+  auto *deleteButton = new QPushButton(tr("Delete"), this);
+
+  m_lists = new QComboBox(this);
+  m_lists->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);
+  listRow->addWidget(new QLabel(tr("List:"), this));
+  listRow->addWidget(m_lists, 1);
+  listRow->addWidget(saveButton);
+  listRow->addWidget(deleteButton);
+  layout->addLayout(listRow);
+
+  connect(m_lists, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
+    &DrMinigameFilter::onListSelected);
+  connect(saveButton, &QPushButton::clicked, this, &DrMinigameFilter::saveList);
+  connect(deleteButton, &QPushButton::clicked, this, &DrMinigameFilter::deleteList);
 
   m_tree = new QTreeWidget(this);
   m_tree->setHeaderHidden(true);
@@ -92,23 +127,164 @@ DrMinigameFilter::DrMinigameFilter(QWidget *parent)
   connect(m_coalesce, &QTimer::timeout, this, [this]() { emit filterChanged(payload()); });
 
   connect(m_tree, &QTreeWidget::itemChanged, this, &DrMinigameFilter::onItemChanged);
+
+  reloadLists(QString());
+}
+
+QMap<QString, QByteArray> DrMinigameFilter::readLists(void) const
+{
+  QSettings settings(dr_filter_ini(), QSettings::IniFormat);
+  QMap<QString, QByteArray> lists;
+  const int count = settings.beginReadArray(k_ListsArray);
+
+  for (int i = 0; i < count; i++)
+  {
+    settings.setArrayIndex(i);
+
+    const QString name = settings.value("name").toString();
+
+    if (!name.isEmpty())
+      lists.insert(name, QByteArray::fromHex(settings.value("payload").toByteArray()));
+  }
+  settings.endArray();
+
+  return lists;
+}
+
+void DrMinigameFilter::writeLists(
+  const QMap<QString, QByteArray> &lists, const QString &last) const
+{
+  QSettings settings(dr_filter_ini(), QSettings::IniFormat);
+  int i = 0;
+
+  settings.remove(k_ListsArray);
+  settings.beginWriteArray(k_ListsArray, lists.size());
+  for (auto it = lists.constBegin(); it != lists.constEnd(); ++it)
+  {
+    settings.setArrayIndex(i++);
+    settings.setValue("name", it.key());
+    settings.setValue("payload", QString::fromLatin1(it.value().toHex()));
+  }
+  settings.endArray();
+  settings.setValue(k_LastKey, last);
+  settings.sync();
+}
+
+void DrMinigameFilter::reloadLists(const QString &name)
+{
+  const QMap<QString, QByteArray> lists = readLists();
+  const QSignalBlocker blocker(m_lists);
+  int index;
+
+  m_lists->clear();
+  m_lists->addItem(tr("(unsaved)"), QString());
+  for (auto it = lists.constBegin(); it != lists.constEnd(); ++it)
+    m_lists->addItem(it.key(), it.key());
+
+  index = name.isEmpty() ? 0 : m_lists->findData(name);
+  m_lists->setCurrentIndex(index < 0 ? 0 : index);
+}
+
+void DrMinigameFilter::onListSelected(int index)
+{
+  const QString name = m_lists->itemData(index).toString();
+  const QMap<QString, QByteArray> lists = readLists();
+
+  /* The unsaved slot is where hand-edited ticks live; it has nothing to load. */
+  if (name.isEmpty() || !lists.contains(name))
+    return;
+
+  setFromPayload(lists.value(name));
+
+  QSettings settings(dr_filter_ini(), QSettings::IniFormat);
+  settings.setValue(k_LastKey, name);
+  settings.sync();
+
+  emit filterChanged(payload());
+}
+
+void DrMinigameFilter::saveList(void)
+{
+  QMap<QString, QByteArray> lists = readLists();
+  bool accepted = false;
+  const QString name = QInputDialog::getText(this, tr("Save Mini-game List"), tr("Name:"),
+    QLineEdit::Normal, m_lists->currentData().toString(), &accepted).trimmed();
+
+  if (!accepted || name.isEmpty())
+    return;
+
+  lists.insert(name, payload());
+  writeLists(lists, name);
+  reloadLists(name);
+}
+
+void DrMinigameFilter::deleteList(void)
+{
+  const QString name = m_lists->currentData().toString();
+  QMap<QString, QByteArray> lists = readLists();
+
+  if (name.isEmpty() || !lists.contains(name))
+    return;
+
+  lists.remove(name);
+  writeLists(lists, QString());
+  reloadLists(QString());
+}
+
+void DrMinigameFilter::restoreLastList(void)
+{
+  QSettings settings(dr_filter_ini(), QSettings::IniFormat);
+  const QString last = settings.value(k_LastKey).toString();
+
+  if (last.isEmpty())
+    return;
+
+  reloadLists(last);
+
+  /* reloadLists selects without signalling, so apply it here. */
+  if (!m_lists->currentData().toString().isEmpty())
+    onListSelected(m_lists->currentIndex());
 }
 
 void DrMinigameFilter::populate(const QList<DrGuest *> &guests)
 {
+  QList<QList<DrMinigameGroup>> groupsOf;
+  QList<QPair<QString, int>> order;
+
   m_applying = true;
   m_tree->clear();
 
+  /* A guest holding one game is named by that game, not by itself: a single-disc
+   * Dolphin instance calls itself "Dolphin gcn-mp4" while its group carries the
+   * real title. Guests with several games keep their own name as the header. */
   for (int gi = 0; gi < guests.size(); gi++)
   {
-    DrGuest *guest = guests[gi];
+    const QList<DrMinigameGroup> groups = guests[gi]->minigameGroups();
+
+    groupsOf.append(groups);
+    order.append({ QString::fromUtf8(
+                     groups.size() == 1 ? groups.first().name : guests[gi]->name()),
+      gi });
+  }
+
+  /* Listed alphabetically, but the key below still counts from each guest's
+   * position in `guests` -- that is what DrGuestList enumerates and what peers
+   * agree on, so display order must not touch it. */
+  std::sort(order.begin(), order.end(),
+    [](const QPair<QString, int> &a, const QPair<QString, int> &b) {
+      return a.first.compare(b.first, Qt::CaseInsensitive) < 0;
+    });
+
+  for (const QPair<QString, int> &entry : order)
+  {
+    const int gi = entry.second;
 
     auto *guestItem = new QTreeWidgetItem(m_tree);
-    guestItem->setText(0, QString::fromUtf8(guest->name()));
+    guestItem->setText(0, entry.first);
     guestItem->setFlags(guestItem->flags() | Qt::ItemIsAutoTristate | Qt::ItemIsUserCheckable);
     guestItem->setExpanded(false);
 
-    const QList<DrMinigameGroup> groups = guest->minigameGroups();
+    const QList<DrMinigameGroup> &groups = groupsOf[gi];
     const bool multiGroup = groups.size() > 1;
 
     /* The ordinal flattens minigameGroups() in order and increments for *every*
@@ -201,6 +377,16 @@ void DrMinigameFilter::onItemChanged(QTreeWidgetItem *item, int column)
   (void)column;
   if (m_applying)
     return;
+
+  /* Hand-edited ticks are no longer the list that was loaded; the saved one is
+   * left alone until Save As is used. */
+  if (m_lists && !m_lists->currentData().toString().isEmpty())
+  {
+    const QSignalBlocker blocker(m_lists);
+
+    m_lists->setCurrentIndex(0);
+  }
+
   updateCounts();
   m_coalesce->start(); // coalesce a cascade of changes into one filterChanged
 }
