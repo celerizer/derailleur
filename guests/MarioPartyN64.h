@@ -81,7 +81,12 @@ public:
   dr_minigame_result_t minigameResult(unsigned index) override;
   const dr_mp_minigame_t *minigames() const override;
 
-private:
+protected:
+  /// Rearranges m_slotOf before the players are written, for a game whose
+  /// mini-games expect their participants in particular slots. The default
+  /// leaves every player in their own.
+  virtual void remapSlots(void) {}
+
   void run() override;
   /// Reseeds the game's RNG from dr_rand, so a mini-game replayed from the same
   /// savestate doesn't play out identically. No-op without a configured address.
@@ -97,6 +102,9 @@ private:
   int m_minigameFrames = 0;
   /// Bitmask of the slots playing as the hidden character this mini-game.
   uint8_t m_hiddenSlots = 0;
+
+  /// Board player index -> game slot, identity unless remapSlots() says otherwise.
+  int m_slotOf[4] = { 0, 1, 2, 3 };
 };
 
 #endif

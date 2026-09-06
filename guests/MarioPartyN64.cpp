@@ -150,6 +150,10 @@ void MarioPartyN64::doApplyGameData(const DrGameData &data)
   m_retro->writeValueForFrames(data.minigame->minigame_id, m_config.minigame, 120);
   m_hiddenSlots = 0;
 
+  for (unsigned i = 0; i < 4; i++)
+    m_slotOf[i] = static_cast<int>(i);
+  remapSlots();
+
   /* Anyone the game doesn't have takes a free slot rather than doubling up on
    * whoever their stand-in points at. */
   dr_resolve_characters(m_config.char_from_dr, data.players, m_config.roster_size, characters);
@@ -157,6 +161,7 @@ void MarioPartyN64::doApplyGameData(const DrGameData &data)
   for (unsigned i = 0; i < 4; i++)
   {
     const dr_player_t &p = data.players[i];
+    const unsigned slot = static_cast<unsigned>(m_slotOf[i]);
     uint8_t chr = static_cast<uint8_t>(characters[i]);
 
     /* This mini-game can play the hidden character, so send him in as himself
@@ -164,29 +169,31 @@ void MarioPartyN64::doApplyGameData(const DrGameData &data)
     if (hidden && p.character == m_config.hidden.character)
     {
       chr = m_config.hidden.native_id;
-      m_hiddenSlots |= 1 << i;
+      m_hiddenSlots |= 1 << slot;
       log(DR_LOG_INFO, qPrintable(QString("hidden character: P%1 %2 as 0x%3 in %4")
         .arg(i + 1).arg(dr_character_name(p.character))
         .arg(chr, 2, 16, QChar('0')).arg(data.minigame->name)));
     }
 
-    m_retro->writeValue(chr, m_config.character[i]);
-    m_retro->writeValue(p.control_port - 1, m_config.controller[i]);
+    /* The player moves into their slot with their own controller port, so a
+     * remap changes who sits where without changing who holds the pad. */
+    m_retro->writeValue(chr, m_config.character[slot]);
+    m_retro->writeValue(p.control_port - 1, m_config.controller[slot]);
 
     int64_t bot = 0;
-    if (m_retro->readValue(&bot, m_config.bot[i]) == DR_OK)
+    if (m_retro->readValue(&bot, m_config.bot[slot]) == DR_OK)
       m_retro->writeValue((bot & ~0x01) | (p.control_type == DR_CONTROL_TYPE_CPU ? 1 : 0),
-        m_config.bot[i]);
+        m_config.bot[slot]);
 
-    m_retro->writeValue(mpN64Difficulty(p.difficulty), m_config.difficulty[i]);
-    m_retro->writeValue(p.team_id, m_config.team[i]);
+    m_retro->writeValue(mpN64Difficulty(p.difficulty), m_config.difficulty[slot]);
+    m_retro->writeValue(p.team_id, m_config.team[slot]);
 
     /* Carry the board totals over, so a mini-game that shows coins/stars shows
      * the same numbers the host does. */
-    if (m_config.coins[i].address)
-      m_retro->writeValue(p.coins, m_config.coins[i]);
-    if (m_config.stars[i].address)
-      m_retro->writeValue(p.stars, m_config.stars[i]);
+    if (m_config.coins[slot].address)
+      m_retro->writeValue(p.coins, m_config.coins[slot]);
+    if (m_config.stars[slot].address)
+      m_retro->writeValue(p.stars, m_config.stars[slot]);
   }
 
   /* The pot the board collected, for the battle results to pay back out. */
@@ -200,11 +207,12 @@ dr_minigame_result_t MarioPartyN64::minigameResult(unsigned index)
 
   if (index < 4)
   {
+    const unsigned slot = static_cast<unsigned>(m_slotOf[index]);
     int64_t coins, bonus;
 
-    if (m_retro->readValue(&coins, m_config.result[index]) == DR_OK)
+    if (m_retro->readValue(&coins, m_config.result[slot]) == DR_OK)
       result.coins = coins;
-    if (m_retro->readValue(&bonus, m_config.bonus_result[index]) == DR_OK)
+    if (m_retro->readValue(&bonus, m_config.bonus_result[slot]) == DR_OK)
       result.bonus_coins = bonus;
   }
 
