@@ -39,9 +39,21 @@ jobs:
           modules: qtmultimedia
 
       - name: Build and install SDL3
+        env:
+          # Unauthenticated api.github.com calls share the runner pool's IP and
+          # get 403'd on the rate limit; the job token raises it per-repo.
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
-          rel=$(curl -fsSL https://api.github.com/repos/libsdl-org/SDL/releases/latest)
+          rel=$(curl -fsSL \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "User-Agent: gh-actions" \
+            https://api.github.com/repos/libsdl-org/SDL/releases/latest)
           url=$(echo "$rel" | grep -oE 'https://[^"]+/SDL3-[0-9.]+\.tar\.gz' | head -n1)
+          if [ -z "$url" ]; then
+            echo "Could not find an SDL3 source tarball in the latest release." >&2
+            exit 1
+          fi
           echo "Downloading $url"
           curl -fsSL "$url" -o sdl3.tar.gz
           mkdir -p sdl3-src && tar -xzf sdl3.tar.gz -C sdl3-src --strip-components=1
