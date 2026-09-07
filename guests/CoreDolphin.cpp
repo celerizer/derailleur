@@ -44,6 +44,14 @@ static QByteArray dolphinArenaTag(const QString &subdir)
  */
 static QString writePatchedDolphinCore(const QString &originalPath, const QString &subdir)
 {
+#ifdef Q_OS_MACOS
+  /* macOS uses MemArenaDarwin, which names nothing, so there is no collision to
+   * dodge. Rewriting the bytes would also invalidate the dylib's signature, and
+   * arm64 refuses to map an image whose signature does not check out. */
+  Q_UNUSED(subdir)
+  Q_UNUSED(originalPath)
+  return QString();
+#else
   QFile origFile(originalPath);
   if (!origFile.open(QIODevice::ReadOnly))
     return QString();
@@ -80,6 +88,7 @@ static QString writePatchedDolphinCore(const QString &originalPath, const QStrin
   destFile.close();
 
   return destPath;
+#endif
 }
 
 CoreDolphin::CoreDolphin(const QString &subdir, bool ownDirs, QObject *parent)

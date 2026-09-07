@@ -153,7 +153,20 @@ win32:exists($$PWD/assets/icon.ico) {
     RC_ICONS = assets/icon.ico
 }
 
+macx {
+    VERSION = 1.0.0
+    QMAKE_TARGET_BUNDLE_PREFIX = com.doggylongface
+    QMAKE_BUNDLE = derailleur
+    QMAKE_INFO_PLIST = $$PWD/assets/macos/Info.plist
+    # Oldest release that runs on both Apple Silicon and Intel.
+    QMAKE_MACOSX_DEPLOYMENT_TARGET = 11.0
+    # Generated from assets/icon.png by the CI job; see .github/workflows/macos.yml.
+    exists($$PWD/assets/icon.icns) {
+        ICON = assets/icon.icns
+    }
+}
+
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
-else: unix:!android: target.path = /opt/$${TARGET}/bin
+else: unix:!android:!macx: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target

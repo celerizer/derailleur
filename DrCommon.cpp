@@ -94,6 +94,8 @@ QString dr_os_extension(void)
 {
 #if defined(Q_OS_WIN)
   return ".dll";
+#elif defined(Q_OS_MACOS)
+  return ".dylib";
 #else
   return ".so";
 #endif

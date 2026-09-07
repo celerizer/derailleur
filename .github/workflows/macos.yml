@@ -1,0 +1,110 @@
+name: macOS (Qt6)
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-macos:
+    # Qt's macOS binaries are universal, so one Apple Silicon runner can produce
+    # a binary that covers both architectures. That keeps this off the Intel
+    # runner labels, which Apple support ends for in 2027.
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout (with QRetro submodule)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Qt 6
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.*'
+          host: mac
+          target: desktop
+          arch: clang_64
+          # qtbase covers core/gui/widgets/network/opengl; multimedia is separate.
+          modules: qtmultimedia
+
+      - name: Build and install SDL3
+        env:
+          # Unauthenticated api.github.com calls share the runner pool's IP and
+          # get 403'd on the rate limit; the job token raises it per-repo.
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          rel=$(curl -fsSL \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "User-Agent: gh-actions" \
+            https://api.github.com/repos/libsdl-org/SDL/releases/latest)
+          url=$(echo "$rel" | grep -oE 'https://[^"]+/SDL3-[0-9.]+\.tar\.gz' | head -n1)
+          if [ -z "$url" ]; then
+            echo "Could not find an SDL3 source tarball in the latest release." >&2
+            exit 1
+          fi
+          echo "Downloading $url"
+          curl -fsSL "$url" -o sdl3.tar.gz
+          mkdir -p sdl3-src && tar -xzf sdl3.tar.gz -C sdl3-src --strip-components=1
+          cmake -S sdl3-src -B sdl3-build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX="$HOME/sdl3" \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0 \
+            -DCMAKE_OSX_ARCHITECTURES="x86_64;arm64" \
+            -DSDL_STATIC=OFF -DSDL_SHARED=ON -DSDL_TEST_LIBRARY=OFF
+          cmake --build sdl3-build --parallel
+          cmake --install sdl3-build
+          echo "SDL3_PATH=$HOME/sdl3" >> "$GITHUB_ENV"
+
+      - name: Generate app icon (.icns from PNG)
+        run: |
+          # Same PNG the app uses, so the bundle icon matches the other builds.
+          # Must run before qmake, which reads ICON at configure time.
+          mkdir -p icon.iconset
+          for s in 16 32 128 256 512; do
+            sips -z $s $s assets/icon.png --out "icon.iconset/icon_${s}x${s}.png"
+            sips -z $((s * 2)) $((s * 2)) assets/icon.png \
+              --out "icon.iconset/icon_${s}x${s}@2x.png"
+          done
+          iconutil -c icns icon.iconset -o assets/icon.icns
+
+      - name: Configure (qmake)
+        run: qmake CONFIG+=release "QMAKE_APPLE_DEVICE_ARCHS=x86_64 arm64" derailleur.pro
+
+      - name: Build
+        run: make -j"$(sysctl -n hw.ncpu)"
+
+      - name: Check both architectures are present
+        run: |
+          lipo -archs derailleur.app/Contents/MacOS/derailleur | tee arches.txt
+          grep -q x86_64 arches.txt && grep -q arm64 arches.txt
+
+      - name: Deploy Qt into the bundle
+        run: macdeployqt derailleur.app -libpath="$SDL3_PATH/lib"
+
+      - name: Sign
+        run: |
+          # No developer certificate on CI, so this is an ad-hoc signature: enough
+          # for the loader to map the binary on arm64, not enough to notarize.
+          # The entitlements are what let the app dlopen user-supplied cores and
+          # let Dolphin JIT; keep them even when signing for real.
+          codesign --force --deep --sign - \
+            --entitlements assets/macos/derailleur.entitlements \
+            derailleur.app
+          codesign --verify --verbose derailleur.app
+
+      - name: Package
+        run: |
+          mkdir -p dmg-root
+          cp -R derailleur.app dmg-root/
+          ln -s /Applications dmg-root/Applications
+          hdiutil create -volname Derailleur -srcfolder dmg-root -ov -format UDZO \
+            derailleur-macos-universal.dmg
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: derailleur-macos-universal
+          path: 'derailleur-macos-universal.dmg'
