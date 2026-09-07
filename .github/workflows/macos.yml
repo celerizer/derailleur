@@ -8,18 +8,10 @@ on:
 
 jobs:
   build-macos:
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          # macos-14 runners are Apple Silicon, macos-13 are Intel. The libretro
-          # buildbot ships cores for both, so both get an artifact.
-          - runner: macos-14
-            arch: arm64
-          - runner: macos-13
-            arch: x86_64
-
-    runs-on: ${{ matrix.runner }}
+    # Qt's macOS binaries are universal, so one Apple Silicon runner can produce
+    # a binary that covers both architectures. That keeps this off the Intel
+    # runner labels, which Apple support ends for in 2027.
+    runs-on: macos-15
 
     steps:
       - name: Checkout (with QRetro submodule)
@@ -48,7 +40,7 @@ jobs:
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_INSTALL_PREFIX="$HOME/sdl3" \
             -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0 \
-            -DCMAKE_OSX_ARCHITECTURES=${{ matrix.arch }} \
+            -DCMAKE_OSX_ARCHITECTURES="x86_64;arm64" \
             -DSDL_STATIC=OFF -DSDL_SHARED=ON -DSDL_TEST_LIBRARY=OFF
           cmake --build sdl3-build --parallel
           cmake --install sdl3-build
@@ -67,14 +59,18 @@ jobs:
           iconutil -c icns icon.iconset -o assets/icon.icns
 
       - name: Configure (qmake)
-        run: qmake CONFIG+=release QMAKE_APPLE_DEVICE_ARCHS=${{ matrix.arch }} derailleur.pro
+        run: qmake CONFIG+=release "QMAKE_APPLE_DEVICE_ARCHS=x86_64 arm64" derailleur.pro
 
       - name: Build
         run: make -j"$(sysctl -n hw.ncpu)"
 
-      - name: Deploy Qt into the bundle
+      - name: Check both architectures are present
         run: |
-          macdeployqt derailleur.app -libpath="$SDL3_PATH/lib"
+          lipo -archs derailleur.app/Contents/MacOS/derailleur | tee arches.txt
+          grep -q x86_64 arches.txt && grep -q arm64 arches.txt
+
+      - name: Deploy Qt into the bundle
+        run: macdeployqt derailleur.app -libpath="$SDL3_PATH/lib"
 
       - name: Sign
         run: |
@@ -93,10 +89,10 @@ jobs:
           cp -R derailleur.app dmg-root/
           ln -s /Applications dmg-root/Applications
           hdiutil create -volname Derailleur -srcfolder dmg-root -ov -format UDZO \
-            "derailleur-macos-${{ matrix.arch }}.dmg"
+            derailleur-macos-universal.dmg
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: derailleur-macos-${{ matrix.arch }}
-          path: 'derailleur-macos-${{ matrix.arch }}.dmg'
+          name: derailleur-macos-universal
+          path: 'derailleur-macos-universal.dmg'
