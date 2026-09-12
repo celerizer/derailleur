@@ -148,6 +148,7 @@ static const dr_difficulty MP3_DIFF_TO_DR[] = {
   DR_DIFFICULTY_EASY, // 0x00
   DR_DIFFICULTY_NORMAL, // 0x01
   DR_DIFFICULTY_HARD, // 0x02
+  DR_DIFFICULTY_VERY_HARD, // 0x03
 };
 
 static const dr_minigame_type MP3_MINIGAME_TYPE_TO_DR[] = {
