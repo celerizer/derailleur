@@ -147,6 +147,7 @@ void MarioPartyN64::doApplyGameData(const DrGameData &data)
   m_lastScene = -1;
   m_minigameFrames = 0;
   const bool hidden = hiddenCharacterPlayable(data.minigame);
+  const bool free_for_all = data.minigame->type == DR_MINIGAME_4P;
   m_retro->writeValueForFrames(data.minigame->minigame_id, m_config.minigame, 120);
   m_hiddenSlots = 0;
 
@@ -175,8 +176,6 @@ void MarioPartyN64::doApplyGameData(const DrGameData &data)
         .arg(chr, 2, 16, QChar('0')).arg(data.minigame->name)));
     }
 
-    /* The player moves into their slot with their own controller port, so a
-     * remap changes who sits where without changing who holds the pad. */
     m_retro->writeValue(chr, m_config.character[slot]);
     m_retro->writeValue(p.control_port - 1, m_config.controller[slot]);
 
@@ -186,10 +185,11 @@ void MarioPartyN64::doApplyGameData(const DrGameData &data)
         m_config.bot[slot]);
 
     m_retro->writeValue(mpN64Difficulty(p.difficulty), m_config.difficulty[slot]);
-    m_retro->writeValue(p.team_id, m_config.team[slot]);
 
-    /* Carry the board totals over, so a mini-game that shows coins/stars shows
-     * the same numbers the host does. */
+    /* Some 4P mini-games in MP3 want the raw index, so use it here */
+    m_retro->writeValue(free_for_all ? slot : p.team_id, m_config.team[slot]);
+
+    /* Carry coins and stars over */
     if (m_config.coins[slot].address)
       m_retro->writeValue(p.coins, m_config.coins[slot]);
     if (m_config.stars[slot].address)
