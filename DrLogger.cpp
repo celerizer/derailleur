@@ -62,7 +62,11 @@ void DrLogger::setProgress(qint64 received, qint64 total)
 
 /* Lines carrying any of these are dropped before they reach the view or the file. */
 static const char *const DR_LOG_NOISE[] = {
+  /* Dolphin shader compilation spam */
   "might be used before being initialized",
+
+  /* melonDS DS spam */
+  "retro_get_memory_data",
 
   nullptr
 };
