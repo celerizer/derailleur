@@ -247,6 +247,7 @@ static DrGcnHostConfig makeConfig(const std::string &game)
   config.values.battle_ante[3] = { 0x80290ff6, DR_VALUE_TYPE_S16 };
   config.values.title_block = { MP7_TITLE_BLOCK, DR_VALUE_TYPE_POINTER };
   config.values.minigame_id = { 0x80291558, DR_VALUE_TYPE_S16 };
+  config.values.rng = { 0x802f21ec, DR_VALUE_TYPE_U32 };
 
   config.scene_miniexplain = 0x06;
   config.scene_miniresults = 0x73;
