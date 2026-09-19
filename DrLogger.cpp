@@ -74,6 +74,9 @@ void DrLogger::message(unsigned level, const QString &message)
   const char *prefix = level < 3 ? prefixes[level] : "LOG";
   const char *color = level < 3 ? colors[level] : "#9aa0a6";
 
+  if (message.length() < 20)
+    return;
+
   for (const char *const *noise = DR_LOG_NOISE; *noise; noise++)
     if (message.contains(QLatin1String(*noise)))
       return;
