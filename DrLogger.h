@@ -17,6 +17,9 @@ class DrLogger : public QWidget
 public:
   DrLogger(QWidget *parent = nullptr);
 
+  /// Whether `message` carries one of the noise triggers and should be dropped.
+  static bool isNoise(const QString &message);
+
 public slots:
   void message(unsigned level, const QString &message);
 

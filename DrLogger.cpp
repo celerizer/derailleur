@@ -71,6 +71,15 @@ static const char *const DR_LOG_NOISE[] = {
   nullptr
 };
 
+bool DrLogger::isNoise(const QString &message)
+{
+  for (const char *const *noise = DR_LOG_NOISE; *noise; noise++)
+    if (message.contains(QLatin1String(*noise)))
+      return true;
+
+  return false;
+}
+
 void DrLogger::message(unsigned level, const QString &message)
 {
   static const char *prefixes[] = { "INFO", "WARN", "ERROR" };
@@ -81,9 +90,8 @@ void DrLogger::message(unsigned level, const QString &message)
   if (message.length() < 20)
     return;
 
-  for (const char *const *noise = DR_LOG_NOISE; *noise; noise++)
-    if (message.contains(QLatin1String(*noise)))
-      return;
+  if (isNoise(message))
+    return;
 
   QString line = QString("[%1] %2").arg(prefix).arg(message);
 
