@@ -1,0 +1,50 @@
+{
+  "get_star": {
+    "source_sample": "0105",
+    "rate": 12500,
+    "frames": 19936,
+    "bytes": 11214
+  },
+  "lose": {
+    "source_sample": "0106",
+    "rate": 12500,
+    "frames": 36000,
+    "bytes": 20250
+  },
+  "win": {
+    "source_sample": "0107",
+    "rate": 12500,
+    "frames": 18256,
+    "bytes": 10270
+  },
+  "superstar_story": {
+    "source_sample": "0108",
+    "rate": 12500,
+    "frames": 40672,
+    "bytes": 22878
+  },
+  "despair": {
+    "source_sample": "0109",
+    "rate": 12500,
+    "frames": 8400,
+    "bytes": 4726
+  },
+  "superstar": {
+    "source_sample": "010A",
+    "rate": 12500,
+    "frames": 31728,
+    "bytes": 17848
+  },
+  "good_choice": {
+    "source_sample": "0125",
+    "rate": 12500,
+    "frames": 13936,
+    "bytes": 7840
+  },
+  "got_item": {
+    "source_sample": "012B",
+    "rate": 12500,
+    "frames": 20032,
+    "bytes": 11268
+  }
+}

@@ -1,0 +1,18 @@
+PARTYSTUFFER_CHARACTER 1
+name Waluigi
+voices optional
+# Game-local assets; MP2 omits the ten extra costume model copies.
+assets mp1 mp1
+assets-partial mp2 mp2
+# First applicable action wins when a target shares its WAV slot.
+# Priority: win, get_star, superstar, lose, despair.
+mp1 sound.win mp3/sound.win.psnd
+mp1 sound.get_star mp3/sound.get_star.psnd
+mp1 sound.superstar mp3/sound.superstar.psnd
+mp1 sound.lose mp3/sound.lose.psnd
+mp1 sound.despair mp3/sound.despair.psnd
+mp2 sound.win mp3/sound.win.psnd
+mp2 sound.get_star mp3/sound.get_star.psnd
+mp2 sound.superstar mp3/sound.superstar.psnd
+mp2 sound.lose mp3/sound.lose.psnd
+mp2 sound.despair mp3/sound.despair.psnd
