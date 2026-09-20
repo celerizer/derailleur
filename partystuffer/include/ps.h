@@ -24,7 +24,7 @@ typedef struct { unsigned char *p; size_t n, cap; } Buf;
 #define read_file ps_internal_read_file
 #define write_new ps_internal_write_new
 #define append ps_internal_append
-#define byte ps_internal_byte
+#define byte(b, x) ps_internal_byte(b, x)
 #define zeros ps_internal_zeros
 #define align2 ps_internal_align2
 #define crc32 ps_internal_crc32
