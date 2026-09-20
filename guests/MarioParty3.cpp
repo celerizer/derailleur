@@ -107,7 +107,7 @@ static const dr_mp_minigame_t MP3_MINIGAMES[] =
   { "Mario's Puzzle Party", DR_MINIGAME_4P, 0x1F, 0x1F, DR_NO_QUIRKS, DR_NO_FLAGS },
   { "The Beat Goes On", DR_MINIGAME_4P, 0x20, 0x20, DR_NO_QUIRKS, DR_NO_FLAGS },
   { "M.P.I.Q.", DR_MINIGAME_4P, 0x21, 0x21, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Curtain Call", DR_MINIGAME_4P, 0x22, 0x22, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Curtain Call", DR_MINIGAME_4P, 0x22, 0x22, DR_QUIRK_DEPTH_COMPARE, DR_NO_FLAGS },
   { "Water Whirled", DR_MINIGAME_4P, 0x23, 0x23, DR_NO_QUIRKS, DR_NO_FLAGS },
   { "Frigid Bridges", DR_MINIGAME_4P, 0x24, 0x24, DR_NO_QUIRKS, DR_NO_FLAGS },
   { "Awful Tower", DR_MINIGAME_4P, 0x25, 0x25, DR_NO_QUIRKS, DR_NO_FLAGS },
