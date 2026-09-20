@@ -88,6 +88,7 @@ MarioPartyGcnHost::MarioPartyGcnHost(const DrGcnHostConfig &config, QObject *par
 {
   m_core = new QRetro();
   m_ownCore = true;
+  dr_apply_global_core_options(m_core, DR_CORE_DOLPHIN);
 
   /* Pretend to not support gyro/accel so we can use the sticks */
   m_core->setEnvironmentCallbackSupported(RETRO_ENVIRONMENT_GET_SENSOR_INTERFACE, false);
@@ -118,6 +119,8 @@ MarioPartyGcnHost::MarioPartyGcnHost(const DrGcnHostConfig &config, QObject *par
   }
 
   connect(m_core, &QRetro::frameEnd, this, [this]() { run(); }, Qt::DirectConnection);
+  connect(m_core, &QRetro::onStateLoaded, this, [this]() { m_RestampTitles = true; },
+    Qt::DirectConnection);
 }
 
 QStringList MarioPartyGcnHost::saveFilePatterns(void) const
@@ -307,6 +310,10 @@ void MarioPartyGcnHost::stampTitles(dr_minigame_type type)
 void MarioPartyGcnHost::run(void)
 {
   tickFrameWrites();
+
+  /* A loaded state puts the snapshot's titles back; re-stamp the pool over them. */
+  if (m_RestampTitles.exchange(false) && m_MinigameType != DR_MINIGAME_INVALID)
+    stampTitles(m_MinigameType);
 
   if (m_core->frames() % 120 == 0)
   {

@@ -2,6 +2,7 @@
 #define DR_MARIO_PARTY_GCN_HOST_H
 
 #include "../DrHost.h"
+#include <atomic>
 #include <string>
 #include <vector>
 
@@ -209,6 +210,10 @@ private:
 
   /// For MP8, frames counted between "after roulette" and "mini-game" state
   unsigned m_AfterRouletteTimer = 0;
+
+  /// Set when the core loads a state, cleared by run(); written from whichever
+  /// thread ran the load, read on the timing thread.
+  std::atomic<bool> m_RestampTitles{ false };
 
 protected:
   /// Last chance to change what the guest reported for slot `index` before it is

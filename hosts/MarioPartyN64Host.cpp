@@ -112,6 +112,10 @@ void MarioPartyN64Host::run(void)
 
   tickFrameWrites();
 
+  /* A loaded state puts the snapshot's titles back; re-stamp the pool over them. */
+  if (m_restampTitles.exchange(false))
+    stampTitles();
+
   static const char *stateNames[] = {
     "INVALID", "BEFORE_BOARD", "BOARD", "BEFORE_ROULETTE", "ROULETTE", "AFTER_ROULETTE", "MINIGAME"
   };
@@ -594,6 +598,7 @@ MarioPartyN64Host::MarioPartyN64Host(const DrHostConfig &config, QObject *parent
 {
   m_core = new QRetro();
   m_ownCore = true;
+  dr_apply_global_core_options(m_core, DR_CORE_MUPEN64PLUSNEXT);
   m_gamePath = config.game; // so gamePath() yields the ROM (used for the netplay save name)
   if (!m_core->loadCore(config.core.c_str()))
   {
@@ -618,6 +623,8 @@ MarioPartyN64Host::MarioPartyN64Host(const DrHostConfig &config, QObject *parent
   applyN64Remaps();
 
   connect(m_core, &QRetro::frameEnd, this, [this]() { run(); }, Qt::DirectConnection);
+  connect(m_core, &QRetro::onStateLoaded, this, [this]() { m_restampTitles = true; },
+    Qt::DirectConnection);
 }
 
 void MarioPartyN64Host::stampTitleRow(
@@ -666,6 +673,14 @@ void MarioPartyN64Host::rollAndStampTitles(void)
 
   /* One shared reroll keeps every netplay peer's pool identical (see DrMinigameSource). */
   m_MinigameSource->rerollMinigames();
+
+  stampTitles();
+}
+
+void MarioPartyN64Host::stampTitles(void)
+{
+  if (!m_MinigameSource)
+    return;
 
   /* Stamp each mini-game type's five names into its title row and its five colors into
    * its 8-byte color row, so the trampoline reads whichever row the rolled type selects. */

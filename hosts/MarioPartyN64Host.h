@@ -3,6 +3,7 @@
 
 #include "../DrHost.h"
 #include <array>
+#include <atomic>
 #include <string>
 
 /// One element of the game's native scene stack (see DrHostConfig::scene_stack_addr).
@@ -213,6 +214,8 @@ private:
   /// Rerolls the shared pool and stamps every mini-game type's five names into its row
   /// of the title block, so the roulette can read any row without reacting to the roll.
   void rollAndStampTitles(void);
+  /// Stamps the pool as it stands into every type's row, without rerolling it.
+  void stampTitles(void);
   /// Encodes and writes one 5-slot title row (block index `row`) into the block.
   void stampTitleRow(unsigned row, const std::array<DrMinigameCandidate, 5> &candidates);
   /// Writes one type row's 8 title colors (5 candidate colors + padding) into the color
@@ -238,6 +241,9 @@ private:
   bool m_isDuelBoard = false;
   uint8_t m_lastDuelType = 0xFF; // previous duel type byte; roulette gates on (non-0)->0
   int m_sceneChangeGrace = 0;    // frames to ignore the mg-type byte after a scene change
+  /// Set when the core loads a state, cleared by run(); written from whichever
+  /// thread ran the load, read on the timing thread.
+  std::atomic<bool> m_restampTitles{ false };
   int64_t m_guardTurn = 0;       // snapshot of turn_owner while the roulette runs
   int64_t m_guardSpace = 0;      // snapshot of space_index while the roulette runs
   uint8_t m_pendingStartIndex = 0;

@@ -4,6 +4,7 @@
 #include "../DrHost.h"
 #include <QString>
 #include <array>
+#include <atomic>
 
 typedef enum
 {
@@ -112,6 +113,10 @@ private:
   /* What the roulette rolled and where it landed (0-based), kept until the next
    * roulette so the launch and the results can still tell. */
   dr_minigame_type m_minigameType = DR_MINIGAME_INVALID;
+
+  /* Set when the core loads a state, cleared by run(); written from whichever
+   * thread ran the load, read on the timing thread. */
+  std::atomic<bool> m_restampTitles{ false };
   int m_slot = -1;
 
   /* Whether the board handed off to a results scene (end of turn) rather than

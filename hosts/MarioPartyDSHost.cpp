@@ -453,13 +453,12 @@ MarioPartyDSHost::MarioPartyDSHost(QObject *parent)
     return;
   }
 
-  /* After loadContent, so this lands on top of whatever the core declared during
-   * its own init rather than being overwritten by it. */
-  m_core->input()->setControllerInfo(MPDS_CONTROLLER_INFO);
-
   connect(m_core, &QRetro::frameEnd, this, [this]() { run(); }, Qt::DirectConnection);
 
   connect(m_core, &QRetro::frameBegin, this, [this]() { cloneStick(); },
+    Qt::DirectConnection);
+
+  connect(m_core, &QRetro::onStateLoaded, this, [this]() { m_restampTitles = true; },
     Qt::DirectConnection);
 }
 
@@ -1069,6 +1068,10 @@ void MarioPartyDSHost::startMinigame(void)
 void MarioPartyDSHost::run(void)
 {
   tickFrameWrites();
+
+  /* A loaded state puts the snapshot's titles back; re-stamp the pool over them. */
+  if (m_restampTitles.exchange(false) && m_minigameType != DR_MINIGAME_INVALID)
+    stampTitles(m_minigameType);
 
   /* At frameEnd, so the records are in place before the next retro_run reads them. */
   writeInput();
