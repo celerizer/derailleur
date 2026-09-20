@@ -136,6 +136,9 @@ typedef union
   struct
   {
     unsigned needs_native_boundaries : 1;
+
+    /// mupen64plus-EnableN64DepthCompare=Compatible
+    unsigned needs_depth_compare : 1;
   } mupen64plus;
 } dr_emulation_quirk_t;
 
@@ -146,6 +149,7 @@ typedef union
 #define DR_QUIRK_BITS_SAFE_TEXTURE_CACHE 0x2u // dolphin.needs_safe_texture_cache
 #define DR_QUIRK_BITS_NATIVE_RESOLUTION 0x4u  // dolphin.needs_native_resolution
 #define DR_QUIRK_BITS_NATIVE_BOUNDARIES 0x1u  // mupen64plus.needs_native_boundaries
+#define DR_QUIRK_BITS_DEPTH_COMPARE 0x2u  // mupen64plus.needs_depth_compare
 /* Wii control layout: `control` occupies bits 3-5, `control_team` bits 6-8. */
 #define DR_WII_CONTROL_BITS(primary) ((unsigned)(primary) << 3)
 #define DR_WII_CONTROL_SPLIT_BITS(primary, team) \
@@ -158,6 +162,7 @@ typedef union
 #define DR_QUIRK_SAFE_TEXTURE_CACHE { DR_QUIRK_BITS_SAFE_TEXTURE_CACHE }
 #define DR_QUIRK_NATIVE_RESOLUTION { DR_QUIRK_BITS_NATIVE_RESOLUTION }
 #define DR_QUIRK_NATIVE_BOUNDARIES { DR_QUIRK_BITS_NATIVE_BOUNDARIES }
+#define DR_QUIRK_DEPTH_COMPARE { DR_QUIRK_BITS_DEPTH_COMPARE }
 #define DR_WII_CONTROL(primary) { DR_WII_CONTROL_BITS(primary) }
 #define DR_WII_CONTROL_SPLIT(primary, team) { DR_WII_CONTROL_SPLIT_BITS(primary, team) }
 
@@ -857,6 +862,27 @@ struct dr_settings
   /// Show the loading overlay (frozen frame + bouncing icon, see DrOverlay) that
   /// covers core swaps. On by default; turning it off shows the raw swap instead.
   bool loading_overlay = true;
+
+  /// Mute a guest's core while it boots and loads, up until its mini-game starts.
+  /// On by default; turning it off lets the boot noise through.
+  bool mute_while_loading = true;
+
+  /// Build Waluigi and Daisy into the Mario Party 1 and 2 ROMs (via partystuffer)
+  /// so a player who picked them appears as themselves rather than a stand-in.
+  /// Off by default: it swaps those guests onto a boot-patch path that reaches the
+  /// mini-game by booting a rebuilt ROM instead of loading the shipped savestate.
+  bool character_injection = false;
+
+  /// Internal resolution multiplier per system, 1 = that system's native. The
+  /// core options they drive are per-core; see dr_apply_global_core_options.
+  unsigned res_scale_n64 = 2;
+  unsigned res_scale_gcn = 1;
+  unsigned res_scale_ds = 2;
+
+  /// Force every core to render 16:9 rather than the games' native 4:3 (see
+  /// dr_apply_global_core_options). Off by default; the games were not made for
+  /// it, so expect stretched HUDs and objects popping in at the edges.
+  bool widescreen_hack = false;
 };
 
 dr_settings &dr_settings_get(void);

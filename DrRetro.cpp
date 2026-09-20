@@ -2,6 +2,72 @@
 
 #include <QFile>
 
+void dr_apply_global_core_options(QRetro *core, dr_core which)
+{
+  const bool widescreen = dr_settings_get().widescreen_hack;
+  const bool widens = (which == DR_CORE_DOLPHIN || which == DR_CORE_MUPEN64PLUSNEXT);
+  const dr_core_option_t options[] = {
+    { "mupen64plus-aspect", widescreen ? "16:9 adjusted" : "4:3" },
+    { "dolphin_widescreen_hack", widescreen ? "enabled" : "disabled" },
+    { "dolphin_aspect_ratio", widescreen ? "1" : "3" },
+    { nullptr, nullptr },
+  };
+  const dr_core_option_t *option;
+
+  if (!core || !core->options())
+    return;
+
+  for (option = options; option->key; option++)
+    core->options()->setOptionValue(option->key, option->value);
+
+  /* Internal resolution. Dolphin and mupen take the multiplier as a number;
+   * melonDS takes the entry it shows, so that string has to be rebuilt here. */
+  switch (which)
+  {
+  case DR_CORE_MUPEN64PLUSNEXT:
+  {
+    const QByteArray scale = QByteArray::number(dr_settings_get().res_scale_n64);
+
+    core->options()->setOptionValue("mupen64plus-EnableNativeResFactor", scale.constData());
+    break;
+  }
+  case DR_CORE_DOLPHIN:
+  {
+    const QByteArray scale = QByteArray::number(dr_settings_get().res_scale_gcn);
+
+    core->options()->setOptionValue("dolphin_efb_scale", scale.constData());
+    break;
+  }
+  case DR_CORE_MELONDSDS:
+  {
+    const unsigned n = dr_settings_get().res_scale_ds;
+    const QByteArray value = QString("%1x native (%2 x %3)")
+                               .arg(n).arg(n * 256).arg(n * 192).toUtf8();
+
+    core->options()->setOptionValue("melonds_opengl_resolution", value.constData());
+    break;
+  }
+  default:
+    break;
+  }
+
+  if (!widescreen)
+    return;
+  else
+  {
+    core->setForcedAspectRatio(widescreen && widens ? 16.0 / 9.0 : 0.0);
+
+    /* Crop weirdness and overscan */
+    if (which == DR_CORE_DOLPHIN)
+    {
+      const double bar = (1.0 - (4.0 / 3.0) / (16.0 / 9.0)) / 2.0;
+      core->setSourceCrop(0.0, bar, 0.0, bar);
+    }
+    else if (which == DR_CORE_MUPEN64PLUSNEXT)
+      core->setSourceCrop(0.01, 0.01, 0.01, 0.01);
+  }
+}
+
 /* Applies one Wii control layout to a single player's joypad. */
 void dr_apply_wii_control(QRetroInputJoypad &jp, dr_wii_control control)
 {
@@ -92,6 +158,7 @@ void DrRetro::init(dr_core core, const QString &rom, bool saving)
 
   QRetro *c = new QRetro();
   c->setSavingEnabled(saving);
+  dr_apply_global_core_options(c, core);
 
   /* Content loads lazily on the first launch (see DrGuest::applyGameData); just
    * confirm the ROM is present so a missing one drops the guest at startup. */
@@ -250,6 +317,11 @@ void DrRetro::writeValueForFrames(int64_t val, const dr_value_t &value, unsigned
 
   if (bytes)
     writeForFrames(value.address, &raw, bytes, frames, endianness);
+}
+
+void DrRetro::clearFrameWrites()
+{
+  m_frameWrites.clear();
 }
 
 void DrRetro::tickFrameWrites()

@@ -88,6 +88,7 @@ CoreDolphin::CoreDolphin(const QString &subdir, bool ownDirs, QObject *parent)
   m_subdir = subdir;
   m_retro = new DrRetro(this);
   m_retro->setCore(new QRetro(), true);
+  dr_apply_global_core_options(core(), DR_CORE_DOLPHIN);
   m_name = ("Dolphin " + subdir).toUtf8();
 
   /* startMinigame() runs on the GUI thread here (doDelegateLaunch), so the base's

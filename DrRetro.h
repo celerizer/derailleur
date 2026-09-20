@@ -14,6 +14,13 @@
 /// be held (see dr_wii_control).
 void dr_apply_wii_control(QRetroInputJoypad &jp, dr_wii_control control);
 
+/// Pushes the global, user-facing core options (see dr_settings) into `core`.
+/// Call it once per QRetro, right after it is constructed -- values for options
+/// the core hasn't registered yet are held and applied when it does. Every
+/// setting is written both ways (on *and* off), because a value that lands in
+/// the core's own ini would otherwise outlive the user turning it back off.
+void dr_apply_global_core_options(QRetro *core, dr_core which);
+
 class DrRetro : public QObject
 {
   Q_OBJECT
@@ -118,6 +125,7 @@ public:
     size_t addr, const void *value, unsigned bytes, unsigned frames, dr_endianness endianness = DR_ENDIANNESS_INVALID);
   void writeValueForFrames(int64_t val, const dr_value_t &value, unsigned frames,
     dr_endianness endianness = DR_ENDIANNESS_INVALID);
+  void clearFrameWrites();
   void tickFrameWrites();
 
   QRetro *m_core = nullptr;

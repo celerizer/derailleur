@@ -70,6 +70,8 @@ void DrGuest::applyGameData(const DrGameData &data)
   if (minigame)
   {
     const char *option_value = nullptr;
+    /* Held for as long as option_value may point into it. */
+    const QByteArray efb_scale = QByteArray::number(dr_settings_get().res_scale_gcn);
 
     /// Graphics > Settings > Texture Cache Accuracy
     /// 128=Normal, 512=Fast, 0=Safe
@@ -94,14 +96,15 @@ void DrGuest::applyGameData(const DrGameData &data)
     core()->options()->setOptionValue("dolphin_efb_to_texture", option_value);
 
     /// Graphics > Settings > Internal Resolution
-    /// @todo Return to user's preferred setting when minigame is finished
+    /// A quirked mini-game only renders correctly at native; the rest follow the
+    /// user's setting (see dr_settings::res_scale_gcn).
     if (minigame->quirks.dolphin.needs_native_resolution)
     {
       log(DR_LOG_INFO, "Mini-game requires native resolution, enabling...");
       option_value = "1";
     }
     else
-      option_value = "1";
+      option_value = efb_scale.constData();
     core()->options()->setOptionValue("dolphin_efb_scale", option_value);
   }
 
@@ -147,8 +150,9 @@ void DrGuest::applyGameData(const DrGameData &data)
       /* Mute through the boot window. On the first lazy launch mainwindow's mute
        * ran before the core booted (audio() was still null), so re-assert it here
        * each frame; the minigameStarted handler unmutes once the game starts. */
-      if (auto *a = core()->audio())
-        a->setMute(true);
+      if (dr_settings_get().mute_while_loading)
+        if (auto *a = core()->audio())
+          a->setMute(true);
       if (--m_stateLoadCountdown != 0)
         return;
       /* The hook runs on the timing thread. Guests that do GUI work in

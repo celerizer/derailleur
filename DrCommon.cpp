@@ -24,6 +24,18 @@ void dr_settings_load(void)
     s.value("settings/shared_gamecube_core", g_settings.shared_gamecube_core).toBool();
   g_settings.loading_overlay =
     s.value("settings/loading_overlay", g_settings.loading_overlay).toBool();
+  g_settings.character_injection =
+    s.value("settings/character_injection", g_settings.character_injection).toBool();
+  g_settings.mute_while_loading =
+    s.value("settings/mute_while_loading", g_settings.mute_while_loading).toBool();
+  g_settings.widescreen_hack =
+    s.value("settings/widescreen_hack", g_settings.widescreen_hack).toBool();
+  g_settings.res_scale_n64 =
+    s.value("settings/res_scale_n64", g_settings.res_scale_n64).toUInt();
+  g_settings.res_scale_gcn =
+    s.value("settings/res_scale_gcn", g_settings.res_scale_gcn).toUInt();
+  g_settings.res_scale_ds =
+    s.value("settings/res_scale_ds", g_settings.res_scale_ds).toUInt();
 }
 
 void dr_settings_save(void)
@@ -31,6 +43,12 @@ void dr_settings_save(void)
   QSettings s(settings_ini_path(), QSettings::IniFormat);
   s.setValue("settings/shared_gamecube_core", g_settings.shared_gamecube_core);
   s.setValue("settings/loading_overlay", g_settings.loading_overlay);
+  s.setValue("settings/character_injection", g_settings.character_injection);
+  s.setValue("settings/mute_while_loading", g_settings.mute_while_loading);
+  s.setValue("settings/widescreen_hack", g_settings.widescreen_hack);
+  s.setValue("settings/res_scale_n64", g_settings.res_scale_n64);
+  s.setValue("settings/res_scale_gcn", g_settings.res_scale_gcn);
+  s.setValue("settings/res_scale_ds", g_settings.res_scale_ds);
   s.sync();
 }
 

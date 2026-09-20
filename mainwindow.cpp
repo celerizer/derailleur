@@ -1070,8 +1070,9 @@ void MainWindow::launchMinigame(
       /* audio() is null until a core has booted; a deferred-boot guest (PS2/Kirby)
        * hasn't started yet on its first launch, so guard this. Keep the core muted
        * until the minigame actually starts (unmuted in the connection below). */
-      if (auto *a = guest->core()->audio())
-        a->setMute(true);
+      if (dr_settings_get().mute_while_loading)
+        if (auto *a = guest->core()->audio())
+          a->setMute(true);
 
       /* Once the guest actually starts its minigame, drop the loading overlay and
        * unmute the core. A synchronous guest fires this during applyGameData below;

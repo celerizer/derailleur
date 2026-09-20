@@ -45,6 +45,7 @@ SonicShuffleHost::SonicShuffleHost(QObject *parent)
 
   m_core = new QRetro();
   m_ownCore = true;
+  dr_apply_global_core_options(m_core, DR_CORE_FLYCAST);
 
   if (!m_core->loadCore(corePath.toUtf8().constData()))
   {
