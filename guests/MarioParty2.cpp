@@ -168,8 +168,6 @@ static MpN64Config buildConfig()
   config.temp_state = (dr_state_directory() + "/mp2-temp.state.zip").toStdString();
   config.temp_rom = (dr_roms_directory() + "/mp2-temp.z64").toStdString();
 
-  config.temp_rom.clear();
-
   config.scene_miniexplain[0] = 0x5F;
   config.scene_miniexplain[1] = 0x60;
   config.scene_miniresults = 0x70;
