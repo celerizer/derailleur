@@ -28,6 +28,19 @@ include(QRetro/QRetro.pri)
 
 INCLUDEPATH += $$PWD
 
+# Mario Party 64 unpacker/repacker
+INCLUDEPATH += $$PWD/partystuffer/include
+SOURCES += \
+    partystuffer/src/audio.c \
+    partystuffer/src/character_name.c \
+    partystuffer/src/codec.c \
+    partystuffer/src/engine.c \
+    partystuffer/src/library.c \
+    partystuffer/src/runtime.c \
+    partystuffer/src/util.c
+HEADERS += \
+    partystuffer/include/partystuffer.h
+
 SOURCES += \
     DrChallenge.cpp \
     DrCommon.cpp \
