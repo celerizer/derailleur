@@ -177,6 +177,7 @@ static QString dr_custom_rom_path(int mp, const QString &name)
 #include "hosts/MarioParty6Host.h"
 #include "hosts/MarioParty7Host.h"
 #include "hosts/MarioParty8Host.h"
+#include "hosts/MarioPartyDSHost.h"
 #include "hosts/SonicShuffleHost.h"
 #include "guests/MarioKart64.h"
 #include "guests/MarioParty1.h"
@@ -363,6 +364,8 @@ MainWindow::MainWindow(QWidget *parent)
       [this]() -> DrHost * { return new MarioParty7Host(this); });
     addHostButton("Mario Party 8", "marioparty8",
       [this]() -> DrHost * { return new MarioParty8Host(this); });
+    addHostButton("Mario Party DS", "mariopartyds",
+      [this]() -> DrHost * { return new MarioPartyDSHost(this); });
 
     /* Modified ROMs dropped in roms/custom/mpN follow the stock eight, each named
      * after its file and using a sibling .png when one is there. */
@@ -669,7 +672,11 @@ MainWindow::MainWindow(QWidget *parent)
   /* Startup finished: reveal the rest of the tools and jump to Start Game. */
   m_Tools->revealTools(tr("Start Game"));
 
-  resize(960, 540);
+  /* 16:9, one ratio step above 1024x576 so the container still clears the 576px
+   * a 3x DS stack needs once the layout has taken its share. Exact 16:9 wants
+   * the height a multiple of 9 and the width a multiple of 16, so the smallest
+   * step is +9 and +16; the next ones up are 1056x594 and 1072x603. */
+  resize(1040, 585);
 }
 
 void MainWindow::connectCoreLog(QRetro *core)
@@ -690,6 +697,10 @@ void MainWindow::connectCoreLog(QRetro *core)
   DrLogger *logger = m_Logger;
   connect(core, &QRetro::onCoreLog, this,
     [logger, lastMsg, repeats](int level, const QString &msg) {
+      /* Drop noise before the counter sees it; otherwise a line the logger
+       * throws away still shows up as a "repeated Nx" note. */
+      if (DrLogger::isNoise(msg))
+        return;
       if (msg == *lastMsg)
       {
         ++*repeats;
@@ -1212,6 +1223,8 @@ void MainWindow::setupNetplay()
       }
       else if (game == DR_GAME_SONICSHUFFLE)
         host = new SonicShuffleHost(this);
+      else if (game == DR_GAME_MARIOPARTYDS)
+        host = new MarioPartyDSHost(this);
 
       if (host)
         startWithHost(host);

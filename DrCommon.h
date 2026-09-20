@@ -83,6 +83,9 @@ typedef enum
   /// Snes9x, Super Nintendo Entertainment System emulator
   DR_CORE_SNES9X,
 
+  /// melonDS DS, Nintendo DS emulator
+  DR_CORE_MELONDSDS,
+
   DR_CORE_SIZE
 } dr_core;
 
@@ -277,6 +280,7 @@ typedef enum
 
   DR_HOST_PLATFORM_N64,
   DR_HOST_PLATFORM_GCWII,
+  DR_HOST_PLATFORM_DS,
 
   DR_HOST_PLATFORM_SIZE
 } dr_host_platform;
@@ -315,6 +319,7 @@ typedef enum
   DR_GAME_MARIOPARTY6,
   DR_GAME_MARIOPARTY7,
   DR_GAME_MARIOPARTY8,
+  DR_GAME_MARIOPARTYDS,
   DR_GAME_MARIOPARTY9,
 
   DR_GAME_SONICSHUFFLE,
