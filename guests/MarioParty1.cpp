@@ -137,6 +137,8 @@ static MpN64Config buildConfig()
   config.core = dr_core_path(DR_CORE_MUPEN64PLUSNEXT).toStdString();
   config.game = (dr_roms_directory() + "/Mario Party (USA).z64").toStdString();
   config.state = (dr_state_directory() + "/mp1.state.zip").toStdString();
+  config.temp_state = (dr_state_directory() + "/mp1-temp.state.zip").toStdString();
+  config.temp_rom = (dr_roms_directory() + "/mp1-temp.z64").toStdString();
 
   config.scene_miniexplain[0] = 0x6f;
   config.scene_miniexplain[1] = 0x6f;
@@ -144,6 +146,41 @@ static MpN64Config buildConfig()
 
   config.scene = { 0x800C596C, DR_VALUE_TYPE_S16 };
   config.minigame = { 0x800ED5DE, DR_VALUE_TYPE_S16 };
+
+  /* Boot into debug menu */
+  config.boot_patches[0] = { { 0x800F67B0, DR_VALUE_TYPE_U32 }, 0x24040061,
+    { 0x800F67B2, DR_VALUE_TYPE_U16 }, 0x006F };
+
+  /* Use explanations */
+  config.boot_patches[1] = { { 0x800F67B8, DR_VALUE_TYPE_U32 }, 0x0C0177D1,
+    { 0x800ED5E3, DR_VALUE_TYPE_U8 }, 0x00 };
+
+  /* Make the logos faster */
+  static const size_t mp1_logo_timing[] = {
+    0x800F68D8, /* SetFadeInTypeAndTime(0, 30)  logo 1 in   */
+    0x800F6900, /* HuPrcSleep(45)               logo 1 hold */
+    0x800F690C, /* func_800726AC(0, 9)          logo 1 out  */
+    0x800F6948, /* HuPrcSleep(9)                gap         */
+    0x800F69A4, /* SetFadeInTypeAndTime(0, 9)   logo 2 in   */
+    0x800F69CC, /* HuPrcSleep(45)               logo 2 hold */
+    0x800F69D8, /* func_800726AC(0, 9)          logo 2 out  */
+    0x800F6A14, /* HuPrcSleep(9)                gap         */
+    0x800F6A68, /* SetFadeInTypeAndTime(0, 9)   logo 3 in   */
+    0x800F6A90, /* HuPrcSleep(45)               logo 3 hold */
+    0x800F6754, /* func_800726AC(0, 9)          hand-off    */
+  };
+  for (unsigned i = 0; i < sizeof(mp1_logo_timing) / sizeof(*mp1_logo_timing); i++)
+    config.boot_patches[2 + i] = { { 0x800F67B8, DR_VALUE_TYPE_U32 }, 0x0C0177D1,
+      { mp1_logo_timing[i] + 2, DR_VALUE_TYPE_U16 }, 0x0001 };
+
+  /* Fix zeroes results */
+  config.boot_patches[13] = { { 0x800F67B8, DR_VALUE_TYPE_U32 }, 0x0C0177D1,
+    { 0x800ED148, DR_VALUE_TYPE_U32 }, 0x00000000 };
+  config.boot_patches[14] = { { 0x800F67B8, DR_VALUE_TYPE_U32 }, 0x0C0177D1,
+    { 0x800ED14C, DR_VALUE_TYPE_U32 }, 0x00000000 };
+  config.boot_patches[15] = { { 0x800F67B8, DR_VALUE_TYPE_U32 }, 0x0C0177D1,
+    { 0x800ED150, DR_VALUE_TYPE_U32 }, 0x00000000 };
+
   config.rng = { 0x800c2ff4, DR_VALUE_TYPE_U32 };
 
   const size_t controller_addr[4] = { 0x800f32b3, 0x800f32e3, 0x800f3313, 0x800f3343 };

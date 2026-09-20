@@ -165,6 +165,10 @@ static MpN64Config buildConfig()
   config.core = dr_core_path(DR_CORE_MUPEN64PLUSNEXT).toStdString();
   config.game = (dr_roms_directory() + "/Mario Party 2 (USA).z64").toStdString();
   config.state = (dr_state_directory() + "/mp2.state.zip").toStdString();
+  config.temp_state = (dr_state_directory() + "/mp2-temp.state.zip").toStdString();
+  config.temp_rom = (dr_roms_directory() + "/mp2-temp.z64").toStdString();
+
+  config.temp_rom.clear();
 
   config.scene_miniexplain[0] = 0x5F;
   config.scene_miniexplain[1] = 0x60;
@@ -173,13 +177,56 @@ static MpN64Config buildConfig()
   config.scene = { 0x800FA63E, DR_VALUE_TYPE_S16 };
   config.minigame = { 0x800F93C8, DR_VALUE_TYPE_S16 };
 
+  /* Boot to debug menu */
+  config.boot_patches[0] = { { 0x80102A28, DR_VALUE_TYPE_U32 }, 0x24040062,
+    { 0x80102A2A, DR_VALUE_TYPE_U16 }, 0x0000 };
+  
+  /* Ready the debug menu */
+  config.boot_patches[1] = { { 0x80104FE4, DR_VALUE_TYPE_U32 }, 0x90637400,
+    { 0x80107400, DR_VALUE_TYPE_U8 }, 0x01 };
+
+  /* Ignore chosen mini-game */
+  config.boot_patches[2] = { { 0x8010504C, DR_VALUE_TYPE_U32 }, 0xA4820000,
+    { 0x8010504C, DR_VALUE_TYPE_U32 }, 0x00000000 };
+  config.boot_patches[3] = { { 0x80105100, DR_VALUE_TYPE_U32 }, 0x00832021,
+    { 0x80105100, DR_VALUE_TYPE_U32 }, 0x00000000 };
+  config.boot_patches[4] = { { 0x80105104, DR_VALUE_TYPE_U32 }, 0x8C845E54,
+    { 0x80105104, DR_VALUE_TYPE_U32 }, 0x848493C8 };
+  config.boot_patches[5] = { { 0x80103A20, DR_VALUE_TYPE_U32 }, 0x10400029,
+    { 0x80103A20, DR_VALUE_TYPE_U32 }, 0x00000000 };
+
+  /* Make logos faster */
+  static const size_t mp2_logo_timing[] = {
+    0x80102B40, /* InitFadeIn(0, 30)   logo 1 in   */
+    0x80102B68, /* HuPrcSleep(45)      logo 1 hold */
+    0x80102B74, /* InitFadeOut(0, 9)   logo 1 out  */
+    0x80102BB0, /* HuPrcSleep(9)       gap         */
+    0x80102C0C, /* InitFadeIn(0, 9)    logo 2 in   */
+    0x80102C34, /* HuPrcSleep(45)      logo 2 hold */
+    0x80102C40, /* InitFadeOut(0, 9)   logo 2 out  */
+    0x80102C7C, /* HuPrcSleep(9)       gap         */
+    0x80102CD0, /* InitFadeIn(0, 9)    logo 3 in   */
+    0x80102CF8, /* HuPrcSleep(45)      logo 3 hold */
+    0x801029A4, /* InitFadeOut(0, 9)   hand-off    */
+    0x801029E8, /* InitFadeOut(0, 9)   hand-off, second copy */
+  };
+  for (unsigned i = 0; i < sizeof(mp2_logo_timing) / sizeof(*mp2_logo_timing); i++)
+    config.boot_patches[6 + i] = { { 0x80102AEC, DR_VALUE_TYPE_U32 }, 0x0C0068BE,
+      { mp2_logo_timing[i] + 2, DR_VALUE_TYPE_U16 }, 0x0001 };
+
+  /* Disable debug menu music */
+  config.boot_patches[18] = { { 0x80102D24, DR_VALUE_TYPE_U32 }, 0x0C01E4E4,
+    { 0x80102D24, DR_VALUE_TYPE_U32 }, 0x00000000 };
+
+  config.debug_mode = { 0x800CD40E, DR_VALUE_TYPE_U8 };
+
   const size_t controller_addr[4]   = { 0x800fd2c3, 0x800fd2f7, 0x800fd32b, 0x800fd35f };
   const size_t difficulty_addr[4]   = { 0x800fd2c2, 0x800fd2f6, 0x800fd32a, 0x800fd35e };
   const size_t team_addr[4]         = { 0x800fd2c0, 0x800fd2f4, 0x800fd328, 0x800fd35c };
   const size_t bot_addr[4]          = { 0x800fd2c7, 0x800fd2fb, 0x800fd32f, 0x800fd363 };
   const size_t character_addr[4]    = { 0x800fd2c4, 0x800fd2f8, 0x800fd32c, 0x800fd360 };
-  const size_t bonus_result_addr[4] = { 0x800fd2ca, 0x800fd2fe, 0x800fd332, 0x800fd366 }; // u16
-  const size_t result_addr[4]       = { 0x800fd2cc, 0x800fd300, 0x800fd334, 0x800fd368 }; // u16
+  const size_t bonus_result_addr[4] = { 0x800fd2ca, 0x800fd2fe, 0x800fd332, 0x800fd366 };
+  const size_t result_addr[4]       = { 0x800fd2cc, 0x800fd300, 0x800fd334, 0x800fd368 };
 
   for (unsigned i = 0; i < 4; i++)
   {
@@ -202,6 +249,14 @@ static MpN64Config buildConfig()
   config.stars[3] = { 0x800fd36a, DR_VALUE_TYPE_U16 };
 
   config.battle_pot = { 0x800f9208, DR_VALUE_TYPE_U16 };
+
+  /* Deformation-cluster name table (see MpN64Config). Entry 0 is character 0 and
+   * they descend 12 bytes per character; verified against all six in the ROM. */
+  config.cluster_name_n = 0x800D214C;
+  config.cluster_name_l = 0x800D2194;
+  config.cluster_name_stride = -12;
+  config.cluster_prefix_waluigi = 0x63333030; /* "c300" */
+  config.cluster_prefix_daisy = 0x63333031;   /* "c301" */
 
   config.char_from_dr = mp2_char_from_dr;
   config.roster_size = 6;
