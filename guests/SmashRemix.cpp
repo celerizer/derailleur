@@ -674,7 +674,7 @@ static const sr_stage_t SR_STAGES[] = {
   { SR_STAGE_GB_LAND, "Game Boy Land", true },
   { SR_STAGE_BTT_MTWO, "Break the Targets (Mewtwo)", false },
   { SR_STAGE_BTP_MARTH, "Board the Platforms (Marth)", false },
-  { SR_STAGE_REST, "Rest Area", true },
+  { SR_STAGE_REST, "Rest Area", false },
   { SR_STAGE_BTP_MTWO, "Board the Platforms (Mewtwo)", false },
   { SR_STAGE_CSIEGE, "Castle Siege", true },
   { SR_STAGE_YOSHIS_ISLAND_II, "Yoshi's Island II", true },
