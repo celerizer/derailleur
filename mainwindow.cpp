@@ -1242,7 +1242,7 @@ void MainWindow::attachNetplay()
 
   QSet<QRetro *> seen;
   m_Netplay->attachCore(m_Host->core(), QStringLiteral("host"),
-    [host]() { return dr_sync_validator_t{ host->rngValue(), 0 }; });
+    [host]() { return host->syncValidator(); });
   seen.insert(m_Host->core());
   for (DrGuest *guest : m_Guests->guests())
   {

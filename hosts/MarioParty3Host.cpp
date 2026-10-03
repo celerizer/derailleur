@@ -408,6 +408,7 @@ static DrHostConfig makeConfig(const std::string &game)
   config.values.turn_owner = { 0x800CD067u, DR_VALUE_TYPE_S8 };
   config.values.space_index = { 0x800CD069u, DR_VALUE_TYPE_S8 };
   config.values.rng = { 0x80097650, DR_VALUE_TYPE_U32 };
+  config.values.timer = { 0x800D1F70, DR_VALUE_TYPE_S32 };
 
   config.host_state_addr = MP3_HOST_STATE;
 

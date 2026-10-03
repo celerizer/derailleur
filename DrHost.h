@@ -112,7 +112,7 @@ public:
 
   /// The board's current RNG state, or 0 when this host has no RNG address
   /// configured. Netplay samples it every frame to spot a diverged peer.
-  virtual uint32_t rngValue(void) { return 0; }
+  virtual dr_sync_validator_t syncValidator(void) { return { 0, 0 }; }
 
   /// Coins riding on the current battle mini-game, handed to the guest so it can
   /// show and pay out the same pot the board collected. 0 when the host has no

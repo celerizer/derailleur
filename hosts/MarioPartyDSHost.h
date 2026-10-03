@@ -35,7 +35,7 @@ public:
   void setCurrentTurn(unsigned turn) override;
   bool readPlayerSetup(DrPlayerArray &players) override;
   bool writePlayerSetup(const DrPlayerArray &players) override;
-  uint32_t rngValue(void) override;
+  dr_sync_validator_t syncValidator(void) override;
   unsigned battlePot(void) override;
 
 private:
@@ -86,9 +86,6 @@ private:
    * back to CPU by hand drops its latch. */
   void updateHumanPorts(void);
 
-  /// @todo REMOVE -- logs the input chain whenever it changes.
-  void traceInput(void);
-
   /* Whose turn it is, 0-3, or -1 if no board context has one yet. */
   int turnOwner(void);
 
@@ -104,8 +101,6 @@ private:
   int16_t m_lastScene = -1;
 
   dr_mpds_host_state m_state = DR_MPDS_HOST_STATE_INVALID;
-
-  QString m_lastTrace; ///< @todo REMOVE -- last line traceInput() logged.
 
   /* Ports claimed by a player. Latched until the seat is set back to CPU. */
   std::array<bool, 4> m_portActive = {};

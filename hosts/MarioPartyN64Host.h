@@ -140,6 +140,7 @@ struct DrHostConfig
 
     /// The game's RNG state
     dr_value_t rng;
+    dr_value_t timer;
   } values;
 
   size_t host_state_addr;
@@ -168,14 +169,16 @@ public:
     return static_cast<unsigned>(value);
   }
 
-  uint32_t rngValue(void) override
+  dr_sync_validator_t syncValidator(void) override
   {
+    dr_sync_validator_t sync = { 0, 0 };
     int64_t value = 0;
 
-    if (!m_config.values.rng.address || readValue(&value, m_config.values.rng) != DR_OK)
-      return 0;
-
-    return static_cast<uint32_t>(value);
+    if (m_config.values.rng.address && readValue(&value, m_config.values.rng) == DR_OK)
+      sync.rng = static_cast<uint32_t>(value);
+    if (m_config.values.timer.address && readValue(&value, m_config.values.timer) == DR_OK)
+      sync.timer = static_cast<uint32_t>(value);
+    return sync;
   }
 
   void writeResults(DrGuest *guest) override;

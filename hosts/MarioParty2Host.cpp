@@ -254,6 +254,7 @@ static DrHostConfig makeConfig(const std::string &game)
   config.values.turn_owner = { 0x800F93C6, DR_VALUE_TYPE_S16 };
   config.values.space_index = { 0x800F93CA, DR_VALUE_TYPE_S16 };
   config.values.rng = { 0x800c99b4, DR_VALUE_TYPE_U32 };
+  config.values.timer = { 0x800FD848, DR_VALUE_TYPE_U32 };
 
   config.host_state_addr = MP2_HOST_STATE;
 

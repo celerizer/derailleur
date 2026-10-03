@@ -180,6 +180,7 @@ static MpGcnConfig buildConfig()
 
   config.scene = { 0x80288860, DR_VALUE_TYPE_S32 };
   config.rng = { 0x8028800c, DR_VALUE_TYPE_U32 };
+  config.timer = { 0x802885AC, DR_VALUE_TYPE_U32 };
   config.minigame = { 0x8022A4C4, DR_VALUE_TYPE_S16 };
 
   const size_t character_addr[4]    = { 0x8022a048, 0x8022a052, 0x8022a05c, 0x8022a066 };

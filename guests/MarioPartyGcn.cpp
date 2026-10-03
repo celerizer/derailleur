@@ -62,6 +62,8 @@ dr_sync_validator_t MarioPartyGcn::syncValidator(void)
 
   if (m_config.rng.address && m_retro->readValue(&value, m_config.rng) == DR_OK)
     sync.rng = static_cast<uint32_t>(value);
+  if (m_config.timer.address && m_retro->readValue(&value, m_config.timer) == DR_OK)
+    sync.timer = static_cast<uint32_t>(value);
   return sync;
 }
 

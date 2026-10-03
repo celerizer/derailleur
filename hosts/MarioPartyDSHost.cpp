@@ -234,6 +234,7 @@ typedef enum
 
 /* RNG: s = s * 0x123967 + 0x1E43F, draw returns (s >> 16) & 0x7fff. */
 static const dr_value_t MPDS_RNG_STATE = { 0x020C94B4 - MPDS_RAM_BASE, DR_VALUE_TYPE_U32 };
+static const dr_value_t MPDS_TIMER = { 0x020C17C4 - MPDS_RAM_BASE, DR_VALUE_TYPE_U32 };
 
 /* Scene ids. The mini-game scenes double as the mini-game list: a mini-game's
  * index is its scene id - 0x2c (see MPDS_MINIGAME_ID). */
@@ -518,13 +519,14 @@ size_t MarioPartyDSHost::record(size_t ctx, unsigned slot)
   return ctx + MPDS_CTX_PLAYERS + slot * MPDS_PLAYER_STRIDE;
 }
 
-uint32_t MarioPartyDSHost::rngValue(void)
+dr_sync_validator_t MarioPartyDSHost::syncValidator(void)
 {
-  int64_t state = 0;
+  int64_t rng = 0, timer = 0;
 
-  readValue(&state, MPDS_RNG_STATE);
+  readValue(&rng, MPDS_RNG_STATE);
+  readValue(&timer, MPDS_TIMER);
 
-  return static_cast<uint32_t>(state);
+  return { static_cast<uint32_t>(rng), static_cast<uint32_t>(timer) };
 }
 
 unsigned MarioPartyDSHost::battlePot(void)
@@ -659,70 +661,6 @@ void MarioPartyDSHost::updateHumanPorts(void)
     if (MPDS_PL_CPU(flags))
       writeu32(MPDS_PL_CPU_SET(flags, 0), rec);
   }
-}
-
-/// @todo REMOVE -- one line whenever anything changes: what the frontend
-/// reports per port ("in"), what reached that port's pad table ("pad"), who the
-/// slot is, whose turn the game thinks it is, and whether the hooks are live.
-void MarioPartyDSHost::traceInput(void)
-{
-  QRetroInput *input = m_core ? m_core->input() : nullptr;
-  const size_t ctx = context();
-  QString line = QString("mode %1 turn %2").arg(gameMode()).arg(turnOwner());
-  unsigned port;
-
-  {
-    uint32_t word = 0;
-    unsigned bad = 0, first = 0, i;
-
-    for (i = 0; MPDS_HOOK_BOARD[i][0] != 0; i++)
-    {
-      readu32(&word, MPDS_HOOK_BOARD[i][0] - MPDS_RAM_BASE);
-      if (word != MPDS_HOOK_BOARD[i][1])
-      {
-        if (!bad)
-          first = MPDS_HOOK_BOARD[i][0];
-        bad++;
-      }
-    }
-
-    readu32(&word, 0x0201D2B8 - MPDS_RAM_BASE);
-    line += QString(" hooks %1 sel %2")
-              .arg(bad ? QString("BAD%1@%2").arg(bad).arg(first, 8, 16, QChar('0')) : "ok")
-              .arg(word, 8, 16, QChar('0'));
-  }
-
-  for (port = 0; port < MPDS_PORTS; port++)
-  {
-    uint16_t in = 0, pad = 0, rec = 0;
-    uint32_t flags = 0;
-    int8_t valid = 0;
-    unsigned i;
-
-    for (i = 0; input && i < sizeof(MPDS_BUTTONS) / sizeof(MPDS_BUTTONS[0]); i++)
-      if (input->state(port, RETRO_DEVICE_JOYPAD, 0, MPDS_BUTTONS[i].id))
-        in |= MPDS_BUTTONS[i].bit;
-
-    readu16(&rec, MPDS_INPUT[port].buttons.address);
-    reads8(&valid, MPDS_INPUT[port].valid.address);
-    readu16(&pad, MPDS_PAD_TABLE + port * MPDS_PAD_STRIDE);
-    if (ctx)
-      readu32(&flags, ctx + MPDS_CTX_PLAYERS + port * MPDS_PLAYER_STRIDE + MPDS_PL_FLAGS);
-
-    line += QString(" | p%1 in %2 rec %3 v%4 pad %5 %6")
-              .arg(port + 1)
-              .arg(in, 4, 16, QChar('0'))
-              .arg(rec, 4, 16, QChar('0'))
-              .arg(valid)
-              .arg(pad, 4, 16, QChar('0'))
-              .arg(ctx ? (MPDS_PL_CPU(flags) ? "cpu" : "human") : "?");
-  }
-
-  if (line == m_lastTrace)
-    return;
-
-  m_lastTrace = line;
-  log(DR_LOG_INFO, qPrintable(line));
 }
 
 int MarioPartyDSHost::turnOwner(void)
@@ -1084,8 +1022,6 @@ void MarioPartyDSHost::run(void)
   updateHumanPorts();
   writeConnectedPorts();
   applyHooks();
-
-  traceInput(); ///< @todo REMOVE
 
   const int previousScene = m_lastScene;
   const int currentScene = pollScene();

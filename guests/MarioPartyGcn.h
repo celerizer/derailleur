@@ -18,6 +18,7 @@ struct MpGcnConfig
 
   /// The game's RNG state, sampled for netplay desync checks. 0 = unknown.
   dr_value_t rng;
+  dr_value_t timer;
 
   dr_value_t character[4];
   dr_value_t controller[4];

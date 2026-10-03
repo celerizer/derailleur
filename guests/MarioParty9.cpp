@@ -5,6 +5,7 @@
 static const dr_value_t MP9_MINIGAME_TO_LOAD = { 0x816FF828, DR_VALUE_TYPE_S32 };
 
 static const dr_value_t MP9_RNG = { 0x8026E390, DR_VALUE_TYPE_U32 };
+static const dr_value_t MP9_TIMER = { 0x8026E2AC, DR_VALUE_TYPE_U32 };
 
 static const size_t MP9_NUM_PLAYERS_ADDR = 0x81752534;
 
@@ -285,15 +286,8 @@ void MarioParty9::run()
     {
       applyControlRemap(m_minigame->quirks, m_players);
       m_controlsApplied = true;
-      if (dr_netplay_active())
-        m_resyncCountdown = 180;
     }
   }
-
-  /* Hold the resync ~3s past the start so it lands on the running mini-game
-   * rather than the frame the controls swap on. */
-  if (m_resyncCountdown > 0 && --m_resyncCountdown == 0)
-    emit hardResyncRequested();
 
   if (!m_finishScheduled)
   {
@@ -318,7 +312,6 @@ void MarioParty9::doApplyGameData(const DrGameData &data)
 
   m_minigameFrames = 0;
   m_finishScheduled = false;
-  m_resyncCountdown = 0;
 
   m_partyPointsStart = 0;
   m_retro->readValue(&m_partyPointsStart, MP9_PARTY_POINTS);
@@ -364,6 +357,8 @@ dr_sync_validator_t MarioParty9::syncValidator(void)
 
   if (m_retro->readValue(&value, MP9_RNG) == DR_OK)
     sync.rng = static_cast<uint32_t>(value);
+  if (m_retro->readValue(&value, MP9_TIMER) == DR_OK)
+    sync.timer = static_cast<uint32_t>(value);
   return sync;
 }
 

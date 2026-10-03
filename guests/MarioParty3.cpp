@@ -175,6 +175,7 @@ static MpN64Config buildConfig()
 
   config.scene = { 0x800ce202, DR_VALUE_TYPE_S16 };
   config.rng = { 0x80097650, DR_VALUE_TYPE_U32 };
+  config.timer = { 0x800D1F70, DR_VALUE_TYPE_S32 };
   config.minigame = { 0x800cd069, DR_VALUE_TYPE_S16 };
 
   const size_t controller_addr[4]   = { 0x800d110a, 0x800d1142, 0x800d117a, 0x800d11b2 };

@@ -46,6 +46,7 @@ struct MpN64Config
 
   /// The game's RNG state, sampled for netplay desync checks. 0 = unknown.
   dr_value_t rng;
+  dr_value_t timer;
 
   /// Reseed `rng` from dr_rand as each mini-game starts.
   bool seed_rng;

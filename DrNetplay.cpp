@@ -1210,8 +1210,8 @@ void DrNetplay::checkSyncSample(const DrNetplayPacket &p)
     return;
 
   emit logMessage(DR_LOG_WARN,
-    QString("Potential desync detected by sync validator, performing hard resync... "
-            "(ctx %1 frame %2: peer %3 has rng 0x%4 timer 0x%5, peer %6 has rng 0x%7 timer 0x%8)")
+    QString("Potential desync! Recovering... "
+            "(ctx %1 frame %2: peer %3 rng 0x%4 timer 0x%5, peer %6 rng 0x%7 timer 0x%8)")
       .arg(ctxLabel(p.context))
       .arg(p.syncFrame)
       .arg(it->peer)

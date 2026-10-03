@@ -10,6 +10,7 @@ static const dr_value_t MP8_SCENE_ID = { 0x802CD220, DR_VALUE_TYPE_S32 };
 
 /* u32 RNG state, sampled for netplay desync checks */
 static const dr_value_t MP8_RNG = { 0x802CD170, DR_VALUE_TYPE_U32 };
+static const dr_value_t MP8_TIMER = { 0x802CDD4C, DR_VALUE_TYPE_U32 };
 
 /// s16 - minigame variant perhaps? course id for moped
 static const size_t MP8_MINIGAME_VARIANT_ADDR = 0x802CE35E;
@@ -465,9 +466,6 @@ void MarioParty8::run()
     else if (m_minigame && val == m_minigame->scene_id)
       applyControlRemap(m_minigame->quirks, m_players);
 
-    if (m_minigame && val == m_minigame->scene_id && dr_netplay_active())
-      emit hardResyncRequested();
-
     /* Once the scene leaves the mini-game (its own scene_id), the explanation
      * screen and the -1 loading state, the mini-game is over. */
     if (m_minigameActive && m_minigameFrames >= 60 &&
@@ -535,6 +533,8 @@ dr_sync_validator_t MarioParty8::syncValidator(void)
 
   if (m_retro->readValue(&value, MP8_RNG) == DR_OK)
     sync.rng = static_cast<uint32_t>(value);
+  if (m_retro->readValue(&value, MP8_TIMER) == DR_OK)
+    sync.timer = static_cast<uint32_t>(value);
   return sync;
 }
 
