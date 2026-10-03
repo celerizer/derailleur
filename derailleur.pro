@@ -97,6 +97,7 @@ SOURCES += \
     guests/PokemonStadium2.cpp \
     guests/SmashRemix.cpp \
     guests/SonicShuffle.cpp \
+    guests/StarFox64.cpp \
     guests/SuperMarioBros3.cpp \
     guests/YoshisIsland.cpp \
     main.cpp \
@@ -158,6 +159,7 @@ HEADERS += \
     guests/PokemonStadium2.h \
     guests/SmashRemix.h \
     guests/SonicShuffle.h \
+    guests/StarFox64.h \
     guests/SuperMarioBros3.h \
     guests/YoshisIsland.h \
     mainwindow.h

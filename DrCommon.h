@@ -36,6 +36,27 @@ typedef enum
   DR_CHARACTER_BLOOPER,
   DR_CHARACTER_HAMMER_BRO,
 
+/*
+  DR_CHARACTER_KOOPA_TROOPA,
+  DR_CHARACTER_SHY_GUY,
+  DR_CHARACTER_MAGIKOOPA,
+
+  DR_CHARACTER_BOWSER_JR,
+
+  DR_CHARACTER_ROSALINA,
+  DR_CHARACTER_SPIKE,
+
+  DR_CHARACTER_DIDDY_KONG,
+
+  DR_CHARACTER_BOWSER,
+  DR_CHARACTER_GOOMBA,
+  DR_CHARACTER_MONTY_MOLE,
+  DR_CHARACTER_POM_POM,
+
+  DR_CHARACTER_PAULINE,
+  DR_CHARACTER_NINJI,
+*/
+
   DR_CHARACTER_SIZE
 } dr_character;
 
@@ -367,6 +388,7 @@ typedef enum
   DR_GUEST_SUPERMARIOBROS3,
   DR_GUEST_YOSHISISLAND,
   DR_GUEST_MARIOGOLF,
+  DR_GUEST_STARFOX64,
 
   DR_GUEST_SIZE
 } dr_guest;
@@ -546,8 +568,8 @@ static inline unsigned dr_player_slot(const dr_player_t &p, unsigned fallback)
  *
  * Players whose character the game really has come in as themselves and claim
  * that id first. Everyone else takes their preferred stand-in if it is still
- * free, and otherwise the next free id in roster order (wrapping), so two
- * players never turn up wearing the same face. `roster_size` is how many
+ * free, and otherwise the first free id in roster order, so two players never
+ * turn up wearing the same face. `roster_size` is how many
  * characters the game has, numbered from 0.
  */
 static inline void dr_resolve_characters(dr_character_id_t (*char_from_dr)(dr_character),
@@ -803,11 +825,11 @@ static inline const char *dr_character_name(dr_character c)
   case DR_CHARACTER_KOOPA_KID:
     return "Koopa Kid";
   case DR_CHARACTER_KOOPA_KID_R:
-    return "Koopa Kid R";
+    return "Red K. Kid";
   case DR_CHARACTER_KOOPA_KID_G:
-    return "Koopa Kid G";
+    return "Green K. Kid";
   case DR_CHARACTER_KOOPA_KID_B:
-    return "Koopa Kid B";
+    return "Blue K. Kid";
   case DR_CHARACTER_TOADETTE:
     return "Toadette";
   case DR_CHARACTER_BIRDO:
@@ -818,8 +840,120 @@ static inline const char *dr_character_name(dr_character c)
     return "Blooper";
   case DR_CHARACTER_HAMMER_BRO:
     return "Hammer Bro";
+/*
+  case DR_CHARACTER_KOOPA_TROOPA:
+    return "Koopa Troopa";
+  case DR_CHARACTER_SHY_GUY:
+    return "Shy Guy";
+  case DR_CHARACTER_MAGIKOOPA:
+    return "Magikoopa";
+  case DR_CHARACTER_BOWSER_JR:
+    return "Bowser Jr.";
+  case DR_CHARACTER_ROSALINA:
+    return "Rosalina";
+  case DR_CHARACTER_SPIKE:
+    return "Spike";
+  case DR_CHARACTER_DIDDY_KONG:
+    return "Diddy Kong";
+  case DR_CHARACTER_BOWSER:
+    return "Bowser";
+  case DR_CHARACTER_GOOMBA:
+    return "Goomba";
+  case DR_CHARACTER_MONTY_MOLE:
+    return "Monty Mole";
+  case DR_CHARACTER_POM_POM:
+    return "Pom Pom";
+  case DR_CHARACTER_PAULINE:
+    return "Pauline";
+  case DR_CHARACTER_NINJI:
+    return "Ninji";
+*/
   default:
     return "Unknown";
+  }
+}
+
+typedef struct
+{
+  unsigned red;
+  unsigned green;
+  unsigned blue;
+} dr_color_t;
+
+/// A representative RGB color for each character, ie. for recoloring per-player
+/// effects in guests.
+static inline dr_color_t dr_character_color(dr_character character)
+{
+  switch (character)
+  {
+  case DR_CHARACTER_MARIO:
+    return { 0xFF, 0x00, 0x00 };
+  case DR_CHARACTER_LUIGI:
+    return { 0x00, 0x00, 0xFF };
+  case DR_CHARACTER_PEACH:
+    return { 0xFF, 0x6B, 0xAD };
+  case DR_CHARACTER_YOSHI:
+    return { 0x00, 0x8C, 0x00 };
+  case DR_CHARACTER_WARIO:
+    return { 0x94, 0x00, 0x94 };
+  case DR_CHARACTER_DONKEY_KONG:
+    return { 0xDE, 0x7B, 0x00 };
+  case DR_CHARACTER_WALUIGI:
+    return { 0x40, 0x40, 0x40 };
+  case DR_CHARACTER_DAISY:
+    return { 0xFF, 0xBD, 0x00 };
+  case DR_CHARACTER_TOAD:
+    return { 0xFF, 0xAD, 0xB5 };
+  case DR_CHARACTER_BOO:
+    return { 0x10, 0xF7, 0xFF };
+  case DR_CHARACTER_KOOPA_KID:
+    return { 0xEF, 0x84, 0x08 };
+  case DR_CHARACTER_KOOPA_KID_R:
+    return { 0xFF, 0x00, 0x00 };
+  case DR_CHARACTER_KOOPA_KID_G:
+    return { 0x00, 0xFF, 0x00 };
+  case DR_CHARACTER_KOOPA_KID_B:
+    return { 0x00, 0x00, 0xFF };
+  case DR_CHARACTER_TOADETTE:
+    return { 0xF7, 0x94, 0xBD };
+  case DR_CHARACTER_BIRDO:
+    return { 0xC0, 0x57, 0xA4 };
+  case DR_CHARACTER_DRY_BONES:
+    return { 0xB2, 0xAF, 0xB8 };
+  case DR_CHARACTER_BLOOPER:
+    return { 0xDD, 0xDD, 0xDD };
+  case DR_CHARACTER_HAMMER_BRO:
+    return { 0xCE, 0xB9, 0x71 };
+/*
+  case DR_CHARACTER_KOOPA_TROOPA:
+    return { 0xFF, 0xAA, 0x47 };
+  case DR_CHARACTER_SHY_GUY:
+    return { 0xF7, 0x39, 0x10 };
+  case DR_CHARACTER_MAGIKOOPA:
+    return { 0xF7, 0x39, 0x10 };
+  case DR_CHARACTER_BOWSER_JR:
+    return { 0x69, 0xB0, 0x2E };
+  case DR_CHARACTER_ROSALINA:
+    return { 0x72, 0xDC, 0xD2 };
+  case DR_CHARACTER_SPIKE:
+    return { 0xD9, 0xFD, 0x9D };
+  case DR_CHARACTER_DIDDY_KONG:
+    return { 0x72, 0x4B, 0x3C };
+  case DR_CHARACTER_BOWSER:
+    return { 0x44, 0x44, 0x44 };
+  case DR_CHARACTER_GOOMBA:
+    return { 0xBA, 0x61, 0x11 };
+  case DR_CHARACTER_MONTY_MOLE:
+    return { 0xFF, 0xD9, 0xB2 };
+  case DR_CHARACTER_POM_POM:
+    return { 0xFF, 0xD9, 0xB2 };
+  case DR_CHARACTER_PAULINE:
+    return { 0xFF, 0xD9, 0xB2 };
+  case DR_CHARACTER_NINJI:
+    return { 0xFF, 0xD9, 0xB2 };
+*/
+  default:
+    return { 0xDA, 0xDA, 0xDA };
   }
 }
 

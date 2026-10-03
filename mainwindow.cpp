@@ -203,6 +203,7 @@ static QString dr_custom_rom_path(int mp, const QString &name)
 #include "guests/MarioTennis.h"
 #include "guests/PokemonStadium2.h"
 #include "guests/SonicShuffle.h"
+#include "guests/StarFox64.h"
 
 #define SHOW_LOGGER 1
 #define SHOW_OVERLAY 1
@@ -509,6 +510,7 @@ MainWindow::MainWindow(QWidget *parent)
   addGuest(new Kirby64());
   addGuest(new BanjoTooie());
   addGuest(new SonicShuffle());
+  addGuest(new StarFox64());
 
 #if SHOW_LOGGER
   for (DrGuest *guest : m_Guests->guests())
