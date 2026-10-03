@@ -290,7 +290,7 @@ static DrGcnHostConfig makeConfig(const std::string &game)
 
   config.host_state_addr = MP5_HOST_STATE;
 
-  /* save_files: MP5's memory-card file name still needs filling in */
+  config.save_files = { "*-GP5E-MARIPA5.gci" };
 
   return config;
 }

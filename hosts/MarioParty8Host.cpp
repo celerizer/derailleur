@@ -308,7 +308,8 @@ static DrGcnHostConfig makeConfig(const std::string &game)
 
   config.host_state_addr = MP8_HOST_STATE;
 
-  /* save_files: MP8 is a Wii title, so its save lives in the NAND, not a GCI. */
+  config.save_files = { "User/Wii/title/00010000/524d3845/data/mp8save.bin",
+    "User/Wii/title/00010000/524d3845/data/banner.bin" };
 
   return config;
 }

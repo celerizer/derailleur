@@ -2,6 +2,7 @@
 #define DR_HOST_MARIO_PARTY_DS_H
 
 #include "../DrHost.h"
+
 #include <QString>
 #include <array>
 #include <atomic>
@@ -93,7 +94,6 @@ private:
    * own, but the team rule redirects it to the team leader's. */
   size_t record(size_t ctx, unsigned slot);
 
-  QString m_gamePath;
 
   std::array<DrMinigameCandidate, 5> m_candidates = {};
 

@@ -267,7 +267,7 @@ static DrGcnHostConfig makeConfig(const std::string &game)
    * one ran; candidates follow it so a mic roulette offers only mic games. */
   config.mic_lists = true;
 
-  /* save_files: MP7's memory-card file name still needs filling in */
+  config.save_files = { "*-GP7E-MARIPA7.gci" };
 
   return config;
 }

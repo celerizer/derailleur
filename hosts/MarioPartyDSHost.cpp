@@ -410,7 +410,7 @@ MarioPartyDSHost::MarioPartyDSHost(QObject *parent)
 {
   const QString corePath = dr_core_path(DR_CORE_MELONDSDS);
 
-  m_gamePath = dr_roms_directory() + "/Mario Party DS (USA) (Rev 2).nds";
+  m_gamePath = (dr_roms_directory() + "/Mario Party DS (USA) (Rev 2).nds").toStdString();
 
   m_core = new QRetro();
   m_ownCore = true;
@@ -447,9 +447,10 @@ MarioPartyDSHost::MarioPartyDSHost(QObject *parent)
   m_core->directories()->set(
     QRetroDirectories::Save, dr_save_directory().toUtf8().constData());
 
-  if (!m_core->loadContent(m_gamePath.toUtf8().constData()))
+  if (!m_core->loadContent(m_gamePath.c_str()))
   {
-    log(DR_LOG_ERROR, qPrintable(QString("failed to load content: %1").arg(m_gamePath)));
+    log(DR_LOG_ERROR,
+      qPrintable(QString("failed to load content: %1").arg(QString::fromStdString(m_gamePath))));
     m_valid = false;
     return;
   }

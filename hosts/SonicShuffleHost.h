@@ -46,7 +46,6 @@ private:
   /// emits localHandChanged so the hand widget redraws.
   void pollLocalHand(void);
 
-  QString m_gamePath;
   bool m_contentLoaded = false;
 
   std::array<DrMinigameCandidate, 5> m_candidates = {};

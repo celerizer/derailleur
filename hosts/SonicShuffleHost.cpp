@@ -41,7 +41,7 @@ SonicShuffleHost::SonicShuffleHost(QObject *parent)
   : DrHost(parent)
 {
   const QString corePath = dr_core_path(DR_CORE_FLYCAST);
-  m_gamePath = dr_roms_directory() + "/Sonic Shuffle (USA).chd";
+  m_gamePath = (dr_roms_directory() + "/Sonic Shuffle (USA).chd").toStdString();
 
   m_core = new QRetro();
   m_ownCore = true;
@@ -84,9 +84,10 @@ void SonicShuffleHost::startCore(void)
      * host's save (set before loadContent so the VMU read picks it up). */
     m_core->directories()->set(
       QRetroDirectories::Save, dr_save_directory().toUtf8().constData());
-    if (!m_core->loadContent(m_gamePath.toUtf8().constData()))
+    if (!m_core->loadContent(m_gamePath.c_str()))
     {
-      log(DR_LOG_ERROR, qPrintable(QString("failed to load content: %1").arg(m_gamePath)));
+      log(DR_LOG_ERROR,
+        qPrintable(QString("failed to load content: %1").arg(QString::fromStdString(m_gamePath))));
       m_valid = false;
       return;
     }
