@@ -4,6 +4,8 @@
 
 static const dr_value_t MP9_MINIGAME_TO_LOAD = { 0x816FF828, DR_VALUE_TYPE_S32 };
 
+static const dr_value_t MP9_RNG = { 0x8026E390, DR_VALUE_TYPE_U32 };
+
 static const size_t MP9_NUM_PLAYERS_ADDR = 0x81752534;
 
 /// bool - Whether or not this player is a bot
@@ -322,6 +324,11 @@ void MarioParty9::doApplyGameData(const DrGameData &data)
   m_retro->readValue(&m_partyPointsStart, MP9_PARTY_POINTS);
 
   m_retro->writeValue(data.minigame->minigame_id, MP9_MINIGAME_TO_LOAD);
+
+  /* Re-seed RNG as it does not update every frame */
+  const uint32_t seed = static_cast<uint32_t>(dr_rand());
+  m_retro->writeValue(seed, MP9_RNG);
+  log(DR_LOG_INFO, qPrintable(QString("RNG seed: 0x%1").arg(seed, 8, 16, QChar('0'))));
 
   /* Anyone MP9 doesn't have takes a free slot rather than doubling up on whoever
    * their stand-in points at. */
