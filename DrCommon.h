@@ -580,14 +580,20 @@ static inline void dr_resolve_characters(dr_character_id_t (*char_from_dr)(dr_ch
     if (native.supported || players[i].character == DR_CHARACTER_INVALID)
       continue;
 
+    /* Preferred stand-in if it's free, else the first free id in roster order */
+    if (native.id < roster_size && !taken[native.id])
+    {
+      out[i] = native.id;
+      taken[native.id] = true;
+      continue;
+    }
+
     for (n = 0; n < roster_size; n++)
     {
-      const unsigned id = (native.id + n) % roster_size;
-
-      if (!taken[id])
+      if (!taken[n])
       {
-        out[i] = id;
-        taken[id] = true;
+        out[i] = n;
+        taken[n] = true;
         break;
       }
     }
