@@ -367,14 +367,6 @@ void CoreDolphin::doApplyGameData(const DrGameData &data)
                    .arg(setupTimer.elapsed())
                    .arg(owner->minigameActive() ? "" : " (timed out)")));
 
-  /* A timed-out delegate means our setup diverged from the peers'; ask for a hard
-   * resync (once) so we realign. Only meaningful during a netplay session. */
-  if (dr_netplay_active() && !owner->minigameActive() && !m_resyncRequested)
-  {
-    m_resyncRequested = true;
-    emit desyncSuspected();
-  }
-
   /* Stop on an exact frame gate */
   core()->execOnTimingThread([c = core()]() { c->pause(); });
 
