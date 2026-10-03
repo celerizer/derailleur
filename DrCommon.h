@@ -249,6 +249,13 @@ typedef enum
   DR_ENDIANNESS_SIZE
 } dr_endianness;
 
+/// Per-frame state netplay compares across peers; any difference triggers a hard resync.
+typedef struct
+{
+  uint32_t rng;
+  uint32_t timer;
+} dr_sync_validator_t;
+
 /// The most characters any one game's roster can hold, bounding dr_resolve_characters.
 #define DR_ROSTER_MAX 32
 

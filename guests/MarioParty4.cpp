@@ -157,6 +157,7 @@ static MpGcnConfig buildConfig()
   config.scene_miniresults = 0x54;
 
   config.scene = { 0x801d3ce0, DR_VALUE_TYPE_S32 };
+  config.rng = { 0x801d342c, DR_VALUE_TYPE_U32 };
   config.minigame = { 0x8018fd2c, DR_VALUE_TYPE_S16 };
 
   const size_t character_addr[4]    = { 0x8018fc10, 0x8018fc1a, 0x8018fc24, 0x8018fc2e };

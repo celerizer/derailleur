@@ -8,6 +8,9 @@ static const dr_value_t MP8_MINIGAME_TO_LOAD = { 0x802287CC, DR_VALUE_TYPE_S16 }
 /// s32 - current scene id
 static const dr_value_t MP8_SCENE_ID = { 0x802CD220, DR_VALUE_TYPE_S32 };
 
+/* u32 RNG state, sampled for netplay desync checks */
+static const dr_value_t MP8_RNG = { 0x802CD170, DR_VALUE_TYPE_U32 };
+
 /// s16 - minigame variant perhaps? course id for moped
 static const size_t MP8_MINIGAME_VARIANT_ADDR = 0x802CE35E;
 
@@ -523,6 +526,16 @@ void MarioParty8::doApplyGameData(const DrGameData &data)
   }
 
   applyControlRemap(data.minigame->quirks, m_players);
+}
+
+dr_sync_validator_t MarioParty8::syncValidator(void)
+{
+  dr_sync_validator_t sync = { 0, 0 };
+  int64_t value = 0;
+
+  if (m_retro->readValue(&value, MP8_RNG) == DR_OK)
+    sync.rng = static_cast<uint32_t>(value);
+  return sync;
 }
 
 dr_minigame_result_t MarioParty8::minigameResult(unsigned index)

@@ -173,6 +173,7 @@ static MpN64Config buildConfig()
   config.scene_miniresults = 0x70;
 
   config.scene = { 0x800FA63E, DR_VALUE_TYPE_S16 };
+  config.rng = { 0x800c99b4, DR_VALUE_TYPE_U32 };
   config.minigame = { 0x800F93C8, DR_VALUE_TYPE_S16 };
 
   /* Boot to debug menu */

@@ -162,7 +162,7 @@ void MarioPartyN64::run()
 
 void MarioPartyN64::seedRng()
 {
-  if (!m_config.rng.address)
+  if (!m_config.seed_rng || !m_config.rng.address)
     return;
 
   /* dr_rand is shared and lockstepped, so netplay peers seed identically. */
@@ -362,11 +362,7 @@ void MarioPartyN64::doApplyGameData(const DrGameData &data)
 
     if (m_booted)
     {
-      /* No snapshot to fall back on. retro_reset is a soft reset: it only
-       * schedules an NMI about half a second out and leaves RDRAM standing, so
-       * the game re-enters its boot long after this returns. Stamping now would
-       * leave the players fighting that initialisation for the rest of their
-       * hold, so wait the reboot out. */
+      /* We've already performed first boot, just reset */
       core()->reset();
       m_pendingPlayers = data;
       m_applyCountdown = MPN64_RESET_APPLY_DELAY_FRAMES;
@@ -390,26 +386,22 @@ void MarioPartyN64::applyPlayers(const DrGameData &data, bool settled)
 {
   unsigned characters[4] = { 0, 0, 0, 0 };
 
-  /* A boot keeps initialising RAM long after the first frame, so the writes below
-   * are re-stamped until it has settled rather than applied once. A state load is
-   * already settled and only needs the single write. */
-  const unsigned hold = MPN64_BOOT_HOLD_FRAMES;
+  /* Hold player data writes when injection is enabled */
+  const unsigned hold = bootsWithoutState() ? MPN64_BOOT_HOLD_FRAMES : 0;
   auto write = [&](int64_t val, const dr_value_t &value) {
-    m_retro->writeValueForFrames(val, value, hold);
+    if (hold)
+      m_retro->writeValueForFrames(val, value, hold);
+    else
+      m_retro->writeValue(val, value);
   };
 
   const bool hidden = hiddenCharacterPlayable(data.minigame);
   const bool free_for_all = data.minigame->type == DR_MINIGAME_4P;
-
-  /* Duels are reachable only from the debug menu's BOARD branch, which is
-   * patched to take the overlay straight out of this field instead of the menu
-   * row -- so a duel sends its scene id where every other mini-game sends its
-   * id. Both land in main RAM, which the debug overlay's load does not disturb. */
   const bool duel = data.minigame->type == DR_MINIGAME_DUEL;
 
   m_retro->writeValueForFrames(duel ? data.minigame->scene_id : data.minigame->minigame_id,
     m_config.minigame, hold ? hold : MPN64_MINIGAME_HOLD_FRAMES);
-  /* GAME for the rest, BOARD for duels. Main RAM, so one write sticks. */
+  /* Use BOARD state for duels */
   if (m_config.debug_mode.address)
     m_retro->writeValueForFrames(duel ? 1 : 0, m_config.debug_mode,
       hold ? hold : MPN64_MINIGAME_HOLD_FRAMES);
@@ -498,6 +490,16 @@ void MarioPartyN64::applyPlayers(const DrGameData &data, bool settled)
   /* The pot the board collected, for the battle results to pay back out. */
   if (m_config.battle_pot.address)
     write(data.battle_pot, m_config.battle_pot);
+}
+
+dr_sync_validator_t MarioPartyN64::syncValidator(void)
+{
+  dr_sync_validator_t sync = { 0, 0 };
+  int64_t value = 0;
+
+  if (m_config.rng.address && m_retro->readValue(&value, m_config.rng) == DR_OK)
+    sync.rng = static_cast<uint32_t>(value);
+  return sync;
 }
 
 dr_minigame_result_t MarioPartyN64::minigameResult(unsigned index)

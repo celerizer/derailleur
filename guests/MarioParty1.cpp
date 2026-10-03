@@ -182,6 +182,7 @@ static MpN64Config buildConfig()
     { 0x800ED150, DR_VALUE_TYPE_U32 }, 0x00000000 };
 
   config.rng = { 0x800c2ff4, DR_VALUE_TYPE_U32 };
+  config.seed_rng = true;
 
   const size_t controller_addr[4] = { 0x800f32b3, 0x800f32e3, 0x800f3313, 0x800f3343 };
   const size_t difficulty_addr[4] = { 0x800f32b2, 0x800f32e2, 0x800f3312, 0x800f3342 };

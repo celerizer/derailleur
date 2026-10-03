@@ -357,6 +357,16 @@ void MarioParty9::doApplyGameData(const DrGameData &data)
   applyControlProfile(DR_WII_CONTROL_POINTER);
 }
 
+dr_sync_validator_t MarioParty9::syncValidator(void)
+{
+  dr_sync_validator_t sync = { 0, 0 };
+  int64_t value = 0;
+
+  if (m_retro->readValue(&value, MP9_RNG) == DR_OK)
+    sync.rng = static_cast<uint32_t>(value);
+  return sync;
+}
+
 dr_minigame_result_t MarioParty9::minigameResult(unsigned index)
 {
   dr_minigame_result_t result = { 0, 0 };

@@ -107,6 +107,8 @@ public:
   }
 
   virtual dr_minigame_result_t minigameResult(unsigned index) = 0;
+
+  virtual dr_sync_validator_t syncValidator(void) { return { 0, 0 }; }
   virtual const dr_mp_minigame_t *minigames() const = 0;
   virtual const char *name(void) const = 0;
   virtual dr_guest id(void) const { return DR_GUEST_INVALID; }
@@ -205,9 +207,6 @@ signals:
   /// A minigame was aborted (e.g. the global stuck-minigame timeout) rather than
   /// completing normally. Return to the board without writing results.
   void minigameCanceled();
-  /// The guest suspects its just-started state may differ across netplay peers
-  /// (e.g. a non-deterministic setup that couldn't be gated). Prompts a hard resync.
-  void desyncSuspected();
   /// Proactively asks for a hard resync (e.g. on the frame a mini-game begins), to
   /// realign peers after the non-deterministic boot/practice. May fire repeatedly.
   void hardResyncRequested();

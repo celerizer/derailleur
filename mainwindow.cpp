@@ -882,12 +882,7 @@ void MainWindow::startWithHost(DrHost *host)
     connect(guest, &DrGuest::minigameFinished, m_Netplay, &DrNetplay::freezeActiveContext,
       Qt::DirectConnection);
 
-  /* A guest that couldn't run its setup deterministically (see CoreDolphin) asks to
-   * be re-synced from the host, so all peers converge on one state. */
-  for (DrGuest *guest : m_Guests->guests())
-    connect(guest, &DrGuest::desyncSuspected, m_Netplay, &DrNetplay::requestResync);
-
-  /* A guest can also proactively request a hard resync (e.g. entering a mini-game). */
+  /* A guest can proactively request a hard resync (e.g. entering a mini-game). */
   for (DrGuest *guest : m_Guests->guests())
     connect(guest, &DrGuest::hardResyncRequested, m_Netplay, &DrNetplay::requestResync);
 
@@ -1239,13 +1234,13 @@ void MainWindow::attachNetplay()
    * read identical input from the store. */
   m_Netplay->setLocalSource(m_Host->core()->input()->backend());
 
-  /* The board core is attached first, so it is context 0 -- the one whose RNG
-   * netplay cross-checks between peers (see DrNetplay::setRngProbe). */
+  /* Every context's sync validator is cross-checked between peers while it is active. */
   DrHost *host = m_Host;
-  m_Netplay->setRngProbe([host]() { return host->rngValue(); });
+  DrGuestList *guests = m_Guests;
 
   QSet<QRetro *> seen;
-  m_Netplay->attachCore(m_Host->core(), QStringLiteral("host"));
+  m_Netplay->attachCore(m_Host->core(), QStringLiteral("host"),
+    [host]() { return dr_sync_validator_t{ host->rngValue(), 0 }; });
   seen.insert(m_Host->core());
   for (DrGuest *guest : m_Guests->guests())
   {
@@ -1258,7 +1253,13 @@ void MainWindow::attachNetplay()
     QRetro *core = guest->core();
     if (core && !seen.contains(core))
     {
-      m_Netplay->attachCore(core, QString::fromUtf8(guest->name()));
+      /* Guests can share a core (the Dolphin games), so ask whichever guest is
+       * running on it rather than the one that happened to attach it. */
+      m_Netplay->attachCore(core, QString::fromUtf8(guest->name()), [guests, core]() {
+        DrGuest *current = guests->currentGuest();
+        return current && current->core() == core ? current->syncValidator()
+                                                  : dr_sync_validator_t{ 0, 0 };
+      });
       seen.insert(core);
     }
   }

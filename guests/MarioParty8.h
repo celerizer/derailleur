@@ -25,6 +25,7 @@ public:
 
   const dr_mp_minigame_t *minigames() const override;
   dr_minigame_result_t minigameResult(unsigned index) override;
+  dr_sync_validator_t syncValidator(void) override;
 
 protected:
   void run() override;

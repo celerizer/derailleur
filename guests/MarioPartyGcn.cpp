@@ -55,6 +55,16 @@ void MarioPartyGcn::doApplyGameData(const DrGameData &data)
   applyPlayers();
 }
 
+dr_sync_validator_t MarioPartyGcn::syncValidator(void)
+{
+  dr_sync_validator_t sync = { 0, 0 };
+  int64_t value = 0;
+
+  if (m_config.rng.address && m_retro->readValue(&value, m_config.rng) == DR_OK)
+    sync.rng = static_cast<uint32_t>(value);
+  return sync;
+}
+
 dr_minigame_result_t MarioPartyGcn::minigameResult(unsigned index)
 {
   dr_minigame_result_t result = { 0, 0 };

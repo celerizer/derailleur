@@ -44,8 +44,11 @@ struct MpN64Config
   /// immediates, which are a patch apiece.
   MpN64BootPatch boot_patches[32];
 
-  /// The game's RNG state, reseeded as each mini-game starts. 0 = don't touch it.
+  /// The game's RNG state, sampled for netplay desync checks. 0 = unknown.
   dr_value_t rng;
+
+  /// Reseed `rng` from dr_rand as each mini-game starts.
+  bool seed_rng;
 
   dr_value_t controller[4];
   dr_value_t difficulty[4];
@@ -133,6 +136,7 @@ public:
   void unpause() override { if (m_retro) m_retro->unpause(); }
 
   dr_minigame_result_t minigameResult(unsigned index) override;
+  dr_sync_validator_t syncValidator(void) override;
   const dr_mp_minigame_t *minigames() const override;
 
 protected:
