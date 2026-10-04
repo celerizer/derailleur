@@ -1,7 +1,10 @@
 #include "SmashRemix.h"
 
 #include <QApplication>
+#include <QDir>
 #include <QFile>
+#include <QImage>
+#include <QPainter>
 
 static const dr_mp_minigame_t SR_MINIGAMES[] = {
   { "Remix Free-for-all", DR_MINIGAME_4P, 0x00, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
@@ -916,6 +919,74 @@ void SmashRemix::run(void)
     finishMinigame();
 }
 
+static const char *SR_HIRES_DIR =
+  "system/Mupen64plus/hires_texture/SMASH REMIX/GLideNHQ";
+
+/* Mario Party character head icons (native 8x10), one per character */
+static const struct
+{
+  dr_character character;
+  const char *file;
+} SR_CHARACTER_ICON_FILES[] = {
+  { DR_CHARACTER_MARIO, "SMASH REMIX#C161AB56#2#0#E1DE213E_ciByRGBA.png" },
+  { DR_CHARACTER_LUIGI, "SMASH REMIX#B2D8DC84#2#0#5977DF32_ciByRGBA.png" },
+  { DR_CHARACTER_PEACH, "SMASH REMIX#9D1C1919#2#0#6A1786C4_ciByRGBA.png" },
+  { DR_CHARACTER_YOSHI, "SMASH REMIX#ED95650B#2#0#9AFF18BF_ciByRGBA.png" },
+  { DR_CHARACTER_WARIO, "SMASH REMIX#A9AC2C8F#2#0#1BACA3B7_ciByRGBA.png" },
+  { DR_CHARACTER_DONKEY_KONG, "SMASH REMIX#359552EC#2#0#BB2A0301_ciByRGBA.png" },
+  { DR_CHARACTER_WALUIGI, "SMASH REMIX#B2D8DC84#2#0#5D0DEE14_ciByRGBA.png" },
+  { DR_CHARACTER_DAISY, "SMASH REMIX#9D1C1919#2#0#D3F50C76_ciByRGBA.png" },
+  { DR_CHARACTER_TOAD, "SMASH REMIX#F05223CC#2#0#D2911846_ciByRGBA.png" },
+  { DR_CHARACTER_BOO, "SMASH REMIX#C3B9BAE7#2#0#950BAF0B_ciByRGBA.png" },
+  { DR_CHARACTER_KOOPA_KID, "SMASH REMIX#6CE9AF2E#2#0#0359B085_ciByRGBA.png" },
+  { DR_CHARACTER_KOOPA_KID_R, "SMASH REMIX#6CE9AF2E#2#0#655E98FC_ciByRGBA.png" },
+  { DR_CHARACTER_KOOPA_KID_G, "SMASH REMIX#6CE9AF2E#2#0#04DC0104_ciByRGBA.png" },
+  { DR_CHARACTER_KOOPA_KID_B, "SMASH REMIX#6CE9AF2E#2#0#B15F2501_ciByRGBA.png" },
+  { DR_CHARACTER_TOADETTE, "SMASH REMIX#F4C3838E#2#0#CA954C22_ciByRGBA.png" },
+  { DR_CHARACTER_BIRDO, "SMASH REMIX#ED95650B#2#0#EBD70F57_ciByRGBA.png" },
+  { DR_CHARACTER_DRY_BONES, "SMASH REMIX#6CE9AF2E#2#0#62F2E645_ciByRGBA.png" },
+  { DR_CHARACTER_HAMMER_BRO, "SMASH REMIX#664D1F4E#2#0#F464724F_ciByRGBA.png" },
+  { DR_CHARACTER_BLOOPER, "SMASH REMIX#F95B0588#2#0#2DD7F6E9_ciByRGBA.png" },
+};
+
+/* Icons are written at 4x the native 8x10 (GLideN64 needs an exact integer
+ * upscale), so the square 32px art is letterboxed top and bottom. */
+static const int SR_ICON_WIDTH = 32;
+static const int SR_ICON_HEIGHT = 40;
+
+/* Per-player series icons (native size varies by series), all replaced with the
+ * Smash symbol (SMASH REMIX#9318AE8D#4#0_all.png, 27x25) */
+static const struct
+{
+  const char *file;
+  int width;  /* native width */
+  int height; /* native height */
+} SR_SERIES_ICON_FILES[] = {
+  { "SMASH REMIX#2C02255E#4#0_all.png", 27, 25 }, /* mushroom */
+  { "SMASH REMIX#E8AC044C#4#0_all.png", 27, 25 }, /* mushroom */
+  { "SMASH REMIX#2D86B103#4#0_all.png", 30, 20 }, /* wario */
+  { "SMASH REMIX#598EC648#4#0_all.png", 22, 25 }, /* yoshi */
+  { "SMASH REMIX#78689C78#4#0_all.png", 30, 22 }, /* donkey kong */
+  { "SMASH REMIX#8837F952#4#0_all.png", 27, 25 }, /* kirby */
+  { "SMASH REMIX#B0214741#4#0_all.png", 22, 25 }, /* bowser */
+  { "SMASH REMIX#D355E645#4#0_all.png", 24, 24 }, /* pokemon */
+  { "SMASH REMIX#DAB19180#4#0_all.png", 25, 25 }, /* earthbound */
+};
+
+/* Series icons are written at this integer multiple of their native size */
+static const int SR_SERIES_ICON_SCALE = 4;
+
+/* Fits art (aspect preserved) centered on a transparent w x h canvas */
+static QImage srFitIcon(const QImage &art, int w, int h)
+{
+  const QImage scaled = art.scaled(w, h, Qt::KeepAspectRatio, Qt::FastTransformation);
+  QImage icon(w, h, QImage::Format_ARGB32);
+  icon.fill(Qt::transparent);
+  QPainter p(&icon);
+  p.drawImage((w - scaled.width()) / 2, (h - scaled.height()) / 2, scaled);
+  return icon;
+}
+
 SmashRemix::SmashRemix(QObject *parent)
   : DrGuest(parent)
 {
@@ -940,6 +1011,48 @@ SmashRemix::SmashRemix(QObject *parent)
 const dr_mp_minigame_t *SmashRemix::minigames() const
 {
   return SR_MINIGAMES;
+}
+
+void SmashRemix::onBeforeBoot(const DrGameData &data)
+{
+  (void)data;
+  writeCharacterIcons();
+}
+
+void SmashRemix::writeCharacterIcons()
+{
+  const QString destDir = QString::fromUtf8(SR_HIRES_DIR);
+  QDir().mkpath(destDir);
+
+  auto saveTo = [&](const QImage &img, const char *file) {
+    const QString dest = destDir + "/" + QString::fromUtf8(file);
+    if (!img.save(dest, "PNG"))
+      log(DR_LOG_WARN, qPrintable(QString("failed to write %1").arg(dest)));
+  };
+
+  for (const auto &entry : SR_CHARACTER_ICON_FILES)
+  {
+    const QString src = dr_player_icon_32px(m_hostPlatform, entry.character);
+    const QImage art(src);
+    if (art.isNull())
+    {
+      log(DR_LOG_WARN, qPrintable(QString("no 32px player icon for character %1")
+        .arg(static_cast<int>(entry.character))));
+      continue;
+    }
+    saveTo(srFitIcon(art, SR_ICON_WIDTH, SR_ICON_HEIGHT), entry.file);
+  }
+
+  /* Series icons all become the Smash symbol */
+  const QImage background(":/assets/ui/smash_background.png");
+  if (background.isNull())
+  {
+    log(DR_LOG_WARN, "no smash background icon");
+    return;
+  }
+  for (const auto &entry : SR_SERIES_ICON_FILES)
+    saveTo(srFitIcon(background, entry.width * SR_SERIES_ICON_SCALE,
+      entry.height * SR_SERIES_ICON_SCALE), entry.file);
 }
 
 void SmashRemix::doApplyGameData(const DrGameData &data)

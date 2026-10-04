@@ -20,10 +20,12 @@ public:
   dr_minigame_result_t minigameResult(unsigned index) override;
   const dr_mp_minigame_t *minigames() const override;
   void doApplyGameData(const DrGameData &data) override;
+  void onBeforeBoot(const DrGameData &data) override;
 
 
 private:
   void applyPlayers();
+  void writeCharacterIcons();
   void run(void);
 
   dr_character m_slotCharacters[4] = {};
