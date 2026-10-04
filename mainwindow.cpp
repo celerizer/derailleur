@@ -6,6 +6,7 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QFont>
 #include <QGridLayout>
 #include <QIcon>
 #include <QLabel>
@@ -13,6 +14,7 @@
 #include <QMessageBox>
 #include <QPainter>
 #include <QPalette>
+#include <QPen>
 #include <QPixmap>
 #include <QRandomGenerator>
 #include <QScrollArea>
@@ -26,6 +28,7 @@
 #include <QToolButton>
 #include <QVBoxLayout>
 #include <QWidget>
+#include <functional>
 
 #include "DrChallenge.h"
 #include "DrDebug.h"
@@ -332,41 +335,99 @@ MainWindow::MainWindow(QWidget *parent)
     layout->addWidget(label);
     layout->addLayout(grid);
 
-    /* Two rows of four: each host is its own title screen with the game's name
-     * underneath. The 4:3 shots are scaled to keep their aspect. */
-    auto addHostButton = [&](const QString &name, const QString &title, auto factory) {
-      QToolButton *btn = new QToolButton(startGame);
+    /* A host missing its ROM or core gets a (?) and explains what's missing
+     * instead of starting. */
+    auto finishHostButton = [&](QToolButton *btn, const QString &name, const QString &rom,
+                              dr_core core, std::function<void()> start) {
+      auto missingFiles = [rom, core]() {
+        QStringList missing;
 
-      btn->setText(name);
-      btn->setIcon(QIcon(QString(":/assets/titlescreen/%1.png").arg(title)));
+        if (!QFile::exists(rom))
+          missing.append(QDir::toNativeSeparators(rom));
+        if (!QFile::exists(dr_core_path(core)))
+          missing.append(QDir::toNativeSeparators(dr_core_path(core)));
+        return missing;
+      };
+
+      const QIcon base = btn->icon();
+      auto showMissing = [btn, name, base](bool missing) {
+        btn->setText(name);
+        if (!missing)
+        {
+          btn->setIcon(base);
+          return;
+        }
+
+        /* Grayed title screen with a circled "?" in the corner */
+        QPixmap pm = base.pixmap(QSize(160, 120), QIcon::Disabled);
+        const qreal w = pm.width() / pm.devicePixelRatio();
+        const qreal h = pm.height() / pm.devicePixelRatio();
+        const qreal d = 28;
+        const QRectF circle(w - d - 4, h - d - 4, d, d);
+        QPainter p(&pm);
+        QFont font = btn->font();
+
+        p.setRenderHint(QPainter::Antialiasing);
+        p.setPen(QPen(Qt::white, 2));
+        p.setBrush(btn->palette().color(QPalette::Highlight));
+        p.drawEllipse(circle);
+        font.setBold(true);
+        font.setPixelSize(static_cast<int>(d * 0.65));
+        p.setFont(font);
+        p.drawText(circle, Qt::AlignCenter, QStringLiteral("?"));
+        p.end();
+        btn->setIcon(QIcon(pm));
+      };
+
+      showMissing(!missingFiles().isEmpty());
       btn->setIconSize(QSize(160, 120));
       btn->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
       btn->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-      connect(btn, &QToolButton::clicked, this, [this, factory]() {
-        m_CustomRom.clear();
-        startWithHost(factory());
+      connect(btn, &QToolButton::clicked, this, [this, name, missingFiles, showMissing, start]() {
+        const QStringList missing = missingFiles();
+
+        showMissing(!missing.isEmpty());
+        if (missing.isEmpty())
+          start();
+        else
+          QMessageBox::warning(this, name,
+            tr("%1 can't be started because these files are missing:\n\n%2")
+              .arg(name, missing.join("\n")));
       });
       grid->addWidget(btn, hosts / 4, hosts % 4);
       hosts++;
     };
-    addHostButton("Mario Party", "marioparty1",
-      [this]() -> DrHost * { return new MarioParty1Host(this); });
-    addHostButton("Mario Party 2", "marioparty2",
-      [this]() -> DrHost * { return new MarioParty2Host(this); });
-    addHostButton("Mario Party 3", "marioparty3",
-      [this]() -> DrHost * { return new MarioParty3Host(this); });
-    addHostButton("Mario Party 4", "marioparty4",
-      [this]() -> DrHost * { return new MarioParty4Host(this); });
-    addHostButton("Mario Party 5", "marioparty5",
-      [this]() -> DrHost * { return new MarioParty5Host(this); });
-    addHostButton("Mario Party 6", "marioparty6",
-      [this]() -> DrHost * { return new MarioParty6Host(this); });
-    addHostButton("Mario Party 7", "marioparty7",
-      [this]() -> DrHost * { return new MarioParty7Host(this); });
-    addHostButton("Mario Party 8", "marioparty8",
-      [this]() -> DrHost * { return new MarioParty8Host(this); });
-    addHostButton("Mario Party DS", "mariopartyds",
-      [this]() -> DrHost * { return new MarioPartyDSHost(this); });
+
+    /* Two rows of four: each host is its own title screen with the game's name
+     * underneath. The 4:3 shots are scaled to keep their aspect. */
+    auto addHostButton = [&](const QString &name, const QString &title, const QString &rom,
+                           dr_core core, auto factory) {
+      QToolButton *btn = new QToolButton(startGame);
+
+      btn->setIcon(QIcon(QString(":/assets/titlescreen/%1.png").arg(title)));
+      finishHostButton(btn, name, dr_roms_directory() + "/" + rom, core, [this, factory]() {
+        m_CustomRom.clear();
+        startWithHost(factory());
+      });
+    };
+    addHostButton("Mario Party", "marioparty1", "Mario Party (USA).z64",
+      DR_CORE_MUPEN64PLUSNEXT, [this]() -> DrHost * { return new MarioParty1Host(this); });
+    addHostButton("Mario Party 2", "marioparty2", "Mario Party 2 (USA).z64",
+      DR_CORE_MUPEN64PLUSNEXT, [this]() -> DrHost * { return new MarioParty2Host(this); });
+    addHostButton("Mario Party 3", "marioparty3", "Mario Party 3 (USA).z64",
+      DR_CORE_MUPEN64PLUSNEXT, [this]() -> DrHost * { return new MarioParty3Host(this); });
+    addHostButton("Mario Party 4", "marioparty4", "Mario Party 4 (USA) (Rev 1).rvz",
+      DR_CORE_DOLPHIN, [this]() -> DrHost * { return new MarioParty4Host(this); });
+    addHostButton("Mario Party 5", "marioparty5", "Mario Party 5 (USA).rvz",
+      DR_CORE_DOLPHIN, [this]() -> DrHost * { return new MarioParty5Host(this); });
+    addHostButton("Mario Party 6", "marioparty6", "Mario Party 6 (USA).rvz",
+      DR_CORE_DOLPHIN, [this]() -> DrHost * { return new MarioParty6Host(this); });
+    addHostButton("Mario Party 7", "marioparty7", "Mario Party 7 (USA) (Rev 1).rvz",
+      DR_CORE_DOLPHIN, [this]() -> DrHost * { return new MarioParty7Host(this); });
+    addHostButton("Mario Party 8", "marioparty8", "Mario Party 8 (USA, Asia) (Rev 2).rvz",
+      DR_CORE_DOLPHIN, [this]() -> DrHost * { return new MarioParty8Host(this); });
+    addHostButton("Mario Party DS", "mariopartyds", "Mario Party DS (USA) (Rev 2).nds",
+      DR_CORE_MELONDSDS, [this]() -> DrHost * { return new MarioPartyDSHost(this); });
 
     /* Modified ROMs dropped in roms/custom/mpN follow the stock eight, each named
      * after its file and using a sibling .png when one is there. */
@@ -376,19 +437,14 @@ MainWindow::MainWindow(QWidget *parent)
     {
       QToolButton *btn = new QToolButton(startGame);
 
-      btn->setText(rom.name);
       btn->setIcon(rom.icon.isEmpty()
           ? QIcon(QString(":/assets/titlescreen/marioparty%1.png").arg(rom.mp))
           : QIcon(rom.icon));
-      btn->setIconSize(QSize(160, 120));
-      btn->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
-      btn->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-      connect(btn, &QToolButton::clicked, this, [this, rom]() {
-        m_CustomRom = rom.name;
-        startWithHost(makeHost(rom.mp, rom.path));
-      });
-      grid->addWidget(btn, hosts / 4, hosts % 4);
-      hosts++;
+      finishHostButton(btn, rom.name, rom.path,
+        rom.mp <= 3 ? DR_CORE_MUPEN64PLUSNEXT : DR_CORE_DOLPHIN, [this, rom]() {
+          m_CustomRom = rom.name;
+          startWithHost(makeHost(rom.mp, rom.path));
+        });
     }
 
     m_StartGameTab = startGame;
