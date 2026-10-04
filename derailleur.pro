@@ -80,6 +80,7 @@ SOURCES += \
     guests/MarioGolf.cpp \
     guests/MarioKart64.cpp \
     guests/MarioKartDoubleDash.cpp \
+    guests/MarioKartWii.cpp \
     guests/MarioParty1.cpp \
     guests/MarioParty2.cpp \
     guests/MarioParty3.cpp \
@@ -142,6 +143,7 @@ HEADERS += \
     guests/MarioGolf.h \
     guests/MarioKart64.h \
     guests/MarioKartDoubleDash.h \
+    guests/MarioKartWii.h \
     guests/MarioParty1.h \
     guests/MarioParty2.h \
     guests/MarioParty3.h \

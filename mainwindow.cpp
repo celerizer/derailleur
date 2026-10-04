@@ -192,6 +192,7 @@ static QString dr_custom_rom_path(int mp, const QString &name)
 #include "guests/KirbyAirRide.h"
 #include "guests/MarioGolf.h"
 #include "guests/MarioKartDoubleDash.h"
+#include "guests/MarioKartWii.h"
 #include "guests/MarioParty4.h"
 #include "guests/MarioParty5.h"
 #include "guests/MarioParty6.h"
@@ -544,6 +545,13 @@ MainWindow::MainWindow(QWidget *parent)
   dolphinMp9->finalizeGames();
   if (dolphinMp9->isValid())
     m_Guests->add(dolphinMp9);
+
+  auto *dolphinMkw = new CoreDolphin("wii-mkw", true, this);
+  dolphinMkw->setControllerType(DR_DOLPHIN_CONTROLLER_WIIMOTE_CLASSIC);
+  dolphinMkw->addGame(new MarioKartWii(dolphinMkw->core(), dolphinMkw));
+  dolphinMkw->finalizeGames();
+  if (dolphinMkw->isValid())
+    m_Guests->add(dolphinMkw);
 
   auto addGuest = [this](DrGuest *g) {
     if (g->isValid())
