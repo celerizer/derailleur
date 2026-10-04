@@ -23,6 +23,10 @@ public:
   /// Terminated by a row with a null key.
   void setOptions(const dr_core_option_t *options) { m_options = options; }
 
+  /// Controller type put in ports 1-4 before the first frame, or
+  /// DR_DOLPHIN_CONTROLLER_DEFAULT to leave the core's default.
+  void setControllerType(dr_dolphin_controller type) { m_controllerType = type; }
+
   void addGame(DolphinGuest *game);
   void finalizeGames();
 
@@ -66,6 +70,7 @@ private:
   QString m_m3uPath;
   QByteArray m_name;
   const dr_core_option_t *m_options = nullptr;
+  dr_dolphin_controller m_controllerType = DR_DOLPHIN_CONTROLLER_DEFAULT;
   QString m_subdir;
   QString m_baseCorePath; /* the (unpatched) Dolphin library, loaded lazily */
   int m_discIndex = -1;

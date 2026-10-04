@@ -303,6 +303,47 @@ typedef struct
 } dr_core_option_t;
 
 /**
+ * Controller type the Dolphin core puts in each port. These match the core's
+ * controller descriptions (see dr_dolphin_controller_desc), since its device ids
+ * overlap between the GameCube and Wii lists.
+ */
+typedef enum
+{
+  DR_DOLPHIN_CONTROLLER_DEFAULT = 0,
+
+  DR_DOLPHIN_CONTROLLER_GAMECUBE,
+  DR_DOLPHIN_CONTROLLER_WIIMOTE,
+  DR_DOLPHIN_CONTROLLER_WIIMOTE_SIDEWAYS,
+  DR_DOLPHIN_CONTROLLER_WIIMOTE_NUNCHUK,
+  DR_DOLPHIN_CONTROLLER_WIIMOTE_CLASSIC,
+  DR_DOLPHIN_CONTROLLER_WIIMOTE_CLASSIC_PRO,
+
+  DR_DOLPHIN_CONTROLLER_SIZE
+} dr_dolphin_controller;
+
+/// The Dolphin core's description for `type`, or null for the core's default.
+static inline const char *dr_dolphin_controller_desc(dr_dolphin_controller type)
+{
+  switch (type)
+  {
+  case DR_DOLPHIN_CONTROLLER_GAMECUBE:
+    return "GameCube Controller";
+  case DR_DOLPHIN_CONTROLLER_WIIMOTE:
+    return "WiiMote";
+  case DR_DOLPHIN_CONTROLLER_WIIMOTE_SIDEWAYS:
+    return "WiiMote (sideways)";
+  case DR_DOLPHIN_CONTROLLER_WIIMOTE_NUNCHUK:
+    return "WiiMote + Nunchuk";
+  case DR_DOLPHIN_CONTROLLER_WIIMOTE_CLASSIC:
+    return "WiiMote + Classic Controller";
+  case DR_DOLPHIN_CONTROLLER_WIIMOTE_CLASSIC_PRO:
+    return "WiiMote + Classic Controller Pro";
+  default:
+    return nullptr;
+  }
+}
+
+/**
  * Which console family a host game belongs to. The player artwork ships in one
  * set per family (assets/player-32px/n64 and .../gcwii), so a guest drawing the
  * board's players picks the set that matches the host it was launched from.

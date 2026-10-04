@@ -161,7 +161,35 @@ bool CoreDolphin::loadCore()
 void CoreDolphin::startCore()
 {
   if (auto *c = core())
+  {
     connect(c, &QRetro::frameBegin, this, [this]() { run(); }, Qt::DirectConnection);
+
+    /* Runs on the timing thread once the default port devices are set, before
+     * the first retro_run */
+    if (dr_dolphin_controller_desc(m_controllerType))
+      connect(c, &QRetro::onCoreStart, this, [this, c]() {
+        const char *desc = dr_dolphin_controller_desc(m_controllerType);
+        const std::vector<QRetroControllerPort> &ports = c->input()->controllerPorts();
+        unsigned port;
+
+        for (port = 0; port < 4 && port < ports.size(); port++)
+        {
+          bool found = false;
+
+          for (const QRetroControllerType &type : ports[port].types)
+          {
+            if (type.desc == desc)
+            {
+              c->input()->setSelectedControllerType(port, type.id);
+              found = true;
+              break;
+            }
+          }
+          log(found ? DR_LOG_INFO : DR_LOG_WARN, qPrintable(QString("port %1 controller: %2%3")
+            .arg(port + 1).arg(desc).arg(found ? "" : " (not offered by the core)")));
+        }
+      }, Qt::DirectConnection);
+  }
   m_retro->startCore();
 }
 
