@@ -135,6 +135,7 @@ static const dr_mp_minigame_t MP2_MINIGAMES[] = {
   { "Driver's Ed", DR_MINIGAME_SPECIAL, 0x39, 0x33, DR_NO_QUIRKS, DR_NO_FLAGS },
   // 3A Chance Time (scene 34)
 
+#if 0
   // duel
   { "Quick Draw Corks", DR_MINIGAME_DUEL, 0x3B, 0x3F, DR_NO_QUIRKS },
   { "Saber Swipes", DR_MINIGAME_DUEL, 0x3C, 0x42, DR_NO_QUIRKS },
@@ -142,6 +143,7 @@ static const dr_mp_minigame_t MP2_MINIGAMES[] = {
   { "Time Bomb", DR_MINIGAME_DUEL, 0x3E, 0x46, DR_NO_QUIRKS },
   { "Psychic Safari", DR_MINIGAME_DUEL, 0x3F, 0x48, DR_NO_QUIRKS },
   { "Rock, Paper, Mario", DR_MINIGAME_DUEL, 0x40, 0x4A, DR_NO_QUIRKS },
+#endif
 
   // leftovers
   { "Bowser's Big Blast", DR_MINIGAME_BATTLE, 0x41, 0x39, DR_NO_QUIRKS, DR_NO_FLAGS },

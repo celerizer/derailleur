@@ -1,6 +1,5 @@
 #include "DrGuestList.h"
 
-#include <QDataStream>
 #include <QWidget>
 
 DrGuestList::DrGuestList(QWidget *parent)
@@ -44,14 +43,13 @@ DrGuest *DrGuestList::pickMinigame(
 
   for (int i = 0; i < m_guests.size(); i++)
   {
-    quint32 ord = 0;
     for (const DrMinigameGroup &group : m_guests[i]->minigameGroups())
     {
       QList<const dr_mp_minigame_t *> minigames;
       for (const dr_mp_minigame_t *mg : group.minigames)
       {
-        const quint32 key = (static_cast<quint32>(i) << 16) | ord++;
-        if (mg->type == type && mg->minigame_id != 0xFF && !m_disabled.contains(key)
+        if (mg->type == type && mg->minigame_id != 0xFF
+            && !m_disabled.contains(dr_minigame_key(group.id, mg))
             && !(netplay && mg->flags.flags.no_netplay)
             && !(mic == DR_MIC_OFF && mg->flags.flags.mic)
             && !(mic == DR_MIC_ONLY && !mg->flags.flags.mic))
@@ -138,17 +136,7 @@ const std::array<DrMinigameCandidate, 5> &DrGuestList::minigameCandidates(
 
 void DrGuestList::applyFilter(const QByteArray &payload)
 {
-  m_disabled.clear();
-  QDataStream s(payload);
-  s.setByteOrder(QDataStream::LittleEndian);
-  quint16 count = 0;
-  s >> count;
-  for (quint16 i = 0; i < count && s.status() == QDataStream::Ok; i++)
-  {
-    quint32 key = 0;
-    s >> key;
-    m_disabled.insert(key);
-  }
+  m_disabled = dr_minigame_filter_decode(payload);
   log(DR_LOG_INFO, qPrintable(QString("minigame filter: %1 disabled").arg(m_disabled.size())));
 
   /* The cached candidates were rolled against the old filter, so they may now be
@@ -162,19 +150,13 @@ void DrGuestList::applyFilter(const QByteArray &payload)
 
 bool DrGuestList::guestHasCandidate(DrGuest *guest) const
 {
-  const int gi = m_guests.indexOf(guest);
-  if (gi < 0)
+  if (!m_guests.contains(guest))
     return false;
 
-  // Same ordinal scheme as pickMinigame / DrMinigameFilter.
-  quint32 ord = 0;
   for (const DrMinigameGroup &group : guest->minigameGroups())
     for (const dr_mp_minigame_t *mg : group.minigames)
-    {
-      const quint32 key = (static_cast<quint32>(gi) << 16) | ord++;
-      if (mg->minigame_id != 0xFF && !m_disabled.contains(key))
+      if (mg->minigame_id != 0xFF && !m_disabled.contains(dr_minigame_key(group.id, mg)))
         return true;
-    }
   return false;
 }
 

@@ -468,8 +468,21 @@ static const dr_mp_minigame_t SF64_MINIGAMES[] = {
 StarFox64::StarFox64(QObject *parent)
   : DrGuest(parent)
 {
+  unsigned port;
+
   m_retro = new DrRetroN64(this);
-  m_retro->init(coreId(), rom());
+  m_retro->init(coreId(), rom()); /* also applies N64 remaps */
+
+  /* Per-port remaps on top of the base N64 layout */
+  for (port = 0; port < 4; port++)
+  {
+    /* X = C-Left (alt map: core L) */
+    core()->input()->remapButton(port, RETRO_DEVICE_ID_JOYPAD_X, RETRO_DEVICE_ID_JOYPAD_L);
+    /* B = C-Down (alt map: core A) */
+    core()->input()->remapButton(port, RETRO_DEVICE_ID_JOYPAD_B, RETRO_DEVICE_ID_JOYPAD_A);
+    /* Y = B (alt map: core Y) */
+    core()->input()->remapButton(port, RETRO_DEVICE_ID_JOYPAD_Y, RETRO_DEVICE_ID_JOYPAD_Y);
+  }
 }
 
 const dr_mp_minigame_t *StarFox64::minigames() const

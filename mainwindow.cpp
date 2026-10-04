@@ -205,6 +205,7 @@ static QString dr_custom_rom_path(int mp, const QString &name)
 #include "guests/SuperMarioBros3.h"
 #include "guests/YoshisIsland.h"
 #include "guests/MarioTennis.h"
+#include "guests/PokemonStadium.h"
 #include "guests/PokemonStadium2.h"
 #include "guests/SonicShuffle.h"
 #include "guests/StarFox64.h"
@@ -567,6 +568,7 @@ MainWindow::MainWindow(QWidget *parent)
   addGuest(new SuperMarioBros3());
   addGuest(new YoshisIsland());
   addGuest(new MarioTennis());
+  addGuest(new PokemonStadium());
   addGuest(new PokemonStadium2());
   addGuest(new MarioGolf());
   //addGuest(new MarioPartyAdvance());

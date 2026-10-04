@@ -1,16 +1,88 @@
 #include "DrGuest.h"
 
+#include <QDataStream>
 #include <QFile>
+#include <QIODevice>
 #include <QRetro.h>
 
 /* Global safety net: a minigame that runs this many frames without finishing is
  * almost certainly stuck, so cancel it and return to the board (~5 min @ 60fps). */
 static constexpr int DR_MINIGAME_TIMEOUT_FRAMES = 60 * 60 * 5;
 
+/* Key layout: [63:56] game, [55:48] type, [47:32] scene_id, [31:0] minigame_id. */
+dr_minigame_key_t dr_minigame_key_make(
+  dr_guest game, dr_minigame_type type, signed minigame_id, signed scene_id)
+{
+  return (static_cast<quint64>(game & 0xFF) << 56)
+    | (static_cast<quint64>(type & 0xFF) << 48)
+    | (static_cast<quint64>(static_cast<quint16>(scene_id)) << 32)
+    | static_cast<quint64>(static_cast<quint32>(minigame_id));
+}
+
+dr_minigame_key_t dr_minigame_key(dr_guest game, const dr_mp_minigame_t *mg)
+{
+  return dr_minigame_key_make(game, mg->type, mg->minigame_id, mg->scene_id);
+}
+
+dr_guest dr_minigame_key_game(dr_minigame_key_t key)
+{
+  return static_cast<dr_guest>((key >> 56) & 0xFF);
+}
+
+dr_minigame_type dr_minigame_key_type(dr_minigame_key_t key)
+{
+  return static_cast<dr_minigame_type>((key >> 48) & 0xFF);
+}
+
+signed dr_minigame_key_scene(dr_minigame_key_t key)
+{
+  return static_cast<qint16>((key >> 32) & 0xFFFF);
+}
+
+signed dr_minigame_key_id(dr_minigame_key_t key)
+{
+  return static_cast<qint32>(key & 0xFFFFFFFF);
+}
+
+QByteArray dr_minigame_filter_encode(const QSet<dr_minigame_key_t> &disabled)
+{
+  QByteArray out;
+  QDataStream s(&out, QIODevice::WriteOnly);
+
+  s.setByteOrder(QDataStream::LittleEndian);
+  s << static_cast<quint16>(disabled.size());
+  for (dr_minigame_key_t key : disabled)
+    s << key;
+
+  return out;
+}
+
+QSet<dr_minigame_key_t> dr_minigame_filter_decode(const QByteArray &payload)
+{
+  QSet<dr_minigame_key_t> disabled;
+  QDataStream s(payload);
+  quint16 count = 0;
+  quint16 i;
+
+  s.setByteOrder(QDataStream::LittleEndian);
+  s >> count;
+  for (i = 0; i < count && s.status() == QDataStream::Ok; i++)
+  {
+    dr_minigame_key_t key = 0;
+
+    s >> key;
+    if (s.status() == QDataStream::Ok)
+      disabled.insert(key);
+  }
+
+  return disabled;
+}
+
 QList<DrMinigameGroup> DrGuest::minigameGroups() const
 {
   DrMinigameGroup group;
   group.name = name();
+  group.id = id();
   for (const dr_mp_minigame_t *mg = minigames(); mg->name; mg++)
     group.minigames.append(mg);
   return { group };

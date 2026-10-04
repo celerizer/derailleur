@@ -95,6 +95,7 @@ SOURCES += \
     guests/MarioParty9.cpp \
     guests/MarioPartyGcn.cpp \
     guests/MarioTennis.cpp \
+    guests/PokemonStadium.cpp \
     guests/PokemonStadium2.cpp \
     guests/SmashRemix.cpp \
     guests/SonicShuffle.cpp \
@@ -158,6 +159,7 @@ HEADERS += \
     guests/MarioParty9.h \
     guests/MarioPartyGcn.h \
     guests/MarioTennis.h \
+    guests/PokemonStadium.h \
     guests/PokemonStadium2.h \
     guests/SmashRemix.h \
     guests/SonicShuffle.h \

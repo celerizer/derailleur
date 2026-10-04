@@ -5,16 +5,34 @@
 #include "DrRetro.h"
 #include <cstdio>
 #include <string>
+#include <QByteArray>
 #include <QList>
 #include <QObject>
+#include <QSet>
 #include <QString>
 #include <QWidget>
 
 struct DrMinigameGroup
 {
   const char *name;
+  dr_guest id = DR_GUEST_INVALID;
   QList<const dr_mp_minigame_t *> minigames;
 };
+
+/* Stable mini-game filter key: game, type, scene_id and minigame_id packed together. */
+typedef quint64 dr_minigame_key_t;
+
+dr_minigame_key_t dr_minigame_key(dr_guest game, const dr_mp_minigame_t *mg);
+dr_guest dr_minigame_key_game(dr_minigame_key_t key);
+dr_minigame_type dr_minigame_key_type(dr_minigame_key_t key);
+signed dr_minigame_key_scene(dr_minigame_key_t key);
+signed dr_minigame_key_id(dr_minigame_key_t key);
+dr_minigame_key_t dr_minigame_key_make(
+  dr_guest game, dr_minigame_type type, signed minigame_id, signed scene_id);
+
+/* Disabled mini-game set as a netplay payload: [u16 count][count * u64 key]. */
+QByteArray dr_minigame_filter_encode(const QSet<dr_minigame_key_t> &disabled);
+QSet<dr_minigame_key_t> dr_minigame_filter_decode(const QByteArray &payload);
 
 /// The full setup for one minigame launch, delivered to a guest in a single
 /// call: which minigame, its type, and all four players. Extend with board

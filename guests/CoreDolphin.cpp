@@ -268,6 +268,7 @@ QList<DrMinigameGroup> CoreDolphin::minigameGroups() const
   {
     DrMinigameGroup group;
     group.name = game->name();
+    group.id = game->id();
     while (i < m_entries.size() && m_entries[i].first == game)
       group.minigames.append(&m_flatList[i++]);
     result.append(group);
