@@ -34,6 +34,7 @@ private:
   int m_slotToIndex[4] = { -1, -1, -1, -1 }; /* in-game player slot -> board player index */
   int m_winnerIndex = -1;                    /* board player index of the winner, else -1 */
   int m_formOption = 0;                      /* starting vehicle to pick (sf64_form_option), 0 = none */
+  bool m_shieldsPending = false;             /* Battle Royal: cut shields once play starts */
 };
 
 #endif

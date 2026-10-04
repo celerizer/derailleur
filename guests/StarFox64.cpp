@@ -206,6 +206,9 @@ static const size_t SF64_PLAYER_FORM_OFS = 0x1CC; /* s32 sf64_player_form */
 static const size_t SF64_PLAYER_SHIELDS = 0x264; /* s32 0-255 */
 static const size_t SF64_PLAYER_DAMAGE = 0x268;  /* s32 damage queued to subtract from shields */
 
+/* Battle Royal starting shields: a third of the full 255 */
+static const int SF64_BATTLE_ROYAL_SHIELDS = 255 / 3;
+
 typedef enum
 {
   SF64_PLAYER_FORM_ARWING = 0,
@@ -455,12 +458,10 @@ static const int SF64_HIRES_SCALE = 2;
 
 static const dr_mp_minigame_t SF64_MINIGAMES[] = {
   /* minigame_id is the match type, scene_id the vehicle; the stage is random */
-  { "SF64: Point Match", DR_MINIGAME_4P, SF64_VS_MATCH_POINT, SF64_PLAYER_FORM_ARWING, DR_NO_QUIRKS, DR_FLAG_NO_BOTS },
-  { "SF64: Battle Royal", DR_MINIGAME_4P, SF64_VS_MATCH_BATTLE_ROYAL, SF64_PLAYER_FORM_ARWING, DR_NO_QUIRKS, DR_FLAG_NO_BOTS },
-  { "SF64: Time Trial", DR_MINIGAME_4P, SF64_VS_MATCH_TIME_TRIAL, SF64_PLAYER_FORM_ARWING, DR_NO_QUIRKS, DR_FLAG_NO_BOTS },
-  { "SF64: Landmaster Point Match", DR_MINIGAME_4P, SF64_VS_MATCH_POINT, SF64_PLAYER_FORM_LANDMASTER, DR_NO_QUIRKS, DR_FLAG_NO_BOTS },
-  { "SF64: Landmaster Battle Royal", DR_MINIGAME_4P, SF64_VS_MATCH_BATTLE_ROYAL, SF64_PLAYER_FORM_LANDMASTER, DR_NO_QUIRKS, DR_FLAG_NO_BOTS },
-  { "SF64: Landmaster Time Trial", DR_MINIGAME_4P, SF64_VS_MATCH_TIME_TRIAL, SF64_PLAYER_FORM_LANDMASTER, DR_NO_QUIRKS, DR_FLAG_NO_BOTS },
+  { "Arwing Battle Royal", DR_MINIGAME_4P, SF64_VS_MATCH_BATTLE_ROYAL, SF64_PLAYER_FORM_ARWING, DR_NO_QUIRKS, DR_FLAG_NO_BOTS },
+  { "Arwing Time Trial", DR_MINIGAME_4P, SF64_VS_MATCH_TIME_TRIAL, SF64_PLAYER_FORM_ARWING, DR_NO_QUIRKS, DR_FLAG_NO_BOTS },
+  { "Landmaster Battle Royal", DR_MINIGAME_4P, SF64_VS_MATCH_BATTLE_ROYAL, SF64_PLAYER_FORM_LANDMASTER, DR_NO_QUIRKS, DR_FLAG_NO_BOTS },
+  { "Landmaster Time Trial", DR_MINIGAME_4P, SF64_VS_MATCH_TIME_TRIAL, SF64_PLAYER_FORM_LANDMASTER, DR_NO_QUIRKS, DR_FLAG_NO_BOTS },
   { nullptr, DR_MINIGAME_INVALID, 0xFF, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
 };
 
@@ -476,8 +477,7 @@ const dr_mp_minigame_t *StarFox64::minigames() const
   return SF64_MINIGAMES;
 }
 
-/* Pre-boot (every launch): lay down the hires icon textures before the core
- * (re)scans them. Player i is controller port i, so icons go by in-game slot. */
+/* Create the radio chatter sprites */
 void StarFox64::onBeforeBoot(const DrGameData &data)
 {
   for (unsigned i = 0; i < 4; i++)
@@ -490,6 +490,7 @@ void StarFox64::doApplyGameData(const DrGameData &data)
   m_minigameFrames = 0;
   m_winnerIndex = -1;
   m_formOption = SF64_FORM_OPTION_NONE;
+  m_shieldsPending = false;
   for (unsigned i = 0; i < 4; i++)
     m_slotToIndex[i] = -1;
 
@@ -519,7 +520,6 @@ void StarFox64::doApplyGameData(const DrGameData &data)
       m_retro->writeValue((color.blue << 8) | (ba & 0xFF), effect[slot].ba);
     }
 
-    /* Engine glow color for this player number */
     const sf64_engine_glow_t &glow = SF64_ENGINE_GLOW_COLOR[slot];
     m_retro->writeValueForFrames(glow.lui_op | (color.red << 8) | color.green, glow.lui, 30);
     m_retro->writeValueForFrames(glow.ori_op | (color.blue << 8) | 0xFF, glow.ori, 30);
@@ -532,8 +532,6 @@ void StarFox64::doApplyGameData(const DrGameData &data)
     m_retro->writeValue(color.green, SF64_BOMB_COLOR_G[slot]);
     m_retro->writeValue(color.blue, SF64_BOMB_COLOR_B[slot]);
 
-    /* HUD: radar marker (blink entry at half brightness, like the game's), player
-     * number and kill icons */
     const unsigned rgb[3] = { color.red, color.green, color.blue };
     for (unsigned c = 0; c < 3; c++)
     {
@@ -553,11 +551,13 @@ void StarFox64::doApplyGameData(const DrGameData &data)
     const int stage = dr_rand() % stages;
 
     m_retro->writeValue(m_minigame->minigame_id, SF64_VS_MATCH_TYPE);
+    if (m_minigame->minigame_id == SF64_VS_MATCH_TIME_TRIAL)
+      m_retro->writeValue(0, SF64_VS_TIME_TRIAL_LIMIT); /* 1 minute */
+    m_shieldsPending = m_minigame->minigame_id == SF64_VS_MATCH_BATTLE_ROYAL;
     m_retro->writeValue(stage, SF64_VERSUS_STAGE);
     for (unsigned i = 0; i < 4; i++)
       m_retro->writeValueForFrames(form, SF64_PLAYER_FORM[i], 240);
 
-    /* The vehicle choice is also picked in run() during match setup */
     switch (form)
     {
     case SF64_PLAYER_FORM_LANDMASTER:
@@ -597,8 +597,26 @@ void StarFox64::run()
       m_retro->writeValue(m_formOption, SF64_PLAYER_FORM_OPTION[i]);
   }
 
-  /* End as soon as the winner is decided (start of the 60-frame pause). Guard a
-   * few frames so a stale state from the loaded savestate can't finish us instantly. */
+  /* Battle Royal: once play starts, cut everyone down to a third of their shields */
+  if (m_shieldsPending && m_retro->readValue(&state, SF64_VS_MATCH_STATE) == DR_OK &&
+      state == SF64_VS_STATE_PLAYING)
+  {
+    int64_t players = 0;
+    int64_t count = 0;
+
+    m_shieldsPending = false;
+    if (m_retro->readValue(&players, SF64_PLAYER) == DR_OK && players &&
+        m_retro->readValue(&count, SF64_CAM_COUNT) == DR_OK)
+    {
+      for (int64_t i = 0; i < count && i < 4; i++)
+        m_retro->writes32(SF64_BATTLE_ROYAL_SHIELDS,
+          static_cast<size_t>(players) + i * SF64_PLAYER_SIZE + SF64_PLAYER_SHIELDS);
+    }
+    else
+      log(DR_LOG_WARN, "players unreadable, Battle Royal shields left full");
+  }
+
+  /* End the mini-game after the 60-frame debrief */
   if (m_minigameFrames < 30 ||
       m_retro->readValue(&state, SF64_VS_MATCH_STATE) != DR_OK ||
       state < SF64_VS_STATE_WINNER + 1)
