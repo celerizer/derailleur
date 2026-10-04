@@ -80,6 +80,7 @@ SOURCES += \
     guests/MarioGolf.cpp \
     guests/MarioKart64.cpp \
     guests/MarioKartDoubleDash.cpp \
+    guests/MarioKartWii.cpp \
     guests/MarioParty1.cpp \
     guests/MarioParty2.cpp \
     guests/MarioParty3.cpp \
@@ -94,6 +95,7 @@ SOURCES += \
     guests/MarioParty9.cpp \
     guests/MarioPartyGcn.cpp \
     guests/MarioTennis.cpp \
+    guests/PokemonStadium.cpp \
     guests/PokemonStadium2.cpp \
     guests/SmashRemix.cpp \
     guests/SonicShuffle.cpp \
@@ -142,6 +144,7 @@ HEADERS += \
     guests/MarioGolf.h \
     guests/MarioKart64.h \
     guests/MarioKartDoubleDash.h \
+    guests/MarioKartWii.h \
     guests/MarioParty1.h \
     guests/MarioParty2.h \
     guests/MarioParty3.h \
@@ -156,6 +159,7 @@ HEADERS += \
     guests/MarioParty9.h \
     guests/MarioPartyGcn.h \
     guests/MarioTennis.h \
+    guests/PokemonStadium.h \
     guests/PokemonStadium2.h \
     guests/SmashRemix.h \
     guests/SonicShuffle.h \

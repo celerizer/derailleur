@@ -1,14 +1,22 @@
 #include "DrMinigameFilter.h"
 
 #include <algorithm>
+#include <cstring>
 
 #include <QComboBox>
 #include <QDataStream>
 #include <QDir>
 #include <QFont>
+#include <QHash>
 #include <QHBoxLayout>
+#include <QFile>
 #include <QInputDialog>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QMessageBox>
 #include <QPushButton>
+#include <QSaveFile>
 #include <QSettings>
 #include <QGridLayout>
 #include <QGroupBox>
@@ -21,18 +29,45 @@
 #include <QVBoxLayout>
 
 // Roles on leaf items: the stable network key, a marker that an item is a
-// mini-game leaf (parents/group headers carry no key), and the mini-game type.
+// mini-game leaf (parents/group headers carry no key), the mini-game type, and
+// the owning game's name (written to list files as a hint).
 static constexpr int k_RoleKey = Qt::UserRole;
 static constexpr int k_RoleIsLeaf = Qt::UserRole + 1;
 static constexpr int k_RoleType = Qt::UserRole + 2;
+static constexpr int k_RoleGameName = Qt::UserRole + 3;
 
-// Saved lists live in derailleur.ini as an array, so a name can contain anything.
-static const char *k_ListsArray = "minigame_lists";
+/* The list in use is remembered in derailleur.ini; the lists are files. */
 static const char *k_LastKey = "settings/minigame_list_last";
+static const char *dr_filter_suffix = ".json";
 
 static QString dr_filter_ini(void)
 {
   return QDir::current().filePath("derailleur.ini");
+}
+
+static QString dr_filter_dir(void)
+{
+  return QDir::current().filePath("minigame_lists");
+}
+
+static QString dr_filter_path(const QString &name)
+{
+  return QDir(dr_filter_dir()).filePath(name + dr_filter_suffix);
+}
+
+/* A list name must be usable as a file name on every platform. */
+static bool dr_filter_name_valid(const QString &name)
+{
+  static const QString bad = QStringLiteral("\\/:*?\"<>|");
+  int i;
+
+  if (name.isEmpty() || name.startsWith('.') || name.endsWith('.'))
+    return false;
+  for (i = 0; i < name.size(); i++)
+    if (bad.contains(name[i]) || name[i].unicode() < 0x20)
+      return false;
+
+  return true;
 }
 
 // The mini-game types shown as running totals, in display order.
@@ -131,55 +166,92 @@ DrMinigameFilter::DrMinigameFilter(QWidget *parent)
   reloadLists(QString());
 }
 
-QMap<QString, QByteArray> DrMinigameFilter::readLists(void) const
+QStringList DrMinigameFilter::listNames(void) const
 {
-  QSettings settings(dr_filter_ini(), QSettings::IniFormat);
-  QMap<QString, QByteArray> lists;
-  const int count = settings.beginReadArray(k_ListsArray);
+  QStringList names;
+  const QStringList files = QDir(dr_filter_dir()).entryList(
+    { QString("*") + dr_filter_suffix }, QDir::Files, QDir::Name | QDir::IgnoreCase);
 
-  for (int i = 0; i < count; i++)
-  {
-    settings.setArrayIndex(i);
+  for (const QString &file : files)
+    names.append(file.left(file.size() - int(strlen(dr_filter_suffix))));
 
-    const QString name = settings.value("name").toString();
-
-    if (!name.isEmpty())
-      lists.insert(name, QByteArray::fromHex(settings.value("payload").toByteArray()));
-  }
-  settings.endArray();
-
-  return lists;
+  return names;
 }
 
-void DrMinigameFilter::writeLists(
-  const QMap<QString, QByteArray> &lists, const QString &last) const
+bool DrMinigameFilter::readList(const QString &name, QSet<dr_minigame_key_t> &disabled) const
 {
-  QSettings settings(dr_filter_ini(), QSettings::IniFormat);
-  int i = 0;
+  QFile file(dr_filter_path(name));
+  QJsonParseError error;
+  QJsonDocument doc;
 
-  settings.remove(k_ListsArray);
-  settings.beginWriteArray(k_ListsArray, lists.size());
-  for (auto it = lists.constBegin(); it != lists.constEnd(); ++it)
+  if (!file.open(QIODevice::ReadOnly))
+    return false;
+  doc = QJsonDocument::fromJson(file.readAll(), &error);
+  if (error.error != QJsonParseError::NoError || !doc.isObject())
+    return false;
+
+  disabled.clear();
+  for (const QJsonValue &value : doc.object().value("disabled").toArray())
   {
-    settings.setArrayIndex(i++);
-    settings.setValue("name", it.key());
-    settings.setValue("payload", QString::fromLatin1(it.value().toHex()));
+    const QJsonObject entry = value.toObject();
+
+    disabled.insert(dr_minigame_key_make(static_cast<dr_guest>(entry.value("game").toInt()),
+      static_cast<dr_minigame_type>(entry.value("type").toInt()),
+      entry.value("minigame_id").toInt(), entry.value("scene_id").toInt()));
   }
-  settings.endArray();
-  settings.setValue(k_LastKey, last);
-  settings.sync();
+
+  return true;
+}
+
+bool DrMinigameFilter::writeList(const QString &name) const
+{
+  QList<dr_minigame_key_t> keys = disabledKeys().values();
+  QHash<dr_minigame_key_t, QTreeWidgetItem *> leaves;
+  QJsonArray disabled;
+  QJsonObject root;
+  QSaveFile file(dr_filter_path(name));
+  QTreeWidgetItemIterator it(m_tree);
+
+  for (; *it; ++it)
+    if ((*it)->data(0, k_RoleIsLeaf).toBool())
+      leaves.insert((*it)->data(0, k_RoleKey).toULongLong(), *it);
+
+  /* Sorted so a re-save of the same selection writes the same file. */
+  std::sort(keys.begin(), keys.end());
+  for (dr_minigame_key_t key : keys)
+  {
+    QJsonObject entry;
+    QTreeWidgetItem *leaf = leaves.value(key);
+
+    entry.insert("game", int(dr_minigame_key_game(key)));
+    entry.insert("type", int(dr_minigame_key_type(key)));
+    entry.insert("minigame_id", dr_minigame_key_id(key));
+    entry.insert("scene_id", dr_minigame_key_scene(key));
+    if (leaf)
+    {
+      entry.insert("game_name", leaf->data(0, k_RoleGameName).toString());
+      entry.insert("name", leaf->text(0));
+    }
+    disabled.append(entry);
+  }
+  root.insert("disabled", disabled);
+
+  if (!QDir().mkpath(dr_filter_dir()) || !file.open(QIODevice::WriteOnly))
+    return false;
+  file.write(QJsonDocument(root).toJson(QJsonDocument::Indented));
+
+  return file.commit();
 }
 
 void DrMinigameFilter::reloadLists(const QString &name)
 {
-  const QMap<QString, QByteArray> lists = readLists();
   const QSignalBlocker blocker(m_lists);
   int index;
 
   m_lists->clear();
   m_lists->addItem(tr("(unsaved)"), QString());
-  for (auto it = lists.constBegin(); it != lists.constEnd(); ++it)
-    m_lists->addItem(it.key(), it.key());
+  for (const QString &list : listNames())
+    m_lists->addItem(list, list);
 
   index = name.isEmpty() ? 0 : m_lists->findData(name);
   m_lists->setCurrentIndex(index < 0 ? 0 : index);
@@ -188,13 +260,13 @@ void DrMinigameFilter::reloadLists(const QString &name)
 void DrMinigameFilter::onListSelected(int index)
 {
   const QString name = m_lists->itemData(index).toString();
-  const QMap<QString, QByteArray> lists = readLists();
+  QSet<dr_minigame_key_t> disabled;
 
   /* The unsaved slot is where hand-edited ticks live; it has nothing to load. */
-  if (name.isEmpty() || !lists.contains(name))
+  if (name.isEmpty() || !readList(name, disabled))
     return;
 
-  setFromPayload(lists.value(name));
+  applyDisabled(disabled);
 
   QSettings settings(dr_filter_ini(), QSettings::IniFormat);
   settings.setValue(k_LastKey, name);
@@ -205,7 +277,6 @@ void DrMinigameFilter::onListSelected(int index)
 
 void DrMinigameFilter::saveList(void)
 {
-  QMap<QString, QByteArray> lists = readLists();
   bool accepted = false;
   const QString name = QInputDialog::getText(this, tr("Save Mini-game List"), tr("Name:"),
     QLineEdit::Normal, m_lists->currentData().toString(), &accepted).trimmed();
@@ -213,21 +284,38 @@ void DrMinigameFilter::saveList(void)
   if (!accepted || name.isEmpty())
     return;
 
-  lists.insert(name, payload());
-  writeLists(lists, name);
+  if (!dr_filter_name_valid(name))
+  {
+    QMessageBox::warning(this, tr("Save Mini-game List"),
+      tr("A list name cannot contain any of \\ / : * ? \" < > | or start or end with a period."));
+    return;
+  }
+
+  if (!writeList(name))
+  {
+    QMessageBox::warning(this, tr("Save Mini-game List"),
+      tr("Could not write %1.").arg(QDir::toNativeSeparators(dr_filter_path(name))));
+    return;
+  }
+
+  QSettings settings(dr_filter_ini(), QSettings::IniFormat);
+  settings.setValue(k_LastKey, name);
+  settings.sync();
+
   reloadLists(name);
 }
 
 void DrMinigameFilter::deleteList(void)
 {
   const QString name = m_lists->currentData().toString();
-  QMap<QString, QByteArray> lists = readLists();
 
-  if (name.isEmpty() || !lists.contains(name))
+  if (name.isEmpty() || !QFile::remove(dr_filter_path(name)))
     return;
 
-  lists.remove(name);
-  writeLists(lists, QString());
+  QSettings settings(dr_filter_ini(), QSettings::IniFormat);
+  settings.remove(k_LastKey);
+  settings.sync();
+
   reloadLists(QString());
 }
 
@@ -267,9 +355,7 @@ void DrMinigameFilter::populate(const QList<DrGuest *> &guests)
       gi });
   }
 
-  /* Listed alphabetically, but the key below still counts from each guest's
-   * position in `guests` -- that is what DrGuestList enumerates and what peers
-   * agree on, so display order must not touch it. */
+  /* Listed alphabetically; keys come from each group's game id, not its position. */
   std::sort(order.begin(), order.end(),
     [](const QPair<QString, int> &a, const QPair<QString, int> &b) {
       return a.first.compare(b.first, Qt::CaseInsensitive) < 0;
@@ -287,10 +373,6 @@ void DrMinigameFilter::populate(const QList<DrGuest *> &guests)
     const QList<DrMinigameGroup> &groups = groupsOf[gi];
     const bool multiGroup = groups.size() > 1;
 
-    /* The ordinal flattens minigameGroups() in order and increments for *every*
-     * mini-game (matching DrGuestList), so keys stay stable regardless of which
-     * are shown or filtered. */
-    quint32 ord = 0;
     for (const DrMinigameGroup &group : groups)
     {
       // For multi-group guests (e.g. Dolphin) add a group header level; the
@@ -305,11 +387,12 @@ void DrMinigameFilter::populate(const QList<DrGuest *> &guests)
 
       for (const dr_mp_minigame_t *mg : group.minigames)
       {
-        const quint32 key = (static_cast<quint32>(gi) << 16) | ord++;
+        const dr_minigame_key_t key = dr_minigame_key(group.id, mg);
         auto *leaf = new QTreeWidgetItem(parent);
         leaf->setText(0, mg->name ? QString::fromUtf8(mg->name) : QString("(unnamed)"));
         leaf->setFlags((leaf->flags() | Qt::ItemIsUserCheckable) & ~Qt::ItemIsAutoTristate);
-        leaf->setData(0, k_RoleKey, key);
+        leaf->setData(0, k_RoleKey, static_cast<qulonglong>(key));
+        leaf->setData(0, k_RoleGameName, QString::fromUtf8(group.name));
         leaf->setData(0, k_RoleIsLeaf, true);
         leaf->setData(0, k_RoleType, static_cast<int>(mg->type));
         leaf->setCheckState(0, Qt::Checked); // default: everything allowed
@@ -321,54 +404,51 @@ void DrMinigameFilter::populate(const QList<DrGuest *> &guests)
   updateCounts();
 }
 
-QByteArray DrMinigameFilter::payload() const
+QSet<dr_minigame_key_t> DrMinigameFilter::disabledKeys(void) const
 {
-  QList<quint32> disabled;
+  QSet<dr_minigame_key_t> disabled = m_hidden;
   QTreeWidgetItemIterator it(m_tree);
+
   for (; *it; ++it)
   {
     QTreeWidgetItem *item = *it;
-    if (!item->data(0, k_RoleIsLeaf).toBool())
-      continue;
-    if (item->checkState(0) != Qt::Checked)
-      disabled.append(item->data(0, k_RoleKey).toUInt());
+
+    if (item->data(0, k_RoleIsLeaf).toBool() && item->checkState(0) != Qt::Checked)
+      disabled.insert(item->data(0, k_RoleKey).toULongLong());
   }
 
-  QByteArray out;
-  QDataStream s(&out, QIODevice::WriteOnly);
-  s.setByteOrder(QDataStream::LittleEndian);
-  s << static_cast<quint16>(disabled.size());
-  for (quint32 key : disabled)
-    s << key;
-  return out;
+  return disabled;
+}
+
+void DrMinigameFilter::applyDisabled(const QSet<dr_minigame_key_t> &disabled)
+{
+  QTreeWidgetItemIterator it(m_tree);
+
+  m_hidden = disabled;
+  m_applying = true;
+  for (; *it; ++it)
+  {
+    QTreeWidgetItem *item = *it;
+    dr_minigame_key_t key;
+
+    if (!item->data(0, k_RoleIsLeaf).toBool())
+      continue;
+    key = item->data(0, k_RoleKey).toULongLong();
+    item->setCheckState(0, disabled.contains(key) ? Qt::Unchecked : Qt::Checked);
+    m_hidden.remove(key);
+  }
+  m_applying = false;
+  updateCounts();
+}
+
+QByteArray DrMinigameFilter::payload() const
+{
+  return dr_minigame_filter_encode(disabledKeys());
 }
 
 void DrMinigameFilter::setFromPayload(const QByteArray &payload)
 {
-  QSet<quint32> disabled;
-  QDataStream s(payload);
-  s.setByteOrder(QDataStream::LittleEndian);
-  quint16 count = 0;
-  s >> count;
-  for (quint16 i = 0; i < count && s.status() == QDataStream::Ok; i++)
-  {
-    quint32 key = 0;
-    s >> key;
-    disabled.insert(key);
-  }
-
-  m_applying = true;
-  QTreeWidgetItemIterator it(m_tree);
-  for (; *it; ++it)
-  {
-    QTreeWidgetItem *item = *it;
-    if (!item->data(0, k_RoleIsLeaf).toBool())
-      continue;
-    const quint32 key = item->data(0, k_RoleKey).toUInt();
-    item->setCheckState(0, disabled.contains(key) ? Qt::Unchecked : Qt::Checked);
-  }
-  m_applying = false;
-  updateCounts();
+  applyDisabled(dr_minigame_filter_decode(payload));
 }
 
 void DrMinigameFilter::onItemChanged(QTreeWidgetItem *item, int column)

@@ -192,6 +192,7 @@ static QString dr_custom_rom_path(int mp, const QString &name)
 #include "guests/KirbyAirRide.h"
 #include "guests/MarioGolf.h"
 #include "guests/MarioKartDoubleDash.h"
+#include "guests/MarioKartWii.h"
 #include "guests/MarioParty4.h"
 #include "guests/MarioParty5.h"
 #include "guests/MarioParty6.h"
@@ -204,6 +205,7 @@ static QString dr_custom_rom_path(int mp, const QString &name)
 #include "guests/SuperMarioBros3.h"
 #include "guests/YoshisIsland.h"
 #include "guests/MarioTennis.h"
+#include "guests/PokemonStadium.h"
 #include "guests/PokemonStadium2.h"
 #include "guests/SonicShuffle.h"
 #include "guests/StarFox64.h"
@@ -545,6 +547,13 @@ MainWindow::MainWindow(QWidget *parent)
   if (dolphinMp9->isValid())
     m_Guests->add(dolphinMp9);
 
+  auto *dolphinMkw = new CoreDolphin("wii-mkw", true, this);
+  dolphinMkw->setControllerType(DR_DOLPHIN_CONTROLLER_WIIMOTE_CLASSIC);
+  dolphinMkw->addGame(new MarioKartWii(dolphinMkw->core(), dolphinMkw));
+  dolphinMkw->finalizeGames();
+  if (dolphinMkw->isValid())
+    m_Guests->add(dolphinMkw);
+
   auto addGuest = [this](DrGuest *g) {
     if (g->isValid())
       m_Guests->add(g);
@@ -559,6 +568,7 @@ MainWindow::MainWindow(QWidget *parent)
   addGuest(new SuperMarioBros3());
   addGuest(new YoshisIsland());
   addGuest(new MarioTennis());
+  addGuest(new PokemonStadium());
   addGuest(new PokemonStadium2());
   addGuest(new MarioGolf());
   //addGuest(new MarioPartyAdvance());

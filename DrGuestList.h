@@ -33,7 +33,7 @@ public:
   void logSummary();
 
   /// Replaces the set of disabled mini-games from an opaque payload produced by
-  /// DrMinigameFilter ([u16 count][count * u32 key]). pickMinigame skips any
+  /// DrMinigameFilter (see dr_minigame_filter_encode). pickMinigame skips any
   /// mini-game whose key is disabled. Must be identical across netplay peers at
   /// selection time, so it is driven by the host.
   void applyFilter(const QByteArray &payload);
@@ -56,7 +56,7 @@ private:
   }
   QList<DrGuest *> m_guests;
   DrGuest *m_activeGuest = nullptr;
-  QSet<quint32> m_disabled; // disabled mini-game keys: (guestIndex << 16) | ordinal
+  QSet<dr_minigame_key_t> m_disabled; /* disabled mini-game keys, see dr_minigame_key */
 
   /* Rolled candidate cache, indexed by dr_minigame_type then dr_mic_mode. Every
    * mode is rolled up front so a board that only learns which list it wants once
