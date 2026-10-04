@@ -99,19 +99,6 @@ static const dr_value_t MKW_SAVE_MANAGER_PTR = { 0x809B8F88, DR_VALUE_TYPE_POINT
 /* u8[MKW_CHARACTER_SIZE] costume worn by each character, indexed by mkw_character */
 static const size_t MKW_COSTUMES_ADDR = 0x80418750;
 
-/* Retro Rewind code patches so CPUs read the per-character costume table instead
- * of a random roll (one local human) or costume 0 (two or more); RMCETO v6.12 */
-static const struct
-{
-  size_t addr;
-  uint32_t original;
-  uint32_t patched;
-} MKW_CPU_COSTUME_PATCHES[] = {
-  { 0x8039CAF0, 0x4182005C, 0x4800005C }, /* beq -> b: skip the random CPU roll */
-  { 0x8039CB84, 0x41820014, 0x60000000 }, /* nop: non-local racers use the table */
-  { 0x8039CC24, 0x41820014, 0x60000000 }, /* nop: same, single local player */
-};
-
 typedef enum
 {
   MKW_CHARACTER_MARIO = 0x00,
@@ -665,24 +652,6 @@ void MarioKartWii::disableSaving(void)
   m_retro->writeu8(0, static_cast<size_t>(manager) + MKW_SAVE_MANAGER_CAN_SAVE);
 }
 
-void MarioKartWii::patchCpuCostumes(void)
-{
-  for (const auto &patch : MKW_CPU_COSTUME_PATCHES)
-  {
-    uint32_t word = 0;
-
-    if (m_retro->readu32(&word, patch.addr) != DR_OK)
-      log(DR_LOG_WARN, qPrintable(QString("MKW: costume patch at 0x%1 unreadable")
-        .arg(patch.addr, 8, 16, QChar('0'))));
-    else if (word == patch.original)
-      m_retro->writeu32(patch.patched, patch.addr);
-    else if (word != patch.patched)
-      log(DR_LOG_WARN, qPrintable(QString("MKW: costume patch at 0x%1 skipped (found 0x%2, "
-        "different Retro Rewind build?)").arg(patch.addr, 8, 16, QChar('0'))
-        .arg(word, 8, 16, QChar('0'))));
-  }
-}
-
 void MarioKartWii::bindClassicControllers(void)
 {
   int64_t director = 0;
@@ -790,7 +759,6 @@ void MarioKartWii::doApplyGameData(const DrGameData &data)
 
   bindClassicControllers();
   disableSaving();
-  patchCpuCostumes(); /* before any frame runs, so the JIT compiles the patched code */
 
   for (i = 0; i < 4; i++)
   {

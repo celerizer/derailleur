@@ -38,8 +38,6 @@ private:
   void bindClassicControllers(void);
   /// Turns off saving so the race doesn't stop on a save file error.
   void disableSaving(void);
-  /// Patches Retro Rewind so CPUs wear their character's costume like humans.
-  void patchCpuCostumes(void);
   /// Address of race player `player`'s RaceManagerPlayer, or 0 outside a race.
   size_t racePlayerAddr(unsigned player);
 
