@@ -6,8 +6,11 @@
 #include <QPainter>
 #include <QRetro.h>
 
-// u32: single shared CPU difficulty (0/1/2/3 = easy/normal/hard/very hard);
-// use the highest selected CPU difficulty.
+// u32: stage selection when every player is human (0-3); randomized then
+static const dr_value_t K64_HUMAN_STAGE = { 0x8018ED0C, DR_VALUE_TYPE_U32 };
+
+// u32: single shared CPU difficulty (0/1/2/3 = easy/normal/hard/very hard),
+// which also picks the stage when there are CPUs. Use the highest CPU difficulty.
 static const dr_value_t K64_CPU_DIFFICULTY = { 0x8018ED10, DR_VALUE_TYPE_U32 };
 
 // u32 per-player character
@@ -91,6 +94,15 @@ typedef enum
   K64_MINIGAME_BUMPER_CROP_BUMP = 0x1f,
   K64_MINIGAME_CHECKERBOARD_CHASE = 0x1e,
 } k64_minigame_id;
+
+// u16 RNG access count
+static const dr_value_t K64_RNG_COUNT = { 0x8003E320, DR_VALUE_TYPE_U16 };
+
+// u32 RNG seed
+static const dr_value_t K64_RNG_SEED = { 0x8003E324, DR_VALUE_TYPE_U32 };
+
+// u32 timer
+static const dr_value_t K64_TIMER = { 0x8003DCA4, DR_VALUE_TYPE_U32 };
 
 // u32 wins for each player
 static const dr_value_t K64_WINS[4] = {
@@ -192,6 +204,14 @@ void Kirby64::run()
   else if (m_aReleaseDelay > 0 && --m_aReleaseDelay == 0)
   {
     core()->input()->joypads()[0].setForcedButton(RETRO_DEVICE_ID_JOYPAD_A, false);
+
+    /* Read back what the game's RNG holds now, to check our seed stuck */
+    int64_t seed = 0, count = 0;
+    m_retro->readValue(&seed, K64_RNG_SEED);
+    m_retro->readValue(&count, K64_RNG_COUNT);
+    log(DR_LOG_INFO, qPrintable(QString("RNG at start: seed 0x%1, count %2")
+      .arg(static_cast<uint32_t>(seed), 8, 16, QChar('0')).arg(count)));
+
     startMinigame();
   }
 
@@ -232,6 +252,18 @@ void Kirby64::run()
   }
 }
 
+dr_sync_validator_t Kirby64::syncValidator(void)
+{
+  dr_sync_validator_t sync = { 0, 0 };
+  int64_t value = 0;
+
+  if (m_retro->readValue(&value, K64_RNG_COUNT) == DR_OK)
+    sync.rng = static_cast<uint32_t>(value);
+  if (m_retro->readValue(&value, K64_TIMER) == DR_OK)
+    sync.timer = static_cast<uint32_t>(value);
+  return sync;
+}
+
 const dr_mp_minigame_t *Kirby64::minigames() const
 {
   return K64_MINIGAMES;
@@ -265,13 +297,27 @@ void Kirby64::doApplyGameData(const DrGameData &data)
 
   loadState(state());
 
+  /* Seed the game's RNG from the shared dr_rand sequence so peers match */
+  const uint32_t seed = (static_cast<uint32_t>(dr_rand() & 0xFFFF) << 16) |
+    static_cast<uint32_t>(dr_rand() & 0xFFFF);
+  const uint16_t count = static_cast<uint16_t>(dr_rand());
+  m_retro->writeValue(seed, K64_RNG_SEED);
+  m_retro->writeValue(count, K64_RNG_COUNT);
+  log(DR_LOG_INFO, qPrintable(QString("RNG seed: 0x%1, count: %2")
+    .arg(seed, 8, 16, QChar('0')).arg(count)));
+
   int32_t id = static_cast<int32_t>(m_minigame ? m_minigame->minigame_id : -1);
   m_retro->writeValueForFrames(id, K64_MINIGAME_ID, 120);
 
   uint32_t difficulty = 0;
+  bool hasCpu = false;
   for (unsigned i = 0; i < 4; i++)
   {
-    difficulty = qMax(difficulty, k64Difficulty(m_players[i].difficulty));
+    if (m_players[i].control_type == DR_CONTROL_TYPE_CPU)
+    {
+      difficulty = qMax(difficulty, k64Difficulty(m_players[i].difficulty));
+      hasCpu = true;
+    }
 
     /* Write each player into the in-game slot matching their controller port. */
     const unsigned slot = dr_player_slot(m_players[i], i);
@@ -327,6 +373,15 @@ void Kirby64::doApplyGameData(const DrGameData &data)
   }
 
   m_retro->writeValueForFrames(difficulty, K64_CPU_DIFFICULTY, 120);
+  if (hasCpu)
+    log(DR_LOG_INFO, qPrintable(QString("stage (CPU difficulty): %1").arg(difficulty)));
+  else
+  {
+    /* No CPUs: the game takes the stage from its own selection, so randomize it */
+    const uint32_t stage = static_cast<uint32_t>(dr_rand() % 4);
+    m_retro->writeValueForFrames(stage, K64_HUMAN_STAGE, 120);
+    log(DR_LOG_INFO, qPrintable(QString("stage (random, no CPUs): %1").arg(stage)));
+  }
 
   /* Press A shortly after loading to advance past the ready prompt. The overlay
    * stays up (we don't startMinigame yet) until the press completes. */
