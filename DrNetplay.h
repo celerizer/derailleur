@@ -255,6 +255,7 @@ private:
   void runResync(int context);
   void sampleLocal();
   bool isFrameCompleteLocked(int context, quint64 frame) const;
+  bool peerLeftLocked(int peer, int context) const;
   bool waitForFrame(int context, quint64 frame);
   void commitMergedFrame(int context, quint64 frame);
 
@@ -339,6 +340,12 @@ private:
   QMutex m_RecvMutex;
   QWaitCondition m_FrameReady;
   QHash<quint64, FrameInputs> m_Received;
+
+  // Per-peer context tracking (guarded by m_RecvMutex); see peerLeftLocked
+  int m_PeerLastCtx[DR_NETPLAY_MAX_PEERS] = { -1, -1, -1, -1 };
+  quint64 m_PeerCtxFrames[DR_NETPLAY_MAX_PEERS][DR_NETPLAY_MAX_CONTEXTS] = {}; // highest frame + 1; 0 = none
+  quint64 m_PeerCtxEntry[DR_NETPLAY_MAX_PEERS][DR_NETPLAY_MAX_CONTEXTS] = {};  // first frame of the peer's current run (its barrier)
+  quint64 m_LeftLoggedBarrier[DR_NETPLAY_MAX_CONTEXTS] = {}; // barrier + 1 already logged; 0 = none
 
   // Sync cross-check (server only, guarded by m_RecvMutex): the first sample seen
   // for a (context, frame), which every later peer's sample must match.

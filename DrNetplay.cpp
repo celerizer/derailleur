@@ -422,8 +422,20 @@ void DrNetplay::setActiveContext(QRetro *core)
    * allowed to wait indefinitely for the other peer's warmup/load, and re-prime
    * the input-delay pipeline from here. */
   {
+    /* Re-entering: barrier is one past any peer's previous-run frames (or a peer's
+     * own barrier if it's already in), so peers that ran it further realign */
     QMutexLocker lock(&m_RecvMutex);
-    m_CtxBarrier[ctx] = m_CtxFrame[ctx];
+    quint64 barrier = m_CtxFrame[ctx];
+    const bool reentering = m_PeerIndex >= 0 && m_PeerIndex < DR_NETPLAY_MAX_PEERS &&
+      m_PeerLastCtx[m_PeerIndex] != ctx;
+    for (int i = 0; reentering && i < m_PeerCount && i < DR_NETPLAY_MAX_PEERS; i++)
+    {
+      const quint64 v = (i != m_PeerIndex && m_PeerLastCtx[i] == ctx)
+        ? m_PeerCtxEntry[i][ctx] : m_PeerCtxFrames[i][ctx];
+      barrier = qMax(barrier, v);
+    }
+    m_CtxFrame[ctx] = barrier;
+    m_CtxBarrier[ctx] = barrier;
   }
   /* Prime fills m_CtxSend before we publish this context as active, so the
    * timing thread never runs the send loop with a stale pipeline cursor. */
@@ -491,6 +503,17 @@ void DrNetplay::resetFrameCounter()
     m_CtxSend[i] = 0;
   }
   m_Received.clear();
+  for (int i = 0; i < DR_NETPLAY_MAX_PEERS; i++)
+  {
+    m_PeerLastCtx[i] = -1;
+    for (int c = 0; c < DR_NETPLAY_MAX_CONTEXTS; c++)
+    {
+      m_PeerCtxFrames[i][c] = 0;
+      m_PeerCtxEntry[i][c] = 0;
+    }
+  }
+  for (int c = 0; c < DR_NETPLAY_MAX_CONTEXTS; c++)
+    m_LeftLoggedBarrier[c] = 0;
   m_SyncSamples.clear();
   m_ResyncActive = false;
   m_ResyncStateReady = false;
@@ -685,12 +708,23 @@ void DrNetplay::sampleLocal()
 bool DrNetplay::isFrameCompleteLocked(int context, quint64 frame) const
 {
   auto it = m_Received.constFind(frameKey(context, frame));
-  if (it == m_Received.constEnd())
-    return false;
   for (int i = 0; i < m_PeerCount; i++)
-    if (!it->have[i])
+    if ((it == m_Received.constEnd() || !it->have[i]) && !peerLeftLocked(i, context))
       return false;
   return true;
+}
+
+/* Peer moved on from this run of `context` (packets arrive in order, so its missing
+ * frames never will); its input is treated as idle instead of deadlocking */
+bool DrNetplay::peerLeftLocked(int peer, int context) const
+{
+  if (peer == m_PeerIndex || peer < 0 || peer >= DR_NETPLAY_MAX_PEERS ||
+      context < 0 || context >= DR_NETPLAY_MAX_CONTEXTS)
+    return false;
+
+  const quint64 frames = m_PeerCtxFrames[peer][context];
+  return m_PeerLastCtx[peer] >= 0 && m_PeerLastCtx[peer] != context && frames > 0 &&
+    frames - 1 >= m_CtxBarrier[context];
 }
 
 bool DrNetplay::waitForFrame(int context, quint64 frame)
@@ -722,6 +756,26 @@ bool DrNetplay::waitForFrame(int context, quint64 frame)
       return false;
     /* Re-check at least every 100ms so a session drop is noticed promptly. */
     m_FrameReady.wait(&m_RecvMutex, 100);
+  }
+
+  /* Note (once per run of this context) any peer standing in with idle input */
+  if (m_LeftLoggedBarrier[context] != m_CtxBarrier[context] + 1)
+  {
+    auto it = m_Received.constFind(frameKey(context, frame));
+    for (int i = 0; i < m_PeerCount; i++)
+    {
+      if ((it == m_Received.constEnd() || !it->have[i]) && peerLeftLocked(i, context))
+      {
+        m_LeftLoggedBarrier[context] = m_CtxBarrier[context] + 1;
+        const int left = i;
+        const int now = m_PeerLastCtx[i];
+        lock.unlock();
+        emit logMessage(DR_LOG_WARN,
+          QString("netplay: peer %1 left ctx %2 for ctx %3 before frame %4; running with idle input")
+            .arg(left).arg(ctxLabel(context)).arg(ctxLabel(now)).arg(frame));
+        break;
+      }
+    }
   }
   return true;
 }
@@ -1183,6 +1237,12 @@ void DrNetplay::recordPacket(const DrNetplayPacket &p)
   FrameInputs &fi = m_Received[frameKey(p.context, p.frame)];
   fi.pkts[p.peerIndex] = p;
   fi.have[p.peerIndex] = true;
+  if (m_PeerLastCtx[p.peerIndex] != p.context && p.context < DR_NETPLAY_MAX_CONTEXTS)
+    m_PeerCtxEntry[p.peerIndex][p.context] = p.frame; /* a run's first packet is its barrier */
+  m_PeerLastCtx[p.peerIndex] = p.context;
+  if (p.context < DR_NETPLAY_MAX_CONTEXTS &&
+      p.frame + 1 > m_PeerCtxFrames[p.peerIndex][p.context])
+    m_PeerCtxFrames[p.peerIndex][p.context] = p.frame + 1;
   checkSyncSample(p);
   m_FrameReady.wakeAll();
 }
