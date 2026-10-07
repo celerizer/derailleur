@@ -107,6 +107,7 @@ static const dr_mp_minigame_t MP7_MINIGAMES[] = {
   { "Pogo-a-go-go", DR_MINIGAME_1V3, 0x20, 0x26, DR_NO_QUIRKS, DR_NO_FLAGS },
 
   /* 1-vs.-3 Mic */
+  { "Number Crunchers", DR_MINIGAME_1V3, 0x13, 0x19, DR_NO_QUIRKS, DR_FLAG_MIC },
   { "Wheel of Woe", DR_MINIGAME_1V3, 0x1C, 0x22, DR_NO_QUIRKS, DR_FLAG_MIC },
   { "Boxing Day", DR_MINIGAME_1V3, 0x1D, 0x23, DR_NO_QUIRKS, DR_FLAG_MIC },
   { "Be My Chum!", DR_MINIGAME_1V3, 0x1E, 0x24, DR_NO_QUIRKS, DR_FLAG_MIC },
