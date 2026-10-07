@@ -116,6 +116,13 @@ PokemonStadium::PokemonStadium(QObject *parent)
 {
   m_retro = new DrRetroN64(this);
   m_retro->init(coreId(), rom());
+
+  /* Let L = L because of Dig! Dig! Dig! (R1 is already R) */
+  for (unsigned port = 0; port < 4; port++)
+  {
+    core()->input()->remapButton(port, RETRO_DEVICE_ID_JOYPAD_L, RETRO_DEVICE_ID_JOYPAD_SELECT);
+    core()->input()->remapButton(port, RETRO_DEVICE_ID_JOYPAD_L2, RETRO_DEVICE_ID_JOYPAD_SELECT);
+  }
 }
 
 void PokemonStadium::run()
