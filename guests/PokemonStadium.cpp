@@ -125,6 +125,16 @@ PokemonStadium::PokemonStadium(QObject *parent)
   }
 }
 
+bool PokemonStadium::allCpu(void) const
+{
+  unsigned i;
+
+  for (i = 0; i < 4; i++)
+    if (m_players[i].control_type == DR_CONTROL_TYPE_HUMAN)
+      return false;
+  return true;
+}
+
 void PokemonStadium::run()
 {
   int64_t results = 0;
@@ -152,6 +162,19 @@ void PokemonStadium::run()
   }
   else if (m_aReleaseDelay > 0 && --m_aReleaseDelay == 0)
     core()->input()->joypads()[0].setForcedButton(RETRO_DEVICE_ID_JOYPAD_A, false);
+
+  /* Nobody presses START when every player is a CPU, so do it for P1 */
+  if (allCpu())
+  {
+    m_allCpuFrames++;
+    if (m_allCpuFrames == 1200)
+    {
+      log(DR_LOG_INFO, "all players CPU: forcing controller 1 START press");
+      core()->input()->joypads()[0].setForcedButton(RETRO_DEVICE_ID_JOYPAD_START, true);
+    }
+    else if (m_allCpuFrames == 1208)
+      core()->input()->joypads()[0].setForcedButton(RETRO_DEVICE_ID_JOYPAD_START, false);
+  }
 
   /* Finish as the "play again" dialog opens, or once it could (P1 may be a bot
    * that never presses A); wait first to let the writes settle */
@@ -230,6 +253,7 @@ void PokemonStadium::doApplyGameData(const DrGameData &data)
   m_resultsFrames = 0;
   m_finishArmed = false;
   m_aPressDelay = 120;     // confirm the highlighted minigame with a P1 A press
+  m_allCpuFrames = 0;
 }
 
 unsigned PokemonStadium::computeWinners(void)
