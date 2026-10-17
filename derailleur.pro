@@ -83,6 +83,7 @@ SOURCES += \
     guests/DrGuestGcn.cpp \
     guests/DrGuestWii.cpp \
     guests/impl/BanjoTooie.cpp \
+    guests/impl/DkJrMath.cpp \
     guests/impl/Kirby64.cpp \
     guests/impl/KirbyAirRide.cpp \
     guests/impl/MarioGolf.cpp \
@@ -109,6 +110,7 @@ SOURCES += \
     guests/impl/SonicShuffle.cpp \
     guests/impl/StarFox64.cpp \
     guests/impl/SuperMarioBros3.cpp \
+    guests/impl/WariosWoods.cpp \
     guests/impl/WiiParty.cpp \
     guests/impl/YoshisIsland.cpp \
     main.cpp \
@@ -165,6 +167,7 @@ HEADERS += \
     guests/DrGuestGcn.h \
     guests/DrGuestWii.h \
     guests/impl/BanjoTooie.h \
+    guests/impl/DkJrMath.h \
     guests/impl/Kirby64.h \
     guests/impl/KirbyAirRide.h \
     guests/impl/MarioGolf.h \
@@ -191,6 +194,7 @@ HEADERS += \
     guests/impl/SonicShuffle.h \
     guests/impl/StarFox64.h \
     guests/impl/SuperMarioBros3.h \
+    guests/impl/WariosWoods.h \
     guests/impl/WiiParty.h \
     guests/impl/YoshisIsland.h \
     mainwindow.h
