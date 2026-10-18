@@ -74,6 +74,7 @@ SOURCES += \
     hosts/impl/MarioParty6Host.cpp \
     hosts/impl/MarioParty7Host.cpp \
     hosts/impl/MarioParty8Host.cpp \
+    hosts/impl/MarioPartyAdvanceHost.cpp \
     hosts/impl/MarioPartyDSHost.cpp \
     hosts/impl/SonicShuffleHand.cpp \
     hosts/impl/SonicShuffleHost.cpp \
@@ -154,6 +155,7 @@ HEADERS += \
     hosts/impl/MarioParty6Host.h \
     hosts/impl/MarioParty7Host.h \
     hosts/impl/MarioParty8Host.h \
+    hosts/impl/MarioPartyAdvanceHost.h \
     hosts/impl/MarioPartyDSHost.h \
     hosts/impl/SonicShuffleHand.h \
     hosts/impl/SonicShuffleHost.h \

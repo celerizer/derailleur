@@ -8,6 +8,7 @@
 #include "impl/MarioParty6Host.h"
 #include "impl/MarioParty7Host.h"
 #include "impl/MarioParty8Host.h"
+#include "impl/MarioPartyAdvanceHost.h"
 #include "impl/MarioPartyDSHost.h"
 #include "impl/SonicShuffleHost.h"
 
@@ -42,6 +43,8 @@ static const DrHostEntry DR_HOSTS[] = {
     DR_CORE_DOLPHIN, dr_create_host<MarioParty8Host> },
   { DR_GAME_MARIOPARTYDS, "Mario Party DS", "mariopartyds", "Mario Party DS (USA) (Rev 2).nds",
     DR_CORE_MELONDSDS, dr_create_host_stock<MarioPartyDSHost> },
+  { DR_GAME_MARIOPARTYADVANCE, "Mario Party Advance", "mariopartyadvance", "Mario Party Advance (USA).gba",
+    DR_CORE_MGBA, dr_create_host_stock<MarioPartyAdvanceHost> },
   { DR_GAME_SONICSHUFFLE, "Sonic Shuffle", nullptr, "Sonic Shuffle (USA).chd",
     DR_CORE_FLYCAST, dr_create_host_stock<SonicShuffleHost> },
 
