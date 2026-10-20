@@ -2,6 +2,7 @@
 #include "../DrGuestList.h"
 
 #include "impl/BanjoTooie.h"
+#include "impl/DkJrMath.h"
 #include "impl/Kirby64.h"
 #include "impl/MarioGolf.h"
 #include "impl/MarioKart64.h"
@@ -24,6 +25,7 @@
 #include "impl/SonicShuffle.h"
 #include "impl/StarFox64.h"
 #include "impl/SuperMarioBros3.h"
+#include "impl/WariosWoods.h"
 #include "impl/WiiParty.h"
 #include "impl/YoshisIsland.h"
 
@@ -38,6 +40,8 @@ static void dr_add(DrGuestList *list, DrGuest *guest)
 void dr_create_guests(DrGuestList *list)
 {
   dr_add(list, new BanjoTooie());
+
+  dr_add(list, new DkJrMath());
 
   dr_add(list, new Kirby64());
 
@@ -65,6 +69,7 @@ void dr_create_guests(DrGuestList *list)
   dr_add(list, new StarFox64());
   dr_add(list, new SuperMarioBros3());
 
+  dr_add(list, new WariosWoods());
   dr_add(list, new WiiParty());
 
   dr_add(list, new YoshisIsland());
