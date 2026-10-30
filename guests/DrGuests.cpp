@@ -2,6 +2,7 @@
 #include "../DrGuestList.h"
 
 #include "impl/BanjoTooie.h"
+#include "impl/DiddyKongRacing.h"
 #include "impl/Kirby64.h"
 #include "impl/MarioGolf.h"
 #include "impl/MarioKart64.h"
@@ -39,6 +40,7 @@ static void dr_add(DrGuestList *list, DrGuest *guest)
 void dr_create_guests(DrGuestList *list)
 {
   dr_add(list, new BanjoTooie());
+  dr_add(list, new DiddyKongRacing());
 
   dr_add(list, new Kirby64());
 

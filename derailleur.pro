@@ -85,6 +85,7 @@ SOURCES += \
     guests/DrGuestGcn.cpp \
     guests/DrGuestWii.cpp \
     guests/impl/BanjoTooie.cpp \
+    guests/impl/DiddyKongRacing.cpp \
     guests/impl/Kirby64.cpp \
     guests/impl/KirbyAirRide.cpp \
     guests/impl/MarioGolf.cpp \
@@ -171,6 +172,7 @@ HEADERS += \
     guests/DrGuestGcn.h \
     guests/DrGuestWii.h \
     guests/impl/BanjoTooie.h \
+    guests/impl/DiddyKongRacing.h \
     guests/impl/Kirby64.h \
     guests/impl/KirbyAirRide.h \
     guests/impl/MarioGolf.h \

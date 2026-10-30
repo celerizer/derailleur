@@ -10,6 +10,22 @@ This program was created as a novel use of my [QRetro](https://github.com/classi
 
 <img width="1363" height="1015" alt="image" src="https://github.com/user-attachments/assets/a0ce2dc4-aaf6-4d0a-a5a5-b7d84f4537dc" />
 
+## Diddy Kong Racing
+
+Supports all 20 race courses and the four challenge arenas: Fire Mountain,
+Icicle Pyramid, Darkwater Beach, and Smokey Castle. Events appear in the 4P
+mini-game list. Each uses the course's default vehicle and normal game rules;
+the winner receives 10 coins. Controller ports follow the host's player order,
+and CPU players use DKR's native AI with its default difficulty. One to four
+human players are supported; players use DKR's native characters.
+
+Use **Diddy Kong Racing (USA) (En,Fr) (Rev 1).z64** in the configured ROM directory
+(SHA-1 `6d96743d46f8c0cd0edb0ec5600b003c89b93755`). Extract it from your ZIP first.
+Other revisions and byte orders are rejected because their memory maps differ.
+No savestate is required: each event boots into Tracks mode with four racers
+and split-screen views for the human players. All netplay participants need
+the same updated build and ROM.
+
 ## Licensing
 
 derailleur is built using open-source software and technology:
