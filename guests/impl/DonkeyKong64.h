@@ -14,7 +14,7 @@ public:
   dr_guest id() const override { return DR_GUEST_DONKEYKONG64; }
   dr_core coreId() const override { return DR_CORE_MUPEN64PLUSNEXT; }
   const char *rom() const override { return "Donkey Kong 64 (USA).z64"; }
-  const char *state() const override { return "dk64"; }
+  const char *state() const override { return "donkeykong64"; }
 
   const dr_mp_minigame_t *minigames() const override;
   dr_minigame_result_t minigameResult(unsigned index) override;
@@ -26,7 +26,7 @@ protected:
   void run() override;
 
 private:
-  /* Any variables you want to use would go here */
+  int m_bootlogo = 0; // Wheter the boot logo is showing or not.
 };
 
 #endif
