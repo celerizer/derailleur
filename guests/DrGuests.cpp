@@ -26,6 +26,7 @@
 #include "impl/StarFox64.h"
 #include "impl/SuperMarioBros3.h"
 #include "impl/WiiParty.h"
+#include "impl/DonkeyKong64.h"
 #include "impl/YoshisIsland.h"
 
 static void dr_add(DrGuestList *list, DrGuest *guest)
@@ -70,4 +71,6 @@ void dr_create_guests(DrGuestList *list)
   dr_add(list, new WiiParty());
 
   dr_add(list, new YoshisIsland());
+
+  dr_add(list, new DonkeyKong64());
 }

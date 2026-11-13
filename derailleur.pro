@@ -114,6 +114,7 @@ SOURCES += \
     guests/impl/SuperMarioBros3.cpp \
     guests/impl/WiiParty.cpp \
     guests/impl/YoshisIsland.cpp \
+    guests/impl/DonkeyKong64.cpp \
     main.cpp \
     mainwindow.cpp
 
@@ -200,6 +201,7 @@ HEADERS += \
     guests/impl/SuperMarioBros3.h \
     guests/impl/WiiParty.h \
     guests/impl/YoshisIsland.h \
+    guests/impl/DonkeyKong64.h \
     mainwindow.h
 
 RESOURCES += assets.qrc
