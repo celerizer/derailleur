@@ -290,44 +290,27 @@ void MaryKateAndAshleySweet16LicensedToDrive::onBeforeBoot(const DrGameData &dat
 
   /* Characters follow port order */
   for (i = 0; i < 4; i++)
-    if (data.players[i].control_port < 4)
-      writePortrait(data.players[i].control_port, data.players[i].character);
+    writePortrait(data.players[i].control_port < 4 ? data.players[i].control_port : i,
+      data.players[i].character);
 }
 
 unsigned MaryKateAndAshleySweet16LicensedToDrive::assignSlots(const DrGameData &data)
 {
-  unsigned humans = 0, slot = 0;
+  unsigned humans = 0;
   unsigned i;
 
-  /* Humans take the first slots in port order, then CPUs */
-  for (i = 0; i < DR_CONTROL_PORT_SIZE && slot < 4; i++)
+  /* Each player takes the in-game slot matching their controller port */
+  m_humanMask = 0;
+  for (i = 0; i < 4; i++)
   {
-    unsigned player;
+    const unsigned port = data.players[i].control_port;
 
-    for (player = 0; player < 4; player++)
-      if (data.players[player].control_port == i &&
-          data.players[player].control_type == DR_CONTROL_TYPE_HUMAN)
-        break;
-    if (player == 4)
-      continue;
-    m_playerSlot[player] = slot;
-    m_slotPort[slot] = static_cast<int>(i);
-    slot++;
-    humans++;
-  }
-  for (i = 0; i < DR_CONTROL_PORT_SIZE && slot < 4; i++)
-  {
-    unsigned player;
-
-    for (player = 0; player < 4; player++)
-      if (data.players[player].control_port == i &&
-          data.players[player].control_type != DR_CONTROL_TYPE_HUMAN)
-        break;
-    if (player == 4)
-      continue;
-    m_playerSlot[player] = slot;
-    m_slotPort[slot] = -1;
-    slot++;
+    m_playerSlot[i] = port < 4 ? port : i;
+    if (data.players[i].control_type == DR_CONTROL_TYPE_HUMAN)
+    {
+      m_humanMask |= 1u << m_playerSlot[i];
+      humans++;
+    }
   }
 
   for (i = 0; i < 4; i++)
@@ -402,7 +385,7 @@ void MaryKateAndAshleySweet16LicensedToDrive::pressA(bool pressed)
 void MaryKateAndAshleySweet16LicensedToDrive::writePlayers(void)
 {
   const unsigned humans = m_humans ? m_humans : 1;
-  const int64_t mask = (1 << humans) - 1;
+  const int64_t mask = m_humanMask ? m_humanMask : 1;
   unsigned i;
 
   m_retro->writeValueForFrames(humans - 1, MKA_PLAYERS, 30);
@@ -412,17 +395,12 @@ void MaryKateAndAshleySweet16LicensedToDrive::writePlayers(void)
 
   /* Characters follow the physical port */
   for (i = 0; i < 4; i++)
-    if (m_players[i].control_port < 4)
-      m_retro->writeValueForFrames(m_players[i].control_port,
-        MKA_CHARACTER[m_playerSlot[i]], 30);
+    m_retro->writeValueForFrames(m_playerSlot[i], MKA_CHARACTER[m_playerSlot[i]], 30);
 }
 
 void MaryKateAndAshleySweet16LicensedToDrive::finishSetup(void)
 {
   unsigned i;
-
-  for (i = 0; i < 4; i++)
-    core()->input()->setPortRoute(i, m_slotPort[i]);
 
   /* Clear the previous winner so the next one marks the end */
   for (i = 0; i < 4; i++)

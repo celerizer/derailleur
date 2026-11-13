@@ -27,8 +27,8 @@ private:
   /// bottom-right quadrant.
   void writePortrait(unsigned character, dr_character player_character);
 
-  /// Condenses humans into the first in-game slots and records each slot's
-  /// pad. Returns the number of humans.
+  /// Places each player in the in-game slot matching their controller port and
+  /// records which slots are human. Returns the number of humans.
   unsigned assignSlots(const DrGameData &data);
 
   /// Writes the 2v2 or 1v3 team arrangement into the results object.
@@ -45,8 +45,8 @@ private:
 
   /* In-game slot of each player */
   unsigned m_playerSlot[4] = { 0, 1, 2, 3 };
-  /* Pad read by each in-game slot, -1 for none */
-  int m_slotPort[4] = { 0, 1, 2, 3 };
+  /* Bitmask of in-game slots controlled by humans */
+  unsigned m_humanMask = 1;
   unsigned m_humans = 1;
   int m_setupFrames = 0;
   bool m_setupActive = false;
