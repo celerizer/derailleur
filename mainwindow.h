@@ -9,6 +9,7 @@
 #include "DrCommon.h"
 #include "DrChallenge.h"
 #include "DrDebug.h"
+#include "DrDebugCore.h"
 #include "DrGuestList.h"
 #include "DrHost.h"
 #include "DrHostPicker.h"
@@ -93,6 +94,7 @@ private:
   DrMinigameFilter *m_Filter = nullptr;
   DrSettingsPage *m_Settings = nullptr;
   DrDebug *m_Debug = nullptr;
+  DrDebugCore *m_DebugCore = nullptr;
   DrChallenge *m_Challenge = nullptr;
   DrOverlay *m_Overlay = nullptr;
 

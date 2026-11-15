@@ -308,6 +308,12 @@ void MainWindow::setupDebug()
     if (!m_Host || !m_Host->writePlayerSetup(players))
       m_Logger->message(DR_LOG_WARN, "write players: this host can't write its player setup");
   });
+
+  m_DebugCore = new DrDebugCore(m_Logger, this);
+  connect(m_Debug, &DrDebug::launchCoreRequested, m_DebugCore,
+    [this](const QString &corePath, const QString &contentPath) {
+      m_DebugCore->launch(corePath, contentPath);
+    });
 }
 
 void MainWindow::setupChallenge()

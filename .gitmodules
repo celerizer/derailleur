@@ -1,3 +1,6 @@
 [submodule "QRetro"]
 	path = QRetro
 	url = https://github.com/classicslive/QRetro
+[submodule "classicslive-integration"]
+	path = classicslive-integration
+	url = https://github.com/classicslive/classicslive-integration

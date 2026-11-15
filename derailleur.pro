@@ -41,6 +41,10 @@ SOURCES += \
 HEADERS += \
     partystuffer/include/partystuffer.h
 
+# Classics Live memory search + inspector, without the CL web service
+DEFINES += CL_HAVE_NETWORK=0 CL_HAVE_EDITOR=1
+include(classicslive-integration/classicslive-integration.pri)
+
 SOURCES += \
     DrChallenge.cpp \
     DrDebug.cpp \
@@ -61,6 +65,7 @@ SOURCES += \
     DrHostPicker.cpp \
     DrStartup.cpp \
     DrLogger.cpp \
+    DrDebugCore.cpp \
     DrRetro.cpp \
     DrRetroDolphin.cpp \
     QRetroInputBackendShared.cpp \
@@ -136,6 +141,7 @@ HEADERS += \
     DrNetplay.h \
     DrNetplayWidget.h \
     DrLogger.h \
+    DrDebugCore.h \
     DrOverlay.h \
     DrToolWindow.h \
     DrRetro.h \
