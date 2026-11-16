@@ -1,5 +1,6 @@
 #include "mainwindow.h"
 #include "DrRandom.h"
+#include "DrRetro.h"
 
 #include <array>
 #include <cstdlib>
@@ -11,6 +12,7 @@
 #include <QPixmap>
 #include <QRandomGenerator>
 #include <QRetro.h>
+#include <QScrollArea>
 #include <QShortcut>
 #include <QTimer>
 
@@ -265,9 +267,16 @@ void MainWindow::setupFilter()
 
 void MainWindow::setupDebug()
 {
+  QScrollArea *debugScroll;
+
   m_Debug = new DrDebug(nullptr);
   m_Debug->populate(m_Guests->guests());
-  m_Tools->addTool(tr("Debug"), m_Debug);
+
+  debugScroll = new QScrollArea;
+  debugScroll->setWidget(m_Debug);
+  debugScroll->setWidgetResizable(true);
+  debugScroll->setFrameShape(QFrame::NoFrame);
+  m_Tools->addTool(tr("Debug"), debugScroll);
 
   connect(m_Debug, &DrDebug::minigameRequested, this,
     [this](DrGuest *guest, const dr_mp_minigame_t *minigame, std::array<dr_player_t, 4> players) {
