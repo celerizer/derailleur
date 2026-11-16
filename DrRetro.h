@@ -12,10 +12,11 @@
 
 class QWidget;
 
-/// Applies one Wii Remote control layout to a single player's joypad: button and
+/// Applies one Wii Remote control layout to `port`'s joypad on `core`: button and
 /// stick remaps that make a pad stand in for how the game expects the remote to
-/// be held (see dr_wii_control).
-void dr_apply_wii_control(QRetroInputJoypad &jp, dr_wii_control control);
+/// be held (see dr_wii_control). Layouts are written for the upright WiiMote
+/// controller type and translated when the port is on the sideways one.
+void dr_apply_wii_control(QRetro *core, unsigned port, dr_wii_control control);
 
 /// Pushes the global, user-facing core options (see DrSettings) into `core`.
 /// Call it once per QRetro, right after it is constructed -- values for options

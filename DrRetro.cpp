@@ -139,16 +139,83 @@ void dr_apply_global_core_options(QRetro *core, dr_core which)
   }
 }
 
-/* Applies one Wii control layout to a single player's joypad. */
-void dr_apply_wii_control(QRetroInputJoypad &jp, dr_wii_control control)
+/* The controller type the Dolphin core holds sideways, laying out its buttons
+ * and tilt for that grip */
+#define DR_WII_SIDEWAYS_DESC "WiiMote (sideways)"
+
+/* Whether `port` of `core` is on the sideways WiiMote controller type */
+static bool dr_wii_port_is_sideways(QRetro *core, unsigned port)
 {
+  const std::vector<QRetroControllerPort> &ports = core->input()->controllerPorts();
+  const unsigned selected = core->input()->selectedControllerType(port);
+
+  if (port >= ports.size())
+    return false;
+  for (const QRetroControllerType &type : ports[port].types)
+    if (type.id == selected)
+      return type.desc == DR_WII_SIDEWAYS_DESC;
+
+  return false;
+}
+
+/* The RetroPad button that presses `upright_id`'s Wii button (as laid out on the
+ * upright WiiMote: A, B, X = 1, Y = 2) on the sideways WiiMote, which lays out
+ * X = A, Y = B, B = 1, A = 2 instead, and turns the d-pad 90 degrees */
+static int dr_wii_sideways_button(int upright_id)
+{
+  switch (upright_id)
+  {
+  case RETRO_DEVICE_ID_JOYPAD_UP:
+    return RETRO_DEVICE_ID_JOYPAD_LEFT;
+  case RETRO_DEVICE_ID_JOYPAD_DOWN:
+    return RETRO_DEVICE_ID_JOYPAD_RIGHT;
+  case RETRO_DEVICE_ID_JOYPAD_LEFT:
+    return RETRO_DEVICE_ID_JOYPAD_DOWN;
+  case RETRO_DEVICE_ID_JOYPAD_RIGHT:
+    return RETRO_DEVICE_ID_JOYPAD_UP;
+  case RETRO_DEVICE_ID_JOYPAD_A:
+    return RETRO_DEVICE_ID_JOYPAD_X;
+  case RETRO_DEVICE_ID_JOYPAD_B:
+    return RETRO_DEVICE_ID_JOYPAD_Y;
+  case RETRO_DEVICE_ID_JOYPAD_X:
+    return RETRO_DEVICE_ID_JOYPAD_B;
+  case RETRO_DEVICE_ID_JOYPAD_Y:
+    return RETRO_DEVICE_ID_JOYPAD_A;
+  default:
+    return upright_id;
+  }
+}
+
+/* One left stick axis the core reads: which physical axis, and its sign */
+typedef struct
+{
+  unsigned id;
+  int sign;
+} dr_wii_axis_t;
+
+/* Applies one Wii control layout to a single player's joypad. Layouts are
+ * written for the upright WiiMote, and translated for a sideways one. */
+void dr_apply_wii_control(QRetro *core, unsigned port, dr_wii_control control)
+{
+  QRetroInputJoypad &jp = core->input()->joypads()[port];
+  const bool sideways = dr_wii_port_is_sideways(core, port);
+  /* Physical button -> upright Wii button, before translating */
+  int buttons[RETRO_DEVICE_ID_JOYPAD_R3 + 1];
+  /* Tilt the layout wants, from the physical stick, in the upright frame */
+  dr_wii_axis_t tilt_x = { RETRO_DEVICE_ID_ANALOG_X, 1 };
+  dr_wii_axis_t tilt_y = { RETRO_DEVICE_ID_ANALOG_Y, 1 };
+  bool swap_sticks = false;
+  int i;
+
+  for (i = 0; i <= RETRO_DEVICE_ID_JOYPAD_R3; i++)
+    buttons[i] = i;
+  buttons[RETRO_DEVICE_ID_JOYPAD_R3] = RETRO_DEVICE_ID_JOYPAD_NONE;
+
   /* Remove existing remaps */
   jp.clearButtonRemaps();
   jp.clearAnalogStickRemaps();
   jp.clearAnalogAxisRemaps();
   jp.setAnalogSensitivity(1.0f);
-
-  jp.setButtonRemap(RETRO_DEVICE_ID_JOYPAD_R3, RETRO_DEVICE_ID_JOYPAD_NONE);
 
   switch (control)
   {
@@ -160,63 +227,95 @@ void dr_apply_wii_control(QRetroInputJoypad &jp, dr_wii_control control)
   case DR_WII_CONTROL_SIDEWAYS_BUTTONS:
     /* 2 = A, 1 = B, flip dpad 90 degrees left */
     jp.setAnalogStickToDigitalPad(true);
-    jp.setButtonRemap(RETRO_DEVICE_ID_JOYPAD_A, RETRO_DEVICE_ID_JOYPAD_Y);
-    jp.setButtonRemap(RETRO_DEVICE_ID_JOYPAD_B, RETRO_DEVICE_ID_JOYPAD_X);
-    jp.setButtonRemap(RETRO_DEVICE_ID_JOYPAD_Y, RETRO_DEVICE_ID_JOYPAD_A);
-    jp.setButtonRemap(RETRO_DEVICE_ID_JOYPAD_X, RETRO_DEVICE_ID_JOYPAD_B);
-    jp.setButtonRemap(RETRO_DEVICE_ID_JOYPAD_LEFT, RETRO_DEVICE_ID_JOYPAD_UP);
-    jp.setButtonRemap(RETRO_DEVICE_ID_JOYPAD_DOWN, RETRO_DEVICE_ID_JOYPAD_LEFT);
-    jp.setButtonRemap(RETRO_DEVICE_ID_JOYPAD_RIGHT, RETRO_DEVICE_ID_JOYPAD_DOWN);
-    jp.setButtonRemap(RETRO_DEVICE_ID_JOYPAD_UP, RETRO_DEVICE_ID_JOYPAD_RIGHT);
+    buttons[RETRO_DEVICE_ID_JOYPAD_A] = RETRO_DEVICE_ID_JOYPAD_Y;
+    buttons[RETRO_DEVICE_ID_JOYPAD_B] = RETRO_DEVICE_ID_JOYPAD_X;
+    buttons[RETRO_DEVICE_ID_JOYPAD_Y] = RETRO_DEVICE_ID_JOYPAD_A;
+    buttons[RETRO_DEVICE_ID_JOYPAD_X] = RETRO_DEVICE_ID_JOYPAD_B;
+    buttons[RETRO_DEVICE_ID_JOYPAD_LEFT] = RETRO_DEVICE_ID_JOYPAD_UP;
+    buttons[RETRO_DEVICE_ID_JOYPAD_DOWN] = RETRO_DEVICE_ID_JOYPAD_LEFT;
+    buttons[RETRO_DEVICE_ID_JOYPAD_RIGHT] = RETRO_DEVICE_ID_JOYPAD_DOWN;
+    buttons[RETRO_DEVICE_ID_JOYPAD_UP] = RETRO_DEVICE_ID_JOYPAD_RIGHT;
     break;
   case DR_WII_CONTROL_SIDEWAYS_MOTION:
     jp.setAnalogStickToDigitalPad(false);
     /* Motion tilt is twitchy at full range; halve the stick. */
     jp.setAnalogSensitivity(0.5f);
-    jp.setButtonRemap(RETRO_DEVICE_ID_JOYPAD_A, RETRO_DEVICE_ID_JOYPAD_Y);
-    jp.setButtonRemap(RETRO_DEVICE_ID_JOYPAD_B, RETRO_DEVICE_ID_JOYPAD_X);
-    jp.setButtonRemap(RETRO_DEVICE_ID_JOYPAD_Y, RETRO_DEVICE_ID_JOYPAD_A);
-    jp.setButtonRemap(RETRO_DEVICE_ID_JOYPAD_X, RETRO_DEVICE_ID_JOYPAD_B);
-    jp.setButtonRemap(RETRO_DEVICE_ID_JOYPAD_LEFT, RETRO_DEVICE_ID_JOYPAD_UP);
-    jp.setButtonRemap(RETRO_DEVICE_ID_JOYPAD_DOWN, RETRO_DEVICE_ID_JOYPAD_LEFT);
-    jp.setButtonRemap(RETRO_DEVICE_ID_JOYPAD_RIGHT, RETRO_DEVICE_ID_JOYPAD_DOWN);
-    jp.setButtonRemap(RETRO_DEVICE_ID_JOYPAD_UP, RETRO_DEVICE_ID_JOYPAD_RIGHT);
+    buttons[RETRO_DEVICE_ID_JOYPAD_A] = RETRO_DEVICE_ID_JOYPAD_Y;
+    buttons[RETRO_DEVICE_ID_JOYPAD_B] = RETRO_DEVICE_ID_JOYPAD_X;
+    buttons[RETRO_DEVICE_ID_JOYPAD_Y] = RETRO_DEVICE_ID_JOYPAD_A;
+    buttons[RETRO_DEVICE_ID_JOYPAD_X] = RETRO_DEVICE_ID_JOYPAD_B;
+    buttons[RETRO_DEVICE_ID_JOYPAD_LEFT] = RETRO_DEVICE_ID_JOYPAD_UP;
+    buttons[RETRO_DEVICE_ID_JOYPAD_DOWN] = RETRO_DEVICE_ID_JOYPAD_LEFT;
+    buttons[RETRO_DEVICE_ID_JOYPAD_RIGHT] = RETRO_DEVICE_ID_JOYPAD_DOWN;
+    buttons[RETRO_DEVICE_ID_JOYPAD_UP] = RETRO_DEVICE_ID_JOYPAD_RIGHT;
     /* Held sideways: rotate the left stick (tilt) 90 degrees to match.
      * X <- -Y, Y <- X. */
-    jp.setAnalogAxisRemap(RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_X,
-      RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_Y, -1);
-    jp.setAnalogAxisRemap(RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_Y,
-      RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_X, 1);
+    tilt_x.id = RETRO_DEVICE_ID_ANALOG_Y;
+    tilt_x.sign = -1;
+    tilt_y.id = RETRO_DEVICE_ID_ANALOG_X;
+    tilt_y.sign = 1;
     break;
   case DR_WII_CONTROL_POINTER:
     /* Pointer aiming: keep the sticks analog and swap them both ways, so the
      * core's left stick (the pointer) reads the physical right stick and the
-     * core's right stick reads the physical left. */
+     * core's right stick reads the physical left. A is A and B is B. */
     jp.setAnalogStickToDigitalPad(false);
-    jp.setAnalogStickRemap(RETRO_DEVICE_INDEX_ANALOG_RIGHT, RETRO_DEVICE_INDEX_ANALOG_LEFT);
-    jp.setAnalogStickRemap(RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_INDEX_ANALOG_RIGHT);
+    swap_sticks = true;
     break;
   case DR_WII_CONTROL_WAGGLE:
     /* Shake: the stick drives the d-pad and A stands in for the shake (R2). */
     jp.setAnalogStickToDigitalPad(true);
-    jp.setButtonRemap(RETRO_DEVICE_ID_JOYPAD_A, RETRO_DEVICE_ID_JOYPAD_R2);
+    buttons[RETRO_DEVICE_ID_JOYPAD_A] = RETRO_DEVICE_ID_JOYPAD_R2;
     break;
   default:
     break;
+  }
+
+  for (i = 0; i <= RETRO_DEVICE_ID_JOYPAD_R3; i++)
+  {
+    const int target = sideways ? dr_wii_sideways_button(buttons[i]) : buttons[i];
+
+    if (target != i)
+      jp.setButtonRemap(i, target);
+  }
+
+  if (swap_sticks)
+  {
+    jp.setAnalogStickRemap(RETRO_DEVICE_INDEX_ANALOG_RIGHT, RETRO_DEVICE_INDEX_ANALOG_LEFT);
+    jp.setAnalogStickRemap(RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_INDEX_ANALOG_RIGHT);
+  }
+  else
+  {
+    /* The sideways WiiMote turns tilt 90 degrees itself, so turn it back,
+     * X <- Y, Y <- -X */
+    if (sideways)
+    {
+      const dr_wii_axis_t upright_x = tilt_x;
+
+      tilt_x = tilt_y;
+      tilt_y.id = upright_x.id;
+      tilt_y.sign = -upright_x.sign;
+    }
+    if (tilt_x.id != RETRO_DEVICE_ID_ANALOG_X || tilt_x.sign != 1 ||
+        tilt_y.id != RETRO_DEVICE_ID_ANALOG_Y || tilt_y.sign != 1)
+    {
+      jp.setAnalogAxisRemap(RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_X,
+        RETRO_DEVICE_INDEX_ANALOG_LEFT, tilt_x.id, tilt_x.sign);
+      jp.setAnalogAxisRemap(RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_Y,
+        RETRO_DEVICE_INDEX_ANALOG_LEFT, tilt_y.id, tilt_y.sign);
+    }
   }
 }
 
 void DrRetro::applyWiiControls(dr_wii_control control)
 {
-  QRetroInputJoypad *joypads;
   unsigned i;
 
   if (!m_core || !m_core->input())
     return;
 
-  joypads = m_core->input()->joypads();
   for (i = 0; i < 4; i++)
-    dr_apply_wii_control(joypads[i], control);
+    dr_apply_wii_control(m_core, i, control);
 
   log(DR_LOG_INFO, qPrintable(QString("[control] all ports: %1")
     .arg(dr_wii_control_name(control))));
