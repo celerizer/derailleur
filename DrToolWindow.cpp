@@ -14,7 +14,7 @@ DrToolWindow::DrToolWindow(QWidget *parent)
 {
   setWindowTitle(QString("derailleur - %1 (%2)")
       .arg(QString::fromUtf8(DERAILLEUR_DATE_STRING), QString::fromUtf8(DERAILLEUR_RELEASE_STRING)));
-  resize(760, 460);
+  resize(760, 585);
 
   m_Sidebar = new QListWidget(this);
   m_Sidebar->setFrameShape(QFrame::NoFrame);
