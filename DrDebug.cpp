@@ -4,17 +4,33 @@
 
 #include <QAction>
 #include <QComboBox>
+#include <QDir>
+#include <QFileDialog>
+#include <QFileInfo>
 #include <QFormLayout>
 #include <QGridLayout>
 #include <QGroupBox>
 #include <QHBoxLayout>
 #include <QHash>
 #include <QLabel>
+#include <QLineEdit>
 #include <QMenu>
 #include <QPushButton>
+#include <QSettings>
 #include <QSpinBox>
 #include <QToolButton>
 #include <QVBoxLayout>
+
+#include "DrPaths.h"
+
+/* derailleur.ini keys remembering the last spawned core and content */
+#define DR_DEBUG_CORE_KEY "debug/core"
+#define DR_DEBUG_CONTENT_KEY "debug/content"
+
+static QString dr_debug_ini(void)
+{
+  return QDir::current().filePath("derailleur.ini");
+}
 
 namespace
 {
@@ -219,8 +235,65 @@ DrDebug::DrDebug(QWidget *parent)
 
   layout->addWidget(boardBox);
 
+  layout->addWidget(createDeveloperBox());
+
   layout->addStretch();
   setLayout(layout);
+}
+
+QWidget *DrDebug::createDeveloperBox(void)
+{
+  QGroupBox *developerBox = new QGroupBox(tr("Developer"), this);
+  QFormLayout *form = new QFormLayout(developerBox);
+  QSettings settings(dr_debug_ini(), QSettings::IniFormat);
+
+  auto pathRow = [this, developerBox](QLineEdit *edit, const QString &fallbackDir,
+                   const QString &filter) {
+    QHBoxLayout *row = new QHBoxLayout;
+    QToolButton *browse = new QToolButton(developerBox);
+
+    browse->setText("...");
+    connect(browse, &QToolButton::clicked, this, [this, edit, fallbackDir, filter]() {
+      const QString current = edit->text().trimmed();
+      const QString startDir = current.isEmpty() ? fallbackDir : QFileInfo(current).absolutePath();
+      const QString chosen = QFileDialog::getOpenFileName(this, tr("Choose File"), startDir, filter);
+
+      if (!chosen.isEmpty())
+        edit->setText(QDir::toNativeSeparators(chosen));
+    });
+    row->addWidget(edit, 1);
+    row->addWidget(browse);
+    return row;
+  };
+
+  m_corePath = new QLineEdit(settings.value(DR_DEBUG_CORE_KEY).toString(), developerBox);
+  m_corePath->setPlaceholderText(tr("libretro core"));
+  form->addRow(tr("Core:"), pathRow(m_corePath, DrPaths::instance().coresDirectory(),
+    tr("libretro cores (*%1);;All files (*)").arg(dr_os_extension())));
+
+  m_contentPath = new QLineEdit(settings.value(DR_DEBUG_CONTENT_KEY).toString(), developerBox);
+  m_contentPath->setPlaceholderText(tr("content (optional)"));
+  form->addRow(tr("Content:"), pathRow(m_contentPath, DrPaths::instance().romsDirectory(),
+    tr("All files (*)")));
+
+  QPushButton *launchBtn = new QPushButton(tr("Launch with Memory Inspector"), developerBox);
+  launchBtn->setToolTip(tr("Boot the core and content in a window of their own, outside netplay, "
+                           "replacing any core launched here before"));
+  connect(launchBtn, &QPushButton::clicked, this, [this]() {
+    const QString corePath = m_corePath->text().trimmed();
+    const QString contentPath = m_contentPath->text().trimmed();
+    QSettings saved(dr_debug_ini(), QSettings::IniFormat);
+
+    if (corePath.isEmpty())
+      return;
+    saved.setValue(DR_DEBUG_CORE_KEY, corePath);
+    saved.setValue(DR_DEBUG_CONTENT_KEY, contentPath);
+    saved.sync();
+    emit launchCoreRequested(corePath, contentPath);
+  });
+  form->addRow(QString(), launchBtn);
+
+  return developerBox;
 }
 
 std::array<dr_player_t, 4> DrDebug::players(const dr_mp_minigame_t *minigame) const

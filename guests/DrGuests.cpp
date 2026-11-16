@@ -22,6 +22,7 @@
 #include "impl/PokemonStadium.h"
 #include "impl/PokemonStadium2.h"
 #include "impl/SmashRemix.h"
+#include "impl/SonicSecretRings.h"
 #include "impl/SonicShuffle.h"
 #include "impl/StarFox64.h"
 #include "impl/SuperMarioBros3.h"
@@ -64,6 +65,7 @@ void dr_create_guests(DrGuestList *list)
   dr_add(list, new PokemonStadium2());
 
   dr_add(list, new SmashRemix());
+  dr_add(list, new SonicSecretRings());
   dr_add(list, new SonicShuffle());
   dr_add(list, new StarFox64());
   dr_add(list, new SuperMarioBros3());

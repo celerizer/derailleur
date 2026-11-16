@@ -48,7 +48,6 @@ void DrGuestWii::applyControlRemap(dr_emulation_quirk_t quirks, const dr_player_
   if (team == DR_WII_CONTROL_INVALID)
     team = solo;
 
-  QRetroInputJoypad *joypads = retro->input()->joypads();
   for (unsigned i = 0; i < 4; i++)
   {
     /* In-game slot from the controller port (Mario Party assigns ports
@@ -58,7 +57,7 @@ void DrGuestWii::applyControlRemap(dr_emulation_quirk_t quirks, const dr_player_
       slot = i;
     const bool isSolo = players[i].team_type == DR_TEAM_TYPE_1V3_SOLO;
     const dr_wii_control control = isSolo ? solo : team;
-    dr_apply_wii_control(joypads[slot], control);
+    dr_apply_wii_control(retro, slot, control);
     log(DR_LOG_INFO, qPrintable(QString("[control] port %1: %2 (%3)")
       .arg(slot).arg(dr_wii_control_name(control)).arg(isSolo ? "solo" : "team")));
   }
@@ -70,10 +69,9 @@ void DrGuestWii::applyControlProfile(dr_wii_control control)
   if (!retro || !retro->input())
     return;
 
-  QRetroInputJoypad *joypads = retro->input()->joypads();
   for (unsigned i = 0; i < 4; i++)
   {
-    dr_apply_wii_control(joypads[i], control);
+    dr_apply_wii_control(retro, i, control);
     log(DR_LOG_INFO, qPrintable(QString("[control] port %1: %2 (all)")
       .arg(i).arg(dr_wii_control_name(control))));
   }

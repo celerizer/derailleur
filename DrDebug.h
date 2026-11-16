@@ -9,6 +9,7 @@
 
 class QComboBox;
 class QLabel;
+class QLineEdit;
 class QMenu;
 class QToolButton;
 
@@ -41,7 +42,14 @@ signals:
   /// Stamp the dialog's player setup into the running host.
   void writePlayersRequested(std::array<dr_player_t, 4> players);
 
+  /// Boot `corePath` with `contentPath` (may be empty) in a window of its own,
+  /// with the memory inspector open on it.
+  void launchCoreRequested(const QString &corePath, const QString &contentPath);
+
 private:
+  /// The Developer box: launch a core + content with the memory inspector.
+  QWidget *createDeveloperBox(void);
+
   void refreshMinis(int guestIdx);
   void selectEntry(int idx);
   /// The selected mini-game's type, or DR_MINIGAME_INVALID if none.
@@ -74,6 +82,9 @@ private:
   std::array<PlayerControls, 4> m_players{};
   QList<DrGuest *> m_guests;
   QList<QPair<DrGuest *, const dr_mp_minigame_t *>> m_entries;
+
+  QLineEdit *m_corePath = nullptr;
+  QLineEdit *m_contentPath = nullptr;
 };
 
 #endif

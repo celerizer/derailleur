@@ -4,8 +4,8 @@
 #include <QFile>
 #include <QString>
 
-static const char *const DERAILLEUR_DATE_STRING = "October 25, 2026";
-static const char *const DERAILLEUR_RELEASE_STRING = "r13";
+static const char *const DERAILLEUR_DATE_STRING = "November 15, 2026";
+static const char *const DERAILLEUR_RELEASE_STRING = "r15";
 
 #define DR_CONTROL_PORT_P1 0
 #define DR_CONTROL_PORT_P2 1
@@ -314,6 +314,7 @@ typedef enum
   DR_GUEST_POKEMONSTADIUM,
   DR_GUEST_WIIPARTY,
   DR_GUEST_MARYKATEANDASHLEYSWEET16LICENSEDTODRIVE,
+  DR_GUEST_SONICSECRETRINGS,
   DR_GUEST_DONKEYKONG64,
 
   DR_GUEST_SIZE

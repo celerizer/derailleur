@@ -41,6 +41,10 @@ SOURCES += \
 HEADERS += \
     partystuffer/include/partystuffer.h
 
+# Classics Live memory search + inspector, without the CL web service
+DEFINES += CL_HAVE_NETWORK=0 CL_HAVE_EDITOR=1
+include(classicslive-integration/classicslive-integration.pri)
+
 SOURCES += \
     DrChallenge.cpp \
     DrDebug.cpp \
@@ -61,6 +65,7 @@ SOURCES += \
     DrHostPicker.cpp \
     DrStartup.cpp \
     DrLogger.cpp \
+    DrDebugCore.cpp \
     DrRetro.cpp \
     DrRetroDolphin.cpp \
     QRetroInputBackendShared.cpp \
@@ -109,6 +114,7 @@ SOURCES += \
     guests/impl/PokemonStadium.cpp \
     guests/impl/PokemonStadium2.cpp \
     guests/impl/SmashRemix.cpp \
+    guests/impl/SonicSecretRings.cpp \
     guests/impl/SonicShuffle.cpp \
     guests/impl/StarFox64.cpp \
     guests/impl/SuperMarioBros3.cpp \
@@ -137,6 +143,7 @@ HEADERS += \
     DrNetplay.h \
     DrNetplayWidget.h \
     DrLogger.h \
+    DrDebugCore.h \
     DrOverlay.h \
     DrToolWindow.h \
     DrRetro.h \
@@ -196,6 +203,7 @@ HEADERS += \
     guests/impl/PokemonStadium.h \
     guests/impl/PokemonStadium2.h \
     guests/impl/SmashRemix.h \
+    guests/impl/SonicSecretRings.h \
     guests/impl/SonicShuffle.h \
     guests/impl/StarFox64.h \
     guests/impl/SuperMarioBros3.h \
