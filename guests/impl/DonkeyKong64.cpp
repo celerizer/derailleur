@@ -294,7 +294,7 @@ void DonkeyKong64::run(void)
       // Go in a loop to try to find the minigame state
       for (unsigned i = 0; i <= 16; i++) {
         int64_t chain1, chain2, final;
-        dr_value_t POINTER_CHAIN1 = {0x807FB970, DR_VALUE_TYPE_POINTER};
+        dr_value_t POINTER_CHAIN1 = {0x807FB930 + (8 * i), DR_VALUE_TYPE_POINTER};
         m_retro->readValue(&chain1, POINTER_CHAIN1);
 
         chain1 += 0x11C; // offset it to locate the pointer
@@ -324,6 +324,7 @@ void DonkeyKong64::run(void)
 
     break;
   }
+}
 
   //if (m_winnerIndex < 0)
   //{
