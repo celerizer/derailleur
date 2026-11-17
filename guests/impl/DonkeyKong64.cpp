@@ -308,7 +308,9 @@ void DonkeyKong64::run(void)
         if (final == 16777216) {
           adrchain = static_cast<size_t>(chain2);
           m_State = 1;
+          break;
         }
+      }
     }
 
     if (m_State == 1) {
@@ -316,9 +318,8 @@ void DonkeyKong64::run(void)
       m_retro->readValue(&m_minigameState, MINIGAME_STATE);
     }
 
-
     /** if the pointer doesn't exist anymore end the minigame.*/
-    if (!ptr && m_State == 1 && mapstate == 0x1C) {
+    if (!ptr && m_State == 1 && mapstate == 0x0C) {
       finishMinigame();
     }
 
@@ -346,7 +347,6 @@ void DonkeyKong64::run(void)
   //  if (m_winnerIndex >= 0)
   //    finishMinigameInFrames(150);
   //}
-}
 
 
 ///* When you've determined the mini-game has ended, call `finishMinigame` */
