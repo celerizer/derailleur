@@ -26,7 +26,11 @@ protected:
   void run() override;
 
 private:
-  int m_bootlogo = 0; // Wheter the boot logo is showing or not.
+  int m_playercount = 0;
+  int m_arcadelvl = -1;
+  int m_State = -1;
+  size_t adrchain = -1;
+  int64_t m_minigameState = -1;
 };
 
 #endif
