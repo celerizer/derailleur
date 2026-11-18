@@ -1,4 +1,5 @@
 #include "DonkeyKong64.h"
+#include "DrRandom.h"
 #include <QRetro.h>
 
 typedef enum
@@ -11,24 +12,17 @@ typedef enum
   DK64_CHARACTER_KRUSHA = 5
 } dk64_character_ids;
 
-// s8 (multiplayer) arena ID
-typedef enum
-{
-  DK64_ARENA_ONE = 0x00,
-  DK64_ARENA_TWO = 0x01,
-  DK64_ARENA_THREE = 0x02,
-} dk64_arena_ids;
+#define DK64_ARENA_1                 0x6D
+#define DK64_ARENA_2                 0xBE
+#define DK64_ARENA_3                 0xC0
 
-// s8 monkey smash game type
-typedef enum
-{
-  DK64_MONKEYSMASH_SURVIVAL = 0x00,
-  DK64_MONKEYSMASH_COIN_HOARD = 0x01,
-  DK64_MONKEYSMASH_WINS = 0x02,
-  DK64_MONKEYSMASH_TIME = 0x03,
-  DK64_MONKEYSMASH_CAPTURE = 0x04,
-  DK64_MONKEYSMASH_CAPTURE_PAD = 0x05,
-} dk64_monkey_smash_game_type;
+#define DK64_MONKEYSMASH_SURVIVAL          0x00
+#define DK64_MONKEYSMASH_COIN_HOARD        0x01
+#define DK64_MONKEYSMASH_WINS               0x02
+#define DK64_MONKEYSMASH_TIME               0x03
+#define DK64_MONKEYSMASH_CAPTURE            0x04
+#define DK64_MONKEYSMASH_CAPTURE_PAD        0x05
+
 
 static const dr_value_t DK64_ARCADE_LEVEL_ID = { 0x8004c723, DR_VALUE_TYPE_S8 };
 
@@ -40,12 +34,17 @@ static const dr_value_t DK64_MAP_STATE = { 0x8076A0B1, DR_VALUE_TYPE_U8 };
 static const dr_value_t DK64_ARCADE_SCENE = {0x8004C733, DR_VALUE_TYPE_U8};
 static const dr_value_t DK64_ARCADE_LIVES = {0x8004C71B, DR_VALUE_TYPE_U8};
 static const dr_value_t DK64_ARCADE_TOTAL_LIVES = {0x8004C71C, DR_VALUE_TYPE_U8};
-
-// u8 Gameover toggle
 static const dr_value_t DK64_ARCADE_GAMEOVER = { 0x8004A764, DR_VALUE_TYPE_U8 };
 
 // Heap pointer for minigames
 static const dr_value_t DK64_HEAP_PTR = {0x807FB970, DR_VALUE_TYPE_POINTER};
+
+// u8 Kong Battle
+static const dr_value_t DK64_KONGBATTLE_GAMEMODE = {0x80750AB8, DR_VALUE_TYPE_U8};
+static const dr_value_t DK64_KONGBATTLE_GAMETYPE = {0x8076A0D7, DR_VALUE_TYPE_U8};
+
+// u8 Player count
+static const dr_value_t DK64_PLAYER_COUNT = { 0x80750AC0, DR_VALUE_TYPE_U8 };
 
 // u8 Result scores
 static const dr_value_t DK64_SCORE[4] = {
@@ -87,39 +86,19 @@ static const dr_mp_minigame_t DK64_MINIGAMES[] = {
   { "Stash Snatch", DR_MINIGAME_1P, 0x0D, 0x43, DR_NO_QUIRKS, DR_NO_FLAGS },
   { "Searchlight Seek", DR_MINIGAME_1P, 0x0E, 0x8B, DR_NO_QUIRKS, DR_NO_FLAGS },
   { "Krazy Kong Klamour", DR_MINIGAME_1P, 0x0F, 0x65, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "DONKEY KONG: 25m", DR_MINIGAME_1P, 0x02, 0x04, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "DONKEY KONG: 50m", DR_MINIGAME_1P, 0x02, 0x05, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "DONKEY KONG: 75m", DR_MINIGAME_1P, 0x02, 0x06, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "DONKEY KONG: 100m", DR_MINIGAME_1P, 0x02, 0x07, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Jetpac", DR_MINIGAME_1P, 0x09, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "DONKEY KONG: 25m", DR_MINIGAME_1P, 0x10, 0x04, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "DONKEY KONG: 50m", DR_MINIGAME_1P, 0x11, 0x05, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "DONKEY KONG: 75m", DR_MINIGAME_1P, 0x12, 0x06, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "DONKEY KONG: 100m", DR_MINIGAME_1P, 0x13, 0x07, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Jetpac", DR_MINIGAME_1P, 0x14, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
 
-  { "Monkey Smash", DR_MINIGAME_4P, 0xBE, 0xAA, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Kong Battle", DR_MINIGAME_4P, 0x6B, 0xAA, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Monkey Smash", DR_MINIGAME_4P, 0x15, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Battle Arena", DR_MINIGAME_4P, 0x16, 0x6B, DR_NO_QUIRKS, DR_NO_FLAGS },
 
-  { "Kong Battle: Duel", DR_MINIGAME_DUEL, 0x6B, 0xAA, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Battle Arena: Duel", DR_MINIGAME_DUEL, 0x17, 0x6B, DR_NO_QUIRKS, DR_NO_FLAGS },
 
   { nullptr, DR_MINIGAME_INVALID, 0xFF, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
 };
-
-// u16 Minigame States
-static const dr_value_t DK64_STATES[] = {
-  { 0x80449FB4, DR_VALUE_TYPE_U16 }, // Mad Maze Maul
-  { 0x8046EE64, DR_VALUE_TYPE_U16 }, // Speedy Swing Sortie
-  { 0x804AE794, DR_VALUE_TYPE_U16 }, // Splish Splash Salvage
-  { 0x80494BA4, DR_VALUE_TYPE_U16 }, // Minecart Mayhem
-  { 0x804B55B4, DR_VALUE_TYPE_U16 }, // Stealthy Snoop
-  { 0x804B55B4, DR_VALUE_TYPE_U16 }, // Big Bug Bash
-  { 0x804B55B4, DR_VALUE_TYPE_U16 }, // Teetering Turtle Trouble
-  { 0x804B55B4, DR_VALUE_TYPE_U16 }, // Kremling Kosh
-  { 0x804B55B4, DR_VALUE_TYPE_U16 }, // Busy Barrel Barrage
-  { 0x804B55B4, DR_VALUE_TYPE_U16 }, // Beaver Bother
-  { 0x804B55B4, DR_VALUE_TYPE_U16 }, // Peril Path Panic
-  { 0x804B55B4, DR_VALUE_TYPE_U16 }, // Batty Barrel Bandit
-  { 0x804B55B4, DR_VALUE_TYPE_U16 }, // Stash Snatch
-  { 0x804B55B4, DR_VALUE_TYPE_U16 }, // Searchlight Seek 804B55B4
-  { 0x804B55B4, DR_VALUE_TYPE_U16 }, // Krazy Kong Klamour
-};
-
 
 
 DonkeyKong64::DonkeyKong64(QObject *parent)
@@ -141,29 +120,100 @@ const dr_mp_minigame_t *DonkeyKong64::minigames(void) const
 
 void DonkeyKong64::onBeforeBoot(const DrGameData &data) {}
 
+bool DonkeyKong64::getMinigameState() {
+
+  if (!m_minigameState && !m_stateAddress)
+    return true;
+
+  for (unsigned i = 0; i <= 24; i++) {
+    int64_t chain1, chain1val, chain2, value, value2;
+    /* Try to find the value that is stored somewhere within the second pointer offset by 154 bytes.. */
+
+    // Go through the address table
+    dr_value_t POINTER_CHAIN1 = {0x807FB930 + (8 * i), DR_VALUE_TYPE_POINTER};
+    m_retro->readValue(&chain1, POINTER_CHAIN1);
+    m_retro->readValue(&chain1val, POINTER_CHAIN1);
+
+    chain1 += 0x11C;
+    dr_value_t POINTER_CHAIN2 = {static_cast<size_t>(chain1), DR_VALUE_TYPE_POINTER};
+    m_retro->readValue(&chain2, POINTER_CHAIN2);
+
+    chain2 += 0x154;
+    dr_value_t POINTER_VALUE1 = {static_cast<size_t>(chain2), DR_VALUE_TYPE_U32};
+    m_retro->readValue(&value, POINTER_VALUE1);
+
+    if (value == 0x2010000) {
+      m_stateAddress = static_cast<size_t>(chain2);
+      return true;
+    }
+
+    /*  Double check scan
+     * Try to find the value if it's stored somewhere else offset from the first pointer. */
+
+    chain1val += 0x154;
+    dr_value_t POINTER_VALUE2 = {static_cast<size_t>(chain1val), DR_VALUE_TYPE_U32};
+    m_retro->readValue(&value2, POINTER_VALUE2);
+
+    if (value2 == 0x2010000) {
+      m_stateAddress = static_cast<size_t>(chain1val);
+      return true;
+    }
+  }
+
+   return false;
+}
+
+unsigned DonkeyKong64::computeWinners() {
+
+  unsigned winners = 0;
+  int64_t score[4] = {};
+  if (m_minigame->minigame_id > 0x14) {
+    int16_t best = score[0];
+    for (unsigned i = 0; i < 4; i++) {
+      m_retro->readValue(&score[i], DK64_SCORE[i]);
+
+      if (score[i] < best)
+        best = score[i];
+    }
+
+    for (unsigned slot = 0; slot < 4; slot++)
+      if (score[slot] == best)
+        winners |= (1u << m_slotToIndex[slot]);
+
+  } else {
+    // Singleplayer
+  }
+
+  return winners;
+}
+
 void DonkeyKong64::doApplyGameData(const DrGameData &data)
 {
+  uint32_t playercount = 0;
+
   m_State = -1;
   m_retro->loadState(state());
 
-  m_retro->writeValue(data.minigame->scene_id, DK64_LOAD_TO_MAP);
+  if (data.minigame->minigame_id == 0x15) {
+    const uint8_t randArena = (DrRandom::instance().next() % 3);
 
-  /* Happens only with multiplayer */
-  if (data.minigame->scene_id == 0xAA)
-  {
-    /** Replace annoying SB with NOP instruction to prevent the game from overwriting the character ID set from P1 to other players */
-    const dr_value_t DK64_INST_SB_CHARACTER = { 0x806C8560, DR_VALUE_TYPE_U32 };
-    m_retro->writeValueForFrames(0, DK64_INST_SB_CHARACTER, 30);
+    switch (randArena) {
+    case 0:
+      m_kongBattleArena = DK64_ARENA_1;
+      break;
+    case 1:
+      m_kongBattleArena = DK64_ARENA_2;
+      break;
+    case 2:
+      m_kongBattleArena = DK64_ARENA_3;
+      break;
+    }
 
-    /** Needs to be set to two otherwise it won't add to the Player's score counter */
-    const dr_value_t DK64_LOAD_RESULTS = { 0x80744514, DR_VALUE_TYPE_U8 };
-
-    m_retro->writeValue(2, DK64_LOAD_RESULTS);
+    m_retro->writeValue(m_kongBattleArena, DK64_LOAD_TO_MAP);
+  } else {
+    m_retro->writeValue(data.minigame->scene_id, DK64_LOAD_TO_MAP);
   }
 
-  if (data.minigame->minigame_id == 0x02) {
-    m_arcadelvl = data.minigame->scene_id;
-  }
 
   /** Stealing this from Kirby 64  */
   for (unsigned i = 0; i < 4; i++)
@@ -175,7 +225,7 @@ void DonkeyKong64::doApplyGameData(const DrGameData &data)
 
     if (m_players[i].control_type == DR_CONTROL_TYPE_HUMAN)
     {
-      m_playercount++;
+      playercount++;
     }
 
     switch (m_players[i].character)
@@ -221,19 +271,26 @@ void DonkeyKong64::doApplyGameData(const DrGameData &data)
     m_retro->writeValue(color, DK64_COLOR[slot]);
   }
 
-  /** Should be self-explanatory. */
-  const dr_value_t DK64_PLAYER_COUNT = { 0x80750AC0, DR_VALUE_TYPE_U8 };
-  m_retro->writeValue(m_playercount, DK64_PLAYER_COUNT);
+  if (data.minigame->minigame_id > 0x14)
+  {
+    /** Replace annoying SB with NOP instruction to prevent the game from overwriting the character ID set from P1 to other players */
+    const dr_value_t DK64_INST_SB_CHARACTER = { 0x806C8560, DR_VALUE_TYPE_U32 };
+    m_retro->writeValueForFrames(0, DK64_INST_SB_CHARACTER, 30);
 
+    /** Needs to be set to two otherwise it won't add to the Player's score counter */
+    const dr_value_t DK64_LOAD_RESULTS = { 0x80744514, DR_VALUE_TYPE_U8 };
+    m_retro->writeValue(2, DK64_LOAD_RESULTS);
 
+    m_retro->writeValue(playercount, DK64_PLAYER_COUNT);
+
+    if (data.minigame->scene_id == 0x6B) {
+      m_retro->writeValue(1, DK64_KONGBATTLE_GAMEMODE);
+    }
+  }
 }
 
 void DonkeyKong64::run(void)
 {
-  // m_State
-  // -1 Minigame is not running
-  // 0 Minigame is in explanation screen
-  // 1 Minigame is running.
 
   int64_t mapstate, currentmap;
 
@@ -242,6 +299,10 @@ void DonkeyKong64::run(void)
 
   /** If the map is loading start it right away */
   if (mapstate == 0x1C && !m_minigameActive) {
+    log(DR_LOG_INFO, qPrintable(QString("[DK64] Loaded map: %1").arg(currentmap)));
+    startMinigame();
+    m_State = 0;
+  } else if (mapstate == 0x08 && !m_minigameActive && currentmap == m_kongBattleArena) {
     log(DR_LOG_INFO, qPrintable(QString("[DK64] Loaded map: %1").arg(currentmap)));
     startMinigame();
     m_State = 0;
@@ -264,14 +325,14 @@ void DonkeyKong64::run(void)
     if (arcadescene == 0x1B) { // Start of the game when Donkey Kong climbs up the ladder
       m_retro->writeValue(0, DK64_ARCADE_LIVES);
       m_retro->writeValue(1, DK64_ARCADE_TOTAL_LIVES);
-      m_retro->writeValue(m_arcadelvl, DK64_ARCADE_LEVEL_ID);
+      m_retro->writeValue(m_minigame->scene_id, DK64_ARCADE_LEVEL_ID);
     }
 
     if (finishPending()) {
       return;
     }
 
-    if ((gameover == 0x01 || m_arcadelvl != currentlevel) && currentlevel > 3) {
+    if ((gameover == 0x01 || m_minigame->scene_id != currentlevel) && currentlevel > 3) {
       // Give the game over text a bit to breath on screen before ending it
       finishMinigameInFrames(60);
     }
@@ -280,73 +341,59 @@ void DonkeyKong64::run(void)
   case 0x09:
     /// Jetpac
     break;
+  case 0xBE:
+    if (mapstate == 0x08 && m_State == 0) {
+      m_State = 1;
+    }
+
+    if (mapstate == 0x0D && m_State == 1) {
+      computeWinners();
+      finishMinigame();
+    }
+
+    break;
+  case 0x6B:
+    if (mapstate == 0x08 && m_State == 0) {
+      m_State = 1;
+    }
+
+    if (mapstate == 0x80 && m_State == 1) {
+      computeWinners();
+      finishMinigameInFrames(60);
+    }
+
+    break;
   default:
     /// Bonus Stages
-    /** This one is a bit of a doozy, because of the pointer chain */
+    // This one is a bit of a doozy, because of the pointer chain..
 
-    /** There are moments where the value gets relocated to where it is by moving backwards 80 bytes.. annoyingly when the minigame is restarted */
-    /** TODO: Disable the restart and exit level button from the pause menu, so it doesn't do this ^^ */
+    /* TODO: Disable the restart and exit level button from the pause menu */
 
     int64_t ptr;
     m_retro->readValue(&ptr, DK64_HEAP_PTR);
 
-    if (mapstate == 0x38 && m_State == 0) {
-      // Go in a loop to try to find the minigame state
-      for (unsigned i = 0; i <= 16; i++) {
-        int64_t chain1, chain2, final;
-        dr_value_t POINTER_CHAIN1 = {0x807FB930 + (8 * i), DR_VALUE_TYPE_POINTER};
-        m_retro->readValue(&chain1, POINTER_CHAIN1);
-
-        chain1 += 0x11C; // offset it to locate the pointer
-        dr_value_t POINTER_CHAIN2 = {static_cast<size_t>(chain1), DR_VALUE_TYPE_POINTER};
-        m_retro->readValue(&chain2, POINTER_CHAIN2);
-
-        chain2 += 0x154; // offset it to find the state value of the minigame
-        dr_value_t POINTER_CHAIN3 = {static_cast<size_t>(chain2), DR_VALUE_TYPE_U32};
-        m_retro->readValue(&final, POINTER_CHAIN3);
-
-        if (final == 16777216) {
-          adrchain = static_cast<size_t>(chain2);
-          m_State = 1;
-          break;
-        }
-      }
+    if (mapstate == 0x28 && m_State == 0 && getMinigameState()) {
+      m_State++;
     }
 
     if (m_State == 1) {
-      const dr_value_t MINIGAME_STATE = {adrchain, DR_VALUE_TYPE_U16};
+      const dr_value_t MINIGAME_STATE = {m_stateAddress, DR_VALUE_TYPE_U16};
       m_retro->readValue(&m_minigameState, MINIGAME_STATE);
     }
 
-    /** if the pointer doesn't exist anymore end the minigame.*/
-    if (!ptr && m_State == 1 && mapstate == 0x0C) {
+    if (m_State == 1 && mapstate == 0x38) {
+      computeWinners();
+      m_State++;
+    }
+
+    /** If the pointer doesn't exist anymore, end the minigame. */
+    if (!ptr && mapstate == 0x0C) {
       finishMinigame();
     }
 
     break;
   }
 }
-
-  //if (m_winnerIndex < 0)
-  //{
-
-  //  int64_t wins[4] = {};
-  //  for (unsigned i = 0; i < 4; i++)
-  //    m_retro->readValue(&wins[i], DK64_SCORE[i]);
-
-  //  /* Wins are indexed by in-game slot; map back to the board player index. */
-  //  for (unsigned slot = 0; slot < 4; slot++)
-  //  {
-  //    if (wins[slot] == 1)
-  //    {
-  //      m_winnerIndex = m_slotToIndex[slot];
-  //      break;
-  //    }
-  //  }
-
-  //  if (m_winnerIndex >= 0)
-  //    finishMinigameInFrames(150);
-  //}
 
 
 ///* When you've determined the mini-game has ended, call `finishMinigame` */
