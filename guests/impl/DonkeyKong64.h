@@ -26,15 +26,11 @@ protected:
   void run() override;
 
   unsigned computeWinners();
-  bool getMinigameState();
 
 private:
-  int m_slotToIndex[4] = { 0, 1, 2, 3 }; // in-game slot (controller port) -> board index
-
-  int m_State = -1; // Custom state.
-  size_t m_stateAddress = -1; // Address of where the minigame state is in the heap.
-  int64_t m_minigameState = -1; // State of the minigame.
-
+  int m_winnerIndex = -1;
+  int m_guestState = -1; // Custom state to keep everything in track
+  int m_minigameState = 0;
   int64_t m_kongBattleArena = 0;
 };
 
