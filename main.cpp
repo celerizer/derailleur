@@ -1,6 +1,7 @@
 #include "mainwindow.h"
 
 #include <QApplication>
+#include <QIcon>
 
 int main(int argc, char *argv[])
 {
@@ -11,6 +12,7 @@ int main(int argc, char *argv[])
 #endif
 
   QApplication a(argc, argv);
+  a.setWindowIcon(QIcon(":/assets/icon.png"));
   MainWindow w;
   w.show();
   return a.exec();
