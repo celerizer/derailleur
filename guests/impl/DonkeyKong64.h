@@ -25,9 +25,11 @@ protected:
   void doApplyGameData(const DrGameData &data) override;
   void run() override;
 
+  void setupMultiplayer(const int8_t playerCount);
   unsigned computeWinners();
 
 private:
+  int m_slotToIndex[4] = { 0, 1, 2, 3 }; // in-game slot (controller port) -> board index
   int m_winnerIndex = -1;
   int m_guestState = -1; // Custom state to keep everything in track
   int m_minigameState = 0;

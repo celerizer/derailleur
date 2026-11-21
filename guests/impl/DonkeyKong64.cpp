@@ -36,7 +36,7 @@ static const dr_value_t DK64_ARCADE_LIVES = {0x8004C71B, DR_VALUE_TYPE_U8};
 static const dr_value_t DK64_ARCADE_TOTAL_LIVES = {0x8004C71C, DR_VALUE_TYPE_U8};
 static const dr_value_t DK64_ARCADE_GAMEOVER = { 0x8004A764, DR_VALUE_TYPE_U8 };
 
-
+// u8 Jetpac
 static const dr_value_t DK64_JETPAC_LIVES = { 0x8002EC57, DR_VALUE_TYPE_U8 };
 static const dr_value_t DK64_JETPAC_LEVEL = { 0x8002EC4F, DR_VALUE_TYPE_U8 };
 static const dr_value_t DK64_JETPAC_STATE = { 0x8002F3BF, DR_VALUE_TYPE_U8 };
@@ -45,7 +45,7 @@ static const dr_value_t DK64_JETPAC_STATE = { 0x8002F3BF, DR_VALUE_TYPE_U8 };
 static const dr_value_t DK64_HEAP_PTR[2] = {
   { 0x807FB970, DR_VALUE_TYPE_POINTER },
   { 0x807550C0, DR_VALUE_TYPE_POINTER },
-};
+  };
 
 // u8 Kong Battle
 static const dr_value_t DK64_KONGBATTLE_GAMEMODE = {0x80750AB8, DR_VALUE_TYPE_U8};
@@ -108,11 +108,11 @@ static const dr_mp_minigame_t DK64_MINIGAMES[] = {
   { "Monkey Smash", DR_MINIGAME_4P, 0x15, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
   { "Battle Arena", DR_MINIGAME_4P, 0x16, 0x6B, DR_NO_QUIRKS, DR_NO_FLAGS },
 
-  { "Monkey Smash", DR_MINIGAME_DUEL, 0x15, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Battle Arena", DR_MINIGAME_DUEL, 0x16, 0x6B, DR_NO_QUIRKS, DR_NO_FLAGS },
+  //{ "Monkey Smash", DR_MINIGAME_DUEL, 0x15, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
+  //{ "Battle Arena", DR_MINIGAME_DUEL, 0x16, 0x6B, DR_NO_QUIRKS, DR_NO_FLAGS },
 
   { nullptr, DR_MINIGAME_INVALID, 0xFF, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
-};
+  };
 
 
 DonkeyKong64::DonkeyKong64(QObject *parent)
@@ -135,104 +135,63 @@ const dr_mp_minigame_t *DonkeyKong64::minigames(void) const
 void DonkeyKong64::onBeforeBoot(const DrGameData &data) {
   m_guestState = -1;
   m_winnerIndex = -1;
+  m_minigameState = 0;
+
+  for (unsigned i = 0; i < 4; i++)
+  {
+    m_slotToIndex[i] = i;
+  }
+
+  /* Order players in-game by controller port (Mario Party ports vary). */
+  for (unsigned i = 0; i < 4; i++)
+    m_slotToIndex[m_players[i].control_port] = i;
+
+  core()->input()->clearPortRoutes();
 }
 
 unsigned DonkeyKong64::computeWinners() {
 
   unsigned winners = 0;
   int64_t score[4] = {};
+
   if (m_minigame->minigame_id > 0x14) {
-      for (unsigned slot = 0; slot < 4; slot++) {
-        m_retro->readValue(&score[slot], DK64_SCORE[slot]);
+    for (unsigned slot = 0; slot < 4; slot++) {
+      m_retro->readValue(&score[slot], DK64_SCORE[slot]);
 
       if (score[slot] == 1) {
-        winners = score[slot] << 4;
-        m_winnerIndex = slot;
-        break;
+        m_winnerIndex = m_slotToIndex[slot];
+        winners = score[slot] << 3 | 2; // 10
+        return winners;
       }
     }
-  } else if (m_minigameState) {
-    winners = 10;
+  }
+
+  if (!m_minigameState) {
+    return 0;
+  }
+
+  for (unsigned i = 0; i < 4; i++) {
+    if (m_players[i].team_type == DR_TEAM_TYPE_SOLO && !m_players[i].team_id && m_slotToIndex[i] == m_players[i].control_type) {
+      m_winnerIndex = m_slotToIndex[i];
+      winners = 10;
+    }
   }
 
   return winners;
 }
 
-void DonkeyKong64::doApplyGameData(const DrGameData &data)
-{
-  uint32_t playercount = 0;
+void DonkeyKong64::setupMultiplayer(const int8_t playerCount) {
 
-  m_retro->loadState(state());
+  /* Needs to be set to two otherwise it won't add to the Player's score counter */
+  m_retro->writeValue(2, DK64_KONGBATTLE_LOAD_RESULTS);
 
-  for (unsigned i = 0; i < 4; i++)
-  {
-    const unsigned slot = m_players[i].control_port;
+  m_retro->writeValue(playerCount, DK64_PLAYER_COUNT);
 
-    uint32_t character = 0;
-    uint32_t color = 0;
+  m_retro->writeValue(DK64_KONGBATTLE_SURVIVAL, DK64_KONGBATTLE_GAMETYPE);
+  m_retro->writeValue(1, DK64_KONGBATTLE_ATTRIBUTE); // Lives
 
-    if (m_players[i].control_type == DR_CONTROL_TYPE_HUMAN)
-    {
-      playercount++;
-    }
-
-    switch (m_players[i].character)
-    {
-    case DR_CHARACTER_MARIO:
-      character = DK64_CHARACTER_LANKY_KONG;
-      color = 3;
-      break;
-    case DR_CHARACTER_LUIGI:
-      character = DK64_CHARACTER_DIDDY_KONG;
-      color = 3;
-      break;
-    case DR_CHARACTER_PEACH:
-      character = DK64_CHARACTER_TINY_KONG;
-      color = 1;
-      break;
-    case DR_CHARACTER_YOSHI:
-      character = DK64_CHARACTER_LANKY_KONG;
-      color = 1;
-      break;
-    case DR_CHARACTER_WARIO:
-      character = DK64_CHARACTER_CHUNKY_KONG;
-      color = 1;
-      break;
-    case DR_CHARACTER_DONKEY_KONG:
-      character = DK64_CHARACTER_DONKEY_KONG;
-      color = 0;
-      break;
-    case DR_CHARACTER_WALUIGI:
-      character = DK64_CHARACTER_CHUNKY_KONG;
-      color = 3;
-      break;
-    case DR_CHARACTER_DAISY:
-      character = DK64_CHARACTER_TINY_KONG;
-      color = 2;
-      break;
-    default:
-      character = DK64_CHARACTER_KRUSHA;
-      color = 0;
-      break;
-    }
-    m_retro->writeValue(character, DK64_CHARACTER[slot]);
-    m_retro->writeValue(color, DK64_COLOR[slot]);
-  }
-
-  if (data.minigame->minigame_id >= 0x15) {
-    /** Replace SB with NOP instruction to prevent the game from overwriting the character ID set from P1 to other players */
-    const dr_value_t DK64_INST_SB_CHARACTER = { 0x806C8560, DR_VALUE_TYPE_U32 };
-    m_retro->writeValueForFrames(0, DK64_INST_SB_CHARACTER, 30);
-
-    /** Needs to be set to two otherwise it won't add to the Player's score counter */
-    m_retro->writeValue(2, DK64_KONGBATTLE_LOAD_RESULTS);
-
-    m_retro->writeValue(playercount, DK64_PLAYER_COUNT);
-  }
-
-  if (data.minigame->minigame_id == 0x15)
-  {
-    // Pick a random arena
+  if (m_minigame->minigame_id == 0x15) {
+    /* Pick a random arena */
     const uint8_t randArena = (DrRandom::instance().next() % 3);
 
     switch (randArena) {
@@ -247,25 +206,110 @@ void DonkeyKong64::doApplyGameData(const DrGameData &data)
       break;
     }
 
-    m_retro->writeValue(playercount, DK64_PLAYER_COUNT_UI);
-    m_retro->writeValue(DK64_KONGBATTLE_SURVIVAL, DK64_KONGBATTLE_GAMETYPE);
-    m_retro->writeValue(1, DK64_KONGBATTLE_ATTRIBUTE); // Lives
+    m_retro->writeValue(playerCount, DK64_PLAYER_COUNT_UI);
 
     m_retro->writeValue(m_kongBattleArena, DK64_LOAD_TO_MAP);
     return;
-  } else if (data.minigame->minigame_id == 0x16) {
-    m_retro->writeValue(DK64_KONGBATTLE_SURVIVAL, DK64_KONGBATTLE_GAMETYPE);
-    m_retro->writeValue(1, DK64_KONGBATTLE_ATTRIBUTE); // Lives
-
+  }
+  else {
     m_retro->writeValue(1, DK64_KONGBATTLE_GAMEMODE);
   }
+}
+
+void DonkeyKong64::doApplyGameData(const DrGameData &data) {
+  (void)data;
+
+  uint32_t playercount = 0;
+  uint8_t charactersingle = 0;
+
+  m_retro->loadState(state());
+
+  /* Replace SB with NOP to prevent the game from overwriting the character ID set from P1 to other players */
+  const dr_value_t DK64_INST_SB_CHARACTER = { 0x806C8560, DR_VALUE_TYPE_U32 };
+  m_retro->writeValueForFrames(0, DK64_INST_SB_CHARACTER, 30);
+
+  for (unsigned i = 0; i < 4; i++)
+  {
+    const unsigned slot = m_players[i].control_port;
+
+    uint32_t character = 0;
+    uint32_t color = 0;
+
+    if (m_players[i].control_type == DR_CONTROL_TYPE_HUMAN)
+      playercount++;
+
+    switch (m_players[i].character)
+    {
+    case DR_CHARACTER_MARIO:
+      character = DK64_CHARACTER_LANKY_KONG;
+      color = 3;
+      break;
+    case DR_CHARACTER_LUIGI:
+      character = DK64_CHARACTER_DIDDY_KONG;
+      color = 3;
+      break;
+    case DR_CHARACTER_PEACH:
+      character = DK64_CHARACTER_TINY_KONG;
+      color = 2;
+      break;
+    case DR_CHARACTER_YOSHI:
+      character = DK64_CHARACTER_LANKY_KONG;
+      color = 1;
+      break;
+    case DR_CHARACTER_WARIO:
+      character = DK64_CHARACTER_CHUNKY_KONG;
+      color = 1;
+      break;
+    case DR_CHARACTER_DONKEY_KONG:
+      character = DK64_CHARACTER_DONKEY_KONG;
+      color = 0;
+      break;
+    case DR_CHARACTER_WALUIGI:
+      character = DK64_CHARACTER_DONKEY_KONG;
+      color = 1;
+      break;
+    case DR_CHARACTER_DAISY:
+      character = DK64_CHARACTER_TINY_KONG;
+      color = 3;
+      break;
+    default:
+      character = DK64_CHARACTER_KRUSHA;
+      color = 0;
+      break;
+    }
+
+    if (m_players[i].team_type == DR_TEAM_TYPE_SOLO && !m_players[i].team_id)
+      charactersingle = character;
+
+    m_retro->writeValue(character, DK64_CHARACTER[slot]);
+    m_retro->writeValue(color, DK64_COLOR[slot]);
+  }
+
+  if (m_minigame->minigame_id <= 0x14) {
+    m_retro->writeValue(charactersingle, DK64_CHARACTER[0]);
+
+    unsigned slot = 0;
+    for (unsigned i = 0; i < 4 && slot < 1; i++)
+    {
+      if (m_players[i].team_type == DR_TEAM_TYPE_SOLO && !m_players[i].team_id)
+        slot = m_players[i].control_port;
+    }
+
+    /* Reroute the player's port to player 1 */
+    core()->input()->setPortRoute(0, static_cast<int>(slot));
+    log(DR_LOG_WARN, qPrintable(QString("[DK64] Port %1 rerouted to Port 0").arg(slot)));
+  } else {
+    setupMultiplayer(playercount);
+  }
+
+  if (m_minigame->minigame_id == 0x15)
+    return;
 
   m_retro->writeValue(data.minigame->scene_id, DK64_LOAD_TO_MAP);
 }
 
 void DonkeyKong64::run(void)
 {
-
   if (finishPending()) {
     return;
   }
@@ -275,9 +319,10 @@ void DonkeyKong64::run(void)
   m_retro->readValue(&currentmap, DK64_CURRENT_MAP);
   m_retro->readValue(&mapstate, DK64_MAP_STATE);
 
-  /** If the map is loading start it right away */
+  /* If the map is loading start it right away */
   if (mapstate == 0x0D && !m_minigameActive && (currentmap == m_minigame->scene_id || currentmap == m_kongBattleArena)) {
     log(DR_LOG_INFO, qPrintable(QString("[DK64] Loaded map: %1").arg(currentmap)));
+    muteForFrames(25); // Silence you transition!
     startMinigame();
     m_guestState = 0;
   }
@@ -303,7 +348,7 @@ void DonkeyKong64::run(void)
     m_retro->readValue(&arcadescene, DK64_ARCADE_SCENE);
     m_retro->readValue(&arcade_gameover, DK64_ARCADE_GAMEOVER);
 
-    //** Donkey Kong Arcade and Jetpac require a "START" press before it can start applying data to it */
+    /* Donkey Kong Arcade and Jetpac require a "START" press before it can start applying data to it */
     if (arcadescene == 0x1B && m_guestState == DR_OK) { // Start of the game when Donkey Kong climbs up the ladder
       m_retro->writeValue(0, DK64_ARCADE_LIVES);
       m_retro->writeValue(1, DK64_ARCADE_TOTAL_LIVES);
@@ -320,7 +365,7 @@ void DonkeyKong64::run(void)
     m_retro->readValue(&arcade_currentlevel, DK64_ARCADE_LEVEL_ID);
 
     if (arcade_gameover == 0x01) {
-      // Give the game over text a bit to breath on screen before ending it
+      /* Give the game over text a bit to breath on screen before ending it */
       finishMinigameInFrames(60);
     } else if ((arcade_currentlevel > 3 && arcade_levelid != arcade_currentlevel)) {
       m_minigameState = 1;
@@ -335,7 +380,7 @@ void DonkeyKong64::run(void)
     m_retro->readValue(&jetpac_levelid, DK64_JETPAC_LEVEL);
     m_retro->readValue(&jetpac_state, DK64_JETPAC_STATE);
 
-    // Make a forced "START" press so that the logic doesn't get confused
+    /* Make a forced "START" press so that the logic doesn't get confused */
     if (jetpac_lives == 0x00  && m_guestState == DR_OK) {
       core()->setBilinearFilter(false);
       core()->input()->joypads()[0].setForcedButton(RETRO_DEVICE_ID_JOYPAD_START, true);
@@ -383,7 +428,7 @@ void DonkeyKong64::run(void)
       m_guestState++;
     }
 
-    // If the minigame has ended
+    // Return until the minigame has ended
     if (m_guestState != 2)
       return;
 
@@ -400,7 +445,9 @@ void DonkeyKong64::run(void)
 
     /** If the first pointer doesn't exist anymore or the Try Again shows up, end the minigame */
     if ((!ptr[0] && mapstate == 0x0C) || m_minigameState == 2) {
-      if (!m_minigameState) { m_minigameState = 1; }
+      if (!m_minigameState) {
+        m_minigameState = 1;
+      }
       finishMinigame();
     }
 
