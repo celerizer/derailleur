@@ -463,14 +463,14 @@ void MarioPartyN64Host::run(void)
           ? m_config.minigame_type_to_dr[m_MinigameType] : DR_MINIGAME_INVALID;
         readPlayers(mg_type);
 
-        /* A 1P mini-game has a single participant (the board slot with team id 0);
-         * give that player netplay golf mode so they play without waiting on the idle
-         * peers. Cleared when the mini-game returns to the board. */
+        /* A 1P mini-game has a single participant (the SOLO player); give that player
+         * netplay golf mode so they play without waiting on the idle peers. Cleared
+         * when the mini-game returns to the board. */
         if (mg_type == DR_MINIGAME_1P)
         {
           int authority = -1;
           for (unsigned i = 0; i < 4; i++)
-            if (m_pendingPlayers[i].team_id == 0)
+            if (m_pendingPlayers[i].team_type == DR_TEAM_TYPE_SOLO)
             {
               authority = static_cast<int>(m_pendingPlayers[i].control_port);
               break;
@@ -849,9 +849,15 @@ void MarioPartyN64Host::readPlayers(dr_minigame_type type)
         m_pendingPlayers[i].team_type = DR_TEAM_TYPE_DUEL_INITIATOR;
         break;
       default:
-        m_pendingPlayers[i].team_type = DR_TEAM_TYPE_DUEL_NONPARTICIPANT;
+        m_pendingPlayers[i].team_type = DR_TEAM_TYPE_NONPARTICIPANT;
         break;
       }
+    }
+    else if (type == DR_MINIGAME_1P)
+    {
+      /* Only the board slot with team id 0 plays; the rest sit out. */
+      m_pendingPlayers[i].team_type = (m_pendingPlayers[i].team_id == 0)
+        ? DR_TEAM_TYPE_SOLO : DR_TEAM_TYPE_NONPARTICIPANT;
     }
     else
       m_pendingPlayers[i].team_type = DR_TEAM_TYPE_SOLO;

@@ -190,8 +190,7 @@ void MarioPartyAdvance::doApplyGameData(const DrGameData &data)
     const dr_player_t *solo;
 
     for (i = 0; i < 4 && m_soloPlayer < 0; i++)
-      if (data.players[i].team_id == 0 &&
-          dr_team_type_participates(data.players[i].team_type))
+      if (data.players[i].team_type == DR_TEAM_TYPE_SOLO)
         m_soloPlayer = static_cast<int>(i);
     if (m_soloPlayer < 0)
       m_soloPlayer = 0;
