@@ -2,6 +2,7 @@
 
 #include "DrCommon.h"
 
+#include <QCloseEvent>
 #include <QFont>
 #include <QFrame>
 #include <QHBoxLayout>
@@ -119,4 +120,13 @@ void DrToolWindow::revealTools(const QString &selectName)
       break;
     }
   }
+}
+
+void DrToolWindow::closeEvent(QCloseEvent *e)
+{
+  /* Stay open while the game window is up */
+  if (m_CloseBlocker && m_CloseBlocker->isVisible())
+    e->ignore();
+  else
+    QWidget::closeEvent(e);
 }

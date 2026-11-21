@@ -99,6 +99,7 @@ MainWindow::MainWindow(QWidget *parent)
   : QMainWindow(parent)
 {
   m_Tools = new DrToolWindow(nullptr);
+  m_Tools->setCloseBlocker(this);
   m_Tools->show();
 
   m_Logger = new DrLogger(nullptr);
@@ -134,6 +135,7 @@ MainWindow::MainWindow(QWidget *parent)
 
 void MainWindow::closeEvent(QCloseEvent *e)
 {
+  m_Tools->setCloseBlocker(nullptr);
   m_Tools->close();
   QMainWindow::closeEvent(e);
 
