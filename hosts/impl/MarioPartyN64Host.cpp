@@ -836,7 +836,7 @@ void MarioPartyN64Host::readPlayers(dr_minigame_type type)
     }
     else if (type == DR_MINIGAME_2V2)
       m_pendingPlayers[i].team_type = DR_TEAM_TYPE_2V2;
-    else if (type == DR_MINIGAME_4P)
+    else if (type == DR_MINIGAME_4P || type == DR_MINIGAME_BATTLE)
       m_pendingPlayers[i].team_type = DR_TEAM_TYPE_4P;
     else if (type == DR_MINIGAME_DUEL)
     {
