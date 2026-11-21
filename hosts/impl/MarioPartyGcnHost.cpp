@@ -632,6 +632,16 @@ void MarioPartyGcnHost::startMinigame(void)
   DrPlayerArray players;
   readPlayers(players);
 
+  /* Give a 1P DK/Bowser game the right team type */
+  if (m_Candidates[id].minigame && m_Candidates[id].minigame->flags.flags.solo)
+  {
+    unsigned i;
+
+    for (i = 0; i < 4; i++)
+      players[i].team_type = (players[i].team_id == 0)
+        ? DR_TEAM_TYPE_SOLO : DR_TEAM_TYPE_NONPARTICIPANT;
+  }
+
   log(DR_LOG_INFO,
     qPrintable(QString("launching mini-game: %1 (index %2)")
       .arg(m_Candidates[id].minigame->name ? m_Candidates[id].minigame->name : "(unnamed)")
