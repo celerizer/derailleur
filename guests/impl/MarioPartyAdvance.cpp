@@ -80,36 +80,36 @@ static const dr_mp_minigame_t MPA_MINIGAMES[] =
   { "Dart Attack",  DR_MINIGAME_INVALID, MPA_DART_ATTACK,  MPA_TYPE_1_WINDOW, DR_NO_QUIRKS, DR_NO_FLAGS },
   { "Chicken Race", DR_MINIGAME_INVALID, MPA_CHICKEN_RACE, MPA_TYPE_1_WINDOW, DR_NO_QUIRKS, DR_NO_FLAGS },
 
-  { "Boo Bye",      DR_MINIGAME_1P, MPA_BOO_BYE,      MPA_TYPE_1_WINDOW, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Grabbit",      DR_MINIGAME_1P, MPA_GRABBIT,      MPA_TYPE_1_WINDOW, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Chomp Walker", DR_MINIGAME_1P, MPA_CHOMP_WALKER, MPA_TYPE_1_WINDOW, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Cloud Climb",  DR_MINIGAME_1P, MPA_CLOUD_CLIMB,  MPA_TYPE_1_WINDOW, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Barrel Peril", DR_MINIGAME_1P, MPA_BARREL_PERIL, MPA_TYPE_1_WINDOW, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Big Popper",   DR_MINIGAME_1P, MPA_BIG_POPPER,   MPA_TYPE_1_WINDOW, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Forest Jump",  DR_MINIGAME_1P, MPA_FOREST_JUMP,  MPA_TYPE_1_WINDOW, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Switch Way?",  DR_MINIGAME_1P, MPA_SWITCH_WAY,   MPA_TYPE_1_WINDOW, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Amplifried",   DR_MINIGAME_1P, MPA_AMPLIFRIED,   MPA_TYPE_1_WINDOW, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Flingshot",    DR_MINIGAME_1P, MPA_FLINGSHOT,    MPA_TYPE_1_WINDOW, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Spooky Spike", DR_MINIGAME_1P, MPA_SPOOKY_SPIKE, MPA_TYPE_1_WINDOW, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Bob-OOOM!",    DR_MINIGAME_1P, MPA_BOB_OOOM,     MPA_TYPE_1_WINDOW, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Reel Cheep",   DR_MINIGAME_1P, MPA_REEL_CHEEP,   MPA_TYPE_1_WINDOW, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Shell Stack",  DR_MINIGAME_1P, MPA_SHELL_STACK,  MPA_TYPE_1_WINDOW, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Bill Bounce",  DR_MINIGAME_1P, MPA_BILL_BOUNCE,  MPA_TYPE_1_WINDOW, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Bunny Belt",   DR_MINIGAME_1P, MPA_BUNNY_BELT,   MPA_TYPE_1_WINDOW, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Pest Aside",   DR_MINIGAME_1P, MPA_PEST_ASIDE,   MPA_TYPE_1_WINDOW, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Melon Folly",  DR_MINIGAME_1P, MPA_MELON_FOLLY,  MPA_TYPE_1_WINDOW, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Sort Stack",   DR_MINIGAME_1P, MPA_SORT_STACK,   MPA_TYPE_1_WINDOW, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "On the Spot",  DR_MINIGAME_1P, MPA_ON_THE_SPOT,  MPA_TYPE_1_WINDOW, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Koopa Krunch", DR_MINIGAME_1P, MPA_KOOPA_KRUNCH, MPA_TYPE_1_WINDOW, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Floor It!",    DR_MINIGAME_1P, MPA_FLOOR_IT,     MPA_TYPE_1_WINDOW, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Dreadmill",    DR_MINIGAME_1P, MPA_DREADMILL,    MPA_TYPE_1_WINDOW, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Stompbot XL",  DR_MINIGAME_1P, MPA_STOMPBOT_XL,  MPA_TYPE_1_WINDOW, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Go-go Pogo",   DR_MINIGAME_1P, MPA_GO_GO_POGO,   MPA_TYPE_1_WINDOW, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Sled Slide",   DR_MINIGAME_1P, MPA_SLED_SLIDE,   MPA_TYPE_1_WINDOW, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Flippin' Out", DR_MINIGAME_1P, MPA_FLIPPIN_OUT,  MPA_TYPE_1_WINDOW, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "See Monkey?",  DR_MINIGAME_1P, MPA_SEE_MONKEY,   MPA_TYPE_1_WINDOW, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Outta My Way", DR_MINIGAME_1P, MPA_OUTTA_MY_WAY, MPA_TYPE_1_WINDOW, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Broom Zoom",   DR_MINIGAME_1P, MPA_BROOM_ZOOM,   MPA_TYPE_1_WINDOW, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Boo Bye",      DR_MINIGAME_1P, MPA_BOO_BYE,      MPA_TYPE_1_WINDOW, DR_NO_QUIRKS, DR_FLAG_NO_BOTS },
+  { "Grabbit",      DR_MINIGAME_1P, MPA_GRABBIT,      MPA_TYPE_1_WINDOW, DR_NO_QUIRKS, DR_FLAG_NO_BOTS },
+  { "Chomp Walker", DR_MINIGAME_1P, MPA_CHOMP_WALKER, MPA_TYPE_1_WINDOW, DR_NO_QUIRKS, DR_FLAG_NO_BOTS },
+  { "Cloud Climb",  DR_MINIGAME_1P, MPA_CLOUD_CLIMB,  MPA_TYPE_1_WINDOW, DR_NO_QUIRKS, DR_FLAG_NO_BOTS },
+  { "Barrel Peril", DR_MINIGAME_1P, MPA_BARREL_PERIL, MPA_TYPE_1_WINDOW, DR_NO_QUIRKS, DR_FLAG_NO_BOTS },
+  { "Big Popper",   DR_MINIGAME_1P, MPA_BIG_POPPER,   MPA_TYPE_1_WINDOW, DR_NO_QUIRKS, DR_FLAG_NO_BOTS },
+  { "Forest Jump",  DR_MINIGAME_1P, MPA_FOREST_JUMP,  MPA_TYPE_1_WINDOW, DR_NO_QUIRKS, DR_FLAG_NO_BOTS },
+  { "Switch Way?",  DR_MINIGAME_1P, MPA_SWITCH_WAY,   MPA_TYPE_1_WINDOW, DR_NO_QUIRKS, DR_FLAG_NO_BOTS },
+  { "Amplifried",   DR_MINIGAME_1P, MPA_AMPLIFRIED,   MPA_TYPE_1_WINDOW, DR_NO_QUIRKS, DR_FLAG_NO_BOTS },
+  { "Flingshot",    DR_MINIGAME_1P, MPA_FLINGSHOT,    MPA_TYPE_1_WINDOW, DR_NO_QUIRKS, DR_FLAG_NO_BOTS },
+  { "Spooky Spike", DR_MINIGAME_1P, MPA_SPOOKY_SPIKE, MPA_TYPE_1_WINDOW, DR_NO_QUIRKS, DR_FLAG_NO_BOTS },
+  { "Bob-OOOM!",    DR_MINIGAME_1P, MPA_BOB_OOOM,     MPA_TYPE_1_WINDOW, DR_NO_QUIRKS, DR_FLAG_NO_BOTS },
+  { "Reel Cheep",   DR_MINIGAME_1P, MPA_REEL_CHEEP,   MPA_TYPE_1_WINDOW, DR_NO_QUIRKS, DR_FLAG_NO_BOTS },
+  { "Shell Stack",  DR_MINIGAME_1P, MPA_SHELL_STACK,  MPA_TYPE_1_WINDOW, DR_NO_QUIRKS, DR_FLAG_NO_BOTS },
+  { "Bill Bounce",  DR_MINIGAME_1P, MPA_BILL_BOUNCE,  MPA_TYPE_1_WINDOW, DR_NO_QUIRKS, DR_FLAG_NO_BOTS },
+  { "Bunny Belt",   DR_MINIGAME_1P, MPA_BUNNY_BELT,   MPA_TYPE_1_WINDOW, DR_NO_QUIRKS, DR_FLAG_NO_BOTS },
+  { "Pest Aside",   DR_MINIGAME_1P, MPA_PEST_ASIDE,   MPA_TYPE_1_WINDOW, DR_NO_QUIRKS, DR_FLAG_NO_BOTS },
+  { "Melon Folly",  DR_MINIGAME_1P, MPA_MELON_FOLLY,  MPA_TYPE_1_WINDOW, DR_NO_QUIRKS, DR_FLAG_NO_BOTS },
+  { "Sort Stack",   DR_MINIGAME_1P, MPA_SORT_STACK,   MPA_TYPE_1_WINDOW, DR_NO_QUIRKS, DR_FLAG_NO_BOTS },
+  { "On the Spot",  DR_MINIGAME_1P, MPA_ON_THE_SPOT,  MPA_TYPE_1_WINDOW, DR_NO_QUIRKS, DR_FLAG_NO_BOTS },
+  { "Koopa Krunch", DR_MINIGAME_1P, MPA_KOOPA_KRUNCH, MPA_TYPE_1_WINDOW, DR_NO_QUIRKS, DR_FLAG_NO_BOTS },
+  { "Floor It!",    DR_MINIGAME_1P, MPA_FLOOR_IT,     MPA_TYPE_1_WINDOW, DR_NO_QUIRKS, DR_FLAG_NO_BOTS },
+  { "Dreadmill",    DR_MINIGAME_1P, MPA_DREADMILL,    MPA_TYPE_1_WINDOW, DR_NO_QUIRKS, DR_FLAG_NO_BOTS },
+  { "Stompbot XL",  DR_MINIGAME_1P, MPA_STOMPBOT_XL,  MPA_TYPE_1_WINDOW, DR_NO_QUIRKS, DR_FLAG_NO_BOTS },
+  { "Go-go Pogo",   DR_MINIGAME_1P, MPA_GO_GO_POGO,   MPA_TYPE_1_WINDOW, DR_NO_QUIRKS, DR_FLAG_NO_BOTS },
+  { "Sled Slide",   DR_MINIGAME_1P, MPA_SLED_SLIDE,   MPA_TYPE_1_WINDOW, DR_NO_QUIRKS, DR_FLAG_NO_BOTS },
+  { "Flippin' Out", DR_MINIGAME_1P, MPA_FLIPPIN_OUT,  MPA_TYPE_1_WINDOW, DR_NO_QUIRKS, DR_FLAG_NO_BOTS },
+  { "See Monkey?",  DR_MINIGAME_1P, MPA_SEE_MONKEY,   MPA_TYPE_1_WINDOW, DR_NO_QUIRKS, DR_FLAG_NO_BOTS },
+  { "Outta My Way", DR_MINIGAME_1P, MPA_OUTTA_MY_WAY, MPA_TYPE_1_WINDOW, DR_NO_QUIRKS, DR_FLAG_NO_BOTS },
+  { "Broom Zoom",   DR_MINIGAME_1P, MPA_BROOM_ZOOM,   MPA_TYPE_1_WINDOW, DR_NO_QUIRKS, DR_FLAG_NO_BOTS },
 
   { nullptr, DR_MINIGAME_INVALID, -1, -1, DR_NO_QUIRKS, DR_NO_FLAGS },
 };
@@ -157,7 +157,7 @@ dr_minigame_result_t MarioPartyAdvance::minigameResult(unsigned index)
 
   if (m_minigame && m_minigame->type == DR_MINIGAME_1P)
   {
-    if (static_cast<int>(index) == m_soloPlayer &&
+    if (static_cast<int>(index) == m_soloPlayer && !m_soloIsBot &&
         m_retro->readValue(&outcome, MPA_MG_RESULT) == DR_OK && outcome > 0)
       result.coins = 10;
   }
@@ -176,6 +176,7 @@ void MarioPartyAdvance::doApplyGameData(const DrGameData &data)
   m_winners = 0;
   m_EndWaitFrames = 0;
   m_soloPlayer = -1;
+  m_soloIsBot = false;
   m_retro->loadState(state());
   m_retro->writeValue(minigame->minigame_id, MPA_MINIGAME_ID);
   core()->input()->clearPortRoutes();
@@ -195,6 +196,7 @@ void MarioPartyAdvance::doApplyGameData(const DrGameData &data)
     if (m_soloPlayer < 0)
       m_soloPlayer = 0;
     solo = &data.players[m_soloPlayer];
+    m_soloIsBot = solo->control_type == DR_CONTROL_TYPE_CPU;
 
     /* Goal mode at the harder target tier instead of chasing a high score */
     m_retro->writeValue(1, MPA_MG_CHALLENGE);
@@ -207,6 +209,13 @@ void MarioPartyAdvance::doApplyGameData(const DrGameData &data)
   }
 
   startMinigame();
+
+  /* Bandaid: MPA has no CPU for 1P games, so a bot player forfeits immediately */
+  if (m_soloIsBot)
+  {
+    log(DR_LOG_INFO, "1P mini-game player is a bot: forfeiting");
+    finishMinigameInFrames(1);
+  }
 }
 
 void MarioPartyAdvance::run4pPinball()

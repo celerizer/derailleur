@@ -29,6 +29,7 @@ private:
   unsigned m_winners = 0;
   unsigned m_EndWaitFrames = 0;
   int m_soloPlayer = -1;
+  bool m_soloIsBot = false;
 };
 
 #endif
