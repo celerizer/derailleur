@@ -139,8 +139,6 @@ void DonkeyKong64::onBeforeBoot(const DrGameData &data) {
   m_guestState = -1;
   m_winnerIndex = -1;
   m_minigameState = 0;
-
-  core()->input()->clearPortRoutes();
 }
 
 unsigned DonkeyKong64::computeWinners() {
@@ -152,7 +150,7 @@ unsigned DonkeyKong64::computeWinners() {
     for (unsigned i = 0; i < 4; i++) {
       m_retro->readValue(&score[i], DK64_SCORE[i]);
 
-      if (score[i] == 1) {
+      if (score[i] > 0) {
         m_winnerIndex = m_slotToIndex[i];
         winners = score[i] << 3 | 2; // 10
         return winners;
@@ -237,6 +235,7 @@ void DonkeyKong64::doApplyGameData(const DrGameData &data) {
   uint32_t playercount = 0;
 
   m_retro->loadState(state());
+  core()->input()->clearPortRoutes();
 
   /* Replace SB (Store Byte) with NOP to prevent the game from overwriting the character ID set from P1 to other players */
   const dr_value_t DK64_INST_SB_CHARACTER = { 0x806C8560, DR_VALUE_TYPE_U32 };
@@ -428,6 +427,7 @@ void DonkeyKong64::run(void)
 
     if (mapstate == 0x08 && m_guestState == 2) {
       finishMinigame();
+      computeWinners();
     }
     break;
   default:
