@@ -178,13 +178,14 @@ void DonkeyKong64::setupMultiplayer(const int8_t playerCount) {
 
   m_retro->writeValue(playerCount, DK64_PLAYER_COUNT);
 
-  m_retro->writeValue(DK64_KONGBATTLE_TIME, DK64_KONGBATTLE_GAMETYPE);
-  m_retro->writeValue(2, DK64_KONGBATTLE_ATTRIBUTE); // Default set to time for FFA
-
   /* If it's a duel, then set it to survival */
-  if(m_minigame->type == DR_MINIGAME_DUEL) {
+  if (m_minigame->type == DR_MINIGAME_DUEL) {
     m_retro->writeValue(DK64_KONGBATTLE_SURVIVAL, DK64_KONGBATTLE_GAMETYPE);
     m_retro->writeValue(1, DK64_KONGBATTLE_ATTRIBUTE); // Lives
+  }
+  else {
+    m_retro->writeValue(DK64_KONGBATTLE_TIME, DK64_KONGBATTLE_GAMETYPE);
+    m_retro->writeValue(2, DK64_KONGBATTLE_ATTRIBUTE); // Default set to time for FFA
   }
   uint8_t arena = DK64_ARENA_1;
 
@@ -216,6 +217,7 @@ void DonkeyKong64::setupMultiplayer(const int8_t playerCount) {
     // Set to zero. Battle Arena only works in one screen
     m_retro->writeValue(0, DK64_PLAYER_COUNT_UI);
     m_retro->writeValue(1, DK64_KONGBATTLE_GAMEMODE);
+    m_retro->writeValue(1, DK64_KONGBATTLE_ATTRIBUTE);
   }
 
   m_retro->writeValue(arena, DK64_LOAD_TO_MAP);
@@ -451,7 +453,7 @@ void DonkeyKong64::run(void)
       if (!m_minigameState) {
         m_minigameState = 1;
       }
-      finishMinigameInFrames(40);
+      finishMinigame();
     }
 
     break;
