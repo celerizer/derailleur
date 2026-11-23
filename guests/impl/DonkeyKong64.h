@@ -33,7 +33,6 @@ private:
   int m_winnerIndex = -1;
   int m_guestState = -1; // Custom state to keep everything in track
   int m_minigameState = 0;
-  int64_t m_kongBattleArena = 0;
 };
 
 #endif

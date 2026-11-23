@@ -12,10 +12,6 @@ typedef enum
   DK64_CHARACTER_KRUSHA = 5
 } dk64_character_ids;
 
-#define DK64_ARENA_1                 0x6D
-#define DK64_ARENA_2                 0xBE
-#define DK64_ARENA_3                 0xC0
-
 #define DK64_KONGBATTLE_TIME               0x00
 #define DK64_KONGBATTLE_WINS               0x01
 #define DK64_KONGBATTLE_COIN_HOARD        0x02
@@ -23,17 +19,19 @@ typedef enum
 #define DK64_KONGBATTLE_SURVIVAL           0x04
 #define DK64_KONGBATTLE_CAPTURE_PAD        0x05
 
-
-static const dr_value_t DK64_ARCADE_LEVEL_ID = { 0x8004c723, DR_VALUE_TYPE_S8 };
+#define DK64_ARENA_1                 0x6D
+#define DK64_ARENA_2                 0xBE
+#define DK64_ARENA_3                 0xC0
 
 static const dr_value_t DK64_LOAD_TO_MAP = { 0x807444E7, DR_VALUE_TYPE_U8 };
 static const dr_value_t DK64_CURRENT_MAP = { 0x8076A0AB, DR_VALUE_TYPE_U8 };
 static const dr_value_t DK64_MAP_STATE = { 0x8076A0B1, DR_VALUE_TYPE_U8 };
 
 // u8 DONKEY KONG Scene, Lives, etc
+static const dr_value_t DK64_ARCADE_LEVEL_ID = { 0x8004c723, DR_VALUE_TYPE_U8 };
 static const dr_value_t DK64_ARCADE_SCENE = {0x8004C733, DR_VALUE_TYPE_U8};
 static const dr_value_t DK64_ARCADE_LIVES = {0x8004C71B, DR_VALUE_TYPE_U8};
-static const dr_value_t DK64_ARCADE_TOTAL_LIVES = {0x8004C71C, DR_VALUE_TYPE_U8};
+static const dr_value_t DK64_ARCADE_TOTAL_LIVES = {0x8004C71C, DR_VALUE_TYPE_U8 };
 static const dr_value_t DK64_ARCADE_GAMEOVER = { 0x8004A764, DR_VALUE_TYPE_U8 };
 
 // u8 Jetpac
@@ -41,16 +39,9 @@ static const dr_value_t DK64_JETPAC_LIVES = { 0x8002EC57, DR_VALUE_TYPE_U8 };
 static const dr_value_t DK64_JETPAC_LEVEL = { 0x8002EC4F, DR_VALUE_TYPE_U8 };
 static const dr_value_t DK64_JETPAC_STATE = { 0x8002F3BF, DR_VALUE_TYPE_U8 };
 
-// Heap pointer for minigames
-static const dr_value_t DK64_HEAP_PTR[2] = {
-  { 0x807FB970, DR_VALUE_TYPE_POINTER },
-  { 0x807550C0, DR_VALUE_TYPE_POINTER },
-  };
-
 // u8 Kong Battle
 static const dr_value_t DK64_KONGBATTLE_GAMEMODE = {0x80750AB8, DR_VALUE_TYPE_U8};
 static const dr_value_t DK64_KONGBATTLE_GAMETYPE = {0x807552EB, DR_VALUE_TYPE_U8};
-static const dr_value_t DK64_KONGBATTLE_LOAD_RESULTS = { 0x80744514, DR_VALUE_TYPE_U8 };
 
 // u8 Wins, Timer, Lives
 static const dr_value_t DK64_KONGBATTLE_ATTRIBUTE = {0x807552F3, DR_VALUE_TYPE_U8};
@@ -58,6 +49,13 @@ static const dr_value_t DK64_KONGBATTLE_ATTRIBUTE = {0x807552F3, DR_VALUE_TYPE_U
 // u8 Player counts
 static const dr_value_t DK64_PLAYER_COUNT = { 0x80750AC0, DR_VALUE_TYPE_U8 };
 static const dr_value_t DK64_PLAYER_COUNT_UI = { 0x807552E7, DR_VALUE_TYPE_U8 };
+
+
+// Heap pointer for minigames
+static const dr_value_t DK64_HEAP_PTR[2] = {
+  { 0x807FB970, DR_VALUE_TYPE_POINTER },
+  { 0x807550C0, DR_VALUE_TYPE_POINTER },
+  };
 
 // u8 Result scores
 static const dr_value_t DK64_SCORE[4] = {
@@ -71,8 +69,8 @@ static const dr_value_t DK64_SCORE[4] = {
 static const dr_value_t DK64_CHARACTER[4] = {
   { 0x8074E77C, DR_VALUE_TYPE_U8 },
   { 0x8074E77D, DR_VALUE_TYPE_U8 },
-  { 0x8074E77F, DR_VALUE_TYPE_U8 },
-  { 0x8074E780, DR_VALUE_TYPE_U8 }
+  { 0x8074E77E, DR_VALUE_TYPE_U8 },
+  { 0x8074E77F, DR_VALUE_TYPE_U8 }
 };
 
 // u8 Color IDs
@@ -83,10 +81,17 @@ static const dr_value_t DK64_COLOR[4] = {
   { 0x80755303, DR_VALUE_TYPE_U8 }
 };
 
+// u8 Swimming moves
+const dr_value_t DK64_SWIMMING_MOVE[3] = {
+  {0x807ED084, DR_VALUE_TYPE_U8},
+  {0x807ED230, DR_VALUE_TYPE_U8},
+  {0x807ED260, DR_VALUE_TYPE_U8},
+};
+
 static const dr_mp_minigame_t DK64_MINIGAMES[] = {
   { "Mad Maze Maul", DR_MINIGAME_1P, 0x01, 0x45, DR_NO_QUIRKS, DR_NO_FLAGS },
   { "Speedy Swing Sortie", DR_MINIGAME_1P, 0x02, 0x87, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Splish Slash Salvage", DR_MINIGAME_1P, 0x03, 0x84, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Splish-Splash Salvage", DR_MINIGAME_1P, 0x03, 0x60, DR_NO_QUIRKS, DR_NO_FLAGS },
   { "Minecart Mayhem", DR_MINIGAME_1P, 0x04, 0x81, DR_NO_QUIRKS, DR_NO_FLAGS },
   { "Stealthy Snoop", DR_MINIGAME_1P, 0x05, 0x7F, DR_NO_QUIRKS, DR_NO_FLAGS },
   { "Big Bug Bash", DR_MINIGAME_1P, 0x06, 0x95, DR_NO_QUIRKS, DR_NO_FLAGS },
@@ -104,12 +109,10 @@ static const dr_mp_minigame_t DK64_MINIGAMES[] = {
   { "DONKEY KONG: 75m", DR_MINIGAME_1P, 0x12, 0x02, DR_NO_QUIRKS, DR_NO_FLAGS },
   { "DONKEY KONG: 100m", DR_MINIGAME_1P, 0x13, 0x02, DR_NO_QUIRKS, DR_NO_FLAGS },
   { "Jetpac", DR_MINIGAME_1P, 0x14, 0x09, DR_NO_QUIRKS, DR_NO_FLAGS },
-
-  { "Monkey Smash", DR_MINIGAME_4P, 0x15, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
-  { "Battle Arena", DR_MINIGAME_4P, 0x16, 0x6B, DR_NO_QUIRKS, DR_NO_FLAGS },
-
-  //{ "Monkey Smash", DR_MINIGAME_DUEL, 0x15, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
-  //{ "Battle Arena", DR_MINIGAME_DUEL, 0x16, 0x6B, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Monkey Smash: Time", DR_MINIGAME_4P, 0x15, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Battle Arena: Time", DR_MINIGAME_4P, 0x16, 0x6B, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Monkey Smash: Survival", DR_MINIGAME_DUEL, 0x15, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
+  { "Battle Arena: Survival", DR_MINIGAME_DUEL, 0x16, 0x6B, DR_NO_QUIRKS, DR_NO_FLAGS },
 
   { nullptr, DR_MINIGAME_INVALID, 0xFF, 0xFF, DR_NO_QUIRKS, DR_NO_FLAGS },
   };
@@ -137,15 +140,6 @@ void DonkeyKong64::onBeforeBoot(const DrGameData &data) {
   m_winnerIndex = -1;
   m_minigameState = 0;
 
-  for (unsigned i = 0; i < 4; i++)
-  {
-    m_slotToIndex[i] = i;
-  }
-
-  /* Order players in-game by controller port (Mario Party ports vary). */
-  for (unsigned i = 0; i < 4; i++)
-    m_slotToIndex[m_players[i].control_port] = i;
-
   core()->input()->clearPortRoutes();
 }
 
@@ -155,24 +149,24 @@ unsigned DonkeyKong64::computeWinners() {
   int64_t score[4] = {};
 
   if (m_minigame->minigame_id > 0x14) {
-    for (unsigned slot = 0; slot < 4; slot++) {
-      m_retro->readValue(&score[slot], DK64_SCORE[slot]);
+    for (unsigned i = 0; i < 4; i++) {
+      m_retro->readValue(&score[i], DK64_SCORE[i]);
 
-      if (score[slot] == 1) {
-        m_winnerIndex = m_slotToIndex[slot];
-        winners = score[slot] << 3 | 2; // 10
+      if (score[i] == 1) {
+        m_winnerIndex = m_slotToIndex[i];
+        winners = score[i] << 3 | 2; // 10
         return winners;
       }
     }
   }
 
-  if (!m_minigameState) {
+  if (m_minigameState != 1) {
     return 0;
   }
 
   for (unsigned i = 0; i < 4; i++) {
-    if (m_players[i].team_type == DR_TEAM_TYPE_SOLO && !m_players[i].team_id && m_slotToIndex[i] == m_players[i].control_type) {
-      m_winnerIndex = m_slotToIndex[i];
+    if (m_players[i].team_type == DR_TEAM_TYPE_SOLO) {
+      m_winnerIndex = m_players[i].control_port;
       winners = 10;
     }
   }
@@ -182,67 +176,77 @@ unsigned DonkeyKong64::computeWinners() {
 
 void DonkeyKong64::setupMultiplayer(const int8_t playerCount) {
 
-  /* Needs to be set to two otherwise it won't add to the Player's score counter */
-  m_retro->writeValue(2, DK64_KONGBATTLE_LOAD_RESULTS);
-
   m_retro->writeValue(playerCount, DK64_PLAYER_COUNT);
 
-  m_retro->writeValue(DK64_KONGBATTLE_SURVIVAL, DK64_KONGBATTLE_GAMETYPE);
-  m_retro->writeValue(1, DK64_KONGBATTLE_ATTRIBUTE); // Lives
+  m_retro->writeValue(DK64_KONGBATTLE_TIME, DK64_KONGBATTLE_GAMETYPE);
+  m_retro->writeValue(2, DK64_KONGBATTLE_ATTRIBUTE); // Default set to time for FFA
 
-  if (m_minigame->minigame_id == 0x15) {
-    /* Pick a random arena */
-    const uint8_t randArena = (DrRandom::instance().next() % 3);
+  /* If it's a duel, then set it to survival */
+  if(m_minigame->type == DR_MINIGAME_DUEL) {
+    m_retro->writeValue(DK64_KONGBATTLE_SURVIVAL, DK64_KONGBATTLE_GAMETYPE);
+    m_retro->writeValue(1, DK64_KONGBATTLE_ATTRIBUTE); // Lives
+  }
+  uint8_t arena = DK64_ARENA_1;
 
-    switch (randArena) {
-    case 0:
-      m_kongBattleArena = DK64_ARENA_1;
-      break;
-    case 1:
-      m_kongBattleArena = DK64_ARENA_2;
-      break;
-    case 2:
-      m_kongBattleArena = DK64_ARENA_3;
-      break;
-    }
+  if (m_minigame->scene_id == 0xFF) {
+
+    /* Replace BEQZ (Branch Equal to ZERO) with NOP (No Operation). so it makes it write the values for the guns to be usable. */
+    const dr_value_t DK64_INST_BEQZ_CHARACTER = { 0x806C9B60, DR_VALUE_TYPE_U32 };
+    m_retro->writeValueForFrames(0, DK64_INST_BEQZ_CHARACTER, 70);
 
     m_retro->writeValue(playerCount, DK64_PLAYER_COUNT_UI);
 
-    m_retro->writeValue(m_kongBattleArena, DK64_LOAD_TO_MAP);
-    return;
-  }
-  else {
+    /* Pull out a random number between 0 to 2 and then pick the arena from the switch case */
+    const uint8_t randnum = (DrRandom::instance().next() % 3);
+
+    switch (randnum) {
+    case 0:
+      arena = DK64_ARENA_1;
+      break;
+    case 1:
+      arena = DK64_ARENA_2;
+      break;
+    case 2:
+      arena = DK64_ARENA_3;
+      break;
+    }
+
+  } else {
+    arena = m_minigame->scene_id;
+    // Set to zero. Battle Arena only works in one screen
+    m_retro->writeValue(0, DK64_PLAYER_COUNT_UI);
     m_retro->writeValue(1, DK64_KONGBATTLE_GAMEMODE);
   }
+
+  m_retro->writeValue(arena, DK64_LOAD_TO_MAP);
+
+  return;
 }
 
 void DonkeyKong64::doApplyGameData(const DrGameData &data) {
-  (void)data;
-
   uint32_t playercount = 0;
-  uint8_t charactersingle = 0;
 
   m_retro->loadState(state());
 
-  /* Replace SB with NOP to prevent the game from overwriting the character ID set from P1 to other players */
+  /* Replace SB (Store Byte) with NOP to prevent the game from overwriting the character ID set from P1 to other players */
   const dr_value_t DK64_INST_SB_CHARACTER = { 0x806C8560, DR_VALUE_TYPE_U32 };
-  m_retro->writeValueForFrames(0, DK64_INST_SB_CHARACTER, 30);
+  m_retro->writeValueForFrames(0, DK64_INST_SB_CHARACTER, 70);
+
+  unsigned slot = 0;
 
   for (unsigned i = 0; i < 4; i++)
   {
-    const unsigned slot = m_players[i].control_port;
+    if (m_players[i].control_type == DR_CONTROL_TYPE_HUMAN && m_players[i].team_type != DR_TEAM_TYPE_NONPARTICIPANT)
+      playercount++;
 
     uint32_t character = 0;
     uint32_t color = 0;
 
-    if (m_players[i].control_type == DR_CONTROL_TYPE_HUMAN)
-      playercount++;
-
     switch (m_players[i].character)
     {
     case DR_CHARACTER_MARIO:
-      character = DK64_CHARACTER_LANKY_KONG;
-      color = 3;
+      character = DK64_CHARACTER_DIDDY_KONG;
+      color = 0;
       break;
     case DR_CHARACTER_LUIGI:
       character = DK64_CHARACTER_DIDDY_KONG;
@@ -250,7 +254,7 @@ void DonkeyKong64::doApplyGameData(const DrGameData &data) {
       break;
     case DR_CHARACTER_PEACH:
       character = DK64_CHARACTER_TINY_KONG;
-      color = 2;
+      color = 0;
       break;
     case DR_CHARACTER_YOSHI:
       character = DK64_CHARACTER_LANKY_KONG;
@@ -265,11 +269,11 @@ void DonkeyKong64::doApplyGameData(const DrGameData &data) {
       color = 0;
       break;
     case DR_CHARACTER_WALUIGI:
-      character = DK64_CHARACTER_DONKEY_KONG;
-      color = 1;
+      character = DK64_CHARACTER_LANKY_KONG;
+      color = 2;
       break;
     case DR_CHARACTER_DAISY:
-      character = DK64_CHARACTER_TINY_KONG;
+      character = DK64_CHARACTER_DONKEY_KONG;
       color = 3;
       break;
     default:
@@ -278,34 +282,33 @@ void DonkeyKong64::doApplyGameData(const DrGameData &data) {
       break;
     }
 
-    if (m_players[i].team_type == DR_TEAM_TYPE_SOLO && !m_players[i].team_id)
-      charactersingle = character;
+    if (!dr_team_type_participates(m_players[i].team_type))
+      continue;
+
+    m_slotToIndex[slot] = static_cast<int>(i);
+
+    /* Route the ports to their respective character from the board context's turn order, this also works for singleplayer */
+    core()->input()->setPortRoute(slot, static_cast<int>(m_players[i].control_port));
+    log(DR_LOG_WARN, qPrintable(QString("[DK64] Port %1 routed to Port %2").arg(m_players[i].control_port).arg(slot)));
 
     m_retro->writeValue(character, DK64_CHARACTER[slot]);
     m_retro->writeValue(color, DK64_COLOR[slot]);
+
+    slot++;
   }
 
-  if (m_minigame->minigame_id <= 0x14) {
-    m_retro->writeValue(charactersingle, DK64_CHARACTER[0]);
-
-    unsigned slot = 0;
-    for (unsigned i = 0; i < 4 && slot < 1; i++)
-    {
-      if (m_players[i].team_type == DR_TEAM_TYPE_SOLO && !m_players[i].team_id)
-        slot = m_players[i].control_port;
+  if (m_minigame->type == DR_MINIGAME_1P)
+  {
+    /* Enable swimming moves, otherwise the player can't swim in Splish-Splash Salvage */
+    for (unsigned i = 0; i < 3; i++) {
+      m_retro->writeValueForFrames(0x2C, DK64_SWIMMING_MOVE[i], 70);
     }
 
-    /* Reroute the player's port to player 1 */
-    core()->input()->setPortRoute(0, static_cast<int>(slot));
-    log(DR_LOG_WARN, qPrintable(QString("[DK64] Port %1 rerouted to Port 0").arg(slot)));
+    m_retro->writeValue(data.minigame->scene_id, DK64_LOAD_TO_MAP);
   } else {
     setupMultiplayer(playercount);
   }
 
-  if (m_minigame->minigame_id == 0x15)
-    return;
-
-  m_retro->writeValue(data.minigame->scene_id, DK64_LOAD_TO_MAP);
 }
 
 void DonkeyKong64::run(void)
@@ -320,9 +323,9 @@ void DonkeyKong64::run(void)
   m_retro->readValue(&mapstate, DK64_MAP_STATE);
 
   /* If the map is loading start it right away */
-  if (mapstate == 0x0D && !m_minigameActive && (currentmap == m_minigame->scene_id || currentmap == m_kongBattleArena)) {
+  if (mapstate == 0x0D && !m_minigameActive && (currentmap == m_minigame->scene_id || m_minigame->minigame_id >= 0x15)) {
     log(DR_LOG_INFO, qPrintable(QString("[DK64] Loaded map: %1").arg(currentmap)));
-    muteForFrames(25); // Silence you transition!
+    muteForFrames(35); // Silence you transition!
     startMinigame();
     m_guestState = 0;
   }
@@ -448,7 +451,7 @@ void DonkeyKong64::run(void)
       if (!m_minigameState) {
         m_minigameState = 1;
       }
-      finishMinigame();
+      finishMinigameInFrames(40);
     }
 
     break;
