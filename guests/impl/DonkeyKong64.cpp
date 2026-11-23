@@ -179,17 +179,17 @@ void DonkeyKong64::setupMultiplayer(const int8_t playerCount) {
   m_retro->writeValue(playerCount, DK64_PLAYER_COUNT);
 
   /* If it's a duel, then set it to survival */
-  if (m_minigame->type == DR_MINIGAME_DUEL) {
-    m_retro->writeValue(DK64_KONGBATTLE_SURVIVAL, DK64_KONGBATTLE_GAMETYPE);
-    m_retro->writeValue(1, DK64_KONGBATTLE_ATTRIBUTE); // Lives
-  }
-  else {
-    m_retro->writeValue(DK64_KONGBATTLE_TIME, DK64_KONGBATTLE_GAMETYPE);
-    m_retro->writeValue(2, DK64_KONGBATTLE_ATTRIBUTE); // Default set to time for FFA
-  }
   uint8_t arena = DK64_ARENA_1;
 
   if (m_minigame->scene_id == 0xFF) {
+
+    if (m_minigame->type == DR_MINIGAME_DUEL) {
+      m_retro->writeValue(DK64_KONGBATTLE_SURVIVAL, DK64_KONGBATTLE_GAMETYPE);
+      m_retro->writeValue(1, DK64_KONGBATTLE_ATTRIBUTE);
+    } else {
+      m_retro->writeValue(DK64_KONGBATTLE_TIME, DK64_KONGBATTLE_GAMETYPE);
+      m_retro->writeValue(2, DK64_KONGBATTLE_ATTRIBUTE);
+    }
 
     /* Replace BEQZ (Branch Equal to ZERO) with NOP (No Operation). so it makes it write the values for the guns to be usable. */
     const dr_value_t DK64_INST_BEQZ_CHARACTER = { 0x806C9B60, DR_VALUE_TYPE_U32 };
@@ -214,10 +214,18 @@ void DonkeyKong64::setupMultiplayer(const int8_t playerCount) {
 
   } else {
     arena = m_minigame->scene_id;
+
+    if (m_minigame->type == DR_MINIGAME_DUEL) {
+      m_retro->writeValue(DK64_KONGBATTLE_SURVIVAL, DK64_KONGBATTLE_GAMETYPE);
+    } else {
+      m_retro->writeValue(DK64_KONGBATTLE_TIME, DK64_KONGBATTLE_GAMETYPE);
+    }
+
+    m_retro->writeValue(1, DK64_KONGBATTLE_ATTRIBUTE);
+
     // Set to zero. Battle Arena only works in one screen
     m_retro->writeValue(0, DK64_PLAYER_COUNT_UI);
     m_retro->writeValue(1, DK64_KONGBATTLE_GAMEMODE);
-    m_retro->writeValue(1, DK64_KONGBATTLE_ATTRIBUTE);
   }
 
   m_retro->writeValue(arena, DK64_LOAD_TO_MAP);
