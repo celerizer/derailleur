@@ -340,7 +340,7 @@ std::array<dr_player_t, 4> DrDebug::players(const dr_mp_minigame_t *minigame) co
     case DR_MINIGAME_ITEM:
       /* team_id 0 = player (participates), 1 = non-player (sits out). */
       players[i].team_type =
-        (players[i].team_id == 0) ? DR_TEAM_TYPE_SOLO : DR_TEAM_TYPE_INVALID;
+        (players[i].team_id == 0) ? DR_TEAM_TYPE_SOLO : DR_TEAM_TYPE_NONPARTICIPANT;
       break;
     default:
       players[i].team_type = DR_TEAM_TYPE_4P;

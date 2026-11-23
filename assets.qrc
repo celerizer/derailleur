@@ -1,5 +1,6 @@
 <RCC>
     <qresource prefix="/">
+        <file>assets/icon.png</file>
         <file>assets/loading.png</file>
         <file>assets/minigame-icon/battle-mp6.png</file>
         <file>assets/minigame-icon/battle-mp7.png</file>

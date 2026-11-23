@@ -586,7 +586,11 @@ void MarioPartyGcnHost::readPlayers(DrPlayerArray &players)
     case DR_MINIGAME_DUEL:
       p.team_type = (p.team_id == 0) ? DR_TEAM_TYPE_DUEL_TARGET
                   : (p.team_id == 1) ? DR_TEAM_TYPE_DUEL_INITIATOR
-                                     : DR_TEAM_TYPE_DUEL_NONPARTICIPANT;
+                                     : DR_TEAM_TYPE_NONPARTICIPANT;
+      break;
+    case DR_MINIGAME_1P:
+      /* Assumed: team id 0 plays, anything else sits out. Unverified on MP8. */
+      p.team_type = (p.team_id == 0) ? DR_TEAM_TYPE_SOLO : DR_TEAM_TYPE_NONPARTICIPANT;
       break;
     default:
       p.team_type = DR_TEAM_TYPE_4P;
@@ -627,6 +631,16 @@ void MarioPartyGcnHost::startMinigame(void)
 
   DrPlayerArray players;
   readPlayers(players);
+
+  /* Give a 1P DK/Bowser game the right team type */
+  if (m_Candidates[id].minigame && m_Candidates[id].minigame->flags.flags.solo)
+  {
+    unsigned i;
+
+    for (i = 0; i < 4; i++)
+      players[i].team_type = (players[i].team_id == 0)
+        ? DR_TEAM_TYPE_SOLO : DR_TEAM_TYPE_NONPARTICIPANT;
+  }
 
   log(DR_LOG_INFO,
     qPrintable(QString("launching mini-game: %1 (index %2)")

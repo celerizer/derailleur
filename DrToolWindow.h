@@ -39,6 +39,13 @@ public:
   /// present). Ends the startup deferral.
   void revealTools(const QString &selectName);
 
+  /// While `window` is visible, attempts to close this window are ignored.
+  /// Pass null to allow closing again.
+  void setCloseBlocker(QWidget *window) { m_CloseBlocker = window; }
+
+protected:
+  void closeEvent(QCloseEvent *e) override;
+
 private:
   /// The sidebar row showing `page`, or null.
   QListWidgetItem *toolRow(QWidget *page) const;
@@ -46,6 +53,7 @@ private:
   QListWidget *m_Sidebar = nullptr;
   QStackedWidget *m_Stack = nullptr;
   bool m_DeferReveal = false;
+  QWidget *m_CloseBlocker = nullptr;
 };
 
 #endif

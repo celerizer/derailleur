@@ -584,10 +584,12 @@ typedef enum
   DR_TEAM_TYPE_SOLO,
 
   /* Duel-board roles: the two duelists -- the initiator who landed on the duel
-   * space and the target they challenged -- plus the bystanders who don't play. */
+   * space and the target they challenged. */
   DR_TEAM_TYPE_DUEL_TARGET,
   DR_TEAM_TYPE_DUEL_INITIATOR,
-  DR_TEAM_TYPE_DUEL_NONPARTICIPANT,
+
+  /* Sits the mini-game out -- duel bystanders, non-players in 1P/item games, etc. */
+  DR_TEAM_TYPE_NONPARTICIPANT,
 
   DR_TEAM_TYPE_SIZE
 } dr_team_type;
@@ -595,7 +597,7 @@ typedef enum
 /// Whether a given team type is a mini-game participant
 static inline bool dr_team_type_participates(dr_team_type type)
 {
-  return type != DR_TEAM_TYPE_INVALID && type != DR_TEAM_TYPE_DUEL_NONPARTICIPANT;
+  return type != DR_TEAM_TYPE_INVALID && type != DR_TEAM_TYPE_NONPARTICIPANT;
 }
 
 typedef enum

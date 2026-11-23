@@ -387,7 +387,7 @@ std::array<dr_player_t, 4> DrChallenge::buildPlayers(
     const unsigned rival = 1 + rng->bounded(3);
     for (unsigned i = 0; i < 4; i++)
       players[i].team_type =
-        (i == 0 || i == rival) ? DR_TEAM_TYPE_SOLO : DR_TEAM_TYPE_INVALID;
+        (i == 0 || i == rival) ? DR_TEAM_TYPE_SOLO : DR_TEAM_TYPE_NONPARTICIPANT;
     break;
   }
   default:

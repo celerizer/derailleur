@@ -842,7 +842,7 @@ void MarioPartyDSHost::readPlayers(DrPlayerArray &players)
       p.team_id = static_cast<int>(i) == challenger ? 1 : static_cast<int>(i) == opponent ? 0 : 2;
       p.team_type = p.team_id == 0   ? DR_TEAM_TYPE_DUEL_TARGET
                     : p.team_id == 1 ? DR_TEAM_TYPE_DUEL_INITIATOR
-                                     : DR_TEAM_TYPE_DUEL_NONPARTICIPANT;
+                                     : DR_TEAM_TYPE_NONPARTICIPANT;
       break;
     default:
       p.team_type = DR_TEAM_TYPE_4P;
