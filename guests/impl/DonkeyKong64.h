@@ -26,7 +26,7 @@ protected:
   void run() override;
 
   void setupMultiplayer(const int8_t playerCount);
-  unsigned computeWinners();
+  signed computeWinners();
 
 private:
   int m_slotToIndex[4] = { 0, 1, 2, 3 }; // in-game slot (controller port) -> board index

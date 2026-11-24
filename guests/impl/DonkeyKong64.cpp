@@ -141,9 +141,9 @@ void DonkeyKong64::onBeforeBoot(const DrGameData &data) {
   m_minigameState = 0;
 }
 
-unsigned DonkeyKong64::computeWinners() {
+signed DonkeyKong64::computeWinners() {
 
-  unsigned winners = 0;
+  signed winners = 0;
   int64_t score[4] = {};
 
   if (m_minigame->minigame_id > 0x14) {
@@ -152,22 +152,23 @@ unsigned DonkeyKong64::computeWinners() {
 
       if (score[i] > 0) {
         m_winnerIndex = m_slotToIndex[i];
-        winners = score[i] << 3 | 2; // 10
+        winners = score[i] << 3 | 2;
         return winners;
       }
     }
   }
 
-  if (m_minigameState != 1) {
-    return 0;
-  }
-
   for (unsigned i = 0; i < 4; i++) {
     if (m_players[i].team_type == DR_TEAM_TYPE_SOLO) {
-      m_winnerIndex = m_players[i].control_port;
-      winners = 10;
+      m_winnerIndex = m_slotToIndex[i];
+      break;
     }
   }
+
+  if (m_minigameState == 1)
+    winners = 10;
+  else
+    winners = -5;
 
   return winners;
 }
@@ -176,11 +177,10 @@ void DonkeyKong64::setupMultiplayer(const int8_t playerCount) {
 
   m_retro->writeValue(playerCount, DK64_PLAYER_COUNT);
 
-  /* If it's a duel, then set it to survival */
   uint8_t arena = DK64_ARENA_1;
 
   if (m_minigame->scene_id == 0xFF) {
-
+    /* If it's a duel, then set it to survival */
     if (m_minigame->type == DR_MINIGAME_DUEL) {
       m_retro->writeValue(DK64_KONGBATTLE_SURVIVAL, DK64_KONGBATTLE_GAMETYPE);
       m_retro->writeValue(1, DK64_KONGBATTLE_ATTRIBUTE);
@@ -378,6 +378,7 @@ void DonkeyKong64::run(void)
 
     if (arcade_gameover == 0x01) {
       /* Give the game over text a bit to breath on screen before ending it */
+      m_minigameState = 2;
       finishMinigameInFrames(60);
     } else if ((arcade_currentlevel > 3 && arcade_levelid != arcade_currentlevel)) {
       m_minigameState = 1;
@@ -413,6 +414,10 @@ void DonkeyKong64::run(void)
     }
 
     if ((m_guestState == 2 || jetpac_lives == 0xFF) && !finishPending()) {
+
+      if (!m_minigameState)
+        m_minigameState = 2;
+
       finishMinigameInFrames(80);
       core()->setBilinearFilter(true);
     }
@@ -427,8 +432,8 @@ void DonkeyKong64::run(void)
 
     if (mapstate == 0x08 && m_guestState == 2) {
       finishMinigame();
-      computeWinners();
     }
+
     break;
   default:
     /// Bonus Stages
@@ -472,10 +477,11 @@ void DonkeyKong64::run(void)
 dr_minigame_result_t DonkeyKong64::minigameResult(unsigned index)
 {
   dr_minigame_result_t result = { 0, 0 };
-  const unsigned winners = computeWinners();
+  signed winners = computeWinners();
 
-  if ((int)index == m_winnerIndex)
+  if ((int)index == m_winnerIndex) {
     result.coins = winners;
+  }
 
   // Reset options
   core()->options()->setOptionValue("mupen64plus-CountPerOp", "0");
